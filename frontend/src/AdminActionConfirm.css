@@ -1,0 +1,11 @@
+.modal.admin-action-confirm{width:min(100%,36rem);max-height:calc(100dvh / var(--user-font-scale,1) - 2rem);overflow:auto;padding:24px;color:var(--ui-text)}
+.modal.admin-action-confirm .admin-action-heading{display:flex;align-items:center;gap:12px}
+.modal.admin-action-confirm .confirm-icon{flex:none;width:40px;height:40px;background:var(--error-bg,#fff0ec);color:var(--error,#b04442)}
+.modal.admin-action-confirm h2{margin:0;min-width:0;font-size:1.375rem;line-height:1.35;color:var(--ui-text)}
+.modal.admin-action-confirm .admin-action-target{display:grid;gap:4px;min-width:0;margin:20px 0 16px;padding:14px 16px;border:1px solid var(--ui-border);border-radius:9px;background:var(--ui-inset);overflow-wrap:anywhere}
+.modal.admin-action-confirm .admin-action-target strong{font-size:.9375rem;line-height:1.5}
+.modal.admin-action-confirm .admin-action-target code{font-family:var(--font-mono);font-size:.75rem;line-height:1.5;color:var(--ui-muted)}
+.modal.admin-action-confirm p{margin:0;color:var(--ui-subtle);font-size:.875rem;line-height:1.6;overflow-wrap:anywhere}
+.modal.admin-action-confirm .modal-actions{display:flex;flex-wrap:nowrap;align-items:stretch;gap:12px;margin-top:24px}
+.modal.admin-action-confirm .modal-actions>.button{display:inline-flex;align-items:center;justify-content:center;min-width:0;min-height:40px;padding:10px 18px;white-space:nowrap}
+@media(max-width:520px){.modal.admin-action-confirm{padding:18px}.modal.admin-action-confirm .modal-actions>.button{flex:1}}

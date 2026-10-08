@@ -1,0 +1,7 @@
+# Linux Intel/AMD render node. Use --env-file .env.agent with compose.agent.yaml.
+services:
+  agent-control:
+    environment:
+      AGENT_DRI_DEVICE: ${AGENT_DRI_DEVICE:-/dev/dri/renderD128}
+    devices:
+      - ${AGENT_DRI_DEVICE:-/dev/dri/renderD128}:${AGENT_DRI_DEVICE:-/dev/dri/renderD128}

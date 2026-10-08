@@ -1,0 +1,90 @@
+:root{
+  --user-font-scale:1;
+  --ui-surface:#fff;
+  --ui-inset:#f4f7f8;
+  --ui-border:#dce4e7;
+  --ui-text:#23343b;
+  --ui-subtle:#536770;
+  --ui-muted:#697d86;
+  --ui-accent:#245b50;
+}
+
+:root[data-effective-theme="dark"]{
+  color-scheme:dark;
+  --ui-surface:#131926;
+  --ui-inset:#0f1420;
+  --ui-border:#1f293d;
+  --ui-text:#e6edf1;
+  --ui-subtle:#b8c8d0;
+  --ui-muted:#a9bbc4;
+  --ui-accent:#96d5b6;
+  color:var(--ui-text);
+  background:#0a0d14;
+}
+:root[data-effective-theme="dark"] body,:root[data-effective-theme="dark"] .app-shell,:root[data-effective-theme="dark"] .login-page{background:#0a0d14;color:var(--ui-text)}
+:root[data-effective-theme="dark"] :is(.sidebar,.topbar,.modal,.session-card,.host-card,.stat-card,.viewer-panel,.tool-panel,.profile-card,.token-list,.token-create,.account-identity,.account-farm-card,.account-key-list,.account-upload-card,.account-key-dialog,.settings-card,.settings-identity,.settings-history-list,.admin-journal-table-wrap){
+  background:var(--ui-surface);border-color:var(--ui-border);color:var(--ui-text);
+}
+:root[data-effective-theme="dark"] :is(.device-controls,.profile-actions,.token-row,.account-key-row,.account-key-save-help,.account-key-dialog-actions,.modal-top,.console-catalog-search,.console-catalog-categories){
+  background:var(--ui-surface);border-color:var(--ui-border);
+}
+:root[data-effective-theme="dark"] :is(.page-heading h1,.section-heading h2,.session-title-top h1,.tool-header h2,.profile-card h3,.token-create h3,.token-row-main strong,.account-section-heading h2,.account-farm-title h3,.account-key-main strong,.account-upload-card h3,.account-identity strong,.settings-card-title h2,.settings-rental strong,.modal h2,.brand-name,.topbar-user,.stat-value,.session-card h3,.host-card h3,.account-key-dialog h2){
+  color:var(--ui-text);
+}
+:root[data-effective-theme="dark"] :is(.page-heading p,.section-heading p,.tool-header p,.profile-card p,.account-section-heading p,.account-farm-copy>p,.account-upload-card>p,.settings-card-title p,.modal-description,.session-meta,.token-create>p,.token-row-main small,.account-key-main small,.settings-muted,.settings-hint){
+  color:var(--ui-muted);
+}
+:root[data-effective-theme="dark"] :is(.button.outline,.icon-button,.network-toggle,.console-catalog-toggle,.console-catalog-categories button,.adb-title-badge){
+  background:#1f293d;border-color:var(--ui-border);color:#c1e2d2;
+}
+:root[data-effective-theme="dark"] :is(.button.outline,.icon-button,.network-toggle,.console-catalog-toggle,.console-catalog-categories button):hover{background:#27384f}
+:root[data-effective-theme="dark"] :is(.button.subtle,.segmented button.selected,.status-badge,.account-role,.count-pill,.token-secret,.adb-key-status){
+  background:#29433a;color:#a9debd;
+}
+:root[data-effective-theme="dark"] :is(.status-error,.admin-journal-outcome.error,.admin-journal-outcome.failed,.admin-journal-outcome.denied){
+  background:#56322f;color:#f5b6a9;
+}
+:root[data-effective-theme="dark"] :is(.status-starting,.admin-journal-outcome.warning){
+  background:#4c4029;color:#ebcf92;
+}
+:root[data-effective-theme="dark"] :is(.status-stopped){
+  background:#334143;color:#b2c0bd;
+}
+:root[data-effective-theme="dark"] :is(.side-logout,.topbar-context,.breadcrumbs,.stat-label,.session-id,.token-empty,.account-key-empty){color:var(--ui-muted)}
+:root[data-effective-theme="dark"] :is(.control-group button:hover:not(:disabled)){background:#1d2a3d;color:#c6e9d6}
+:root[data-effective-theme="dark"] :is(.login-form input,.modal input,.modal select,.profile-form input,.profile-form select,.profile-form textarea,.node-settings-form input,.token-create input,.token-create select,.account-upload-card input[type="text"],.settings-form input,.settings-form select,.terminal-input,.terminal-input input,.console-catalog-search input):where(:not([role="switch"])){
+  background:#152326;border-color:var(--ui-border);color:var(--ui-text);
+}
+:root[data-effective-theme="dark"] input::placeholder,:root[data-effective-theme="dark"] textarea::placeholder{color:#7e9990}
+:root[data-effective-theme="dark"] :is(.terminal-output,.terminal-input){border-color:var(--ui-border)}
+:root[data-effective-theme="dark"] :is(.console-suggestions,.console-catalog,.account-file-picker,.account-key-save-help,.empty-state,.admin-journal-tabs,.admin-journal-table th){
+  background:var(--ui-inset);border-color:var(--ui-border);color:var(--ui-subtle);
+}
+:root[data-effective-theme="dark"] :is(.console-suggestions button,.console-catalog-item-head strong,.console-catalog-item p,.console-catalog-item small,.console-catalog-item code,.console-suggestions strong,.console-suggestions code){
+  color:var(--ui-subtle);
+}
+:root[data-effective-theme="dark"] :is(.console-suggestions button:hover,.console-suggestions button.selected,.console-catalog-insert,.console-catalog-categories button.active){
+  background:#2b493e;color:#c6e7d2;
+}
+:root[data-effective-theme="dark"] :is(.admin-journal-table td,.admin-journal-table th,.settings-rental,.settings-history-list,.account-key-row,.token-row,.console-catalog-item){
+  border-color:var(--ui-border);color:var(--ui-subtle);
+}
+:root[data-effective-theme="dark"] :is(.admin-journal-table td strong,.settings-rental strong,.token-row-main strong){color:var(--ui-text)}
+:root[data-effective-theme="dark"] :is(.inline-warning,.account-confirm,.console-notice){background:#3b3428;border-color:#65543d;color:#e7c993}
+:root[data-effective-theme="dark"] :is(.inline-error,.banner-error){background:#462a2b;border-color:#704143;color:#f2b3ad}
+:root[data-effective-theme="dark"] .account-notice{background:#264536;color:#afe5bd}
+:root[data-effective-theme="dark"] .viewer-stage{background:radial-gradient(ellipse at 48% 42%,#263739 0%,#142023 70%,#10191c 100%)}
+:root[data-effective-theme="dark"] .admin-journal-filters{background:var(--ui-surface);border-color:var(--ui-border)}
+:root[data-effective-theme="dark"] .admin-journal-filters :is(input,select){background:var(--ui-inset);border-color:var(--ui-border);color:var(--ui-text)}
+:root[data-effective-theme="dark"] :is(.agent-list,.agent-create,.token-secret){
+  background:var(--ui-surface);border-color:var(--ui-border);color:var(--ui-text);
+}
+:root[data-effective-theme="dark"] :is(.agent-row){border-color:var(--ui-border)}
+:root[data-effective-theme="dark"] :is(.agent-row strong,.agent-create h3,.empty-state h3,.token-empty strong,.account-key-empty strong){color:var(--ui-text)}
+:root[data-effective-theme="dark"] :is(.agent-row small,.agent-create>p,.agent-empty,.empty-state p,.agent-create label){color:var(--ui-muted)}
+:root[data-effective-theme="dark"] :is(.agent-create input,.agent-create select){background:var(--ui-inset);border-color:var(--ui-border);color:var(--ui-text)}
+:root[data-effective-theme="dark"] :is(.agent-icon,.empty-icon,.user-role){background:#14392f;color:#b7e1c5}
+
+:root[data-effective-theme="dark"] :is(.account-path code,.account-upload-card p code,.account-key-save-help code){
+  background:#294339;color:#bde4cc;
+}

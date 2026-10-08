@@ -1,0 +1,12 @@
+# Optional overlay: use together with your normal agent/homelab compose file.
+# Set AGENT_WEBRTC_HOST_IP to the node address reachable from browsers.
+services:
+  agent:
+    environment:
+      AGENT_WEBRTC_ENABLED: "1"
+      AGENT_WEBRTC_HOST_IP: ${AGENT_WEBRTC_HOST_IP:?Set the reachable node IP}
+      AGENT_WEBRTC_PORT_MIN: ${AGENT_WEBRTC_PORT_MIN:-50000}
+      AGENT_WEBRTC_PORT_MAX: ${AGENT_WEBRTC_PORT_MAX:-50100}
+      AGENT_WEBRTC_ICE_SERVERS: ${AGENT_WEBRTC_ICE_SERVERS:-[]}
+    ports:
+      - "${AGENT_WEBRTC_HOST_IP}:${AGENT_WEBRTC_PORT_MIN:-50000}-${AGENT_WEBRTC_PORT_MAX:-50100}:${AGENT_WEBRTC_PORT_MIN:-50000}-${AGENT_WEBRTC_PORT_MAX:-50100}/udp"

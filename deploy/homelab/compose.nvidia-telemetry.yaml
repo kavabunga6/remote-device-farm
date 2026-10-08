@@ -1,0 +1,8 @@
+# Opt in on NVIDIA hosts with NVIDIA Container Toolkit configured for Docker.
+# Load after compose.yaml; see README.md for activation and update commands.
+services:
+  agent:
+    runtime: nvidia
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: utility

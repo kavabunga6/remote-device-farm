@@ -1,0 +1,216 @@
+name: remote-device-farm
+
+# Deploy from this repository with --env-file /opt/device-farm/secrets/app.env.
+# Resource ceilings must be set after measuring the live host and its existing workloads.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in app.env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in app.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in app.env}
+    volumes:
+      - /opt/device-farm/data/postgres:/var/lib/postgresql/data
+    networks:
+      - app
+    cpus: ${RDF_POSTGRES_CPUS:?Set measured RDF_POSTGRES_CPUS}
+    mem_limit: ${RDF_POSTGRES_MEM_LIMIT:?Set measured RDF_POSTGRES_MEM_LIMIT}
+    mem_reservation: ${RDF_POSTGRES_MEM_RESERVATION:?Set measured RDF_POSTGRES_MEM_RESERVATION}
+    pids_limit: ${RDF_POSTGRES_PIDS_LIMIT:?Set measured RDF_POSTGRES_PIDS_LIMIT}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?Set POSTGRES_USER} -d ${POSTGRES_DB:?Set POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  server:
+    build:
+      context: ../../server
+      additional_contexts:
+        rdf_agent_sources: ../../agent
+        rdf_ui_messages: ../../shared
+      args:
+        AGENT_BUNDLE_VERSION: ${RDF_RELEASE_VERSION:-0.1.0}
+    restart: unless-stopped
+    env_file:
+      - /opt/device-farm/secrets/app.env
+    volumes:
+      - /opt/device-farm/data/app-store:${APP_STORE_DIR:-/data/apps}
+      - registry_control:/run/registry-maintenance:ro
+    environment:
+      PORT: "8080"
+      RDF_AUTO_IMAGE_BUILDER: ${RDF_AUTO_IMAGE_BUILDER:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+    ports:
+      - "192.0.2.10:15555-15562:15555-15562"
+    networks:
+      - app
+    cpus: ${RDF_SERVER_CPUS:?Set measured RDF_SERVER_CPUS}
+    mem_limit: ${RDF_SERVER_MEM_LIMIT:?Set measured RDF_SERVER_MEM_LIMIT}
+    mem_reservation: ${RDF_SERVER_MEM_RESERVATION:?Set measured RDF_SERVER_MEM_RESERVATION}
+    pids_limit: ${RDF_SERVER_PIDS_LIMIT:?Set measured RDF_SERVER_PIDS_LIMIT}
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  # Built-in registry for farm emulator images, served by the web service under /v2/.
+  registry:
+    build: ../registry
+    restart: unless-stopped
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    volumes:
+      - registry_data:/var/lib/registry
+      - registry_control:/run/registry-maintenance
+    expose:
+      - "5000"
+    networks:
+      - app
+    security_opt:
+      - no-new-privileges:true
+
+  web:
+    build:
+      context: ../../frontend
+      additional_contexts:
+        rdf_ui_messages: ../../shared
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    expose:
+      - "80"
+    ports:
+      - "192.0.2.10:8443:443"
+    volumes:
+      - /opt/device-farm/secrets/ip-192.0.2.10.crt:/etc/nginx/tls/ip.crt:ro
+      - /opt/device-farm/secrets/ip-192.0.2.10.key:/etc/nginx/tls/ip.key:ro
+    networks:
+      app:
+      homelab:
+        aliases:
+          - remote-device-farm-web
+    cpus: ${RDF_WEB_CPUS:?Set measured RDF_WEB_CPUS}
+    mem_limit: ${RDF_WEB_MEM_LIMIT:?Set measured RDF_WEB_MEM_LIMIT}
+    mem_reservation: ${RDF_WEB_MEM_RESERVATION:?Set measured RDF_WEB_MEM_RESERVATION}
+    pids_limit: ${RDF_WEB_PIDS_LIMIT:?Set measured RDF_WEB_PIDS_LIMIT}
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  agent-key-import:
+    build:
+      context: ../../agent
+    restart: "no"
+    user: "0:0"
+    network_mode: none
+    entrypoint: ["node", "src/import-legacy-key.mjs"]
+    volumes:
+      - type: bind
+        source: /opt/device-farm/data/agent-android/adbkey
+        target: /legacy-adbkey
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /opt/device-farm/data/agent-android/adbkey.pub
+        target: /legacy-adbkey.pub
+        read_only: true
+        bind:
+          create_host_path: false
+      - agent_adb_keys:/home/agent/.android
+    cap_drop: [ALL]
+    cap_add: [DAC_READ_SEARCH, CHOWN]
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    pids_limit: 32
+    mem_limit: 128m
+
+  agent-control:
+    build:
+      context: ../../agent
+    restart: unless-stopped
+    env_file:
+      - /opt/device-farm/secrets/agent.env
+    command: ["node", "src/control-main.mjs"]
+    environment:
+      AGENT_IMAGE_BUILD_STATE_DIR: /var/lib/rdf-image-builds
+    user: "0:10001"
+    network_mode: none
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - agent_image_builds:/var/lib/rdf-image-builds
+      - agent_control_ipc:/run/agent-control
+    devices:
+      - /dev/kvm:/dev/kvm
+    cpus: ${RDF_AGENT_CONTROL_CPUS:-1}
+    mem_limit: ${RDF_AGENT_CONTROL_MEM_LIMIT:-512m}
+    mem_reservation: ${RDF_AGENT_CONTROL_MEM_RESERVATION:-128m}
+    pids_limit: ${RDF_AGENT_CONTROL_PIDS_LIMIT:-128}
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+
+  agent:
+    build:
+      context: ../../agent
+    restart: unless-stopped
+    env_file:
+      - /opt/device-farm/secrets/agent.env
+    depends_on:
+      server:
+        condition: service_healthy
+      agent-control:
+        condition: service_started
+      agent-key-import:
+        condition: service_completed_successfully
+    # The one-shot importer copies the existing key without changing host ownership.
+    user: "10001:10001"
+    environment:
+      HOME: /home/agent
+      AGENT_HOST_IP: 192.0.2.10
+    volumes:
+      - agent_adb_keys:/home/agent/.android
+      - agent_control_ipc:/run/agent-control:ro
+    networks:
+      - app
+    cpus: ${RDF_AGENT_CPUS:?Set measured RDF_AGENT_CPUS}
+    mem_limit: ${RDF_AGENT_MEM_LIMIT:?Set measured RDF_AGENT_MEM_LIMIT}
+    mem_reservation: ${RDF_AGENT_MEM_RESERVATION:?Set measured RDF_AGENT_MEM_RESERVATION}
+    pids_limit: ${RDF_AGENT_PIDS_LIMIT:?Set measured RDF_AGENT_PIDS_LIMIT}
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+
+networks:
+  app:
+  homelab:
+    external: true
+    name: homelab-net
+
+volumes:
+  agent_image_builds:
+  registry_control:
+  registry_data:
+  agent_control_ipc:
+  agent_adb_keys:

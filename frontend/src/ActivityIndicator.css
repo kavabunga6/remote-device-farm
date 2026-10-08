@@ -1,0 +1,3 @@
+.mini-spinner.activity-indicator{display:inline-block;flex:none;box-sizing:border-box;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite}
+.session-status-icon{display:inline-grid;place-items:center;flex:none;width:16px;height:16px}
+@media(prefers-reduced-motion:reduce){.mini-spinner.activity-indicator{animation:none}}

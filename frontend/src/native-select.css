@@ -1,0 +1,38 @@
+/* Native single-select affordance, shared by every page and dialog.
+   Keep this #root rule above component specificity: their background shorthands
+   may set the surface color, but must not erase the shared arrow or text gutter. */
+#root {
+  --select-arrow-inset: 14px;
+  --select-arrow-width: 16px;
+  --select-arrow-text-gap: 10px;
+}
+
+#root select:not([multiple]):is(:not([size]), [size="0"], [size="1"]) {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-inline-end: calc(var(--select-arrow-inset) + var(--select-arrow-width) + var(--select-arrow-text-gap));
+  /* Two strokes inherit currentColor in light, dark and disabled states. */
+  background-image:
+    linear-gradient(45deg, transparent 43%, currentColor 43%, currentColor 57%, transparent 57%),
+    linear-gradient(-45deg, transparent 43%, currentColor 43%, currentColor 57%, transparent 57%);
+  background-repeat: no-repeat;
+  background-size: calc(var(--select-arrow-width) / 2) calc(var(--select-arrow-width) / 2);
+  background-position:
+    right calc(var(--select-arrow-inset) + var(--select-arrow-width) / 2) center,
+    right var(--select-arrow-inset) center;
+}
+
+#root select:not([multiple]):is(:not([size]), [size="0"], [size="1"]):dir(rtl) {
+  background-position:
+    left var(--select-arrow-inset) center,
+    left calc(var(--select-arrow-inset) + var(--select-arrow-width) / 2) center;
+}
+
+/* Keep the platform affordance when the OS suppresses background images. */
+@media (forced-colors: active) {
+  #root select:not([multiple]):is(:not([size]), [size="0"], [size="1"]) {
+    appearance: auto;
+    -webkit-appearance: auto;
+    background-image: none;
+  }
+}

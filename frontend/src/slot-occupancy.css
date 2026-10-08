@@ -1,0 +1,15 @@
+/* Session capacity uses the same thresholds in the pool summary and node cards. */
+:root { --slot-warning: #92580a; --slot-full: var(--danger); }
+:root[data-effective-theme="dark"] { --slot-warning: #fbbf24; --slot-full: #f87171; }
+.slot-occupancy { --slot-color: var(--ui-muted); }
+.slot-occupancy[data-occupancy="available"] { --slot-color: var(--accent); }
+.slot-occupancy[data-occupancy="busy"] { --slot-color: var(--slot-warning); }
+.slot-occupancy[data-occupancy="full"] { --slot-color: var(--slot-full); }
+.node-pool-card.slot-occupancy strong,
+.host-card-footer.slot-occupancy .host-capacity > div,
+.host-card-footer.slot-occupancy .host-capacity strong { color: var(--slot-color); }
+.host-card-footer.slot-occupancy .host-slot {
+  color: var(--slot-color);
+  background: color-mix(in srgb, var(--slot-color) 8%, var(--ui-surface));
+  border-color: color-mix(in srgb, var(--slot-color) 32%, var(--ui-border));
+}

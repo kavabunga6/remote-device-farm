@@ -1,0 +1,135 @@
+/* Stitch design (stitch_/devicefarm_*): deep navy surfaces, emerald accent, mono numerals, metric tiles.
+   Palette comes from the export; shapes (radii, spacing, tiles) apply in both themes. */
+
+:root[data-effective-theme="dark"]{
+  --stitch-bg:#0a0d14;--stitch-sidebar:#0e131d;--stitch-card:#131926;--stitch-card-muted:#0f1420;--stitch-hover:#182132;
+  --stitch-border:#1f293d;--stitch-border-subtle:#192233;--stitch-border-strong:#2b3850;
+  --ui-surface:var(--stitch-card);--ui-inset:var(--stitch-card-muted);--ui-border:var(--stitch-border);
+  --ui-text:#e2e8f0;--ui-subtle:#b3bfd1;--ui-muted:#8b9bb4;--ui-page:var(--stitch-bg);
+  --accent:#34d399;--accent-strong:#6ee7b7;--accent-soft:rgba(16,185,129,.14);
+  background:var(--stitch-bg);
+}
+:root[data-effective-theme="dark"] body,:root[data-effective-theme="dark"] .app-shell,:root[data-effective-theme="dark"] .login-page{background:var(--stitch-bg)}
+:root[data-effective-theme="dark"] .sidebar{background:var(--stitch-sidebar);border-color:var(--stitch-border)}
+:root[data-effective-theme="dark"] :is(.modal,.session-card,.host-card,.stat-card,.profile-card,.token-list,.token-create,.settings-card,.queue-widget,.account-farm-card,.account-key-list){background:var(--stitch-card);border-color:var(--stitch-border)}
+:root[data-effective-theme="dark"] .modal-top{background:color-mix(in srgb,var(--stitch-card-muted) 70%,transparent)}
+:root[data-effective-theme="dark"] .modal-backdrop{background:rgba(2,4,8,.75);backdrop-filter:blur(4px)}
+:root[data-effective-theme="dark"] ::-webkit-scrollbar{width:6px;height:6px}
+:root[data-effective-theme="dark"] ::-webkit-scrollbar-track{background:var(--stitch-bg)}
+:root[data-effective-theme="dark"] ::-webkit-scrollbar-thumb{background:var(--stitch-border);border-radius:99px}
+
+/* ---- Navigation: soft emerald pill for the current page ---- */
+:root[data-effective-theme="dark"] .sidebar-navigation a[aria-current="page"],:root[data-effective-theme="dark"] .sidebar a.active{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.22);color:var(--accent)}
+
+/* ---- Buttons ---- */
+.button{border-radius:10px}
+.button.primary{box-shadow:0 0 20px -4px rgba(16,185,129,.35)}
+:root[data-effective-theme="dark"] .button.primary{background:#10b981;color:#04261b}
+:root[data-effective-theme="dark"] .button.primary:not(:disabled):hover{background:#34d399}
+:root[data-effective-theme="dark"] .button.outline{background:var(--stitch-card);border-color:var(--stitch-border-strong);color:var(--ui-text)}
+:root[data-effective-theme="dark"] .button.outline:not(:disabled):hover{background:var(--stitch-hover);border-color:#3a4a66}
+
+.count-pill{font-family:var(--font-mono)}
+
+/* ---- Empty session card: dashed, centred ---- */
+.session-create-card{border-style:dashed;text-align:center;align-items:center}
+
+/* ---- Node card: header band + metric tiles + slot chips ---- */
+.host-card{border-radius:16px;padding:0;overflow:hidden}
+.host-card .host-card-heading{margin:0;padding:16px 20px;border-bottom:1px solid var(--ui-border);border-radius:0}
+.host-card .host-address{font-family:var(--font-mono);font-size:.75rem;padding:2px 8px;border:1px solid var(--ui-border);border-radius:6px;background:var(--ui-inset);width:max-content}
+.host-card .host-environment{display:flex;flex-wrap:wrap;gap:8px;padding:12px 20px 0}
+.host-card .host-environment>span{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:8px;border:1px solid var(--ui-border);background:var(--ui-inset);font-size:.75rem;font-weight:600;color:var(--ui-subtle)}
+.host-card .host-specs{padding:16px 20px;gap:12px}
+.host-card .host-spec{padding:14px;border:1px solid var(--stitch-border-subtle,var(--ui-border));border-radius:12px;background:var(--ui-inset);gap:8px}
+.host-spec>span{display:flex;align-items:center;justify-content:space-between;font-size:.6875rem;font-weight:700}
+.host-spec>span>b{font-family:var(--font-mono);font-size:.75rem;font-weight:600;color:var(--ui-text);letter-spacing:0}
+.host-spec small{font-family:var(--font-mono)}
+.host-card .host-card-footer{padding:14px 20px;border-top:1px solid var(--stitch-border-subtle,var(--ui-border));background:color-mix(in srgb,var(--ui-inset) 70%,transparent);display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px}
+.host-slots{display:flex;flex-wrap:wrap;gap:6px}
+.host-slot{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:7px;border:1px solid rgba(16,185,129,.28);background:rgba(16,185,129,.08);color:var(--accent);font-family:var(--font-mono);font-size:.6875rem}
+
+
+/* ---- Inputs and focus ---- */
+:root[data-effective-theme="dark"] :is(input:not([type=checkbox]):not([type=radio]),select,textarea){border-color:var(--stitch-border-strong)}
+:root[data-effective-theme="dark"] :is(input,select,textarea):focus-visible{border-color:#10b981;box-shadow:0 0 0 1px #10b981}
+.host-card .host-capacity{flex:1 1 14rem;min-width:0}
+.host-spec>span{width:100%}
+
+/* Softer status bands, like the emerald-to-card gradient in the export. */
+:root[data-effective-theme="dark"]{--state-online-bg:#0c2a24;--state-disabled-bg:#1d2735;--state-offline-bg:#3a1c22}
+
+/* =====================================================================
+   Round 2: header, sidebar, node tiles, users, profiles — both themes
+   ===================================================================== */
+
+/* ---- Light theme: same shapes, daylight palette ---- */
+:root:not([data-effective-theme="dark"]){
+  --accent:#047857;--accent-strong:#065f46;--accent-soft:#d1fae5;--ui-page:#f3f6f9;
+  --ui-border:#e1e7ef;--ui-inset:#f6f8fb;--ui-text:#17212f;--ui-subtle:#475569;--ui-muted:#64748b;
+  --stitch-border-strong:#cbd5e1;--stitch-border-subtle:#e8edf4;--stitch-card:#fff;--stitch-card-muted:#f6f8fb;--stitch-hover:#f1f5f9;
+  background:#f3f6f9;
+}
+:root:not([data-effective-theme="dark"]) body,:root:not([data-effective-theme="dark"]) .app-shell{background:#f3f6f9}
+:root:not([data-effective-theme="dark"]) .sidebar{background:#fff;border-color:var(--ui-border)}
+:root:not([data-effective-theme="dark"]) .button.primary{background:#059669;color:#fff;box-shadow:0 4px 14px -4px rgba(5,150,105,.45)}
+:root:not([data-effective-theme="dark"]) .button.primary:not(:disabled):hover{background:#047857}
+:root:not([data-effective-theme="dark"]) .modal-backdrop{background:rgba(15,23,42,.45);backdrop-filter:blur(3px)}
+
+/* ---- Page header: title + status pill, actions at the right, thin divider ---- */
+.page-heading{align-items:center;padding-bottom:20px;margin-bottom:24px;border-bottom:1px solid var(--ui-border)}
+.page-heading .breadcrumbs{display:none}
+.page-title-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin-bottom:6px}
+.page-title-row h1{margin:0!important}
+.page-heading .heading-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.page-heading .admin-heading-actions{display:contents}
+.page-heading .button{min-height:40px}
+.admin-workspace .section-heading:not(:has(.button,.count-badge,input,select)){display:none}
+.admin-workspace .section-heading{margin-bottom:16px}
+
+/* ---- Sidebar ---- */
+.side-nav-heading{font-size:.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.side-nav a{border:1px solid transparent;border-radius:10px}
+.side-nav a[aria-current=page]{border-color:color-mix(in srgb,var(--accent) 26%,transparent);background:color-mix(in srgb,var(--accent) 11%,transparent)}
+.side-nav a[aria-current=page]::after{content:'';margin-left:auto;width:6px;height:6px;border-radius:99px;background:var(--accent)}
+.side-nav a[aria-current=page] .side-nav-count{margin-left:0}
+.side-nav-count{border-radius:99px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font-family:var(--font-mono)}
+.sidebar-bottom{padding-top:12px;border-top:1px solid var(--ui-border)}
+.side-profile{border:1px solid var(--stitch-border-subtle,var(--ui-border));border-radius:12px;background:color-mix(in srgb,var(--ui-surface) 70%,transparent)}
+.brand-mark{background:linear-gradient(135deg,#10b981,#047857);box-shadow:0 6px 16px -4px rgba(16,185,129,.5)}
+
+/* ---- Node pool summary ---- */
+.node-pool-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));gap:16px;margin-bottom:20px}
+.node-pool-card{display:flex;flex-direction:column;gap:6px;padding:16px 18px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface)}
+.node-pool-card .cap{font-size:.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ui-muted)}
+.node-pool-card strong{font-size:1.5rem;line-height:1.2;font-weight:800;color:var(--ui-text)}
+.node-pool-card strong.accent{color:var(--accent)}
+.node-pool-card small{font-size:.75rem;color:var(--ui-muted)}
+
+/* ---- Users: avatar, role badge, role pills ---- */
+.user-avatar{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 22%,var(--ui-surface)),var(--ui-inset));border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);color:var(--accent);font-size:.8125rem;font-weight:800;letter-spacing:.02em}
+.user-record{border-radius:14px!important;padding:14px 18px!important}
+.user-record-copy strong{font-size:.9375rem}
+.user-record-copy small{font-family:var(--font-mono);font-size:.75rem}
+.user-record-work{font-family:inherit!important}
+.user-role{display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:8px;border:1px solid var(--ui-border);background:var(--ui-inset);font-size:.8125rem;font-weight:700;color:var(--ui-subtle)}
+.user-role.is-admin{border-color:color-mix(in srgb,var(--accent) 35%,transparent);background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent)}
+.role-pills{display:flex;flex-wrap:wrap;gap:8px}
+.role-pill{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--ui-border);background:var(--ui-inset);color:var(--ui-subtle);font:inherit;font-size:.8125rem;font-weight:700}
+.role-pill b{font-family:var(--font-mono);font-weight:600}
+.role-pill[aria-pressed=true]{border-color:var(--stitch-border-strong);background:var(--ui-surface);color:var(--ui-text)}
+.admin-filter-bar{padding:14px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface)}
+
+/* ---- Profile cards: tiles for facts, inset resource table ---- */
+.device-profile-features{gap:10px}
+.device-profile-features>div,.device-profile-resource{padding:12px;border:1px solid var(--stitch-border-subtle,var(--ui-border));border-radius:10px;background:var(--ui-inset)}
+.device-profile-features dt,.device-profile-resource h4{font-size:.6875rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.device-profile-status{border-radius:99px}
+.admin-profiles-controls{border-radius:16px}
+.admin-profiles-filters label>span{font-size:.6875rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+
+.admin-filter-bar .admin-search{flex:1 1 16rem;min-width:14rem}
+:root:not([data-effective-theme="dark"]){--state-online-bg:#d1fae5;--state-disabled-bg:#e8edf4;--state-offline-bg:#fee2e2}
+
+/* State colour fades into the card: keep the state background-color, overlay a gradient image. */
+.host-card .host-card-heading,.device-profile-heading{background-image:linear-gradient(90deg,transparent 0,var(--ui-surface) 88%)}

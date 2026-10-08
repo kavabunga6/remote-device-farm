@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "upstream": "halimqarroum/docker-android@sha256:c04dd92628f00cc53d613912774c9204194dca8e1499bdb4f2f3d448679ed1ad",
+  "package": "system-images;android-31;google_apis;x86_64",
+  "sourcePath": "/system/etc/selinux/plat_sepolicy.cil",
+  "sourceFiles": {
+    "source.properties": "117fe498afed1716bc571f983ea063bb2356305e84b3996b9d281ddbb4fbbe68",
+    "ramdisk.img": "bc6aeafd4d38023b1fd184767eec4b1309a934704c4c2bace3300258b51b46c4"
+  },
+  "buildFingerprint": "google/sdk_gphone64_x86_64/emulator64_x86_64_arm64:12/SE1A.220826.008/10564458:userdebug/dev-keys",
+  "policy": {
+    "file": "policy-api31.cil.gz",
+    "bytes": 1882696,
+    "sha256": "c7a1175c5d1b2be8f8e5e8c1bf585b12173ec9111602df5d76013e6210186bea"
+  },
+  "provenance": {
+    "extractedOn": "2026-10-05",
+    "method": "Read-only adb exec-out cat of the booted original system partition; guest sha256sum matched the extracted bytes.",
+    "upstreamImageId": "sha256:c04dd92628f00cc53d613912774c9204194dca8e1499bdb4f2f3d448679ed1ad",
+    "originalBytesPreserved": true,
+    "notice": "Generated CIL has no embedded copyright header. It is an unmodified artifact from the stated upstream image, not a replacement policy authored by this project.",
+    "upstreamSource": "https://github.com/HQarroum/docker-android",
+    "platformPolicySource": "https://android.googlesource.com/platform/system/sepolicy/+/refs/tags/android-12.0.0_r1/"
+  }
+}

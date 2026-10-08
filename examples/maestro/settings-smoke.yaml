@@ -1,0 +1,13 @@
+appId: com.android.settings
+name: Android Settings over remote ADB
+---
+- launchApp:
+    clearState: false
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      text: "(?i)Network.*internet|Сеть.*интернет"
+    timeout: 20000
+- assertVisible:
+    text: "(?i)Network.*internet|Сеть.*интернет"
+- takeScreenshot: settings-home

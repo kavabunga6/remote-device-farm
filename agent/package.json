@@ -1,0 +1,17 @@
+{
+  "name": "remote-device-farm-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/main.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "werift": "0.24.4",
+    "ws": "^8.18.3"
+  }
+}

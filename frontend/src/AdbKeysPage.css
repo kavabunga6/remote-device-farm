@@ -1,0 +1,210 @@
+.account-page{width:min(100%,1160px)}
+.account-page .page-heading{margin-bottom:22px}
+.account-identity{display:flex;align-items:center;gap:14px;min-height:91px;padding:18px 21px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface)}
+.account-avatar{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:14px;background:var(--ui-inset);color:var(--ui-accent);font-size:1.25rem;font-weight:760}
+.account-identity>div{display:grid;gap:3px;min-width:0;flex:1}
+.account-identity strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ui-text);font-size:0.9375rem}
+.account-identity>div span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ui-muted);font-size:0.7812rem}
+.account-role{border-radius:99px;background:var(--ui-inset);color:var(--ui-accent);padding:6px 10px;font-size:0.75rem;font-weight:700}
+.account-section-heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:31px 0 13px}
+.account-section-heading h2{margin:0 0 5px;color:var(--ui-text);font-size:1.0625rem;letter-spacing:-.025em}
+.account-section-heading p{margin:0;color:var(--ui-muted);font-size:0.7812rem;line-height:1.55}
+.account-farm-card{display:flex;align-items:flex-start;gap:16px;min-width:0;padding:22px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface)}
+.account-card-icon,.account-key-icon{display:grid;place-items:center;flex:none;border-radius:10px;background:var(--ui-inset);color:var(--ui-accent)}
+.account-card-icon{width:42px;height:42px}
+.account-farm-copy{min-width:0;flex:1}
+.account-farm-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:22px}
+.account-farm-title h3{margin:0;color:var(--ui-text);font-size:0.875rem}
+.account-farm-copy>p{max-width:630px;margin:6px 0 0;color:var(--ui-muted);font-size:0.7812rem;line-height:1.55}
+.account-state{border-radius:99px;background:var(--ui-inset);color:var(--ui-muted);padding:4px 8px;font-size:0.6875rem;font-weight:730}
+.account-state.ready{background:var(--ui-inset);color:var(--ui-accent)}
+.account-fingerprint{display:flex;align-items:baseline;gap:7px 12px;flex-wrap:wrap;margin-top:14px}
+.account-fingerprint span,.account-fingerprint small{color:var(--ui-muted);font-size:0.75rem}
+.account-fingerprint code,.account-key-main code{font:0.75rem/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--ui-accent);overflow-wrap:anywhere;word-break:break-all}
+.account-path{margin-top:13px;color:var(--ui-muted);font-size:0.75rem;line-height:1.7}
+.account-path code,.account-upload-card p code{border-radius:4px;background:var(--ui-inset);color:var(--ui-accent);padding:2px 4px;font:0.75rem/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}
+.account-farm-action{flex:none;margin-left:auto;font-size:0.7812rem}
+.account-confirm{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:15px;padding:11px;border:1px solid #f0d9ce;border-radius:9px;background:#fff7f3;color:#8e5c46;font-size:0.75rem;line-height:1.45}
+.account-confirm svg{flex:none}
+.account-confirm span{flex:1;min-width:180px}
+.account-confirm .text-button{font-size:0.75rem}
+.account-upload-heading{margin-top:34px}
+.account-key-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:15px;align-items:stretch}
+.account-key-list,.account-upload-card{min-width:0;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface)}
+.account-key-list{display:flex;flex-direction:column;min-height:268px;padding:4px 18px}
+.account-key-row{display:flex;align-items:center;gap:12px;min-width:0;padding:16px 0;border-bottom:1px solid var(--ui-border)}
+.account-key-row:last-child{border-bottom:0}
+.account-key-icon{width:35px;height:35px}
+.account-key-main{display:grid;gap:3px;min-width:0;flex:1}
+.account-key-main strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ui-text);font-size:0.8125rem}
+.account-key-main small{color:var(--ui-muted);font-size:0.75rem}
+.account-key-main code{font-size:0.6875rem}
+.account-key-row>.text-button{flex:none;font-size:0.75rem}
+.account-delete-confirm{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:#9a5c50;font-size:0.75rem}
+.account-delete-confirm .text-button{font-size:0.75rem}
+.account-key-empty{display:flex;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:8px;min-height:170px;text-align:center;color:var(--ui-muted);font-size:0.7812rem;line-height:1.5}
+.account-key-empty svg{color:var(--ui-muted)}
+.account-key-empty strong{color:var(--ui-accent);font-size:0.8125rem}
+.account-upload-card{display:grid;align-content:start;gap:12px;padding:19px}
+.account-upload-card h3{margin:0;color:var(--ui-text);font-size:0.8125rem}
+.account-upload-card>p{margin:0;color:var(--ui-muted);font-size:0.75rem;line-height:1.6}
+.account-upload-card>label:not(.account-file-picker){display:grid;gap:7px;color:#526f60;font-size:0.75rem;font-weight:700}
+.account-upload-card input[type="text"],.account-upload-card input:not([type]){width:100%;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-surface);padding:10px 11px;outline:none;color:var(--ui-text);font-size:0.7812rem}
+.account-upload-card input:focus{border-color:#4d9b8b;box-shadow:0 0 0 3px #87beaa28}
+.account-file-picker{position:relative;display:flex;align-items:center;gap:9px;min-width:0;min-height:48px;border:1px dashed var(--ui-border);border-radius:9px;background:var(--ui-inset);color:var(--ui-accent);padding:10px 12px;cursor:pointer;font-size:0.7812rem;font-weight:700}
+.account-file-picker:hover,.account-file-picker:focus-within{border-color:#66a986;background:var(--ui-inset)}
+.account-file-picker span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-file-picker input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.account-upload-card>.button{justify-content:space-between;width:100%;font-size:0.7812rem}
+.account-limit-note{color:#9a6a53;font-size:0.75rem;line-height:1.45}
+.account-feedback,.account-notice{display:flex;align-items:center;gap:9px;margin-top:15px;font-size:0.7812rem;line-height:1.5}
+.account-notice{padding:11px 13px;border-radius:10px;background:var(--ui-inset);color:var(--ui-accent)}
+@media(max-width:980px){.account-key-grid{grid-template-columns:1fr}.account-key-list{min-height:170px}}
+@media(max-width:680px){.account-farm-card{flex-wrap:wrap;padding:17px}.account-farm-copy{flex-basis:calc(100% - 60px)}.account-farm-action{margin:0 0 0 58px}.account-identity{padding:15px}.account-role{margin-left:auto}.account-key-row{align-items:flex-start;flex-wrap:wrap}.account-key-row>.text-button,.account-delete-confirm{margin-left:47px}}
+@media(max-width:420px){.account-farm-action{margin-left:0;width:100%}.account-farm-copy{flex-basis:calc(100% - 60px)}.account-identity{gap:10px}.account-role{font-size:0.6875rem}}
+/* The download dialog keeps actions visible while instructions can scroll. */
+.account-key-backdrop{position:fixed;z-index:100;inset:0;display:grid;place-items:center;padding:1rem;background:#0008;backdrop-filter:blur(3px)}
+.account-page .account-key-dialog{display:flex;flex-direction:column;width:min(100%,40rem);max-height:calc(100dvh - 2rem);overflow:hidden;padding:0;border:1px solid var(--ui-border);border-radius:1rem;background:var(--ui-surface);color:var(--ui-text);box-shadow:none}
+.account-key-dialog-header{flex:none;padding:1.5rem 1.5rem 1.25rem}
+.account-key-dialog-title{display:flex;align-items:center;gap:.75rem}
+.account-key-ready-icon{display:grid;place-items:center;flex:none;width:2.5rem;height:2.5rem;border-radius:.75rem;background:var(--accent-soft);color:var(--accent-strong)}
+.account-page .account-key-dialog h2{margin:0;font-size:1.5rem;line-height:1.25;letter-spacing:-.025em;color:var(--ui-text)}
+.account-key-dialog-header>p{margin:.75rem 0 0;font-size:.875rem;line-height:1.55;color:var(--ui-subtle)}
+.account-key-dialog-body{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:0 1.5rem 1.25rem}
+.account-key-downloads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem 1rem}
+.account-key-file{display:grid;grid-template-rows:subgrid;grid-row:span 3;min-width:0}
+.account-page .account-key-file h3{margin:0;color:var(--ui-text);font-size:1rem;line-height:1.5}
+.account-key-file h3 code{font:inherit;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.account-key-file>p{margin:0 0 .25rem;font-size:.8125rem;line-height:1.5;color:var(--ui-subtle)}
+.account-page .account-key-dialog .button{min-height:2.75rem;height:2.75rem;padding:.5rem .875rem;font-size:.875rem;line-height:1.4;white-space:nowrap}
+.account-page .account-key-dialog .account-key-file-download{width:100%;background:var(--ui-surface);border-color:var(--ui-border);color:var(--ui-accent);box-shadow:none}
+.account-page .account-key-dialog .account-key-file-download:hover{background:var(--ui-inset);border-color:var(--ui-accent)}
+.account-page .account-key-dialog .account-key-file-download.downloaded{background:var(--accent-soft);border-color:transparent;color:var(--accent-strong)}
+.account-page .account-key-dialog .account-key-file-download.downloaded:hover{border-color:var(--accent-strong)}
+.account-key-download-status{display:flex;align-items:flex-start;gap:.5rem;min-height:2.625rem;margin:1rem 0 1.25rem;color:var(--ui-subtle);font-size:.8125rem;line-height:1.5}
+.account-key-download-status svg{flex:none;margin-top:.0625rem}
+.account-key-download-status.complete{color:var(--accent-strong)}
+.account-page .account-key-installation{padding:1.25rem 0 0;border:0;border-block-start:1px solid var(--ui-border);border-radius:0;background:transparent;color:var(--ui-subtle)}
+.account-key-installation h3{margin:0;font-size:.9375rem;line-height:1.4;color:var(--ui-text)}
+.account-key-folders{display:grid;gap:.75rem;margin:1rem 0}
+.account-key-folders>div{display:grid;grid-template-columns:7rem minmax(0,1fr);gap:1rem;align-items:baseline}
+.account-key-folders dt{font-size:.8125rem;line-height:1.5;color:var(--ui-subtle)}
+.account-key-folders dd{min-width:0;margin:0}
+.account-page .account-key-dialog .account-key-installation code{padding:0;border-radius:0;background:transparent;color:var(--ui-text);font:.8125rem/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}
+.account-key-installation>p,.account-key-custom-folder>p{margin:0;font-size:.8125rem;line-height:1.55;color:var(--ui-subtle)}
+.account-key-custom-folder{margin-top:1rem}
+.account-key-custom-folder summary{display:flex;align-items:center;justify-content:space-between;gap:.75rem;min-height:2.5rem;list-style:none;color:var(--ui-accent);font-size:.8125rem;font-weight:650;cursor:pointer}
+.account-key-custom-folder summary::-webkit-details-marker{display:none}
+.account-key-custom-folder summary svg{flex:none}
+.account-key-custom-folder[open] summary svg{transform:rotate(180deg)}
+.account-key-custom-folder>p{padding-top:.25rem}
+.account-key-dialog-actions{display:flex;align-items:center;gap:1rem;flex:none;margin:0;padding:1rem 1.5rem;border-block-start:1px solid var(--ui-border);background:var(--ui-surface)}
+.account-key-dialog-actions>.button{margin-inline-start:auto}
+.account-page .account-key-dialog .account-key-dialog-actions .text-button.danger-text{height:2.75rem;min-height:2.75rem;padding:.5rem .75rem;font-size:.875rem;line-height:1.4;text-align:left}
+.account-page .account-key-dialog .button:disabled{opacity:1;background:var(--ui-inset);border-color:var(--ui-border);color:var(--ui-muted);box-shadow:none}
+.account-page .account-key-dialog :is(button,summary):focus-visible{outline:2px solid var(--ui-accent);outline-offset:3px}
+.account-key-discard{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--ui-border)}
+.account-key-discard strong{font-size:.9375rem;color:var(--ui-text)}
+.account-key-discard p{margin:.375rem 0 .75rem;font-size:.8125rem;line-height:1.55;color:var(--ui-subtle)}
+.account-key-discard>div{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.account-page .account-key-dialog .danger-text{color:var(--danger)}
+:root[data-effective-theme="dark"] .account-key-dialog .danger-text{color:#f2b3ad}
+@media(max-width:44rem){.account-key-downloads{grid-template-columns:minmax(0,1fr)}.account-key-folders>div{grid-template-columns:minmax(0,1fr);gap:.25rem}.account-key-dialog-actions{flex-wrap:wrap}}
+.account-default-checkbox{display:flex;align-items:center;gap:8px;color:var(--ui-subtle,#526f60);font-size:0.75rem;line-height:1.4;font-weight:650}
+.account-default-checkbox input{width:15px;height:15px;accent-color:#29765e;flex:none}
+.account-default-tag{color:var(--ui-accent);font-size:0.75rem;font-weight:700}
+
+/* Embedded key management is a list, with details and forms shown when needed. */
+.account-page{width:100%;max-width:1280px}
+.account-page [hidden]{display:none!important}
+.account-page .account-section-heading{align-items:center;margin:24px 0 16px;flex-wrap:wrap}
+.account-page .account-section-heading:first-child{margin-top:0}
+.account-section-heading h2{font-size:1.0625rem}
+.account-section-heading p{font-size:.875rem;max-width:70ch}
+.account-farm-card{padding:22px;flex-wrap:wrap}
+.account-farm-copy{flex:1 1 320px}
+.account-farm-copy>p{font-size:.875rem;max-width:68ch}
+.account-farm-title h3{font-size:.9375rem}
+.account-farm-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+.account-farm-action{margin:0;font-size:.875rem;min-height:40px}
+.account-fingerprint{font-size:.8125rem;max-width:100%}
+.account-fingerprint code{max-width:100%;font-size:.75rem;color:var(--ui-subtle)}
+.account-key-grid{display:flex;flex-direction:column;gap:14px}
+.account-key-list{min-height:0;padding:0 20px}
+.account-key-row{gap:14px;align-items:flex-start;padding:18px 0;flex-wrap:wrap}
+.account-key-main{min-width:min(100%,180px)}
+.account-key-main strong{font-size:.9375rem;white-space:normal;overflow-wrap:anywhere}
+.account-key-main small{font-size:.8125rem}
+.account-key-main code{font-size:.75rem;color:var(--ui-subtle)}
+.account-key-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-left:auto}
+.account-key-actions .text-button{min-height:40px;font-size:.8125rem}
+.account-key-empty{flex:none;min-height:96px;gap:6px;align-items:flex-start;text-align:left;padding:22px 0;font-size:.875rem}
+.account-key-empty>svg{display:none}
+.account-key-empty strong{font-size:.9375rem;color:var(--ui-text)}
+.account-upload-card{order:-1;display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:22px}
+.account-upload-card h3,.account-upload-card>p,.account-upload-card>.account-default-checkbox,.account-upload-card>.button,.account-upload-card>.account-limit-note{grid-column:1/-1}
+.account-upload-card h3{font-size:1rem}
+.account-upload-card>p{font-size:.875rem}
+.account-upload-card>label:not(.account-file-picker){font-size:.8125rem}
+.account-upload-card input[type=text]{min-height:42px;font-size:.875rem;background:var(--ui-inset)}
+.account-upload-card .account-file-picker{align-self:end;min-height:42px;background:var(--ui-inset);font-size:.875rem}
+.account-upload-card>label.account-default-checkbox{display:flex;align-items:center;font-weight:500;font-size:.875rem;line-height:1.5;color:var(--ui-subtle)}
+.account-upload-card .account-default-checkbox input{width:18px;height:18px;accent-color:var(--ui-accent)}
+.account-upload-card>.button{width:auto;min-height:42px;justify-self:start;gap:12px;font-size:.875rem}
+.account-default-tag{font-size:.75rem;color:var(--ui-accent);font-weight:650;white-space:nowrap}
+.account-state{font-size:.75rem;color:var(--ui-muted)}
+.account-notice{font-size:.875rem;line-height:1.5;background:var(--ui-inset);color:var(--ui-accent)}
+@media(max-width:760px){.account-farm-copy{flex-basis:calc(100% - 62px)}.account-farm-actions{margin-left:58px}.account-key-actions{margin-left:49px}.account-key-main{flex-basis:calc(100% - 50px)}.account-key-actions .account-delete-confirm{margin:0}}
+@media(max-width:520px){.account-farm-card,.account-upload-card{padding:18px}.account-farm-actions{margin-left:0;width:100%}.account-farm-actions .button{width:100%}.account-upload-card{grid-template-columns:1fr}.account-upload-card>.button{width:100%}.account-key-list{padding:0 16px}.account-heading-actions{width:100%;justify-content:space-between}}
+
+/* Distinguish the selected key from the action that changes it. */
+.account-page .account-default-tag{display:inline-flex;align-items:center;gap:4px;border:1px solid color-mix(in srgb,var(--ui-accent) 28%,var(--ui-border));border-radius:99px;padding:3px 8px;background:color-mix(in srgb,var(--ui-accent) 10%,var(--ui-surface));font-size:.75rem;line-height:1.4;font-weight:650;color:var(--ui-accent);vertical-align:middle}
+.account-page .account-key-main strong{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.account-page .account-key-actions .button{min-height:36px;font-size:.8125rem;white-space:normal;text-align:center}
+
+/* Section heading with an action: the text takes the free width, the button stays on the same row. */
+.account-page .account-upload-heading{flex-wrap:nowrap;align-items:flex-start}
+.account-page .account-upload-heading>div:first-child{flex:1 1 0;min-width:0}
+.account-page .account-upload-heading p{max-width:none}
+.account-key-actions .icon-button{flex:none}
+@media(max-width:560px){.account-page .account-upload-heading{flex-wrap:wrap}}
+
+/* Key names can be edited in place, without moving the row actions. */
+.account-page{min-width:0;grid-template-columns:minmax(0,1fr);container-type:inline-size}
+.account-key-title{display:flex;align-items:center;gap:8px;min-width:0;min-height:2.5rem}
+.account-key-title strong{min-width:0;min-height:2.5rem;flex:0 1 auto}
+.account-key-rename-form .icon-button,.account-page .account-key-actions .icon-button{width:2.5rem;height:2.5rem;min-height:2.5rem;flex:none;padding:0}
+.account-page .account-key-actions .button{height:2.5rem;min-height:2.5rem;padding-block:0;white-space:nowrap}
+.account-key-rename-form{display:grid;grid-template-columns:minmax(0,1fr) 2.5rem 2.5rem;gap:6px;align-items:start;min-width:0}
+.account-key-rename-form input{box-sizing:border-box;width:100%;min-width:0;height:2.5rem;padding:0 10px;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-inset);color:var(--ui-text);font:inherit;font-size:.9375rem;line-height:1.4}
+.account-key-rename-form input:focus-visible{outline:2px solid var(--ui-accent);outline-offset:2px}
+.account-key-rename-form input[aria-invalid=true]{border-color:var(--danger)}
+.account-page .account-key-rename-form .icon-button.account-key-save{background:var(--ui-accent);border-color:var(--ui-accent);color:var(--ui-surface)}
+.account-page .account-key-rename-form .icon-button.account-key-save:not(:disabled):hover{filter:brightness(.95)}
+.account-page .account-key-rename-form .icon-button.account-key-save:disabled{background:var(--ui-inset);border-color:var(--ui-border);color:var(--ui-muted);opacity:1}
+.account-key-rename-error{grid-column:1/-1;font-size:.8125rem;line-height:1.5;color:var(--danger);overflow-wrap:anywhere}
+:root[data-effective-theme="dark"] .account-key-rename-error{color:#f87171}
+@container(max-width:34rem){
+  .account-page .account-upload-heading{flex-wrap:wrap}
+  .account-page .account-upload-heading>div:first-child{flex-basis:100%}
+  .account-page .account-upload-heading h3{flex-wrap:wrap}
+  .user-settings-page .account-page .account-farm-copy{flex-basis:calc(100% - 62px)}
+}
+
+/* Existing keys come first; generation is an optional action below the list. */
+.account-page .account-farm-card{display:grid;grid-template-columns:2.625rem minmax(0,1fr);gap:.75rem 1rem;margin-block-start:1rem}
+.account-page .account-farm-actions{grid-column:2;margin:0}
+.user-settings-page .account-page .account-upload-heading{align-items:flex-start}
+.account-page .account-upload-heading h3{display:flex;align-items:center;gap:.5rem;min-height:2.5rem;margin:0;color:var(--ui-text);font-size:1rem;line-height:1.4}
+.user-settings-page .account-page .account-upload-heading p{margin:.375rem 0 0}
+.account-key-create{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1rem;align-items:start;margin-block-start:1rem;padding-block-start:1.5rem;border-block-start:1px solid var(--ui-border)}
+.account-key-create>div{min-width:0}
+.account-key-create h3{display:flex;align-items:center;min-height:2.5rem;margin:0;font-size:1rem;line-height:1.4;color:var(--ui-text)}
+.account-key-create p{max-width:65ch;margin:.375rem 0 0;font-size:.8125rem;line-height:1.55;color:var(--ui-muted)}
+.account-page .account-key-create .button,.account-page .account-farm-actions .button,.account-page .account-heading-actions .button{height:2.5rem;min-height:2.5rem;padding-block:0;white-space:nowrap}
+@container(max-width:34rem){
+  .account-page .account-farm-actions{grid-column:1/-1}
+  .account-key-create{grid-template-columns:minmax(0,1fr);gap:.75rem}
+  .account-key-create h3{min-height:0}
+  .account-key-create>.button{justify-self:start}
+}

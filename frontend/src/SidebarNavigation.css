@@ -1,0 +1,35 @@
+/* Keep navigation rows aligned and leave the account actions reachable at any height. */
+.sidebar {
+  width: 16rem;
+  min-height: 0;
+  height: calc(100dvh / var(--user-font-scale, 1));
+  padding: 24px 12px 16px;
+}
+.sidebar-brand { flex: none; padding: 0 8px; margin-bottom: 24px; }
+.sidebar-brand .brand-name { font-size: 1.125rem; }
+.sidebar-navigation { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 3px; }
+.side-nav { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 4px; }
+.side-nav-admin { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ui-border); }
+.side-nav-heading { margin: 0 10px 8px; font-size: .75rem; font-weight: 650; line-height: 1.5; color: var(--ui-muted); }
+.side-nav a { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 9px 8px; border-radius: 8px; color: var(--ui-subtle); font-size: .875rem; font-weight: 550; line-height: 22px; text-decoration: none; transition: background .15s, color .15s; }
+.side-nav a > svg { display: block; flex: none; width: 20px; height: 20px; }
+.side-nav a > span { flex: 1; min-width: 0; }
+.side-nav a[data-counted][aria-current=page]::after { display: none; }
+.side-nav a:hover { background: var(--ui-inset); color: var(--ui-text); }
+.side-nav a[aria-current=page] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.side-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.side-nav-count { flex: none; display: grid; place-items: center; min-width: 22px; height: 22px; margin-left: auto; padding: 0 5px; border-radius: 5px; background: var(--ui-inset); color: var(--ui-subtle); font-size: .75rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sidebar-bottom { flex: none; margin-top: 16px; padding: 0; }
+.side-profile { gap: 12px; padding: 10px 12px; }
+.side-logout { gap: 12px; padding: 10px 12px; font-size: .8125rem; }
+@media (max-width: 800px) {
+  .sidebar { width: min(17rem, calc(100vw / var(--user-font-scale, 1) - 24px)); padding-top: 16px; }
+  .sidebar-brand { margin-bottom: 16px; }
+}
+
+/* Counts and the active marker share a fixed trailing grid column. */
+.sidebar-navigation .side-nav a { display: grid; grid-template-columns: 20px minmax(0, 1fr) 4rem; }
+.sidebar-navigation .side-nav a > svg { grid-column: 1; grid-row: 1; }
+.sidebar-navigation .side-nav a > span { grid-column: 2; grid-row: 1; }
+.sidebar-navigation .side-nav .side-nav-count,
+.sidebar-navigation .side-nav a[aria-current=page]::after { grid-column: 3; grid-row: 1; justify-self: center; margin-left: 0; }

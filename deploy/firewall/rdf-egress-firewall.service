@@ -1,0 +1,13 @@
+[Unit]
+Description=Remote Device Farm egress firewall
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/rdf-egress-firewall.sh apply
+ExecReload=/usr/local/sbin/rdf-egress-firewall.sh apply
+
+[Install]
+WantedBy=multi-user.target

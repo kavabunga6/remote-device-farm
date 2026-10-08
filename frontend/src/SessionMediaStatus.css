@@ -1,0 +1,25 @@
+.session-layout .session-media-status{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0;vertical-align:middle}
+.session-layout .session-media-badge{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;min-height:32px;box-sizing:border-box;margin:0;padding:0 9px;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-surface);color:var(--ui-subtle);font:inherit;font-size:14px;font-weight:600;line-height:1.2;white-space:nowrap;vertical-align:middle}
+.session-layout .session-media-badge>svg{display:block;flex:none;width:15px;height:15px}
+.session-layout .session-media-badge[data-state="live"],.session-layout .session-media-badge[data-state="receiving"]{background:var(--accent-soft);color:var(--accent-strong);border-color:color-mix(in srgb,var(--accent) 32%,var(--ui-border))}
+.session-layout .session-media-badge[data-state="unlock"]{color:var(--ui-warning);border-color:color-mix(in srgb,var(--ui-warning) 40%,var(--ui-border))}
+.session-layout .session-media-badge[data-state="unsupported"],.session-layout .session-media-badge[data-state="unavailable"],.session-layout .session-media-badge[data-state="disconnected"]{color:var(--error);border-color:color-mix(in srgb,var(--error) 30%,var(--ui-border))}
+.session-layout button.session-media-badge{cursor:pointer}
+.session-layout button.session-media-badge:hover:not(:disabled){border-color:var(--accent);color:var(--accent-strong)}
+.session-layout button.session-media-badge:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.session-layout button.session-media-badge:disabled{cursor:wait;opacity:.65}
+
+.session-layout .session-transport-menu{position:relative;min-width:0}
+.session-layout .session-transport-menu>summary{list-style:none;cursor:pointer}
+.session-layout .session-transport-menu>summary::-webkit-details-marker{display:none}
+.session-layout .session-transport-menu>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.session-layout .session-transport-popover{position:absolute;z-index:50;inset:calc(100% + 8px) auto auto 0;width:300px;max-width:calc(100vw - 40px);box-sizing:border-box;padding:16px;border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface);color:var(--ui-text);box-shadow:0 8px 28px #0002;font-size:14px;line-height:1.4;white-space:normal}
+.session-layout .session-transport-popover>label{display:block;margin:0 0 6px;font-weight:600}
+.session-layout .session-transport-popover>select{display:block;width:100%;height:36px;min-height:36px;margin:0;box-sizing:border-box;padding-block:0;padding-inline-start:10px;border:1px solid var(--ui-border);border-radius:8px;background-color:var(--ui-inset);color:var(--ui-text);font:inherit}
+.session-layout .session-transport-popover>p{margin:12px 0;overflow-wrap:anywhere}
+.session-layout .session-transport-popover dl{display:grid;gap:8px;margin:0 0 12px}
+.session-layout .session-transport-popover dl>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:baseline}
+.session-layout .session-transport-popover dt,.session-layout .session-transport-popover dd{margin:0;min-width:0}
+.session-layout .session-transport-popover dd{font-variant-numeric:tabular-nums;font-weight:600}
+.session-layout .session-transport-popover small{display:block;color:var(--ui-subtle);font-size:12px}
+@container session-heading (max-width:650px){.session-layout .session-transport-popover{position:fixed;inset:auto 16px auto 16px;width:auto;max-width:none}}

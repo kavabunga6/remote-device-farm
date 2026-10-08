@@ -1,0 +1,67 @@
+{
+  "capturedAt": "2026-10-08T23:38:52.319Z",
+  "source": "Current UI with mock API and demo data",
+  "language": "en",
+  "viewport": {
+    "width": 1600,
+    "height": 1000
+  },
+  "screens": [
+    {
+      "file": "sessions-dark.png",
+      "route": "overview",
+      "theme": "dark",
+      "horizontalOverflow": 0,
+      "browserErrors": []
+    },
+    {
+      "file": "device-dark.png",
+      "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
+      "theme": "dark",
+      "horizontalOverflow": 0,
+      "browserErrors": []
+    },
+    {
+      "file": "logcat-light.png",
+      "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
+      "theme": "light",
+      "horizontalOverflow": 0,
+      "browserErrors": []
+    },
+    {
+      "file": "nodes-light.png",
+      "route": "admin/nodes",
+      "theme": "light",
+      "horizontalOverflow": 0,
+      "browserErrors": []
+    },
+    {
+      "file": "profiles-light.png",
+      "route": "admin/profiles",
+      "theme": "light",
+      "horizontalOverflow": 0,
+      "browserErrors": []
+    },
+    {
+      "file": "images-dark.png",
+      "route": "admin/images",
+      "theme": "dark",
+      "horizontalOverflow": 0,
+      "browserErrors": []
+    },
+    {
+      "file": "roles-light.png",
+      "route": "admin/roles",
+      "theme": "light",
+      "horizontalOverflow": 0,
+      "browserErrors": []
+    },
+    {
+      "file": "login-dark.png",
+      "route": "overview",
+      "theme": "dark",
+      "horizontalOverflow": 0,
+      "browserErrors": []
+    }
+  ]
+}

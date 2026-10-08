@@ -1,0 +1,1649 @@
+openapi: 3.0.3
+info:
+  title: Remote Device Farm API (sessions and emulator images)
+  version: 1.0.0
+  description: |
+    Endpoints a CI job needs to reserve an Android device, connect with `adb`, collect diagnostics and release it.
+    Authenticate with a personal API token created in the web UI (Settings, API tokens) or via `POST /api/tokens`.
+    Send it as `Authorization: Bearer rdf_...`. Tokens act as their owner: current role permissions, session limits and ownership apply.
+    Errors always look like `{"error":{"code":"...","message":"..."}}`.
+servers:
+  - url: https://farm.example.com
+    description: Replace with your PUBLIC_URL
+security:
+  - bearerAuth: []
+tags:
+  - name: Sessions
+  - name: Queue
+  - name: ADB
+  - name: Diagnostics
+  - name: Tokens
+  - name: Users
+  - name: Roles
+  - name: Emulator images
+  - name: Registry
+paths:
+  /api/me:
+    get:
+      tags: [Users]
+      summary: Current user and effective permissions
+      description: Personal tokens and browser sessions resolve the current assigned role on every request.
+      responses:
+        '200':
+          description: Current identity, or null when signed out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    allOf: [{ $ref: '#/components/schemas/AccessUser' }]
+                    nullable: true
+  /api/admin/roles:
+    get:
+      tags: [Roles]
+      summary: List roles and the permission catalogue
+      description: Requires roles.view. Built-in administrator always grants every known permission.
+      responses:
+        '200':
+          description: Roles with active user counts and grouped available actions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roles: { type: array, items: { $ref: '#/components/schemas/AccessRole' } }
+                  catalog:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        labelKey: { type: string }
+                        actions:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id: { type: string }
+                              labelKey: { type: string }
+                              requires: { type: array, items: { type: string } }
+        '403': { description: roles.view required }
+    post:
+      tags: [Roles]
+      summary: Create an access role
+      description: Requires roles.manage. Permission IDs and their prerequisites must match the catalogue. Names are unique ignoring case.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccessRoleInput' }
+      responses:
+        '201':
+          description: Role created
+          content:
+            application/json:
+              schema: { type: object, properties: { role: { $ref: '#/components/schemas/AccessRole' } } }
+        '400': { description: "Invalid name, unknown permissions or missing prerequisites" }
+        '403': { description: roles.manage required }
+        '409': { description: Name already exists }
+  /api/admin/roles/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      tags: [Roles]
+      summary: Change a role name and permissions
+      description: |
+        Requires roles.manage. The built-in administrator is immutable; both built-in role names are fixed. Permission changes
+        revoke affected screen/ADB connections and temporary ADB leases, cancel waiting launch
+        requests, and apply to existing personal API tokens. Running devices remain allocated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccessRoleInput' }
+      responses:
+        '200': { description: Role updated }
+        '400': { description: Invalid role definition }
+        '403': { description: roles.manage required }
+        '404': { description: Role not found }
+        '409': { description: Protected role or duplicate name }
+    delete:
+      tags: [Roles]
+      summary: Delete an unused custom role
+      description: Requires roles.manage. Reassign active users first; built-in roles cannot be deleted.
+      responses:
+        '200': { description: Role deleted }
+        '403': { description: roles.manage required }
+        '404': { description: Role not found }
+        '409': { description: Protected role or role still assigned to users }
+  /api/admin/users/{id}/role:
+    put:
+      tags: [Roles, Users]
+      summary: Assign a role to a user
+      description: |
+        Requires roles.manage. Works for local, LDAP and OIDC accounts. A later external
+        login preserves the assignment. System accounts cannot be reassigned; the last
+        active human administrator cannot be demoted. Effective grants change immediately.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roleId]
+              properties:
+                roleId: { type: string, format: uuid }
+      responses:
+        '200': { description: Role assigned }
+        '400': { description: Invalid identifier }
+        '403': { description: roles.manage required }
+        '404': { description: User or role not found }
+        '409': { description: Would demote the last human administrator }
+  /api/admin/users:
+    get:
+      tags: [Users]
+      summary: List users and assigned roles
+      description: Requires users.view; includes roleId, roleName, roleBuiltin and registration date.
+      responses:
+        '200':
+          description: Active accounts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users: { type: array, items: { $ref: '#/components/schemas/AccessUser' } }
+        '403': { description: users.view required }
+    post:
+      tags: [Users]
+      summary: Create a local user with an assigned role
+      description: |
+        Requires users.manage. roleId defaults to the built-in user. Assigning another role
+        requires roles.manage. Without roles.manage the selected role cannot grant more
+        permissions than the actor has. Legacy role=admin/user remains accepted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string, minLength: 3, maxLength: 150 }
+                password: { type: string, minLength: 12, maxLength: 2048, writeOnly: true }
+                displayName: { type: string }
+                roleId: { type: string, format: uuid }
+                role: { type: string, enum: [admin, user] }
+      responses:
+        '201': { description: User created }
+        '400': { description: Invalid user or role }
+        '403': { description: Missing permission or would grant stronger access }
+        '409': { description: Username already exists or local accounts disabled }
+  /api/navigation-counts:
+    get:
+      summary: Sidebar totals scoped to the signed-in user
+      description: |
+        sessions counts the user's starting, running and stopping sessions without a list size limit.
+        tokens counts their personal tokens, including expired ones shown on the token page;
+        administrators also see system tokens in this total. Administrator-only fields are allSessions,
+        nodes (including offline/disabled, excluding removed), profiles (including disabled, excluding
+        removed and internal device profiles), and users (excluding the internal system identity).
+      responses:
+        '200':
+          description: Scalar totals; administrator fields are omitted for ordinary users
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [counts]
+                properties:
+                  counts:
+                    type: object
+                    required: [sessions, tokens]
+                    properties:
+                      sessions: { type: integer, minimum: 0 }
+                      tokens: { type: integer, minimum: 0 }
+                      allSessions: { type: integer, minimum: 0 }
+                      nodes: { type: integer, minimum: 0 }
+                      profiles: { type: integer, minimum: 0 }
+                      users: { type: integer, minimum: 0 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/admin/session-diagnostics:
+    get:
+      tags: [Admin]
+      summary: Incremental chronological log of one session (admin only)
+      description: The log is retained after cleanup. Follow nextCursor with after while hasMore is true, then poll for new records.
+      parameters:
+        - { in: query, name: session, required: true, schema: { type: string }, description: Session UUID or eight-character prefix }
+        - { in: query, name: after, schema: { type: string }, description: Exclusive record ID cursor }
+        - { in: query, name: limit, schema: { type: integer, default: 500, minimum: 1, maximum: 500 } }
+      responses:
+        '200':
+          description: Oldest records first
+          content:
+            application/json:
+              example: { events: [{ id: '42', occurredAt: '2026-10-07T12:00:00.000Z', service: server, severity: info, code: session.start_requested, hostId: agent-1, sessionId: 11111111-1111-4111-8111-111111111111, message: 'Launch requested' }], nextCursor: '42', hasMore: false }
+        '400': { description: Invalid session or cursor }
+        '403': { description: Required permission missing }
+  /api/admin/logs:
+    get:
+      tags: [Admin]
+      summary: Persisted service and session lifecycle diagnostics (admin only)
+      description: Logs survive session deletion. Messages are redacted. Session accepts a full UUID or its first eight hex characters.
+      parameters:
+        - { in: query, name: session, schema: { type: string }, description: Session UUID or eight-character prefix }
+        - { in: query, name: host, schema: { type: string } }
+        - { in: query, name: severity, schema: { type: string, enum: [info, warning, error] } }
+        - { in: query, name: service, schema: { type: string, enum: [server, agent, emulator] } }
+        - { in: query, name: before, schema: { type: string }, description: Exclusive record ID cursor }
+        - { in: query, name: limit, schema: { type: integer, default: 25, minimum: 1, maximum: 100 } }
+      responses:
+        '200':
+          description: Newest records first, with nextCursor for older records
+          content:
+            application/json:
+              example: { events: [{ id: '42', occurredAt: '2026-10-07T12:00:00.000Z', service: emulator, severity: error, code: session.start_failed, hostId: agent-1, sessionId: 11111111-1111-4111-8111-111111111111, message: 'Emulator exited; exitCode=139' }], nextCursor: null }
+        '400': { description: Invalid filter }
+        '403': { description: Required permission missing }
+  /api/admin/application-log/stream:
+    get:
+      summary: Live application log (logs.view required)
+      description: |
+        Server console, service diagnostics (server/agent/emulator), node connections and useful API
+        activity as an SSE text stream, ordered oldest to newest. Successful reads and keepalive
+        polling are omitted unless slow; failures and mutations include method, route template,
+        status and duration, without bodies, headers, query strings or private URL segments. Each
+        entry includes source (server, agent or emulator). The in-memory tail
+        keeps at most 2000 records, with up to 4096 characters per message, and clears on restart.
+        Secret fields, credentials and configured secret values are redacted. Each entry has a cursor
+        in its SSE id; send Last-Event-ID when reconnecting. A ready event reports reset/gap when a
+        restart or retention prevents full replay. Browser access is revalidated every 15 seconds.
+        Keepalive comments prevent proxy idle timeouts. At most 4 streams per user and 16 overall.
+      parameters:
+        - in: header
+          name: Last-Event-ID
+          schema: { type: string }
+        - in: query
+          name: after
+          description: Initial resume cursor; Last-Event-ID takes precedence
+          schema: { type: string }
+      responses:
+        '200':
+          description: SSE events ready, entry and unauthorized
+          content:
+            text/event-stream:
+              schema: { type: string }
+              example: |
+                id: 44444444-4444-4444-8444-444444444444:1
+                event: entry
+                data: {"id":"44444444-4444-4444-8444-444444444444:1","occurredAt":"2026-10-07T10:20:30.000Z","level":"info","source":"server","message":"Remote Device Farm API listening on 8080"}
+
+        '400': { description: Invalid resume cursor }
+        '401': { description: Login required }
+        '403': { description: Required permission missing }
+        '429': { description: Too many application log streams }
+  /api/admin/users/{id}:
+    delete:
+      tags: [Users]
+      summary: Remove a user (users.delete required)
+      description: |
+        Hides the account and forbids future login, including recreation by LDAP or OIDC.
+        Browser sessions, personal API tokens and ADB credentials are revoked; guest grants
+        are revoked, pending queue requests are cancelled and webhooks are disabled.
+        Audit and session history remain available. The current administrator, system identity
+        and last human administrator cannot be removed. Finish active device sessions first.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: User removed; access revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+        '400': { description: Invalid user ID }
+        '401': { description: Login required }
+        '403': { description: Required permission missing }
+        '404': { description: User not found or already removed }
+        '409': { description: "Own account, last administrator or active device sessions" }
+  /api/admin/users/{id}/password:
+    post:
+      tags: [Users]
+      summary: Reset a local user's password (users.password required)
+      description: |
+        Only available in local authentication mode for local users. The new password is hashed;
+        every existing browser login of the target user is revoked. Emulator sessions and API tokens
+        are preserved. If the administrator resets their own password using a browser cookie,
+        only the initiating browser receives a renewed login. The audit trail records the actor and
+        target, never the password. LDAP and OIDC passwords must be changed at their identity provider.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [newPassword]
+              properties:
+                newPassword: { type: string, format: password, writeOnly: true, minLength: 12, maxLength: 2048 }
+      responses:
+        '200':
+          description: Password reset; target browser logins revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, enum: [true] }
+        '400': { description: Invalid user ID or password }
+        '401': { description: Authentication required }
+        '403': { description: Required permission missing }
+        '404': { description: User not found }
+        '409': { description: Password managed by an external identity provider }
+  /api/admin/registry:
+    get:
+      tags: [Registry]
+      summary: Read registry settings (administrator only)
+      responses:
+        '200':
+          description: Addresses and username; password is never returned
+          content:
+            application/json:
+              schema: { type: object, properties: { registry: { $ref: '#/components/schemas/RegistrySettings' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Registry]
+      summary: Partially update registry settings (administrator only)
+      description: Addresses contain host[:port], without scheme. An external address may include a repository prefix. Changing the registry does not copy existing images.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode: { type: string, enum: [builtin, external] }
+                builtinAddress: { type: string, nullable: true, example: 'farm.example.com:8443' }
+                externalAddress: { type: string, nullable: true, example: 'registry.example.com/team' }
+                externalUsername: { type: string, nullable: true, maxLength: 200 }
+                externalPassword: { type: string, nullable: true, maxLength: 1000, writeOnly: true, description: 'Omit or null to retain; empty string clears.' }
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema: { type: object, properties: { registry: { $ref: '#/components/schemas/RegistrySettings' } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/admin/hosts/{id}/image-builder:
+    put:
+      tags: [Emulator images]
+      summary: Select or unselect the image builder (administrator only)
+      description: Enabling this node unselects the previous builder. Only one builder may be selected.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [enabled], properties: { enabled: { type: boolean } } }
+      responses:
+        '200':
+          description: Selection saved
+          content:
+            application/json:
+              schema: { type: object, properties: { ok: { type: boolean }, builder: { type: string, nullable: true } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/admin/emulator-images:
+    get:
+      tags: [Emulator images]
+      summary: Read the SDK catalog, builds and linked profiles (administrator only)
+      description: The initial SDK tools preparation may take several minutes. Completed builds are reconciled by the server in the background, even when this endpoint is not polled.
+      parameters:
+        - { name: refresh, in: query, schema: { type: string, enum: ['1'] }, description: 'Refresh sdkmanager catalog instead of reusing the cache.' }
+      responses:
+        '200':
+          description: Catalog; empty images and jobs if no builder is selected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  registry: { $ref: '#/components/schemas/RegistrySettings' }
+                  builder: { type: object, nullable: true, properties: { id: { type: string }, name: { type: string } } }
+                  abi: { type: string }
+                  refreshedAt: { type: string, format: date-time }
+                  images: { type: array, items: { $ref: '#/components/schemas/EmulatorCatalogImage' } }
+                  jobs: { type: array, items: { $ref: '#/components/schemas/EmulatorImageJob' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/admin/emulator-images/builds:
+    post:
+      tags: [Emulator images]
+      summary: Queue image builds and pushes (administrator only)
+      description: Packages must exist in the selected builder catalog. New profiles appear only after successful push and digest registration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [packages]
+              properties:
+                packages: { type: array, minItems: 1, maxItems: 50, items: { type: string, maxLength: 120 }, example: ['system-images;android-34;google_apis;x86_64'] }
+      responses:
+        '202':
+          description: Build queue accepted
+          content:
+            application/json:
+              schema: { type: object, properties: { jobs: { type: array, items: { $ref: '#/components/schemas/EmulatorImageJob' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: 'No available builder or registry not configured; error codes no_image_builder or registry_not_configured.' }
+  /api/admin/emulator-images/builds/{jobId}/cancel:
+    post:
+      tags: [Emulator images]
+      summary: Cancel one image build on its original node (administrator only)
+      description: Queued jobs become cancelled immediately; running builds/pushes become cancelling until the agent confirms termination. Repeating a terminal cancellation returns its current state, including done if completion won the race. The request never switches to a newly selected builder.
+      parameters:
+        - { name: jobId, in: path, required: true, schema: { type: string, minLength: 1, maxLength: 64, pattern: '^[A-Za-z0-9-]+$' } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [builderHostId]
+              properties:
+                builderHostId: { type: string, minLength: 1, maxLength: 200, description: 'Builder ID captured together with this job in the catalog response.' }
+      responses:
+        '200':
+          description: Current state of the requested job; cancellation may still be in progress
+          content:
+            application/json:
+              schema: { type: object, required: [jobs], properties: { jobs: { type: array, minItems: 1, maxItems: 1, items: { $ref: '#/components/schemas/EmulatorImageJob' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: 'Node removed/unknown (not_found), or job absent on that node (image_build_not_found).' }
+        '409': { description: 'Node disconnected; error code agent_offline.' }
+        '502': { description: 'Agent did not confirm cancellation or returned an invalid result; error code image_build_cancel_failed.' }
+        '504': { description: 'Agent command timed out; refresh job state before retrying. Error code agent_timeout.' }
+  /api/admin/emulator-images/prewarm:
+    get:
+      tags: [Emulator images]
+      summary: Read persistent image prewarm jobs (administrator only)
+      responses:
+        '200':
+          description: Per-node image downloads
+          content:
+            application/json:
+              schema: { type: object, properties: { items: { type: array, items: { $ref: '#/components/schemas/ImagePrewarmJob' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Emulator images]
+      summary: Download enabled pinned images on nodes in advance (administrator only)
+      description: Omitted lists select all enabled pinned profiles and enabled nonremoved nodes. Repeated requests reuse the same per-node digest job. Downloads use no session slot and do not start an emulator. Concurrency is limited per node.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hostIds: { type: array, minItems: 1, maxItems: 256, items: { type: string, minLength: 1, maxLength: 200 } }
+                profileIds: { type: array, minItems: 1, maxItems: 256, items: { type: string, minLength: 1, maxLength: 200 } }
+      responses:
+        '202':
+          description: Prewarm jobs accepted
+          content:
+            application/json:
+              schema: { type: object, properties: { queued: { type: integer, minimum: 0 }, skipped: { type: integer, minimum: 0 } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/admin/emulator-images/apply:
+    post:
+      tags: [Emulator images]
+      summary: Update linked profiles to the latest built digest (administrator only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [package], properties: { package: { type: string, example: 'system-images;android-34;google_apis;x86_64' } } }
+      responses:
+        '200':
+          description: IDs of changed profiles
+          content:
+            application/json:
+              schema: { type: object, properties: { updated: { type: array, items: { type: string } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: Registry not configured }
+  /api/registry/auth:
+    get:
+      tags: [Registry]
+      summary: Internal nginx auth_request hook for the built-in registry
+      description: Called by nginx for every /v2/ request. A short-lived registry credential is required; user API tokens do not authenticate this endpoint. Pull credentials permit GET/HEAD only; push credentials permit writes.
+      security: [{ registryBasic: [] }]
+      parameters:
+        - { name: X-Original-Method, in: header, schema: { type: string, default: GET } }
+      responses:
+        '200': { description: Registry operation authorized }
+        '401': { description: Registry credential missing or expired, headers: { WWW-Authenticate: { schema: { type: string } } } }
+        '403': { description: Pull-only credential cannot write }
+  /v2/:
+    get:
+      tags: [Registry]
+      summary: Docker Distribution API v2 probe
+      description: nginx proxies the Docker Distribution API under /v2/ with the same authentication for manifests and blobs. This specification describes the probe; other /v2/ operations follow the Distribution API, not the farm JSON API.
+      security: [{ registryBasic: [] }]
+      responses:
+        '200': { description: Registry reachable and credential authorized }
+        '401': { description: Registry requires a short-lived farm credential }
+  /api/hosts:
+    get:
+      tags: [Sessions]
+      summary: List hosts and their free capacity
+      responses:
+        '200':
+          description: Hosts
+          content:
+            application/json:
+              example: { hosts: [{ id: node-1, status: online, slots: 4, usedSlots: 1 }] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/admin/launch-settings:
+    get:
+      tags: [Admin]
+      summary: Read the farm default permission for user launch overrides
+      responses:
+        '200':
+          description: Farm default; disabled on a fresh installation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LaunchSettings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: Required permission missing }
+    patch:
+      tags: [Admin]
+      summary: Set the farm default permission for user launch overrides
+      description: Individual profiles override this default with allowLaunchOverrides (null inherits, true allows, false denies). Administrators may always configure launches. GPU and ADB selection are independent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LaunchSettings' }
+      responses:
+        '200':
+          description: Saved permission
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LaunchSettings' }
+        '400': { description: Invalid permission }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: Required permission missing }
+  /api/profiles:
+    get:
+      tags: [Sessions]
+      summary: List enabled device profiles
+      description: Filter by the same fields accepted by the profile selector; only profiles allowed to the current user are returned. Each profile includes allowLaunchOverrides (nullable per-profile override) and launchOverridesAllowed (resolved farm/profile permission).
+      parameters:
+        - { name: android, in: query, schema: { type: string, example: '14' } }
+        - { name: api, in: query, schema: { type: integer, minimum: 1, maximum: 99 } }
+        - { name: deviceType, in: query, schema: { type: string, enum: [mobile, tv, wear, automotive, desktop] } }
+        - { name: form, in: query, schema: { type: string, enum: [phone, tablet] } }
+        - { name: flavor, in: query, schema: { type: string, enum: [aosp, google_apis, google_play] } }
+        - { name: abi, in: query, schema: { type: string, example: x86_64 } }
+      responses:
+        '200':
+          description: Profiles
+          content:
+            application/json:
+              example: { profiles: [{ id: android-30, name: Android 11, androidVersion: '11', cpu: 4, memoryMb: 6144, allowLaunchOverrides: null, launchOverridesAllowed: false }] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/queue:
+    get:
+      tags: [Queue]
+      summary: List your waiting requests and positions
+      responses:
+        '200':
+          description: Waiting entries only; poll an individual request to follow its assignment
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries: { type: array, items: { $ref: '#/components/schemas/QueueEntry' } }
+                  maxEntries: { type: integer, example: 3 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Queue]
+      summary: Request a slot and let the server choose a compatible host
+      description: |
+        Omit hostId to use any compatible host. The chosen ADB key, GPU mode and launchOptions are retained while waiting.
+        launchOptions override storage and supported emulator arguments for this session; they do not edit the profile.
+        Send a fresh Idempotency-Key for each new job. Retrying with the same key and parameters returns
+        the same request, even after assignment, cancellation or expiry. Reusing the key with changed parameters returns 409.
+        Poll GET /api/queue/{id}; an assigned request contains the sessionId to use for session APIs.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9._:-]+$' }
+          description: Unique within the token owner's account; reuse only to retry the same request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              anyOf:
+                - required: [profileId]
+                - required: [profile]
+              properties:
+                profileId: { type: string, example: android-30, description: Takes precedence when both profileId and profile are supplied. }
+                profile: { $ref: '#/components/schemas/ProfileSelector' }
+                hostId: { type: string, nullable: true, description: 'Omit or null for automatic host selection.' }
+                gpuMode: { type: string, enum: [software, nvidia] }
+                diskGb: { type: integer, minimum: 2, maximum: 128, description: 'Internal data size in GiB within profile diskMaxGb (or diskGb when no maximum). Must equal launchOptions.diskGb if both are supplied.' }
+                sdcardGb: { type: integer, minimum: 0, maximum: 32, description: 'SD size in whole GiB within the profile maximum; 0 disables it. Must match launchOptions.sdCardMb after conversion if both are supplied.' }
+                launchOptions: { $ref: '#/components/schemas/LaunchOptions' }
+                adbKeyId: { type: string, format: uuid, nullable: true, description: 'An uploaded key owned by the caller. Omit to capture the current default; null selects the personal farm key if one exists.' }
+                leaseTtlSeconds: { type: integer, minimum: 30, maximum: 3600, description: 'Optional CI lease, starting when the session is assigned. Renew through the session keepalive API.' }
+                label: { type: string, maxLength: 60 }
+      responses:
+        '201':
+          description: Request created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QueueEntry' }
+        '200':
+          description: Existing request returned for an idempotent retry
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QueueEntry' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 'queue_full, idempotency_conflict, unsupported profile/image or incompatible selected host'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/queue/{id}:
+    parameters: [{ $ref: '#/components/parameters/SessionId' }]
+    get:
+      tags: [Queue]
+      summary: Read your request through its entire lifecycle
+      description: |
+        Unlike GET /api/queue this endpoint retains assigned and terminal requests.
+        `assigning` already includes the future sessionId, but that session can still return 404 until creation commits.
+        `assigned` means creation committed; sessionState `released` means the session has since been removed.
+      responses:
+        '200':
+          description: Request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QueueEntry' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Queue]
+      summary: Cancel a waiting request
+      description: |
+        Repeated cancellation is safe. If assignment won the race, 409 returns the current entry with sessionId.
+        Follow GET /api/queue/{id} until assignment resolves, then release the session and wait for confirmed cleanup.
+        Never treat a session 404 during `assigning` as successful release.
+      responses:
+        '200':
+          description: Cancelled or already terminal
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QueueEntry' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Assignment has started; release its session instead
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: '#/components/schemas/Error' }
+                  - type: object
+                    properties:
+                      entry: { $ref: '#/components/schemas/QueueEntry' }
+              example:
+                error: { code: queue_already_assigned, message: Assignment has started; release the session identified by this queue entry }
+                entry: { id: 6f1d2c5e-8a47-4b6e-9e0a-0f4f4a8a1d11, state: assigning, sessionId: 6f1d2c5e-8a47-4b6e-9e0a-0f4f4a8a1d11, sessionState: null }
+  /api/sessions:
+    get:
+      tags: [Sessions]
+      summary: List your sessions
+      responses:
+        '200':
+          description: Sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions: { type: array, items: { $ref: '#/components/schemas/Session' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Sessions]
+      summary: Start a device session
+      description: |
+        Returns 202 with state `starting`. Poll `GET /api/sessions/{id}` until the state is `running`.
+        If startup fails the session is removed and the poll returns 404.
+        Setting a label (up to 60 characters) such as the pipeline URL helps people recognise the session.
+        CI clients should normally use POST /api/queue with Idempotency-Key for recoverable allocation.
+        Optional leaseTtlSeconds starts immediately when the session is reserved, including startup.
+        Renew it through keepalive before expiry; normal input and open ADB connections do not renew it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [hostId]
+              properties:
+                hostId: { type: string, example: node-1 }
+                profileId: { type: string, example: android-30, description: 'Emulator profile; takes precedence over profile. Required unless profile or deviceKind is set.' }
+                profile: { $ref: '#/components/schemas/ProfileSelector' }
+                gpuMode: { type: string, enum: [software, nvidia], description: 'Emulator graphics mode supported by the profile and host.' }
+                diskGb: { type: integer, minimum: 2, maximum: 128, description: 'Internal data size in GiB within profile diskMaxGb (or diskGb when no maximum). Must equal launchOptions.diskGb if both are supplied.' }
+                sdcardGb: { type: integer, minimum: 0, maximum: 32, description: 'SD size in whole GiB within the profile maximum; 0 disables it. Must match launchOptions.sdCardMb after conversion if both are supplied.' }
+                launchOptions: { $ref: '#/components/schemas/LaunchOptions' }
+                adbKeyId: { type: string, format: uuid, nullable: true, description: "Public key owned by the caller. Omission uses their account default; null selects their personal farm key if present." }
+                leaseTtlSeconds: { type: integer, minimum: 30, maximum: 3600, description: 'Opt-in renewable lease for automation. Omit for the normal interactive lifecycle.' }
+                deviceKind: { type: string, enum: [usb-android], description: 'Rent a physical device instead of starting an emulator.' }
+                deviceId: { type: string, example: R58M123ABC, description: 'Serial/UDID from `devices` of GET /api/hosts. Required with `deviceKind`; the device must be `free`.' }
+                label: { type: string, maxLength: 60, example: 'ci #1423 main' }
+      responses:
+        '202':
+          description: Session accepted
+          content:
+            application/json:
+              example:
+                session:
+                  id: 6f1d2c5e-8a47-4b6e-9e0a-0f4f4a8a1d11
+                  state: starting
+                  hostId: node-1
+                  profileId: android-30
+                  label: 'ci #1423 main'
+                  createdAt: '2026-10-03T09:12:41.000Z'
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Limit reached or no free slots (`session_limit`, `no_free_slots`)
+          content:
+            application/json:
+              example: { error: { code: no_free_slots, message: No free slots on this host } }
+        '503':
+          description: Host agent offline (`agent_offline`)
+          content:
+            application/json:
+              example: { error: { code: agent_offline, message: Host agent is offline } }
+  /api/sessions/{id}:
+    parameters: [{ $ref: '#/components/parameters/SessionId' }]
+    get:
+      tags: [Sessions]
+      summary: Read one session
+      responses:
+        '200':
+          description: Session
+          content:
+            application/json:
+              example:
+                session:
+                  id: 6f1d2c5e-8a47-4b6e-9e0a-0f4f4a8a1d11
+                  state: running
+                  hostId: node-1
+                  profileId: android-30
+                  label: 'ci #1423 main'
+                  idleExpiresAt: '2026-10-03T10:12:41.000Z'
+                  expiresAt: null
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Sessions]
+      summary: Set or clear the label
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { label: 'ci #1424' }
+      responses:
+        '200': { description: Updated session }
+        '400': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Sessions]
+      summary: Release the device session
+      description: |
+        200 confirms device cleanup. 202 means shutdown is still in progress and the slot remains reserved.
+        Poll GET /api/sessions/{id} until 404 before discarding recovery state.
+        A second DELETE after confirmed release returns 404. A 502 stop_pending means agent cleanup was not confirmed.
+      responses:
+        '200':
+          description: Released
+          content:
+            application/json:
+              example: { ok: true, id: 6f1d2c5e-8a47-4b6e-9e0a-0f4f4a8a1d11, released: true }
+        '202': { description: Shutdown in progress; keep polling before discarding recovery state }
+        '502': { description: 'stop_pending; slot stays reserved until the agent confirms cleanup' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/sessions/{id}/keepalive:
+    parameters: [{ $ref: '#/components/parameters/SessionId' }]
+    post:
+      tags: [Sessions]
+      summary: Renew the client lease and reset activity (owner only)
+      description: |
+        For a leased session, extend leaseExpiresAt by its original leaseTtlSeconds from the current server time.
+        With a 120-second lease, send a heartbeat every 30 seconds, including while starting.
+        Expired leases cannot be revived (409 session_lease_expired). Stopping sessions cannot be renewed.
+        Sessions without an explicit lease only update their last activity time.
+      responses:
+        '200': { description: Session with the new deadlines }
+        '403': { description: 'Only the owner can renew, including for administrators' }
+        '409': { description: 'session_lease_expired or session_inactive' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/sessions/{id}/adb-port-access:
+    parameters: [{ $ref: '#/components/parameters/SessionId' }]
+    get:
+      tags: [ADB]
+      summary: Current ADB lease
+      responses:
+        '200':
+          description: Lease or null
+          content:
+            application/json:
+              example: { access: { sessionId: 6f1d2c5e-8a47-4b6e-9e0a-0f4f4a8a1d11, host: farm.example.com, port: 15555, expiresAt: null, fingerprint: 'SHA256:q3Fv0m1X...' } }
+    post:
+      tags: [ADB]
+      summary: Open the TCP port for `adb connect`
+      description: |
+        With `{}` the broker uses the caller's saved ADB key (create one once with `POST /api/me/adb-key`
+        and store `adbkey` and `adbkey.pub` in `~/.android`). In CI put the private key in a secret.
+        Alternatively send `{publicKey}` with an `adbkey.pub` to get a one-hour lease.
+        The session must be `running`.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            examples:
+              saved-key: { value: {} }
+              own-key: { value: { publicKey: 'QAAAA... user@host' } }
+      responses:
+        '201':
+          description: Lease created
+          content:
+            application/json:
+              example: { sessionId: 6f1d2c5e-8a47-4b6e-9e0a-0f4f4a8a1d11, host: farm.example.com, port: 15555, expiresAt: null, fingerprint: 'SHA256:q3Fv0m1X...' }
+        '409':
+          description: '`session_not_ready` or `adb_key_missing`'
+          content:
+            application/json:
+              example: { error: { code: adb_key_missing, message: Create an ADB key or provide adbkey.pub } }
+        '503':
+          description: '`adb_port_disabled`, the broker has no ADB range configured'
+    delete:
+      tags: [ADB]
+      summary: Revoke the lease
+      responses:
+        '200': { description: Revoked }
+  /api/sessions/{id}/logcat:
+    parameters: [{ $ref: '#/components/parameters/SessionId' }]
+    get:
+      tags: [Diagnostics]
+      summary: Parsed logcat
+      parameters:
+        - { name: lines, in: query, schema: { type: integer, minimum: 1, maximum: 5000, default: 500 } }
+        - { name: level, in: query, schema: { type: string, enum: [V, D, I, W, E, F] } }
+        - { name: buffers, in: query, schema: { type: string, example: 'main,crash' } }
+        - { name: since, in: query, description: Cursor from the previous page, schema: { type: string } }
+        - { name: skip, in: query, schema: { type: integer, minimum: 0 } }
+      responses:
+        '200':
+          description: Entries and a cursor for the next page
+          content:
+            application/json:
+              example:
+                entries: [{ ts: '10-03 09:14:02.113', pid: 1432, tid: 1432, level: E, tag: AndroidRuntime, message: 'FATAL EXCEPTION: main' }]
+                cursor: { since: '10-03 09:14:02.113', skip: 1 }
+  /api/sessions/{id}/device-info:
+    parameters: [{ $ref: '#/components/parameters/SessionId' }]
+    get:
+      tags: [Diagnostics]
+      summary: Device model, Android version, memory, storage, apps
+      responses:
+        '200':
+          description: Device information
+          content:
+            application/json:
+              example: { session: { id: 6f1d2c5e-8a47-4b6e-9e0a-0f4f4a8a1d11, orientation: portrait }, profile: { id: android-30, androidVersion: '11', cpu: 4, memoryMb: 6144 } }
+  /api/sessions/{id}/files:
+    parameters: [{ $ref: '#/components/parameters/SessionId' }]
+    post:
+      tags: [Sessions]
+      summary: Upload a file or install an APK (up to 50 MiB)
+      description: '`.apk` files are installed; other files go to `/sdcard/Download`.'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Uploaded
+          content:
+            application/json:
+              example: { ok: true, result: { installed: true } }
+        '413': { description: File is larger than 50 MiB }
+        '429': { description: 'Another upload is running (`upload_busy`); retry in a few seconds' }
+  /api/tokens:
+    get:
+      tags: [Tokens]
+      summary: List your tokens (hashes are never returned)
+      responses:
+        '200': { description: Tokens }
+    post:
+      tags: [Tokens]
+      summary: Create a personal token
+      description: The token value is shown once. This call itself needs an existing token or a browser session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example: { name: GitHub Actions, expiresInDays: 90 }
+      responses:
+        '201':
+          description: Token created
+          content:
+            application/json:
+              example: { token: rdf_3b1c0d..., item: { id: 0d1c8b6a-1d7e-4a45-bb5e-6a43c0e2f111, name: GitHub Actions, expiresAt: '2027-01-01T00:00:00.000Z' } }
+        '400': { $ref: '#/components/responses/Error' }
+  /api/tokens/{id}:
+    delete:
+      tags: [Tokens]
+      summary: Revoke a token
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Revoked }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/me/adb-public-keys/{id}:
+    patch:
+      tags: [ADB]
+      summary: Rename one of the caller's uploaded ADB public keys
+      description: Requires sessions.adb. Changes only the name, including while the key is used by an active session. The key ID, fingerprint, default selection and ADB authorization remain unchanged.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 80, description: Trimmed before saving. Whitespace-only names and control characters are rejected. }
+      responses:
+        '200':
+          description: Renamed key metadata, without public or private key contents
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [key]
+                properties:
+                  key:
+                    type: object
+                    required: [id, name, fingerprint, createdAt]
+                    properties:
+                      id: { type: string, format: uuid }
+                      name: { type: string }
+                      fingerprint: { type: string }
+                      createdAt: { type: string, format: date-time }
+        '400': { description: Invalid name }
+        '401': { description: Authentication required }
+        '403': { description: Missing sessions.adb permission }
+        '404': { description: Key not found or owned by another account }
+
+  /api/admin/image-management/registry:
+    get:
+      tags: [Emulator images]
+      summary: Inventory of every built-in registry revision, including untagged versions
+      description: "Required permissions: images.view."
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegistryImageInventory' }
+        '403': { description: Missing required permission }
+        '409': { description: "Image protected, stale preview, busy maintenance or offline node" }
+        '503': { description: Registry supervisor or agent unavailable }
+  /api/admin/image-management/cache/{hostId}:
+    get:
+      tags: [Emulator images]
+      summary: Contract image cache on a connected node
+      description: "Required permissions: images.view and nodes.view."
+      parameters:
+        - { name: hostId, in: path, required: true, schema: { type: string, maxLength: 200 } }
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NodeImageCache' }
+        '403': { description: Missing required permission }
+        '409': { description: "Image protected, stale preview, busy maintenance or offline node" }
+        '503': { description: Registry supervisor or agent unavailable }
+  /api/admin/image-management/policy:
+    get:
+      tags: [Emulator images]
+      summary: Read persisted retention policies
+      description: "Required permissions: images.view."
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImageCleanupPolicyEnvelope' }
+        '403': { description: Missing required permission }
+        '409': { description: "Image protected, stale preview, busy maintenance or offline node" }
+        '503': { description: Registry supervisor or agent unavailable }
+    put:
+      tags: [Emulator images]
+      summary: Save server-side scheduled retention policies
+      description: "Required permissions: images.settings; images.cleanup to enable automatic cleanup."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImageCleanupPolicy' }
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImageCleanupPolicyEnvelope' }
+        '403': { description: Missing required permission }
+        '409': { description: "Image protected, stale preview, busy maintenance or offline node" }
+        '503': { description: Registry supervisor or agent unavailable }
+  /api/admin/image-management/jobs:
+    get:
+      tags: [Emulator images]
+      summary: Latest 100 persisted cleanup jobs
+      description: "Required permissions: images.view."
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImageCleanupJobs' }
+        '403': { description: Missing required permission }
+        '409': { description: "Image protected, stale preview, busy maintenance or offline node" }
+        '503': { description: Registry supervisor or agent unavailable }
+    post:
+      tags: [Emulator images]
+      summary: Queue the exact confirmed cleanup plan
+      description: "Required permissions: images.delete for explicit registry deletion; images.cleanup otherwise."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImageCleanupRequest' }
+      responses:
+        '202':
+          description: Durable cleanup intent accepted; poll jobs for outcome
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImageCleanupAccepted' }
+        '403': { description: Missing required permission }
+        '409': { description: "Image protected, stale preview, busy maintenance or offline node" }
+        '503': { description: Registry supervisor or agent unavailable }
+  /api/admin/image-management/preview:
+    post:
+      tags: [Emulator images]
+      summary: Preview deletions and linked-profile changes without mutation
+      description: "Required permissions: images.view; nodes.view for node caches."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImageCleanupRequest' }
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImageCleanupPlanEnvelope' }
+        '403': { description: Missing required permission }
+        '409': { description: "Image protected, stale preview, busy maintenance or offline node" }
+        '503': { description: Registry supervisor or agent unavailable }
+components:
+  securitySchemes:
+    registryBasic:
+      type: http
+      scheme: basic
+      description: Short-lived registry-only credentials issued to agents; separate from user API tokens.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Personal API token (`rdf_...`)
+  parameters:
+    SessionId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    ImageCleanupRequest:
+      type: object
+      required:
+        - scope
+        - action
+      properties:
+        scope: &a5
+          type: string
+          enum:
+            - registry
+            - cache
+        action: &a6
+          type: string
+          enum:
+            - delete
+            - retention
+            - gc
+        hostId: &a7
+          type: string
+          maxLength: 200
+        digests: &a8
+          type: array
+          items: &a1
+            type: string
+            pattern: ^sha256:[a-f0-9]{64}$
+          maxItems: 500
+          uniqueItems: true
+        ids: &a9
+          type: array
+          items: *a1
+          maxItems: 100
+          uniqueItems: true
+        removeProfiles: &a10
+          type: boolean
+          default: false
+          description: "Explicit registry deletion only: soft-delete linked profiles instead of disabling them."
+        token:
+          type: string
+          description: Required when queueing; obtain it from the current preview.
+      additionalProperties: false
+      description: Registry delete requires digests; cache delete requires hostId and ids. Retention applies the saved policy;
+        gc collects physical storage without deleting additional manifests. Any change in references invalidates the
+        confirmation token.
+    ImageUse:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - profile
+            - session
+            - queue
+            - catalog
+            - prewarm
+        id: &a2
+          type: string
+        name: *a2
+        image: *a2
+    ManagedRegistryImage:
+      type: object
+      properties:
+        digest: *a1
+        tags:
+          type: array
+          items: *a2
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        package: &a3
+          type: string
+          nullable: true
+        sizeBytes:
+          type: integer
+          minimum: 0
+          description: Logical layer size; shared layers mean this is not an estimate of reclaimed disk space.
+        children:
+          type: array
+          items: *a1
+        known: &a4
+          type: boolean
+        uses:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageUse"
+        blockers:
+          type: array
+          items: *a2
+    ManagedCacheImage:
+      type: object
+      properties:
+        id: *a1
+        tags:
+          type: array
+          items: *a2
+        digests:
+          type: array
+          items: *a2
+        package: *a3
+        sizeBytes:
+          type: integer
+          minimum: 0
+        firstSeenAt: &a11
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+        containers:
+          type: array
+          items: *a2
+        uses:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageUse"
+        blockers:
+          type: array
+          items: *a2
+    RegistryImageInventory:
+      type: object
+      properties:
+        supported: *a4
+        repository: *a3
+        maintenance: *a4
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManagedRegistryImage"
+    NodeImageCache:
+      type: object
+      properties:
+        hostId: *a2
+        name: *a2
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManagedCacheImage"
+    ImageCleanupPlan:
+      type: object
+      required:
+        - scope
+        - action
+        - token
+        - items
+        - blocked
+      properties:
+        scope: *a5
+        action: *a6
+        hostId: *a7
+        digests: *a8
+        ids: *a9
+        removeProfiles: *a10
+        token: *a2
+        items:
+          type: array
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/ManagedRegistryImage"
+              - $ref: "#/components/schemas/ManagedCacheImage"
+        blocked: *a4
+    ImageCleanupPlanEnvelope:
+      type: object
+      required:
+        - plan
+      properties:
+        plan:
+          $ref: "#/components/schemas/ImageCleanupPlan"
+    ImageCleanupPolicy:
+      type: object
+      required:
+        - registryEnabled
+        - registryKeep
+        - registryDays
+        - cacheEnabled
+        - cacheDays
+        - cacheMaxGb
+        - intervalHours
+      properties:
+        registryEnabled:
+          type: boolean
+          default: false
+        registryKeep:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 3
+        registryDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+          default: 30
+        cacheEnabled:
+          type: boolean
+          default: false
+        cacheDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+          default: 30
+        cacheMaxGb:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          default: 0
+          description: 0 means unlimited; protected images can exceed this target.
+        intervalHours:
+          type: integer
+          minimum: 1
+          maximum: 720
+          default: 24
+        lastRunAt:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+      additionalProperties: false
+    ImageCleanupPolicyEnvelope:
+      type: object
+      required:
+        - policy
+      properties:
+        policy:
+          $ref: "#/components/schemas/ImageCleanupPolicy"
+    ImageCleanupJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        scope: *a5
+        hostId: *a3
+        automatic: *a4
+        state:
+          type: string
+          enum:
+            - queued
+            - running
+            - done
+            - failed
+        stage: *a2
+        errorCode: *a3
+        createdAt: *a11
+        updatedAt: *a11
+        result:
+          type: object
+          nullable: true
+          properties:
+            deleted:
+              type: array
+              items: *a1
+            removed:
+              type: array
+              items: *a1
+            failed:
+              type: array
+              items: *a1
+    ImageCleanupJobs:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImageCleanupJob"
+    ImageCleanupAccepted:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum:
+            - queued
+    AccessUser:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        displayName: { type: string }
+        provider: { type: string }
+        role: { type: string, enum: [admin, user], description: Legacy administrator and limit marker; custom roles use user. }
+        roleId: { type: string, format: uuid }
+        roleName: { type: string }
+        roleBuiltin: { type: string, enum: [admin, user], nullable: true }
+        permissions: { type: array, items: { type: string }, description: "Effective permissions; returned by /api/me, not by the user directory." }
+        createdAt: { type: string, format: date-time }
+    AccessRole:
+      type: object
+      required: [id, name, builtin, permissions]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        builtin: { type: string, enum: [admin, user], nullable: true }
+        permissions: { type: array, items: { type: string } }
+        userCount: { type: integer, minimum: 0, description: Active human accounts; present in list responses. }
+    AccessRoleInput:
+      type: object
+      required: [name, permissions]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        permissions:
+          type: array
+          uniqueItems: true
+          items: { type: string }
+          example: [sessions.view, nodes.view]
+    ProfileSelector:
+      type: object
+      additionalProperties: false
+      description: Select an enabled allowed profile by properties. All fields are optional. Recommended profiles rank first, then newest API, then name. No match returns 404 no_matching_profile. Selection does not build an image or guarantee a free compatible node. If profileId is present, it takes precedence.
+      properties:
+        android: { type: string, pattern: '^[0-9]{1,2}(\.[0-9]{1,2})?L?$', example: '14' }
+        api: { type: integer, minimum: 1, maximum: 99, example: 34 }
+        deviceType: { type: string, enum: [mobile, tv, wear, automotive, desktop] }
+        form: { type: string, enum: [phone, tablet] }
+        flavor: { type: string, enum: [aosp, google_apis, google_play] }
+        abi: { type: string, pattern: '^[a-z0-9_-]{2,20}$', example: x86_64 }
+      example: { api: 34, form: tablet, flavor: google_apis }
+    RegistrySettings:
+      type: object
+      properties:
+        mode: { type: string, enum: [builtin, external] }
+        builtinAddress: { type: string, nullable: true }
+        externalAddress: { type: string, nullable: true }
+        externalUsername: { type: string, nullable: true }
+        externalPasswordSet: { type: boolean }
+    ImagePrewarmJob:
+      type: object
+      properties:
+        hostId: { type: string }
+        image: { type: string }
+        state: { type: string, enum: [queued, pulling, done, failed] }
+        error: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    EmulatorImageJob:
+      type: object
+      properties:
+        id: { type: string }
+        package: { type: string }
+        image: { type: string }
+        state: { type: string, enum: [queued, building, validating, pushing, cancelling, cancelled, done, failed] }
+        digest: { type: string, nullable: true, pattern: '^sha256:[0-9a-f]{64}$' }
+        sizeMb: { type: integer, nullable: true }
+        error: { type: string, nullable: true }
+        validation: { type: object, nullable: true, additionalProperties: true, description: Persisted boot/authentication/device/resource and available GPU checks. }
+        progress: { type: object, nullable: true, additionalProperties: true }
+        log: { type: array, items: { type: string } }
+        profiles: { type: array, items: { type: object, additionalProperties: true } }
+    EmulatorCatalogImage:
+      type: object
+      properties:
+        package: { type: string }
+        tag: { type: string }
+        api: { type: integer }
+        minor: { type: integer, nullable: true }
+        androidVersion: { type: string }
+        device: { type: string, enum: [phone, tv, wear, automotive, desktop] }
+        flavor: { type: string, enum: [aosp, google_apis, google_play] }
+        abi: { type: string }
+        systemTag: { type: string }
+        description: { type: string }
+        built: { type: boolean }
+        validated: { type: boolean, description: New artifact passed Android runtime checks before publication. Legacy builds are not rechecked. }
+        digest: { type: string, nullable: true }
+        builtAt: { type: string, format: date-time, nullable: true }
+        sizeMb: { type: integer, nullable: true }
+        updateAvailable: { type: boolean }
+        profiles:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              enabled: { type: boolean }
+              current: { type: boolean }
+    LaunchSettings:
+      type: object
+      additionalProperties: false
+      required: [allowLaunchOverrides]
+      properties:
+        allowLaunchOverrides: { type: boolean, default: false }
+    LaunchOptions:
+      type: object
+      additionalProperties: false
+      description: |
+        Optional emulator settings for one session. Non-default values require the effective farm/profile launch override permission (403 launch_overrides_forbidden); queue assignment rechecks this permission. Administrators may always configure launches. Omitted fields inherit the profile default. Storage is bounded by profile diskMaxGb/sdcardMaxGb; a missing maximum equals the corresponding default. A profile without SD settings permits only a disabled card.
+        These are controlled launch settings, not arbitrary Docker flags. They are not supported for USB devices.
+        The server and agent validate supported emulator flags; unknown flags, host paths and QEMU passthrough are rejected.
+      properties:
+        privileged:
+          type: boolean
+          description: 'Agent support for this mode is not yet implemented; the API field alone does not enable it. A future request for true requires an administrator and an agent explicitly configured with AGENT_ALLOW_PRIVILEGED_EMULATORS=1. Omitted or false keeps normal isolation. Unsupported on USB devices.'
+        diskGb:
+          type: integer
+          minimum: 2
+          maximum: 128
+          description: 'Android internal userdata partition in GiB, passed as -partition-size. Bounded by the profile maximum. This is not a Docker or host filesystem quota.'
+        sdCardMb:
+          type: integer
+          oneOf:
+            - enum: [0]
+            - minimum: 128
+              maximum: 32768
+          description: 'Virtual SD card in MiB; 0 disables it. Omit to inherit the profile default. Must not exceed sdcardMaxGb converted to MiB, or sdcardGb when the maximum is unset; both unset means no card.'
+        emulatorParams:
+          type: string
+          maxLength: 500
+          description: 'Replace profile extra emulator arguments. Empty string clears them; omission inherits. Only the supported argument allowlist is accepted, without shell syntax or Docker flags.'
+      example: { diskGb: 16, sdCardMb: 1024, emulatorParams: '-no-snapshot -no-boot-anim -change-language ru -change-country RU' }
+    QueueEntry:
+      type: object
+      required: [id, state, profileId, sessionId, sessionState, createdAt, expiresAt, position]
+      properties:
+        id: { type: string, format: uuid }
+        state: { type: string, enum: [waiting, assigning, assigned, cancelled, expired] }
+        profileId: { type: string }
+        profileName: { type: string, nullable: true }
+        hostId: { type: string, nullable: true, description: 'Requested host; null when selection was automatic. Read the assigned session for the actual host.' }
+        hostName: { type: string, nullable: true }
+        gpuMode: { type: string, enum: [software, nvidia], nullable: true }
+        adbKeyId: { type: string, format: uuid, nullable: true }
+        launchOptions: { $ref: '#/components/schemas/LaunchOptions' }
+        leaseTtlSeconds: { type: integer, nullable: true, minimum: 30, maximum: 3600 }
+        label: { type: string, nullable: true }
+        sessionId: { type: string, format: uuid, nullable: true }
+        sessionState: { type: string, nullable: true, enum: [starting, running, stopping, stopped, failed, released] }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time, description: 'Waiting deadline, not the assigned session lease deadline.' }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+        position: { type: integer, minimum: 0, description: 'Approximate position among requests competing for the same hosts; zero outside waiting.' }
+        error:
+          type: object
+          nullable: true
+          properties:
+            code: { type: string, example: adb_key_not_found }
+    Session:
+      type: object
+      properties:
+        launchOptions: { $ref: '#/components/schemas/LaunchOptions' }
+        id: { type: string, format: uuid }
+        state: { type: string, enum: [starting, running, stopping, stopped, failed] }
+        hostId: { type: string }
+        profileId: { type: string }
+        label: { type: string, nullable: true }
+        deviceKind: { type: string, enum: [emulator, usb-android] }
+        deviceId: { type: string, nullable: true }
+        capabilities: { type: array, nullable: true, items: { type: string }, description: 'What the device can do; null means everything (emulators).' }
+        createdAt: { type: string, format: date-time }
+        lastActivityAt: { type: string, format: date-time }
+        leaseTtlSeconds: { type: integer, nullable: true, minimum: 30, maximum: 3600 }
+        leaseExpiresAt: { type: string, format: date-time, nullable: true, description: 'Client lease deadline, independent of global idle and maximum lifetime settings.' }
+        idleExpiresAt: { type: string, format: date-time, nullable: true }
+        expiresAt: { type: string, format: date-time, nullable: true }
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+  responses:
+    Forbidden:
+      description: Required permission missing
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Error:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: invalid_request, message: hostId and profileId are required } }
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: unauthorized, message: Login required } }
+    NotFound:
+      description: Not found, or the session belongs to another user
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: { code: not_found, message: Session not found } }

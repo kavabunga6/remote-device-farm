@@ -1,0 +1,30 @@
+/* Shared state palette for node and profile identity headers. */
+:root{--state-online-bg:#cee5d6;--state-disabled-bg:#d5dadd;--state-offline-bg:#efd0ce;--state-header-muted:#4c5d67;--state-header-subtle:#3f525d}
+:root[data-effective-theme="dark"]{--state-online-bg:#0f3a2d;--state-disabled-bg:#1d2735;--state-offline-bg:#553336;--state-header-muted:#bdcbd3;--state-header-subtle:#d2dce2}
+/* State colour is confined to the identity header; resource areas stay neutral. */
+.host-status-card[data-state="online"] { --host-state-color: #2f8c65; --host-state-bg: var(--state-online-bg); }
+.host-status-card[data-state="disabled"] { --host-state-color: #667580; --host-state-bg: var(--state-disabled-bg); }
+.host-status-card[data-state="offline"] { --host-state-color: #b74f45; --host-state-bg: var(--state-offline-bg); }
+.host-status-indicator {
+  --ui-muted: var(--state-header-muted);
+  --ui-warning: #75501c;
+  --ui-subtle: var(--state-header-subtle);
+  --ui-inset: color-mix(in srgb, var(--host-state-bg) 90%, var(--host-state-color));
+  background: var(--host-state-bg);
+
+}
+:root[data-effective-theme="dark"] .host-status-indicator { --ui-muted: var(--state-header-muted); --ui-subtle: var(--state-header-subtle); --ui-warning: #f0c77d; }
+:root[data-effective-theme="dark"] .host-status-card[data-state="online"] { --host-state-color: #65bf91; --host-state-bg: var(--state-online-bg); }
+:root[data-effective-theme="dark"] .host-status-card[data-state="disabled"] { --host-state-color: #aab6c8; --host-state-bg: var(--state-disabled-bg); }
+:root[data-effective-theme="dark"] .host-status-card[data-state="offline"] { --host-state-color: #e4968d; --host-state-bg: var(--state-offline-bg); }
+.host-status-card[data-state] .card-primary-action:not(:disabled):hover::after { box-shadow: inset 0 0 0 1px var(--host-state-color); }
+
+.host-status-indicator .agent-icon,
+:root[data-effective-theme] .host-status-indicator .agent-icon {
+  background: var(--ui-inset);
+  color: var(--host-state-color);
+}
+
+.host-status-card[data-state],
+:root[data-effective-theme] .host-status-card[data-state] { background: var(--ui-surface); border-color: var(--ui-border); }
+.host-card-heading.host-status-indicator { padding:14px; border-radius:9px; }

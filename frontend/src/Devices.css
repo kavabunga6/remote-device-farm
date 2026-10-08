@@ -1,0 +1,11 @@
+.rent-device-list { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rent-device { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--border, #d0d5dd); border-radius: 10px; cursor: pointer; }
+.rent-device.selected { border-color: var(--accent, #2563eb); box-shadow: 0 0 0 1px var(--accent, #2563eb); }
+.rent-device small, .device-table small { display: block; opacity: .7; }
+.device-table { width: 100%; border-collapse: collapse; }
+.device-table th, .device-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border, #e4e7ec); vertical-align: top; }
+.device-state { font-weight: 600; }
+.device-state-quarantined { color: var(--danger, #b42318); }
+.device-state-cleaning { color: var(--warning, #b54708); }
+.device-state-free { color: var(--accent); }
+.device-reason { max-width: 36ch; }

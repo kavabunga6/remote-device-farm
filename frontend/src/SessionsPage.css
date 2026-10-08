@@ -1,0 +1,51 @@
+/* Personal sessions lead; pending and shared work form the secondary row. */
+.page-overview .page-heading { align-items: center; }
+.page-overview .heading-actions { flex-wrap: wrap; }
+.sessions-page-content { display: grid; gap: 32px; min-width: 0; }
+.sessions-page-content > .overview-sessions { margin: 0; min-width: 0; }
+.sessions-section-heading { flex-wrap: wrap; gap: 12px 24px; margin-bottom: 16px; }
+.sessions-section-heading h2 { margin: 0; font-size: 1.125rem; letter-spacing: -.02em; }
+.sessions-section-heading p { margin: 4px 0 0; }
+.sessions-section-heading .bulk-actions { flex-wrap: wrap; gap: 8px 16px; }
+.sessions-section-heading .text-button { min-height: 36px; }
+.page-overview .session-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); gap: 16px; }
+.page-overview .session-card:not(.session-create-card) { display: grid; grid-template-rows: subgrid; grid-row: span 6; row-gap: 12px; min-height: 0; padding: 20px; }
+.page-overview .session-card-top { align-items: center; margin: 0; }
+.page-overview .session-card-top > .session-card-release { width: 36px; height: 36px; }
+.page-overview .session-card h3 { margin: 0; white-space: normal; line-height: 1.4; }
+.page-overview .session-card-name { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+.page-overview .session-meta { margin: 0; white-space: normal; overflow-wrap: anywhere; color: var(--ui-subtle); }
+.page-overview .session-id { margin: 0; padding: 0; border: 0; color: var(--ui-muted); overflow-wrap: anywhere; }
+.page-overview .session-card-footer { display: grid; grid-template-rows: subgrid; grid-row: span 2; row-gap: 8px; min-width: 0; }
+.page-overview .session-card-footer .session-startup-compact { grid-row: 1; margin: 0; }
+.page-overview .session-card-actions { grid-row: 2; margin: 0; padding-top: 12px; border-top: 1px solid var(--ui-border); }
+.page-overview .session-card-actions .text-button { min-height: 32px; }
+.page-overview .session-grid-empty { display: block; }
+.page-overview .session-create-card { display: flex; align-items: center; gap: 20px; min-height: 0; padding: 28px; text-align: left; }
+.page-overview .session-create-card .session-card-icon { flex: none; width: 44px; height: 44px; }
+.session-empty-copy { flex: 1; min-width: 0; }
+.page-overview .session-empty-copy .session-meta { margin-top: 4px; }
+.page-overview .session-create-card > svg { flex: none; color: var(--accent); }
+.sessions-page-content .overview-collaboration { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 25rem), 1fr)); gap: 16px 20px; margin: 0; min-width: 0; }
+.sessions-page-content .overview-collaboration:empty { display: none; }
+.page-overview .overview-collaboration > section { display: grid; grid-template-rows: subgrid; grid-row: span 3; row-gap: 12px; margin: 0; padding: 20px; min-width: 0; background: var(--ui-surface); border-color: var(--ui-border); }
+.page-overview .overview-collaboration .shared-with-me { background: var(--ui-surface); border-color: var(--ui-border); }
+.page-overview .shared-with-me .shared-with-me-item { background: var(--ui-inset); }
+.page-overview :is(.queue-widget-head, .shared-with-me-head) { display: grid; grid-template-rows: subgrid; grid-row: span 2; row-gap: 4px; margin: 0; }
+.page-overview :is(.queue-list, .shared-with-me-list) { grid-row: 3; align-content: start; }
+.page-overview :is(.queue-widget-head, .shared-with-me-head) h2 { font-size: 1rem; }
+.page-overview :is(.queue-widget-head, .shared-with-me-head) small { font-size: .8125rem; }
+.page-overview :is(.queue-info, .shared-with-me-info) strong { white-space: normal; overflow-wrap: anywhere; }
+.page-overview :is(.queue-item, .shared-with-me-item) { min-height: 64px; background: var(--ui-inset); }
+@media (max-width: 800px) {
+  .page-overview .page-heading { align-items: flex-start; flex-wrap: wrap; }
+  .page-overview .heading-actions { width: 100%; justify-content: flex-start; }
+}
+@media (max-width: 480px) {
+  .sessions-page-content { gap: 24px; }
+  .page-overview .heading-actions .button { flex: 1 1 auto; }
+  .page-overview .session-card:not(.session-create-card), .page-overview .overview-collaboration > section { padding: 16px; }
+  .page-overview .session-create-card { padding: 20px 16px; gap: 12px; }
+  .page-overview .queue-item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; }
+  .page-overview .queue-item > .button { grid-column: 2; justify-self: start; }
+}

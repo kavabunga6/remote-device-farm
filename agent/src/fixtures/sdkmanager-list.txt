@@ -1,0 +1,28 @@
+Installed packages:
+  Path                                        | Version | Description                    | Location
+  -------                                     | ------- | -------                        | -------
+  system-images;android-30;google_apis;x86_64 | 12      | Google APIs Intel x86_64 Atom System Image | system-images/android-30/google_apis/x86_64
+
+Available Packages:
+  Path                                                                  | Version      | Description
+  -------                                                               | -------      | -------
+  emulator                                                              | 35.2.10      | Android Emulator
+  platforms;android-34                                                  | 3            | Android SDK Platform 34
+  system-images;android-19;default;x86                                  | 6            | Intel x86 Atom System Image
+  system-images;android-23;google_apis;x86                              | 33           | Google APIs Intel x86 Atom System Image
+  system-images;android-30;google_apis;x86                              | 10           | Google APIs Intel x86 Atom System Image
+  system-images;android-30;google_apis;x86_64                           | 12           | Google APIs Intel x86_64 Atom System Image
+  system-images;android-30;android-tv;x86                               | 3            | Android TV Intel x86 Atom System Image
+  system-images;android-33;android-automotive-playstore;x86_64          | 5            | Android Automotive with Google Play Intel x86_64 Atom System Image
+  system-images;android-33;android-wear;x86_64                          | 9            | Wear OS 4 - Preview Intel x86_64 Atom System Image
+  system-images;android-34;google_apis_playstore;x86_64                 | 14           | Google Play Intel x86_64 Atom System Image
+  system-images;android-34;google_apis_playstore;arm64-v8a              | 14           | Google Play ARM 64 v8a System Image
+  system-images;android-34;google-tv;x86                                | 4            | Google TV Intel x86 Atom System Image
+  system-images;android-34-ext10;google_apis_playstore;x86_64           | 2            | Google Play Intel x86_64 Atom System Image
+  system-images;android-35;google_apis_playstore_ps16k;x86_64           | 7            | Google Play 16 KB page size Intel x86_64
+  system-images;android-36;default;x86_64                               | 4            | Intel x86_64 Atom System Image
+  system-images;android-36.1;google_apis_playstore;x86_64               | 1            | Google Play Intel x86_64 Atom System Image
+  system-images;android-34;google-xr;x86_64                             | 1            | Google XR Intel x86_64 Atom System Image
+  system-images;android-VanillaIceCream;google_apis;x86_64              | 1            | Preview
+Available Updates:
+  system-images;android-30;google_apis;x86_64 | 12 -> 13

@@ -1,0 +1,35 @@
+.session-startup-center{display:grid;place-items:center;min-height:calc(100dvh - 260px);box-sizing:border-box;padding:20px 0}
+.session-startup-progress{width:min(100%,540px);box-sizing:border-box;padding:28px;border:1px solid var(--ui-border);border-radius:16px;background:var(--ui-surface);color:var(--ui-text)}
+.session-startup-header{margin-bottom:26px}
+.session-startup-header h2{font-size:1.125rem;line-height:1.4;margin:0 0 6px;font-weight:700}
+.session-startup-header p{margin:0;font-size:.8125rem;line-height:1.5;color:var(--ui-subtle)}
+.session-startup-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.session-startup-steps li{position:relative;display:grid;grid-template-columns:30px minmax(0,1fr);align-items:start;gap:14px;min-width:0;padding-bottom:24px}
+.session-startup-steps li:last-child{padding-bottom:0}
+.session-startup-steps li:not(:last-child)::before{content:"";position:absolute;left:14px;top:36px;bottom:6px;width:1px;background:var(--ui-border)}
+.session-startup-step-number{display:grid;place-items:center;width:30px;height:30px;box-sizing:border-box;border:1px solid var(--ui-border);border-radius:50%;font-size:.75rem;font-weight:650;color:var(--ui-muted);background:var(--ui-inset)}
+.session-startup-step-content{padding-top:3px;min-width:0}
+.session-startup-steps h3{margin:0;font-size:.875rem;line-height:1.5;font-weight:650;color:var(--ui-text)}
+.session-startup-steps p{margin:5px 0 0;font-size:.8125rem;line-height:1.5;color:var(--ui-subtle)}
+.session-startup-step-status{margin-top:6px;font-size:.75rem;line-height:1.5;color:var(--ui-muted)}
+.session-startup-steps .is-current .session-startup-step-number{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.session-startup-steps .is-current .session-startup-step-status,.session-startup-steps .is-complete .session-startup-step-status{color:var(--accent)}
+.session-startup-steps .is-complete .session-startup-step-number{border-color:transparent;background:var(--accent-soft);color:var(--accent)}
+.session-startup-current{margin-top:12px}
+.session-startup-progress progress{display:block;width:100%;height:5px;border:0;border-radius:99px;overflow:hidden;accent-color:var(--accent);background:var(--ui-inset)}
+.session-startup-progress progress::-webkit-progress-bar{background:var(--ui-inset);border-radius:99px}
+.session-startup-progress progress::-webkit-progress-value{background:var(--accent);border-radius:99px}
+.session-startup-progress progress::-moz-progress-bar{background:var(--accent);border-radius:99px}
+.session-startup-indeterminate{width:100%;height:5px;border-radius:99px;overflow:hidden;background:var(--ui-inset)}
+.session-startup-indeterminate>span{display:block;width:32%;height:100%;border-radius:inherit;background:var(--accent);animation:session-startup-pending 1.8s ease-in-out infinite}
+@keyframes session-startup-pending{from{transform:translateX(-100%)}to{transform:translateX(313%)}}
+@media(prefers-reduced-motion:reduce){.session-startup-indeterminate>span{animation:none;transform:translateX(100%)}}
+.session-startup-progress-meta{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:7px;font-size:.75rem;line-height:1.5;color:var(--ui-subtle);font-variant-numeric:tabular-nums}
+.session-startup-percent{flex:none;color:var(--ui-text)}
+.session-startup-footer{display:flex;align-items:flex-start;gap:8px;margin-top:24px;padding-top:16px;border-top:1px solid var(--ui-border);color:var(--ui-muted)}
+.session-startup-footer svg{flex:none;margin-top:2px}
+.session-startup-footer p{margin:0;font-size:.75rem;line-height:1.5}
+.session-startup-compact{display:flex;align-items:flex-start;gap:8px;margin-top:12px;color:var(--ui-subtle);font-size:.75rem;line-height:1.5}
+.session-startup-compact>svg{flex:none;margin-top:2px;color:var(--accent)}
+.session-startup-compact small{display:block;color:var(--ui-muted);font-size:.6875rem}
+@media(max-width:520px){.session-startup-center{min-height:0;padding-block:12px}.session-startup-progress{padding:22px}.session-startup-steps li{gap:12px}}

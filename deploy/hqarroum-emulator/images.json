@@ -1,0 +1,29 @@
+[
+  {
+    "api": 31,
+    "android": "12",
+    "flavor": "google_apis",
+    "abi": "x86_64",
+    "upstream": "halimqarroum/docker-android@sha256:c04dd92628f00cc53d613912774c9204194dca8e1499bdb4f2f3d448679ed1ad",
+    "upstreamTag": "api-31",
+    "image": "rdf-hqarroum-emulator:api-31"
+  },
+  {
+    "api": 32,
+    "android": "12L",
+    "flavor": "google_apis",
+    "abi": "x86_64",
+    "upstream": "halimqarroum/docker-android@sha256:56484e58a75f7f57a7adf81663980dff259f32591a2110236f7fe629841e9ca2",
+    "upstreamTag": "api-32",
+    "image": "rdf-hqarroum-emulator:api-32"
+  },
+  {
+    "api": 33,
+    "android": "13",
+    "flavor": "google_apis",
+    "abi": "x86_64",
+    "upstream": "halimqarroum/docker-android@sha256:0804f0c30234db0fb711910c569f13312bc3cfa354cb66c8e0db6a4e66edfb95",
+    "upstreamTag": "api-33",
+    "image": "rdf-hqarroum-emulator:api-33"
+  }
+]

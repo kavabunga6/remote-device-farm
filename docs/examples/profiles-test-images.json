@@ -1,0 +1,71 @@
+{
+  "version": 2,
+  "profiles": [
+    {
+      "id": "example-android-phone",
+      "name": "Phone · Android 16 · Google APIs",
+      "allowLaunchOverrides": null,
+      "image": {
+        "repository": "registry.example.com/rdf-emulator",
+        "tag": "36.1-google_apis-x86_64",
+        "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      },
+      "android": {
+        "version": "16",
+        "api": 36,
+        "abi": "x86_64",
+        "flavor": "google_apis",
+        "deviceType": "mobile",
+        "resolution": "1080x1920"
+      },
+      "resources": {
+        "cpu": 4,
+        "memoryMb": 6144,
+        "guestMemoryMb": 4096,
+        "guestCores": 4,
+        "diskGb": 8,
+        "diskMaxGb": 32,
+        "sdcardGb": null,
+        "sdcardMaxGb": 8
+      },
+      "emulator": {
+        "params": [
+          "-no-snapshot"
+        ]
+      }
+    },
+    {
+      "id": "example-android-tablet",
+      "name": "Tablet · Android 16 · Google APIs",
+      "allowLaunchOverrides": null,
+      "image": {
+        "repository": "registry.example.com/rdf-emulator",
+        "tag": "36.1-google_apis-x86_64",
+        "digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      },
+      "android": {
+        "version": "16",
+        "api": 36,
+        "abi": "x86_64",
+        "flavor": "google_apis",
+        "deviceType": "mobile",
+        "resolution": "1600x2560"
+      },
+      "resources": {
+        "cpu": 4,
+        "memoryMb": 6144,
+        "guestMemoryMb": 4096,
+        "guestCores": 4,
+        "diskGb": 8,
+        "diskMaxGb": 32,
+        "sdcardGb": null,
+        "sdcardMaxGb": 8
+      },
+      "emulator": {
+        "params": [
+          "-no-snapshot"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+Remote Device Farm Linux agent
+
+This archive contains the agent source, Dockerfile and a standalone Compose file.
+It contains no enrollment token, TLS certificate, ADB private key or Docker socket.
+
+Requirements: Linux x86-64 with /dev/kvm, Docker Engine 28+ and Compose 2.30+.
+1. Create .env.agent beside compose.agent.yaml with AGENT_ID, AGENT_TOKEN,
+   AGENT_BROKER_URL and other site-specific settings. Get the one-time
+   AGENT_TOKEN from the administrator; do not share it in this archive.
+2. Set AGENT_HOST_IP to the node address visible to users when applicable.
+3. Review resource settings and run:
+   docker compose --env-file .env.agent -p rdf-agent -f compose.agent.yaml up --build -d
+4. Confirm the node appears online in the UI before starting emulators.
+   Dynamic slots use Docker daemon CPU/RAM because emulators are siblings of the
+   I/O agent container. For Docker-in-Docker or Kubernetes with a quota-bound
+   daemon, set AGENT_DOCKER_CAPACITY_SCOPE=bounded plus
+   AGENT_NODE_CPU_LIMIT and AGENT_NODE_MEMORY_MB in .env.agent. Without both
+   explicit limits, dynamic mode advertises zero slots.
+
+The I/O agent has no Docker socket. Only agent-control has Docker access.
+
+Docker images
+-------------
+The farm runs emulators from Docker images only. A starter Google Android 11 profile is available.
+The image catalog builds additional Google SDK system images on one selected builder, pushes them to
+an authenticated registry and creates profiles pinned by digest. This archive includes emulator-image/
+(the fixed Docker build context); user-supplied Dockerfiles are not accepted.
+With AGENT_ALLOWED_IMAGE_PREFIXES set, include the farm registry prefix as well as any starter image sources.
+Every Docker host must trust the registry HTTPS certificate. localhost:5000 works only when the registry
+and Docker daemon are on the same host; use a shared HTTPS address for multiple nodes.
+
+The agent_image_builds volume stores build status without registry passwords. Preserve it when upgrading
+agent-control; interrupted jobs are reported explicitly after a restart and can be retried from the catalog.
+
+ADB access
+----------
+The farm TCP broker authenticates the user key selected for the session. The agent
+authenticates its internal Android connection with its own RSA-2048 ADB key. Keep
+that private key in the agent ADB keys volume; it is never returned to clients.
+If ADB_PUBLIC_KEY_FILE is set, use a .pub path with its private half beside it
+(the same filename without .pub). No device-side user approval is required.
+
+Headless SDK helper ADB is disabled for emulator-v1 images via -adb-path /bin/false.
+All device commands use the authorized I/O agent connection. This prevents the
+SDK from generating another host key and opening a USB debugging confirmation.

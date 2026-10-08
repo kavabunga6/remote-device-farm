@@ -1,0 +1,31 @@
+{
+  "name": "remote-device-farm-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "test": "node --test launch-readiness.test.mjs console-commands.test.mjs logcat.test.mjs env-api.test.mjs queue-logic.test.mjs apps-api.test.mjs dev/live-proxy.test.mjs node-capacity.test.mjs profile-metadata.test.mjs session-audience.test.mjs session-stream.test.mjs profile-catalog.test.mjs profile-env.test.mjs devices.test.mjs startup-progress.test.mjs password-generator.test.mjs i18n.test.mjs request-deadline.test.mjs permissions.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "e2e": "playwright test",
+    "dev:live": "node dev/run-live.mjs",
+    "dev:mock": "node dev/run-mock.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/onest": "^5.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "esbuild": "^0.25.12",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.5"
+  }
+}

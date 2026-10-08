@@ -1,0 +1,132 @@
+/* Token management uses full-width records and an on-demand creation form. */
+.token-page{width:100%;max-width:1280px}
+.token-page [hidden]{display:none!important}
+.token-page .token-section{margin:0 0 28px}
+.token-heading-actions,.account-heading-actions{display:flex;align-items:center;gap:12px;flex:none}
+.token-heading-actions .button,.account-heading-actions .button{min-height:40px}
+.token-page .section-heading{align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.token-page .section-heading p{max-width:none}
+.token-page .token-grid{display:flex;flex-direction:column;gap:14px}
+.token-page .token-list{min-height:0;padding:0 22px;background:var(--ui-surface);border-color:var(--ui-border);border-radius:12px}
+.token-page .token-row{padding:18px 0;gap:14px;border-color:var(--ui-border)}
+.token-page .token-row-icon{width:40px;height:40px;border-radius:10px;background:var(--ui-inset);color:var(--ui-accent)}
+.token-page .token-row-main strong{font-size:.9375rem;color:var(--ui-text);white-space:normal;overflow-wrap:anywhere}
+.token-page .token-row-main small{font-size:.8125rem;line-height:1.6;color:var(--ui-muted)}
+.token-page .token-row>.text-button,.token-page .token-confirm .text-button{min-height:40px;padding:8px;font-size:.8125rem}
+.token-page .token-empty{min-height:100px;display:flex;flex-direction:row;justify-content:flex-start;gap:14px;padding:22px 0;color:var(--ui-muted);font-size:.875rem;text-align:left}
+.token-page .token-empty>div{display:grid;gap:6px}
+.token-page .token-empty strong{font-size:.9375rem;color:var(--ui-text)}
+.token-page .token-create{order:-1;grid-template-columns:minmax(220px,1fr) minmax(160px,.65fr) auto;align-items:end;gap:16px;padding:22px;border-radius:12px;background:var(--ui-surface);border-color:var(--ui-border)}
+.token-create-intro{grid-column:1/-1}
+.token-page .token-create h3{font-size:1rem;color:var(--ui-text)}
+.token-create-intro p{margin:6px 0 0;font-size:.875rem;color:var(--ui-muted);line-height:1.55}
+.token-page .token-create label{font-size:.8125rem;color:var(--ui-subtle);gap:8px}
+.token-page .token-create input,.token-page .token-create select{min-height:2.75rem;padding:10px 12px;background:var(--ui-inset);color:var(--ui-text);border-color:var(--ui-border);font-size:.875rem}
+.token-page .token-create>.button{min-height:2.75rem;margin:0;gap:12px;justify-content:center;width:auto;font-size:.875rem}
+.token-page .token-secret{grid-column:1/-1;padding:18px;background:var(--ui-inset);border-color:var(--ui-border)}
+.token-page .token-secret strong{font-size:.875rem;color:var(--ui-text)}
+.token-page .token-secret p,.token-page .token-secret small{font-size:.8125rem;color:var(--ui-muted)}
+.token-page .token-secret code{font-size:.8125rem;color:var(--ui-text)}
+.token-page .token-secret>div>button{width:42px;height:42px;border-radius:8px;background:var(--ui-surface);color:var(--ui-accent)}
+.token-page .token-secret-done{margin-top:14px;min-height:40px}
+.token-page .token-error{font-size:.875rem;line-height:1.5}
+@media(max-width:760px){.token-page .token-create{grid-template-columns:1fr 1fr}.token-page .token-create>.button{grid-column:1/-1;justify-self:start}.token-page .token-list{padding:0 16px}.token-heading-actions .button{font-size:.8125rem}}
+@media(max-width:520px){.token-page .token-create{grid-template-columns:1fr;padding:18px}.token-page .token-create>.button{width:100%}.token-page .token-heading-actions{width:100%;justify-content:space-between}.token-page .token-empty{align-items:flex-start}.token-page .token-row-main{min-width:calc(100% - 54px)}.token-page .token-row>.text-button,.token-page .token-confirm{margin-left:54px}.token-page .token-row{gap:10px}}
+
+/* ---------- Account page ---------- */
+.user-settings-page{width:100%;max-width:none;font-size:.9375rem}
+.user-settings-page .page-heading{margin-bottom:1.5rem}
+.user-settings-page .page-heading h1{font-size:1.75rem;line-height:1.2}
+.user-settings-page .page-heading p{font-size:.9375rem;color:var(--ui-muted)}
+.user-settings-page .settings-feedback{margin:0 0 1rem;font-size:.875rem}
+.user-settings-page .account-notice{display:flex;align-items:center;gap:.5rem;padding:.75rem 1rem;border-radius:.5rem;background:var(--accent-soft);color:var(--accent-strong);font-size:.875rem}
+.user-settings-page .settings-identity{min-height:0;padding:1.25rem 1.5rem;gap:1rem;border-radius:.75rem;margin-bottom:1.5rem;background:var(--ui-surface);border-color:var(--ui-border)}
+.user-settings-page .account-avatar{width:3.5rem;height:3.5rem;border-radius:1rem;background:var(--accent-soft);color:var(--accent-strong);font-size:1.5rem}
+.user-settings-page .settings-identity strong{font-size:1.125rem;color:var(--ui-text)}
+.user-settings-page .settings-identity small{font-size:.875rem;color:var(--ui-muted)}
+.user-settings-page .account-role{background:var(--accent-soft);color:var(--accent-strong);font-size:.8125rem;padding:.375rem .75rem}
+.user-settings-page .settings-card,.user-settings-page .account-farm-card,.user-settings-page .account-key-list,.user-settings-page .account-upload-card,.user-settings-page .settings-history-list{border:1px solid var(--ui-border);border-radius:.75rem;background:var(--ui-surface);box-shadow:none}
+.user-settings-page .settings-card{padding:1.5rem;margin:0}
+.user-settings-page .settings-card-title h2,.user-settings-page .account-section-heading h2,.user-settings-page .settings-history h2{margin:0 0 .25rem;font-size:1.125rem;line-height:1.3;color:var(--ui-text);letter-spacing:-.02em}
+.user-settings-page .settings-card-title p,.user-settings-page .account-section-heading p{margin:0 0 1rem;font-size:.8125rem;line-height:1.5;color:var(--ui-muted)}
+.user-settings-page .account-section-heading{margin:0 0 .75rem;align-items:flex-end}
+.user-settings-page .account-section-heading p{margin:0}
+.user-settings-page .settings-form{gap:1rem}
+.user-settings-page .settings-form label,.user-settings-page .account-upload-card>label:not(.account-file-picker){gap:.375rem;font-size:.8125rem;color:var(--ui-subtle);font-weight:650}
+.user-settings-page .settings-form input,.user-settings-page .settings-form select,.user-settings-page .account-upload-card input[type="text"],.user-settings-page .account-upload-card input:not([type]){min-height:2.75rem;padding:.5rem .75rem;border:1px solid var(--ui-border);border-radius:.5rem;background:var(--ui-inset);color:var(--ui-text);font-size:.9375rem}
+.user-settings-page :is(input,select):focus-visible,.user-settings-page .account-file-picker:focus-within{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent);box-shadow:none}
+.user-settings-page .settings-form input:disabled{background:var(--ui-inset);color:var(--ui-muted);opacity:.8}
+.user-settings-page .button{min-height:2.5rem;font-size:.875rem}
+.user-settings-page .settings-hint,.user-settings-page .settings-muted{font-size:.8125rem;color:var(--ui-muted)}
+/* ADB keys */
+.user-settings-page>.account-page,.user-settings-page .account-page{width:100%;margin:0;display:grid;gap:.75rem}
+.user-settings-page .account-page .account-section-heading{margin:.75rem 0 0}
+.user-settings-page .account-page .account-section-heading:first-child{margin-top:0}
+.user-settings-page .account-farm-card{padding:1.25rem;gap:1rem;align-items:flex-start;flex-wrap:wrap}
+.user-settings-page .account-card-icon,.user-settings-page .account-key-icon{background:var(--accent-soft);color:var(--accent-strong)}
+.user-settings-page .account-farm-copy{flex:1 1 14rem}
+.user-settings-page .account-farm-title h3,.user-settings-page .account-upload-card h3{font-size:1rem;color:var(--ui-text)}
+.user-settings-page .account-farm-copy>p,.user-settings-page .account-upload-card>p{max-width:none;font-size:.8125rem;line-height:1.55;color:var(--ui-muted)}
+.user-settings-page .account-state{background:var(--ui-inset);color:var(--ui-muted);font-size:.75rem;padding:.25rem .5rem;border:1px solid var(--ui-border)}
+.user-settings-page .account-state.ready{background:var(--accent-soft);color:var(--accent-strong);border-color:transparent}
+.user-settings-page .account-fingerprint span,.user-settings-page .account-fingerprint small,.user-settings-page .account-path,.user-settings-page .account-key-main small{font-size:.8125rem;color:var(--ui-muted)}
+.user-settings-page .account-fingerprint code,.user-settings-page .account-key-main code{font-size:.75rem;color:var(--ui-subtle);overflow-wrap:anywhere}
+.user-settings-page .account-path code,.user-settings-page .account-upload-card p code,.user-settings-page .account-key-save-help code{background:var(--ui-inset);color:var(--ui-text);font-size:.75rem}
+.user-settings-page .account-farm-action{margin-left:0;font-size:.875rem}
+.user-settings-page .account-confirm{flex-basis:100%;background:var(--error-bg);border-color:transparent;color:var(--error);font-size:.8125rem}
+.user-settings-page .account-key-grid{grid-template-columns:1fr;gap:.75rem}
+.user-settings-page .account-key-list{min-height:0;padding:.25rem 1.25rem}
+.user-settings-page .account-key-row{padding:1rem 0;border-color:var(--ui-border);gap:.75rem}
+.user-settings-page .account-key-main strong{white-space:normal;overflow-wrap:anywhere;font-size:.9375rem;color:var(--ui-text)}
+.user-settings-page .account-default-tag{color:var(--accent-strong);font-size:.75rem}
+.user-settings-page .account-key-row>.text-button,.user-settings-page .account-delete-confirm{min-height:2.5rem;font-size:.8125rem}
+.user-settings-page .account-key-empty{min-height:8rem;gap:.25rem;padding:1.25rem 0;font-size:.8125rem;color:var(--ui-muted)}
+.user-settings-page .account-key-empty strong{font-size:.9375rem;color:var(--ui-text)}
+.user-settings-page .account-key-empty svg{color:var(--ui-muted)}
+.user-settings-page .account-upload-card{padding:1.25rem;gap:.75rem}
+.user-settings-page .account-file-picker{min-height:2.75rem;border-color:var(--ui-border);background:var(--ui-inset);color:var(--accent-strong);font-size:.875rem}
+.user-settings-page .account-default-checkbox{font-size:.8125rem;color:var(--ui-subtle);min-height:2rem}
+.user-settings-page .account-default-checkbox input{min-height:0;width:1.125rem;height:1.125rem;accent-color:var(--accent)}
+.user-settings-page .account-upload-card>.button{justify-content:center;gap:.75rem;font-size:.875rem}
+.user-settings-page .account-limit-note{font-size:.8125rem;color:var(--ui-muted)}
+/* History */
+.user-settings-page .settings-history{margin:0}
+.user-settings-page .settings-history .account-section-heading{margin-top:0}
+.user-settings-page .settings-history-list{overflow:hidden}
+.user-settings-page .settings-rental{padding:.875rem 1.25rem;border-color:var(--ui-border);font-size:.8125rem;gap:1rem}
+.user-settings-page .settings-rental strong{font-size:.9375rem;color:var(--ui-text)}
+.user-settings-page .settings-rental span{color:var(--ui-subtle)}
+.user-settings-page .settings-rental small{font-size:.8125rem;color:var(--ui-muted)}
+.user-settings-page .settings-history-empty{padding:1.5rem 1rem;font-size:.875rem;color:var(--ui-muted)}
+.user-settings-page .settings-more{margin-top:.75rem}
+/* Notifications */
+.user-settings-page .notify-card{margin-top:0!important}
+.user-settings-page .notify-card .settings-card-title p{margin-bottom:1rem}
+.user-settings-page .notify-row p{flex:1 1 14rem;font-size:.875rem;color:var(--ui-subtle)}
+.user-settings-page .notify-sub{margin:1.5rem 0 .25rem;font-size:1rem;color:var(--ui-text)}
+.user-settings-page .notify-card .webhook-list{display:grid;gap:.75rem;margin:.75rem 0;padding:0;list-style:none}
+.user-settings-page .notify-card .webhook-item{padding:1rem;border:1px solid var(--ui-border);border-radius:.5rem;background:var(--ui-inset)}
+.user-settings-page .notify-card .webhook-url{min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:.875rem;color:var(--ui-text)}
+.user-settings-page .notify-card .webhook-item-top{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap}
+.user-settings-page .notify-card .webhook-events{margin:.5rem 0;font-size:.8125rem}
+.user-settings-page .notify-card .webhook-form{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--ui-border)}
+.user-settings-page .notify-card .row-actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.user-settings-page .notify-card input[type="checkbox"]{accent-color:var(--accent);width:1.125rem;height:1.125rem;min-height:0}
+.user-settings-page .notify-card .webhook-secret{padding:1rem;border-radius:.5rem;background:var(--accent-soft);color:var(--ui-text);display:grid;gap:.5rem;overflow-wrap:anywhere}
+@media(max-width:56rem){.user-settings-page .settings-form-two{grid-template-columns:1fr}}
+@media(max-width:40rem){
+  .user-settings-page .settings-card,.user-settings-page .account-farm-card{padding:1rem}
+  .user-settings-page .settings-identity{padding:1rem;flex-wrap:nowrap}
+  .user-settings-page .settings-identity .account-role{margin-left:0}
+  .user-settings-page .settings-form .button,.user-settings-page .account-farm-action{width:100%;justify-self:stretch}
+  .user-settings-page .account-farm-card{flex-direction:column}
+  .user-settings-page .settings-rental{flex-direction:column;align-items:flex-start;gap:.25rem;padding:.875rem 1rem}
+  .user-settings-page .settings-rental>div:last-child{text-align:left}
+  .user-settings-page .account-key-row{flex-wrap:wrap}
+  .user-settings-page .account-key-row>.text-button,.user-settings-page .account-delete-confirm{margin-left:0}
+}
+.user-settings-page .settings-password .settings-form{grid-template-columns:1fr;align-items:start}
+.user-settings-page .settings-password .settings-form .button{grid-column:1/-1}
+.user-settings-page .settings-nav{margin-bottom:1.5rem}
+@media(max-width:40rem){.user-settings-page .account-farm-copy{flex:0 1 auto;width:100%}}
+.token-page{max-width:none}

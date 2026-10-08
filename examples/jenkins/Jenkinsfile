@@ -1,0 +1,62 @@
+// Copy to the Android application repository as Jenkinsfile.
+pipeline {
+    agent { label 'linux && device-farm' }
+
+    options {
+        timeout(time: 60, unit: 'MINUTES')
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        RDF_URL = 'https://farm.example.com'
+        RDF_PROFILE = 'android-30'
+        RDF_ADB_KEY_ID = 'replace-with-your-public-key-uuid'
+        RDF_LABEL = "jenkins-${env.BUILD_NUMBER}"
+        RDF_ARTIFACT_DIR = "rdf-artifacts/${env.BUILD_NUMBER}"
+        RDF_STATE_FILE = "${env.WORKSPACE}/rdf-artifacts/${env.BUILD_NUMBER}/session.json"
+        RDF_START_TIMEOUT_SECONDS = '900'
+        RDF_CONNECT_TIMEOUT_SECONDS = '60'
+        RDF_RELEASE_TIMEOUT_SECONDS = '180'
+    }
+
+    stages {
+        stage('Build test APKs') {
+            steps {
+                sh '''#!/usr/bin/env bash
+set +x
+set -euo pipefail
+for tool in adb curl jq timeout java tee; do command -v "$tool" >/dev/null; done
+if [ -e "$RDF_STATE_FILE" ] || [ -d "$RDF_STATE_FILE.lock" ]; then
+  echo "Saved RDF state exists: $RDF_STATE_FILE; release it before retrying this build" >&2
+  exit 1
+fi
+mkdir -p "$RDF_ARTIFACT_DIR"
+./gradlew clean assembleDebug assembleDebugAndroidTest --no-daemon 2>&1 | tee "$RDF_ARTIFACT_DIR/build.log"
+'''
+            }
+        }
+        stage('Android tests') {
+            steps {
+                withCredentials([string(credentialsId: 'rdf-api-token', variable: 'RDF_TOKEN')]) {
+                    sh '''#!/usr/bin/env bash
+set +x
+set -euo pipefail
+bash ci/rdf.sh run -- bash ci/android-tests.sh 2>&1 | tee "$RDF_ARTIFACT_DIR/rdf-run.log"
+'''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                try {
+                    junit testResults: 'app/build/outputs/androidTest-results/connected/**/*.xml', allowEmptyResults: true
+                } finally {
+                    archiveArtifacts artifacts: "rdf-artifacts/${env.BUILD_NUMBER}/**,app/build/outputs/androidTest-results/connected/**/*.xml,app/build/reports/androidTests/**", allowEmptyArchive: true
+                }
+            }
+        }
+    }
+}

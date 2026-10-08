@@ -1,0 +1,8 @@
+Remote Device Farm
+Copyright 2026 Remote Device Farm contributors
+
+The project source is licensed under the Apache License, Version 2.0.
+Third-party dependencies and externally downloaded Android SDK components,
+system images and container bases retain their own licenses. See
+THIRD_PARTY.md. The project license does not grant redistribution rights
+to those components or rights to third-party trademarks.

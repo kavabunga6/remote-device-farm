@@ -1,0 +1,25 @@
+{
+  "name": "rdf-appium-example",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Appium smoke test through Remote Device Farm managed CLI",
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "devDependencies": {
+    "appium": "3.8.0",
+    "appium-uiautomator2-driver": "git+https://github.com/appium/appium-uiautomator2-driver.git#7a54db007aa8a44f5df21cd0b52afc13c0d277ae"
+  },
+  "overrides": {
+    "shell-quote": "1.12.0",
+    "axios": "1.20.0",
+    "morgan": "1.12.1",
+    "proxy-addr": "2.0.8",
+    "sharp": "0.35.5"
+  }
+}

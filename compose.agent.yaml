@@ -1,0 +1,73 @@
+services:
+  agent-keys:
+    build: ./agent
+    restart: "no"
+    user: "0:0"
+    entrypoint: ["sh", "-ec", "chown -R 10001:10001 /home/agent/.android"]
+    network_mode: none
+    volumes:
+      - agent_adb_keys:/home/agent/.android
+    cap_drop: [ALL]
+    cap_add: [CHOWN]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    pids_limit: 32
+    mem_limit: 128m
+
+  agent-control:
+    build: ./agent
+    restart: unless-stopped
+    env_file: .env.agent
+    command: ["node", "src/control-main.mjs"]
+    init: true
+    stop_grace_period: 45s
+    environment:
+      AGENT_IMAGE_BUILD_STATE_DIR: /var/lib/rdf-image-builds
+    user: "0:10001"
+    network_mode: none
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - agent_image_builds:/var/lib/rdf-image-builds
+      - agent_control_ipc:/run/agent-control
+    devices:
+      - /dev/kvm:/dev/kvm
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    pids_limit: 128
+    mem_limit: 512m
+
+  agent:
+    build: ./agent
+    restart: unless-stopped
+    depends_on:
+      agent-keys:
+        condition: service_completed_successfully
+      agent-control:
+        condition: service_started
+    env_file: .env.agent
+    environment:
+      HOME: /home/agent
+      AGENT_HOST_IP: ${AGENT_HOST_IP:-}
+    user: "10001:10001"
+    init: true
+    stop_grace_period: 45s
+    volumes:
+      - agent_adb_keys:/home/agent/.android
+      - agent_control_ipc:/run/agent-control:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    pids_limit: 256
+    mem_limit: 2g
+
+volumes:
+  agent_image_builds:
+  agent_adb_keys:
+  agent_control_ipc:

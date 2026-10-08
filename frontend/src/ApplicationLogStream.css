@@ -1,0 +1,28 @@
+.application-log{min-width:0}
+.application-log-intro{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:20px 0 16px}
+.application-log-intro h3{font-size:1rem;margin:0 0 6px;color:var(--ui-text)}
+.application-log-intro p{font-size:.8125rem;line-height:1.5;margin:0;color:var(--ui-subtle)}
+.application-log-connection{display:flex;align-items:center;gap:7px;flex:none;font-size:.8125rem;color:var(--ui-subtle)}
+.application-log-connection>span{width:7px;height:7px;border-radius:50%;background:currentColor}
+.application-log-connection.is-live{color:var(--ui-accent)}
+.application-log-connection.is-denied{color:var(--error)}
+.application-log-toolbar{display:flex;align-items:end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.application-log-filters{display:grid;grid-template-columns:minmax(160px,1.5fr) minmax(160px,1fr);gap:12px;flex:1 1 360px;max-width:680px}
+.application-log-field{display:grid;grid-template-rows:subgrid;grid-row:span 2;gap:6px;color:var(--ui-subtle);font-size:.8125rem;font-weight:600;min-width:0}
+.application-log-field label{color:var(--ui-subtle);font-size:.8125rem;font-weight:600}
+:root .application-log-toolbar :is(input,select,.button){min-height:2.75rem}
+.application-log-filters input,.application-log-filters select{width:100%;min-width:0;min-height:2.75rem;box-sizing:border-box;padding:10px 12px;border:1px solid var(--ui-border);border-radius:8px;background-color:var(--ui-surface);color:var(--ui-text);font-size:.875rem;line-height:1.5}
+.application-log-actions{display:flex;gap:8px;flex-wrap:wrap}
+.application-log-actions .button{min-height:2.75rem;font-size:.8125rem;line-height:1.5;padding:10px 12px;justify-content:center;box-sizing:border-box}
+.application-log-viewport{height:clamp(300px,55vh,650px);overflow:auto;background:var(--ui-inset);border:1px solid var(--ui-border);border-radius:12px;scrollbar-color:var(--ui-border) var(--ui-inset);color:var(--ui-text)}
+.application-log-viewport:focus-visible{outline:2px solid var(--ui-accent);outline-offset:3px}
+.application-log-viewport pre{margin:0;padding:16px;font-family:var(--font-mono,monospace);font-size:.75rem;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:2;user-select:text;font-variant-numeric:tabular-nums}
+.application-log-time{color:var(--ui-subtle)}
+.application-log-level{font-weight:700}
+.application-log-line.is-warning .application-log-level{color:color-mix(in srgb,var(--role-badge) 80%,var(--ui-text))}
+.application-log-line.is-error{color:var(--error)}
+.application-log-empty{margin:0;padding:28px 16px;font-size:.875rem;line-height:1.5;color:var(--ui-subtle)}
+.application-log-footer{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;color:var(--ui-subtle);font-size:.75rem;line-height:1.5}
+.application-log-footer>button{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:.8125rem;min-height:36px}
+.application-log-notice{font-size:.8125rem;color:var(--ui-subtle);line-height:1.5;margin:12px 0}
+@media(max-width:600px){.application-log-intro{align-items:flex-start;flex-direction:column;gap:10px}.application-log-filters{max-width:none;flex-basis:100%;grid-template-columns:minmax(0,1fr)}.application-log-field{grid-row:auto;grid-template-rows:auto auto}.application-log-actions{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.application-log-actions .button{padding:10px 8px;font-size:.75rem;gap:5px}.application-log-footer>button{margin-left:0}.application-log-viewport pre{padding:12px}.application-log-toolbar{gap:12px}}

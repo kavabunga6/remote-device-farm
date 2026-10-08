@@ -1,0 +1,23 @@
+/* UX pass: consistent danger text actions, headings that are links, mobile toolbars, dark switches, page widths. */
+
+/* Text-style destructive actions look like what they are: small outlined danger buttons. */
+:root:root .text-button.danger-text{padding:6px 12px;min-height:32px;border:1px solid color-mix(in srgb,var(--error,#c0392b) 55%,transparent);border-radius:8px;color:var(--error,#c0392b);font-weight:700;text-decoration:none}
+:root:root .text-button.danger-text:hover:not(:disabled){background:color-mix(in srgb,var(--error,#c0392b) 12%,transparent);text-decoration:none}
+:root:root .text-button.danger-text:disabled{border-color:transparent;color:var(--ui-muted);background:var(--ui-inset)}
+
+/* Switches stay readable in the dark theme: visible track, light knob. */
+:root[data-effective-theme="dark"] .modal.create-session-modal .create-gpu-switch input{background:#1f293d;border-color:#34455e}
+:root[data-effective-theme="dark"] .create-gpu-switch input::after{background:#c7d4da}
+:root[data-effective-theme="dark"] .modal.create-session-modal .create-gpu-switch input:checked{background:var(--accent);border-color:var(--accent)}
+:root[data-effective-theme="dark"] .create-gpu-switch input:checked::after{background:#06231a}
+
+/* Account/settings pages use the same content width as the other pages. */
+.user-settings-page,.settings-layout{max-width:none}
+
+/* Mobile: toolbars wrap instead of overflowing, queue header stacks. */
+@media(max-width:760px){
+  .section-heading .admin-heading-actions,.admin-heading-actions{flex-wrap:wrap;width:100%}
+  .admin-heading-actions .button{flex:1 1 auto;min-width:0;white-space:normal}
+  .queue-widget-head{flex-direction:column;align-items:flex-start;gap:4px}
+  .modal.create-session-modal .profile-manual>summary{flex-wrap:wrap}
+}

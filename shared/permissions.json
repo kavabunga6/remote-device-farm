@@ -1,0 +1,316 @@
+{
+  "groups": [
+    {
+      "id": "sessions",
+      "labelKey": "permissions.group.sessions",
+      "actions": [
+        {
+          "id": "sessions.view",
+          "labelKey": "permissions.sessions.view",
+          "requires": []
+        },
+        {
+          "id": "sessions.create",
+          "labelKey": "permissions.sessions.create",
+          "requires": [
+            "sessions.view"
+          ]
+        },
+        {
+          "id": "sessions.stop",
+          "labelKey": "permissions.sessions.stop",
+          "requires": [
+            "sessions.view"
+          ]
+        },
+        {
+          "id": "sessions.control",
+          "labelKey": "permissions.sessions.control",
+          "requires": [
+            "sessions.view"
+          ]
+        },
+        {
+          "id": "sessions.console",
+          "labelKey": "permissions.sessions.console",
+          "requires": [
+            "sessions.view"
+          ]
+        },
+        {
+          "id": "sessions.files",
+          "labelKey": "permissions.sessions.files",
+          "requires": [
+            "sessions.view"
+          ]
+        },
+        {
+          "id": "sessions.adb",
+          "labelKey": "permissions.sessions.adb",
+          "requires": [
+            "sessions.view"
+          ]
+        },
+        {
+          "id": "sessions.env",
+          "labelKey": "permissions.sessions.env",
+          "requires": [
+            "sessions.view"
+          ]
+        },
+        {
+          "id": "sessions.share",
+          "labelKey": "permissions.sessions.share",
+          "requires": [
+            "sessions.view"
+          ]
+        },
+        {
+          "id": "sessions.logcat",
+          "labelKey": "permissions.sessions.logcat",
+          "requires": [
+            "sessions.view"
+          ]
+        },
+        {
+          "id": "sessions.viewAll",
+          "labelKey": "permissions.sessions.viewAll",
+          "requires": [
+            "sessions.view"
+          ]
+        },
+        {
+          "id": "sessions.manageAll",
+          "labelKey": "permissions.sessions.manageAll",
+          "requires": [
+            "sessions.viewAll"
+          ]
+        },
+        {
+          "id": "sessions.launchOptions",
+          "labelKey": "permissions.sessions.launchOptions",
+          "requires": [
+            "sessions.create"
+          ]
+        },
+        {
+          "id": "sessions.configure",
+          "labelKey": "permissions.sessions.configure",
+          "requires": [
+            "sessions.launchOptions"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nodes",
+      "labelKey": "permissions.group.nodes",
+      "actions": [
+        {
+          "id": "nodes.view",
+          "labelKey": "permissions.nodes.view",
+          "requires": []
+        },
+        {
+          "id": "nodes.manage",
+          "labelKey": "permissions.nodes.manage",
+          "requires": [
+            "nodes.view"
+          ]
+        },
+        {
+          "id": "nodes.credentials",
+          "labelKey": "permissions.nodes.credentials",
+          "requires": [
+            "nodes.view"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "profiles",
+      "labelKey": "permissions.group.profiles",
+      "actions": [
+        {
+          "id": "profiles.view",
+          "labelKey": "permissions.profiles.view",
+          "requires": []
+        },
+        {
+          "id": "profiles.manage",
+          "labelKey": "permissions.profiles.manage",
+          "requires": [
+            "profiles.view"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "images",
+      "labelKey": "permissions.group.images",
+      "actions": [
+        {
+          "id": "images.view",
+          "labelKey": "permissions.images.view",
+          "requires": [
+            "profiles.view"
+          ]
+        },
+        {
+          "id": "images.build",
+          "labelKey": "permissions.images.build",
+          "requires": [
+            "images.view"
+          ]
+        },
+        {
+          "id": "images.settings",
+          "labelKey": "permissions.images.settings",
+          "requires": [
+            "images.view",
+            "nodes.view"
+          ]
+        },
+        {
+          "id": "images.cleanup",
+          "labelKey": "permissions.images.cleanup",
+          "requires": [
+            "images.view",
+            "nodes.view"
+          ]
+        },
+        {
+          "id": "images.delete",
+          "labelKey": "permissions.images.delete",
+          "requires": [
+            "images.view",
+            "profiles.manage"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "users",
+      "labelKey": "permissions.group.users",
+      "actions": [
+        {
+          "id": "users.view",
+          "labelKey": "permissions.users.view",
+          "requires": []
+        },
+        {
+          "id": "users.manage",
+          "labelKey": "permissions.users.manage",
+          "requires": [
+            "users.view"
+          ]
+        },
+        {
+          "id": "users.password",
+          "labelKey": "permissions.users.password",
+          "requires": [
+            "users.view"
+          ]
+        },
+        {
+          "id": "users.delete",
+          "labelKey": "permissions.users.delete",
+          "requires": [
+            "users.view"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "roles",
+      "labelKey": "permissions.group.roles",
+      "actions": [
+        {
+          "id": "roles.view",
+          "labelKey": "permissions.roles.view",
+          "requires": []
+        },
+        {
+          "id": "roles.manage",
+          "labelKey": "permissions.roles.manage",
+          "requires": [
+            "roles.view",
+            "users.view"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "teams",
+      "labelKey": "permissions.group.teams",
+      "actions": [
+        {
+          "id": "teams.view",
+          "labelKey": "permissions.teams.view",
+          "requires": []
+        },
+        {
+          "id": "teams.manage",
+          "labelKey": "permissions.teams.manage",
+          "requires": [
+            "teams.view"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ops",
+      "labelKey": "permissions.group.ops",
+      "actions": [
+        {
+          "id": "ops.view",
+          "labelKey": "permissions.ops.view",
+          "requires": []
+        }
+      ]
+    },
+    {
+      "id": "logs",
+      "labelKey": "permissions.group.logs",
+      "actions": [
+        {
+          "id": "logs.view",
+          "labelKey": "permissions.logs.view",
+          "requires": []
+        }
+      ]
+    },
+    {
+      "id": "tokens",
+      "labelKey": "permissions.group.tokens",
+      "actions": [
+        {
+          "id": "tokens.personal",
+          "labelKey": "permissions.tokens.personal",
+          "requires": []
+        },
+        {
+          "id": "tokens.system",
+          "labelKey": "permissions.tokens.system",
+          "requires": [
+            "tokens.personal"
+          ]
+        }
+      ]
+    }
+  ],
+  "user": [
+    "sessions.view",
+    "sessions.create",
+    "sessions.stop",
+    "sessions.control",
+    "sessions.console",
+    "sessions.files",
+    "sessions.adb",
+    "sessions.env",
+    "sessions.share",
+    "sessions.logcat",
+    "sessions.launchOptions",
+    "tokens.personal"
+  ]
+}

@@ -1,0 +1,51 @@
+.modal.user-form-dialog { width: min(100%, 680px); }
+.user-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.user-form-grid > label { min-width: 0; }
+.user-form-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 6px; }
+.user-record-copy { min-width: 0; }
+.admin-workspace .user-record-registration { display: grid; gap: 4px; flex: 0 0 10.5rem; color: var(--ui-muted); font-size: .8125rem; line-height: 1.5; }
+.user-record-registration time { color: var(--ui-text); font-variant-numeric: tabular-nums; }
+.admin-workspace .user-record-actions { justify-content: flex-end; flex: 0 0 10rem; }
+.user-record-work { color: var(--ui-text) !important; }
+@media (max-width: 600px) {
+  .user-form-grid { grid-template-columns: 1fr; gap: 14px; }
+  .user-form-actions { flex-wrap: wrap; }
+  .user-form-actions > .button { flex: 1 1 auto; }
+}
+
+.user-record-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; flex: none; }
+.user-reset-trigger { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; }
+.modal.user-password-dialog { width: min(100%, 36rem); }
+.user-password-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.user-password-fields > label { display: grid; grid-template-rows: subgrid; grid-row: span 2; min-width: 0; }
+.user-password-fields input { min-height: 2.75rem; }
+.admin-form-dialog .user-password-person { display: grid; gap: 4px; margin: 0; overflow-wrap: anywhere; }
+.user-password-person strong { color: var(--ui-text); font-size: 1rem; }
+.user-password-person span, .admin-form-dialog .user-password-hint { color: var(--ui-muted); font-size: .8125rem; line-height: 1.5; }
+.admin-form-dialog .user-password-notice { display: flex; gap: 10px; padding: 12px; border-radius: 8px; background: var(--ui-inset); color: var(--ui-subtle); font-size: .8125rem; line-height: 1.5; }
+.user-password-notice svg { flex: none; margin-top: 2px; color: var(--ui-accent); }
+@media (min-width: 761px) and (max-width: 1100px) {
+  .admin-workspace .user-record { display: grid; grid-template-columns: 40px minmax(0, 1fr) 10rem; gap: 10px 14px; }
+  .user-record-copy { grid-column: 2; grid-row: 1; }
+  .admin-workspace .user-record-registration { display: flex; flex-wrap: wrap; gap: 4px 8px; grid-column: 2; grid-row: 2; }
+  .admin-workspace .user-record-actions { grid-column: 3; grid-row: 1 / span 2; }
+}
+@media (max-width: 760px) {
+  .admin-workspace .user-record-registration { flex-basis: calc(100% - 54px); margin-left: 54px; }
+  .admin-workspace .user-record-actions { flex-basis: calc(100% - 54px); margin-left: 54px; justify-content: flex-start; }
+}
+@media (max-width: 600px) {
+  .user-password-fields { grid-template-columns: 1fr; }
+  .user-reset-trigger { flex-basis: 100%; margin-right: 0; }
+}
+
+.modal.user-delete-dialog { width: min(100%, 36rem); }
+.user-delete-content { display: grid; gap: 16px; padding: 20px; }
+.user-delete-content p { margin: 0; color: var(--ui-subtle); font-size: .875rem; line-height: 1.6; }
+.user-delete-content .user-password-person { display: grid; gap: 4px; }
+
+.user-record-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.user-record-name strong { min-width: 0; }
+.user-record-name .user-role { flex: 0 1 auto; min-width: 0; max-width: 60%; }
+.user-role > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-role.is-custom { color:var(--ui-subtle); background:var(--ui-inset); border-color:var(--ui-border); }

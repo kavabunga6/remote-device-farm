@@ -1,0 +1,341 @@
+/* Shell: profile with role badge and red destructive actions. */
+:root{--danger:#b8352a;--danger-hover:#9f2c22;--danger-soft:#fbe6e3;--role-badge:#b7791f}
+:root[data-effective-theme="dark"]{--danger:#d9534a;--danger-hover:#e5655b;--danger-soft:#3a1b18;--role-badge:#e0b04f}
+
+/* Destructive actions */
+.button.danger{background:var(--danger);border-color:var(--danger);color:#fff;box-shadow:none}
+.button.danger:not(:disabled):hover{background:var(--danger-hover)}
+.button.danger-outline{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
+.button.danger-outline:not(:disabled):hover{background:var(--danger);color:#fff}
+.icon-button.danger-icon{background:var(--danger-soft);border-color:transparent;color:var(--danger)}
+.icon-button.danger-icon:not(:disabled):hover{background:var(--danger);color:#fff}
+.text-button.danger-text{color:var(--danger)}
+:root[data-effective-theme="dark"] .button.danger{background:var(--danger);color:#fff}
+:root[data-effective-theme="dark"] .button.danger-outline{background:var(--danger-soft);border-color:var(--danger);color:#f2a39b}
+:root[data-effective-theme="dark"] .icon-button.danger-icon{background:var(--danger-soft);color:#f2a39b}
+:root[data-effective-theme="dark"] .text-button.danger-text{color:#f2a39b}
+:root[data-effective-theme="dark"] .button.danger-outline:not(:disabled):hover,:root[data-effective-theme="dark"] .icon-button.danger-icon:not(:disabled):hover{background:var(--danger);color:#fff}
+
+/* Navigation: items and profile */
+.side-profile{display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:10px;background:transparent;color:inherit;padding:9px 11px;text-align:left}
+.side-profile:hover,.side-profile.active{background:#e7f2ed}
+:root[data-effective-theme="dark"] :is(.side-profile:hover,.side-profile.active){background:#1d2a3d}
+.side-profile-name{display:block;min-width:0;font-size:0.8125rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side-profile-name small{display:block;margin-top:2px;font-size:0.6875rem;font-weight:500;color:#879b93}
+.avatar{position:relative;flex:none}
+.role-badge{position:absolute;right:-5px;bottom:-4px;width:17px;height:17px;border-radius:50%;background:var(--role-badge);color:#fff;display:grid;place-items:center;border:2px solid #fff}
+/* The avatar badge stays compact even when navigation icons scale on wide screens. */
+.avatar .role-badge>svg{display:block;width:10px;height:10px}
+:root[data-effective-theme="dark"] .role-badge{color:#1b2a2d;border-color:var(--ui-surface)}
+.side-logout span{min-width:0}
+
+@media(min-width:801px){
+  .sidebar-brand .mobile-close{display:none}
+  .topbar-user{display:none}
+  .topbar{justify-content:flex-start}
+}
+@media(max-width:800px){.sidebar .side-profile{margin-bottom:4px}}
+
+/* ---------- Type ---------- */
+:root{--font-ui:'Onest Variable','Onest',Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;--font-mono:'JetBrains Mono Variable','JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+  --accent:#0f6b58;--accent-strong:#0b5546;--accent-soft:#e3f3ec;--stage:#101816;--stage-line:#25322e;--stage-ink:#d7e3de}
+:root[data-effective-theme="dark"]{--accent:#34d399;--accent-strong:#5fdab2;--accent-soft:#0f2f27}
+:root,:root body{font-family:var(--font-ui)}
+button,input,select,textarea{font-family:inherit}
+code,pre,.terminal-output,.terminal-input,.terminal-input input,.adb-title-badge code,.console-suggestions code,.console-catalog-item code{font-family:var(--font-mono)}
+body{font-size:0.9062rem;line-height:1.5;letter-spacing:-.003em}
+.button.primary{background:var(--accent);box-shadow:none}
+.button.primary:hover{background:var(--accent-strong)}
+:root[data-effective-theme="dark"] .button.primary{color:#06231a}
+:focus-visible{outline-color:var(--accent)}
+
+/* ---------- Page frame ---------- */
+.topbar{height:52px;background:#f5f7f6;backdrop-filter:none;border-bottom:1px solid transparent}
+:root[data-effective-theme="dark"] .topbar{background:#0a0d14;border-color:transparent}
+.topbar-context{font-size:0.7812rem;letter-spacing:0}
+.main-content{padding-top:24px}
+.breadcrumbs{font-size:0.8125rem;margin-bottom:8px}
+.page-heading{align-items:center;margin-bottom:24px}
+.page-heading h1{font-size:1.75rem;letter-spacing:-.03em;margin-bottom:4px}
+.page-heading p{font-size:0.9062rem}
+.button{min-height:42px;font-size:0.875rem;font-weight:620;border-radius:10px}
+.session-card-actions .button,.button.small{font-size:0.8125rem;min-height:36px}
+.section-heading h2{font-size:1.125rem;margin-bottom:4px}
+.section-heading p{font-size:0.8438rem}
+.count-pill{font-size:0.7812rem;min-width:28px;height:26px}
+
+/* Overview tiles: icon beside the figure, no empty space */
+.stats-grid{gap:14px;margin-bottom:32px}
+.stat-card{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"icon value" "icon label";column-gap:16px;row-gap:2px;align-items:center;min-height:0;padding:18px 20px}
+.stat-card .stat-icon{grid-area:icon;margin:0;width:44px;height:44px}
+.stat-card .stat-value{grid-area:value;margin:0;font-size:1.75rem}
+.stat-card .stat-label{grid-area:label;margin:0;font-size:0.8438rem}
+
+/* Cards */
+.session-card,.host-card{border-radius:14px;padding:20px}
+.session-card h3,.host-card h3{font-size:1rem;margin-bottom:6px}
+.session-meta{font-size:0.8438rem}
+.session-id{font-size:0.7812rem}
+.status-badge{font-size:0.75rem;padding:5px 10px}
+.session-card-actions .icon-button{width:36px;height:36px}
+
+/* ---------- Session page ---------- */
+.session-main{padding-top:18px}
+.back-link{font-size:0.8438rem;margin-bottom:10px}
+.session-title-row{margin-bottom:16px;align-items:center}
+.session-title-top h1{font-size:1.625rem}
+.session-title-row p{font-size:0.8438rem;margin-top:6px}
+.adb-title-badge{font-size:0.8125rem}
+
+.viewer-panel{display:grid;grid-template-columns:minmax(0,1fr);position:relative;border-radius:16px}
+.viewer-stage{grid-column:1;grid-row:1}
+.text-send,.upload-feedback,.capture-feedback,.audio-notice{grid-column:1/-1}
+.text-send{min-height:52px}
+.text-send input{font-size:0.875rem}
+.text-send button{font-size:0.8438rem}
+
+/* Controls: a floating vertical bar on the right edge of the stage */
+.device-controls{grid-column:1;grid-row:1;justify-self:end;align-self:center;z-index:4;flex-direction:column;flex-wrap:nowrap;gap:2px;min-height:0;margin-right:20px;padding:6px;border:1px solid var(--stage-line);border-radius:16px;background:#162320d9;backdrop-filter:blur(8px)}
+.device-controls .control-group{flex-direction:column;gap:2px}
+.device-controls .controls-divider{width:26px;height:1px;background:var(--stage-line);margin:3px auto}
+.device-controls :is(.control-group button,.network-toggle,.upload-control,.capture-control){position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:0;padding:0;border:0;border-radius:11px;background:transparent;color:var(--stage-ink);font-size:0;gap:0}
+.device-controls :is(.control-group button,.network-toggle,.upload-control,.capture-control):hover:not(:disabled){background:#ffffff1c;color:#fff}
+.device-controls :is(.control-group button,.network-toggle,.upload-control,.capture-control):disabled{opacity:.35}
+.device-controls svg{width:20px;height:20px}
+.device-controls .network-toggle.enabled{background:#35c79a2e;color:#7ff0c9}
+.device-controls .network-toggle:not(.enabled){color:#f0a79f}
+.device-controls .capture-control.recording{background:#d9534a40;color:#ffb1a9;width:auto;min-width:44px;padding:0 8px;font-size:0.75rem;gap:6px}
+.device-controls .capture-control.recording span{font-size:0.75rem;font-family:var(--font-mono)}
+.device-controls .upload-control span:not(.mini-spinner){display:none}
+.device-controls [title]:hover::after{content:attr(title);position:absolute;right:calc(100% + 10px);top:50%;transform:translateY(-50%);background:#000;color:#fff;font-size:0.7812rem;font-weight:500;white-space:nowrap;padding:5px 10px;border-radius:7px;pointer-events:none;z-index:6}
+:root[data-effective-theme="dark"] .device-controls{background:#0d1614d9}
+
+/* Console */
+.tool-panel{border-radius:16px}
+.tool-header h2{font-size:1.0625rem}
+.tool-header p{font-size:0.8438rem}
+.terminal-output{font-size:0.8125rem;line-height:1.6;border-radius:12px;background:#0e1614;color:#cfe0d9}
+.terminal-input{border-radius:12px;min-height:44px;font-size:0.8125rem}
+.terminal-input input{font-size:0.8125rem}
+.console-catalog-toggle{font-size:0.8125rem;padding:7px 11px;border-radius:9px}
+
+@media(max-width:800px){
+  .device-controls{grid-row:2;grid-column:1;justify-self:center;align-self:auto;flex-direction:row;margin:10px;position:static}
+  .device-controls .control-group{flex-direction:row}
+  .device-controls .controls-divider{width:1px;height:26px;margin:auto 3px}
+  .device-controls [title]:hover::after{display:none}
+  .text-send{grid-row:3}
+}
+
+/* ---------- Administration: section jump bar ---------- */
+#adm-sessions,#adm-nodes,#adm-profiles,#adm-agents,#adm-users,#adm-journal{scroll-margin-top:110px}
+
+/* ---------- Dark theme gaps ---------- */
+:root[data-effective-theme="dark"] .table-wrap{background:var(--ui-surface);border-color:var(--ui-border)}
+:root[data-effective-theme="dark"] .sessions-table th{background:var(--ui-inset);color:var(--ui-muted);border-color:var(--ui-border)}
+:root[data-effective-theme="dark"] .sessions-table td{color:var(--ui-subtle);border-color:var(--ui-border)}
+:root[data-effective-theme="dark"] .table-device strong{color:var(--ui-text)}
+:root[data-effective-theme="dark"] .text-button{color:var(--accent)}
+:root[data-effective-theme="dark"] .text-button.danger-text{color:#f2a39b}
+:root[data-effective-theme="dark"] :is(.session-card-icon,.table-device-icon){background:#243b36;color:#8fd8b8}
+:root[data-effective-theme="dark"] .empty-state{background:var(--ui-inset);border-color:var(--ui-border)}
+:root[data-effective-theme="dark"] .loading-box{background:var(--ui-surface);border-color:var(--ui-border)}
+:root[data-effective-theme="dark"] :is(.modal input,.modal select,.profile-form input,.profile-form select,.profile-form textarea,.login-form input):where(:not([role="switch"])){background:var(--ui-inset);border-color:var(--ui-border);color:var(--ui-text)}
+:root[data-effective-theme="dark"] :is(.modal label,.profile-form label,.login-form label){color:var(--ui-subtle)}
+:root[data-effective-theme="dark"] .toast{background:#25403a}
+
+.login-form input{font-size:0.9375rem}
+
+/* ---------- Large screens ---------- */
+/* No automatic zoom: CSS zoom breaks pointer maths (touch mapping, resize handles). Wide monitors get a wider
+   content area instead; the "Размер интерфейса" setting still scales text for those who want it. */
+.main-content{width:min(100%,110rem)}
+.session-main{width:min(100%,150rem)}
+.viewer-stage{height:clamp(640px,calc(100dvh - 230px),920px)}
+.log-viewport{height:clamp(380px,calc(100dvh - 440px),760px)}
+
+/* ---------- Dark theme: text that was tuned for white cards ---------- */
+:root[data-effective-theme="dark"] .host-spec>span{color:var(--ui-muted)}
+:root[data-effective-theme="dark"] .host-spec strong{color:var(--ui-text)}
+:root[data-effective-theme="dark"] .host-spec small{color:var(--ui-muted)}
+:root[data-effective-theme="dark"] .host-spec small.gpu-ready{color:#6fdcb0}
+:root[data-effective-theme="dark"] .host-card-footer strong{color:var(--slot-color,var(--ui-text))}
+:root[data-effective-theme="dark"] .host-card-footer span{color:var(--slot-color,var(--ui-muted))}
+:root[data-effective-theme="dark"] .host-environment{color:var(--ui-muted)}
+:root[data-effective-theme="dark"] .capacity-track{background:#1f293d}
+:root[data-effective-theme="dark"] .capacity-track span{background:var(--accent)}
+:root[data-effective-theme="dark"] :is(.session-id,.stat-label,.session-meta){color:var(--ui-muted)}
+:root[data-effective-theme="dark"] .session-id{border-color:var(--ui-border)}
+:root[data-effective-theme="dark"] .session-card-actions{border-color:var(--ui-border)}
+:root[data-effective-theme="dark"] .stat-value small{color:var(--ui-muted)}
+:root[data-effective-theme="dark"] .middle-dot{color:#5d7a72}
+:root[data-effective-theme="dark"] .topbar-context{color:var(--ui-subtle)}
+:root[data-effective-theme="dark"] :is(.side-logout,.side-profile-name small){color:var(--ui-subtle)}
+:root[data-effective-theme="dark"] .breadcrumbs,:root[data-effective-theme="dark"] .breadcrumbs span{color:var(--ui-muted)}
+
+/* ---------- Spacing of icons and hints ---------- */
+/* Hints use data-tip so the browser's own tooltip does not appear on top of ours. */
+.device-controls [title]:hover::after{content:none}
+.device-controls [data-tip]:is(:hover,:focus-visible)::after{content:attr(data-tip);position:absolute;right:calc(100% + 12px);top:50%;transform:translateY(-50%);background:#000;color:#fff;font-size:0.8125rem;font-weight:500;line-height:1.2;white-space:nowrap;padding:6px 11px;border-radius:8px;pointer-events:none;z-index:8}
+/* Every control in the bar is the same square, whatever it contains. */
+.device-controls{gap:4px;padding:8px}
+.device-controls>*{flex:none}
+.device-controls :is(.control-group button,.network-toggle,.upload-control,.capture-control){box-sizing:border-box;width:44px;height:44px;min-width:44px;min-height:44px;margin:0;padding:0;line-height:0;display:flex;align-items:center;justify-content:center;gap:0;overflow:visible}
+.device-controls .capture-control.recording{width:auto;line-height:1.2}
+.device-controls .control-group{gap:4px}
+.device-controls .controls-divider{margin:4px auto}
+.device-controls svg{flex:none;display:block}
+.device-controls>[hidden]{display:none}
+/* Status chips above the screen */
+/* Text-to-device row */
+.text-send{gap:12px;padding:8px 16px}
+.text-send input{background:transparent;border:0;box-shadow:none;padding:10px 4px;color:inherit}
+.text-send input::placeholder{color:#8fa19b}
+.text-send input:-webkit-autofill{-webkit-box-shadow:0 0 0 40px transparent inset}
+.text-send button{gap:8px;padding:8px 10px;border-radius:8px}
+:root[data-effective-theme="dark"] .text-send input{color:var(--ui-text)}
+:root[data-effective-theme="dark"] .text-send button{color:var(--accent)}
+/* Console helper text and header actions */
+.terminal-empty,.terminal-entry small{font-size:0.8125rem;line-height:1.6}
+.terminal-empty p{margin:8px 0 0}
+.terminal-header-actions{gap:10px;align-items:center}
+.terminal-topline{gap:14px}
+.session-title-top{gap:10px 12px}
+.adb-title-badge{gap:10px;padding:6px 8px 6px 12px}
+@media(max-width:800px){.device-controls [data-tip]::after{display:none!important}}
+
+/* The control bar never outgrows the screen area: it wraps into a second column instead of spilling over the header. */
+.device-controls{max-height:calc(100% - 28px);flex-wrap:wrap;align-content:center;justify-content:center;overflow:visible;column-gap:6px}
+.device-controls .control-group{flex-wrap:nowrap}
+@media(max-width:800px){.device-controls{max-height:none;flex-wrap:wrap;max-width:calc(100% - 20px);row-gap:4px}.device-controls .control-group{flex-wrap:wrap;justify-content:center}}
+
+/* Keep the whole device card near the frame width, with room for the vertical controls. */
+.viewer-panel{width:min(100%,var(--viewer-width));justify-self:center}
+@media(min-width:801px){.viewer-stage:not(:fullscreen){padding-left:18px;padding-right:102px}}
+.viewer-stage:fullscreen{padding:24px}
+@media(max-width:800px){.viewer-panel{width:100%}}
+
+/* Keep the frame visible inside the viewport, including its header and input row. */
+@media(max-width:800px){.viewer-stage{height:clamp(300px,55dvh,520px)}}
+/* The ADB key settings button remains visible beside the connect command. */
+
+/* Stream and audio state live in the page heading; the screen header keeps only its title, size and full-screen button. */
+
+/* Type scales smoothly with the window above 1440px (16px up to there, about 18.8px at 1920, 22.5px at 2560, 26px max).
+   Everything sized in rem grows with it; no CSS zoom, so pointer maths stays exact. The user's "Масштаб интерфейса" setting replaces this rule with a fixed size (or leaves it: "Авто"). */
+html{font-size:clamp(16px, calc(16px + (100vw - 1440px) * 0.0058), 26px)}
+@media(min-width:1441px){
+  .sidebar svg,.topbar svg,.button svg,.icon-button svg,.text-button svg,.stat-icon svg,.session-card-icon svg,.tool-tabs svg,.log-actions svg,.device-controls svg,.banner-error svg,.banner-warning svg,.side-profile svg,.side-logout svg{width:1.15rem;height:1.15rem}
+}
+
+/* ---------- Errors are red and hard to miss ---------- */
+:root{--error:#c62828;--error-strong:#a31515;--error-bg:#fdeceb;--error-line:#e57373}
+:root[data-effective-theme="dark"]{--error:#ff6b61;--error-strong:#ff8a80;--error-bg:#3d1a1b;--error-line:#c9473f}
+.banner-error,.inline-error,.log-error,.capture-feedback.error,.audio-notice.error{background:var(--error-bg);color:var(--error);border:1px solid var(--error-line);border-left:5px solid var(--error);font-weight:600;border-radius:10px}
+.banner-error svg,.inline-error svg,.log-error svg{color:var(--error)}
+:root[data-effective-theme="dark"] :is(.banner-error,.inline-error,.log-error,.capture-feedback.error){background:var(--error-bg);color:var(--error-strong);border-color:var(--error-line);border-left-color:var(--error)}
+.banner-error button{color:var(--error);font-weight:700}
+.status-badge.status-error{background:var(--error);color:#fff}
+:root[data-effective-theme="dark"] .status-badge.status-error{background:#d9453b;color:#fff}
+.login-form .inline-error{color:var(--error)}
+/* Log: errors and fatal entries stand out from warnings */
+.log-row.level-E,.log-row.level-F{background:#e5534b38;border-left-width:4px;border-left-color:#ff5148}
+.log-row.level-E .log-level-badge,.log-row.level-F .log-level-badge{background:#ff5148;color:#fff}
+.log-row.level-E .log-message,.log-row.level-F .log-message,.log-row.level-E .log-tag,.log-row.level-F .log-tag{color:#ff8f87}
+.log-row.level-F{background:#e5534b52}
+.log-row.level-F .log-message{color:#ffb4ac;font-weight:700}
+.tab-alert{display:inline-grid;place-items:center;min-width:1.35em;height:1.35em;padding:0 .4em;margin-left:.45em;border-radius:99px;background:var(--error);color:#fff;font-size:.72rem;font-weight:800;line-height:1}
+
+/* ---------- Key actions use the accent ---------- */
+.button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;box-shadow:0 2px 8px color-mix(in srgb,var(--accent) 35%,transparent)}
+:root[data-effective-theme="dark"] .button.primary{color:#06231a}
+.button.primary:not(:disabled):hover,.button.accent:not(:disabled):hover{background:var(--accent-strong)}
+.text-send button{background:var(--accent);color:#fff;border-radius:9px;padding:.5rem .9rem;font-weight:700}
+.text-send button:not(:disabled):hover{background:var(--accent-strong)}
+:root[data-effective-theme="dark"] .text-send button{background:var(--accent);color:#06231a}
+.text-send button:disabled{background:transparent;color:#8fa19b}
+.terminal-input button{background:var(--accent);color:#fff;border-radius:8px}
+:root[data-effective-theme="dark"] .terminal-input button{color:#06231a}
+.console-catalog-toggle{border-color:var(--accent);color:var(--accent);background:transparent;font-weight:700}
+.console-catalog-toggle:hover,.console-catalog-toggle[aria-expanded="true"]{background:var(--accent);color:#fff}
+:root[data-effective-theme="dark"] :is(.console-catalog-toggle:hover,.console-catalog-toggle[aria-expanded="true"]){color:#06231a}
+.session-card-actions .button.primary{box-shadow:none}
+.tool-tabs button.active{color:var(--accent)}
+
+/* Wide screens: the device card and the console sit together in the middle instead of at opposite edges. */
+@media(min-width:1201px){
+  .workspace-grid{grid-template-columns:minmax(0,var(--viewer-width)) minmax(320px,min(var(--console-width),calc(100% - var(--viewer-width) - 24px)));justify-content:center;column-gap:24px}
+  .viewer-panel{justify-self:stretch}
+}
+
+/* Session label and expiry notices */
+.rename-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rename-form input{min-width:min(22rem,100%);border:1px solid var(--accent);border-radius:10px;padding:.5rem .75rem;font-size:1.1rem;font-weight:700;background:transparent;color:inherit;outline:none}
+.rename-button{width:2rem;height:2rem;position:relative}
+.rename-button[data-tip]:is(:hover,:focus-visible)::after{content:attr(data-tip);position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);background:#000;color:#fff;font-size:.8rem;font-weight:500;white-space:nowrap;padding:5px 10px;border-radius:7px;pointer-events:none;z-index:8}
+.banner-warning{display:flex;align-items:center;gap:10px;margin:0 0 16px;padding:11px 14px;border-radius:10px;border:1px solid #e0b04f;border-left:5px solid #e0a020;background:#fff6e0;color:#7a5200;font-size:.9rem;font-weight:600;line-height:1.4}
+.banner-warning svg{flex:none;color:#c78500}
+.banner-warning span{flex:1}
+:root[data-effective-theme="dark"] .banner-warning{background:#3b3428;border-color:#8a6b24;border-left-color:#e0b04f;color:#f2d58f}
+:root[data-effective-theme="dark"] .banner-warning svg{color:#e0b04f}
+
+/* Header actions wrap instead of widening the page on narrow screens. */
+.session-top-actions{flex-wrap:wrap;gap:8px}
+@media(max-width:650px){.session-top-actions{width:100%}.session-top-actions>*{flex:1 1 auto}}
+
+/* Five tool tabs scroll sideways inside their own row when the column is narrow. */
+.tool-tabs{overflow-x:auto;scrollbar-width:none;max-width:100%}
+.tool-tabs::-webkit-scrollbar{display:none}
+.tool-tabs button{flex:none;white-space:nowrap}
+
+/* On desktop, fit the device and console to the viewport space left below the actual session heading. */
+@media (min-width:1201px){
+  .workspace-grid .viewer-stage:not(:fullscreen){height:max(280px,calc(var(--session-fit-height,700px) - var(--session-viewer-chrome,108px)))}
+  .workspace-grid .terminal-panel .terminal-output{max-height:var(--session-console-output-fit,600px)}
+}
+/* Short desktop windows keep the controls and both inputs within the first viewport. */
+@media (min-width:1201px) and (max-height:820px){
+  .session-main{padding-top:8px}
+  .back-link{margin-bottom:3px}
+  .session-title-row{margin-bottom:8px}
+  .session-title-top{row-gap:4px}
+  .session-title-row p{margin-top:3px}
+  .banner-warning{margin-bottom:8px;padding:7px 10px}
+  .workspace-grid .viewer-stage:not(:fullscreen){padding-inline:18px}
+  .workspace-grid .device-controls{grid-column:1;grid-row:2;justify-self:stretch;align-self:stretch;width:auto;max-width:none;max-height:none;min-height:0;margin:0;padding:3px 6px;flex-direction:row;flex-wrap:wrap;align-content:center;justify-content:center;overflow:visible;gap:2px;border-radius:0}
+  .workspace-grid .device-controls .control-group{flex-direction:row;gap:1px}
+  .workspace-grid .device-controls .controls-divider{width:1px;height:22px;margin:0 1px}
+  .workspace-grid .device-controls :is(.control-group button,.network-toggle,.upload-control,.capture-control){width:34px;min-width:34px;height:34px;min-height:34px}
+  .workspace-grid .device-controls svg{width:17px;height:17px}
+  .workspace-grid .text-send{grid-column:1;grid-row:3;min-height:42px;padding:3px 10px}
+  .workspace-grid .text-send input{padding:5px 4px}
+  .workspace-grid .text-send button{padding:6px 8px}
+  .terminal-panel .tool-content{padding:10px 12px}
+  .terminal-topline .tool-header p{margin-bottom:8px}
+}
+
+/* Keep section counts attached to their title, independently of actions. */
+:is(h2,h3).heading-with-count{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-width:0}
+.heading-with-count>.count-pill{display:inline-flex;align-items:center;justify-content:center;flex:none;margin:0;line-height:1;letter-spacing:normal;white-space:nowrap}
+
+.toast>span{min-width:0;overflow-wrap:anywhere}.toast>button{flex:none;min-width:36px;min-height:36px;display:grid;place-items:center}
+.session-confirm-context{display:grid;gap:10px;margin:18px 0;padding:14px;border:1px solid var(--ui-border);border-radius:9px;background:var(--ui-inset);text-align:left}
+.session-confirm-context>div{display:grid;grid-template-columns:6rem minmax(0,1fr);gap:12px;font-size:.8125rem;line-height:1.5}
+.session-confirm-context dt{color:var(--ui-muted)}.session-confirm-context dd{margin:0;color:var(--ui-text);overflow-wrap:anywhere}.session-confirm-context code{font-family:var(--font-mono);font-size:.75rem}
+.confirm-modal .modal-actions{flex-wrap:wrap}.confirm-modal .modal-actions>.button{white-space:normal}
+
+/* Session confirmations keep the action, context and controls on aligned rows. */
+.session-confirm-modal{width:min(100%,42rem);padding:1.5rem}
+.session-confirm-modal .confirm-heading{display:flex;align-items:center;gap:.875rem}
+.session-confirm-modal .confirm-icon{flex:none;width:2.5rem;height:2.5rem;border-radius:.625rem}
+.session-confirm-modal h2{min-width:0;margin:0;font-size:1.375rem;line-height:1.3}
+.session-confirm-modal .session-confirm-context{margin:1.25rem 0;padding:1rem;gap:.625rem}
+.session-confirm-modal .session-confirm-context>div{grid-template-columns:7rem minmax(0,1fr)}
+.session-confirm-modal p{margin:0;color:var(--ui-subtle);font-size:.875rem}
+.session-confirm-modal .modal-actions{flex-wrap:nowrap;align-items:center;margin-top:1.5rem;gap:.75rem}
+.session-confirm-modal .modal-actions>.button{white-space:nowrap}
+@media(max-width:560px){
+  .session-confirm-modal{padding:1rem}
+  .session-confirm-modal .session-confirm-context>div{grid-template-columns:5.5rem minmax(0,1fr);gap:.5rem}
+  .session-confirm-modal .modal-actions>.button{min-width:0;white-space:normal}
+}

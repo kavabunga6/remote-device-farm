@@ -1,0 +1,13 @@
+/* A single native link or button is the primary action for each card.
+   Independent controls stay above its hit area without nesting interactive elements. */
+.interactive-card{position:relative;isolation:isolate}
+.interactive-card .card-primary-action{position:static;display:inline;padding:0;border:0;border-radius:0;background:none;box-shadow:none;color:inherit;font:inherit;line-height:inherit;text-align:inherit;text-decoration:none;cursor:pointer}
+.interactive-card .card-primary-action::after{content:"";position:absolute;inset:0;z-index:1;border-radius:12px;cursor:pointer;transition:box-shadow .15s}
+.interactive-card .card-primary-action:not(:disabled):hover::after{box-shadow:inset 0 0 0 1px var(--accent)}
+.interactive-card .card-primary-action:focus-visible{outline:none}
+.interactive-card .card-primary-action:focus-visible::after{outline:2px solid var(--accent);outline-offset:2px}
+.interactive-card .card-secondary-action{position:relative;z-index:2}
+tr.interactive-card .card-primary-action::after{border-radius:0}
+@media(prefers-reduced-motion:reduce){.interactive-card .card-primary-action::after{transition:none}}
+
+.interactive-card .card-primary-action:disabled,.interactive-card .card-primary-action:disabled::after{cursor:not-allowed}

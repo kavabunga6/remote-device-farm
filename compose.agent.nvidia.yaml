@@ -1,0 +1,8 @@
+# NVIDIA Container Toolkit must already be configured on the host.
+# The I/O agent receives driver telemetry; emulator GPU allocation is done by agent-control.
+services:
+  agent:
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: utility
+    gpus: all

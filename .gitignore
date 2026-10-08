@@ -1,0 +1,86 @@
+# Local tool and editor settings.
+.claude/
+.codex/
+.agents/
+.idea/
+.vscode/
+
+# Dependencies, builds and package caches.
+node_modules/
+dist/
+build/
+out/
+.vite/
+.cache/
+.npm-cache/
+*.tsbuildinfo
+
+# Generated test reports and local review files.
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.tmp-ui/
+.tmp-i18n/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+
+# Generated documentation and Appium example output.
+/docs/.vitepress/cache/
+/docs/.vitepress/.temp/
+/docs/public/downloads/
+/examples/appium/artifacts/
+/examples/appium/.appium/
+
+# Deployment secrets and certificates; example environment files remain tracked.
+.env
+.env.*
+!.env.example
+!.env.agent.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+certs/
+secrets/
+*.log
+
+# CLI recovery state belongs to one local job.
+.rdf-session
+.rdf-session.lock/
+.rdf-session.tmp.*
+
+# Generated deployment configuration.
+/compose.override.yaml
+
+# Operating system metadata.
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local history recovery archives and private audit material.
+*.bundle
+/private-reports/
+/publication-review-private/
+
+# Local task notes and project-specific editor instructions.
+/TODO.MD
+/TODO-CHECKS.md
+/AGENTS.md
+
+# One-off deployment, audit and benchmark reports.
+/docs/release-readiness-*.md
+/docs/maintenance-audit.md
+/docs/guides/pipeline-latency.md
+/docs/guides/network-isolation-test.md
+/docs/security/deployment-*.json
+/docs/security/install-restore-*.json
+/deploy/emulator/verified-image-*.json
+/deploy/emulator/input-latency-*.json
+/deploy/emulator/google-starter.json
+/deploy/hqarroum-emulator/pipeline-verification-*.json
+/deploy/hqarroum-emulator/verified-images-*.json

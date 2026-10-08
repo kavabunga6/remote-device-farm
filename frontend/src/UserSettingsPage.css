@@ -1,0 +1,95 @@
+.user-settings-page{width:100%;max-width:1280px}
+.user-settings-page [hidden]{display:none!important}
+.settings-feedback{margin:0 0 16px}
+.settings-identity{display:flex;align-items:center;gap:14px;padding:18px 22px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface)}
+.settings-identity>div{display:grid;gap:4px;min-width:0;flex:1}
+.settings-identity strong{overflow-wrap:anywhere;font-size:1rem;color:var(--ui-text)}
+.settings-identity small{color:var(--ui-muted);font-size:.8125rem}
+.settings-nav{display:flex;flex-wrap:wrap;gap:4px;margin:24px 0 20px;padding:4px;border-bottom:1px solid var(--ui-border)}
+.settings-nav button{display:flex;align-items:center;min-height:42px;padding:9px 16px;border:0;border-radius:8px;background:transparent;color:var(--ui-subtle);font-size:.875rem;font-weight:650;transition:background-color .15s,color .15s}
+.settings-nav button:hover{background:var(--ui-inset);color:var(--ui-text)}
+.settings-nav button[aria-current]{background:color-mix(in srgb,var(--ui-accent) 12%,var(--ui-surface));color:var(--ui-accent)}
+.settings-nav button:focus-visible{outline:2px solid var(--ui-accent);outline-offset:2px}
+.settings-card{min-width:0;padding:24px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface)}
+.settings-card-title h2{margin:0 0 7px;color:var(--ui-text);font-size:1.0625rem;letter-spacing:-.015em}
+.settings-card-title p{margin:0 0 22px;color:var(--ui-muted);font-size:.875rem;line-height:1.55;text-wrap:pretty}
+.settings-form{display:grid;align-content:start;gap:16px}
+.settings-form-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.settings-form label{display:grid;gap:8px;min-width:0;color:var(--ui-subtle);font-size:.8125rem;font-weight:650}
+.settings-form input,.settings-form select{width:100%;min-width:0;min-height:42px;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-inset);padding:10px 12px;color:var(--ui-text);outline:none;font-size:.875rem}
+.settings-form :is(input,select):focus{border-color:var(--ui-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-accent) 16%,transparent)}
+.settings-form input:disabled{color:var(--ui-muted)}
+.settings-form .button{justify-self:start;margin-top:4px;min-height:42px}
+.settings-hint,.settings-muted{margin:0;color:var(--ui-muted);font-size:.8125rem;line-height:1.55}
+.settings-password{margin-top:20px}
+.settings-password-form{grid-template-columns:repeat(3,minmax(0,1fr));align-items:end}
+.settings-password-form .button{grid-column:1/-1}
+.settings-history{margin:0}
+.settings-history .account-section-heading{margin-top:0}
+.settings-history-list{border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface);overflow:hidden}
+.settings-history-empty{padding:30px 22px;color:var(--ui-muted);font-size:.875rem}
+.settings-rental{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:18px 22px;border-bottom:1px solid var(--ui-border);font-size:.8125rem}
+.settings-rental:last-child{border-bottom:0}
+.settings-rental>div{display:grid;gap:5px;min-width:0}
+.settings-rental strong{font-size:.875rem;overflow-wrap:anywhere;color:var(--ui-text)}
+.settings-rental span{color:var(--ui-subtle)}
+.settings-rental small{color:var(--ui-muted);font-size:.8125rem}
+.settings-rental>div:last-child{text-align:right}
+.settings-more{margin-top:14px}
+.user-settings-page .notify-card{margin-top:0!important}
+.user-settings-page .webhook-form{margin-top:20px;padding-top:20px;border-top:1px solid var(--ui-border);grid-template-columns:1fr 1fr}
+.user-settings-page .webhook-form fieldset,.user-settings-page .webhook-form>.button{grid-column:1/-1}
+.user-settings-page .notify-row{padding:14px 16px;border-radius:10px;background:var(--ui-inset)}
+.user-settings-page .notify-row p{font-size:.875rem}
+.user-settings-page .webhook-list:empty{display:none}
+@media(max-width:1000px){.settings-password-form{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.settings-card{padding:18px}.settings-form-two,.settings-password-form,.user-settings-page .webhook-form{grid-template-columns:1fr}.settings-identity{padding:16px;flex-wrap:wrap}.settings-identity>div{flex-basis:calc(100% - 64px)}.settings-identity .account-role{margin-left:62px}.settings-nav{gap:4px;margin-top:16px}.settings-nav button{padding:9px 10px;font-size:.8125rem;flex:1 1 calc(50% - 4px);justify-content:center}.settings-rental{align-items:flex-start;flex-direction:column;gap:10px;padding:16px}.settings-rental>div:last-child{text-align:left}.settings-form .button{width:100%;justify-self:stretch}}
+
+/* Settings: a sticky section list on the left, one calm column of content on the right. */
+.user-settings-page{max-width:72rem}
+.settings-layout{display:grid;grid-template-columns:15rem minmax(0,1fr);gap:1.75rem;align-items:start}
+.settings-side{position:sticky;top:1rem;display:grid;gap:.75rem}
+.user-settings-page .settings-side .settings-identity{flex-wrap:wrap;gap:.75rem;padding:1rem;margin:0}
+.user-settings-page .settings-side .account-avatar{width:2.75rem;height:2.75rem;font-size:1.25rem}
+.user-settings-page .settings-side .settings-identity strong{font-size:1rem}
+.user-settings-page .settings-side .account-role{margin-left:0}
+.settings-side .settings-nav{flex-direction:column;flex-wrap:nowrap;gap:2px;margin:0;padding:0;border:0}
+.settings-side .settings-nav button{justify-content:flex-start;width:100%;min-height:2.5rem;padding:.5rem .875rem}
+.settings-content{min-width:0;max-width:46rem}
+.settings-panel .settings-password{margin-top:0}
+.settings-panel .settings-password-form{grid-template-columns:1fr}
+@media(max-width:860px){
+  .settings-layout{grid-template-columns:1fr;gap:1rem}
+  .settings-side{position:static}
+  .settings-side .settings-nav{flex-direction:row;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--ui-border)}
+  .settings-side .settings-nav button{width:auto;flex:none;white-space:nowrap}
+  .settings-content{max-width:none}
+}
+.user-settings-page .settings-side .settings-identity{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center}
+.user-settings-page .settings-side .account-role{grid-column:1/-1;justify-self:start;margin:0}
+@media(max-width:860px){.user-settings-page .settings-side .settings-identity{grid-template-columns:auto minmax(0,1fr) auto;padding:.75rem 1rem}.user-settings-page .settings-side .account-role{grid-column:auto}}
+
+/* Appearance: choice-group choices that apply at once. */
+.choice-group{margin:0;padding:0;border:0;min-width:0;display:block}
+.choice-group-legend{display:block;margin-bottom:.5rem;color:var(--ui-subtle);font-size:.8125rem;font-weight:650}
+.choice-group-options{display:flex;flex-wrap:wrap;gap:2px;padding:3px;border:1px solid var(--ui-border);border-radius:.625rem;background:var(--ui-inset);width:fit-content;max-width:100%}
+.choice-group-options button{min-height:2.25rem;padding:0 .875rem;border:0;border-radius:.5rem;background:transparent;color:var(--ui-subtle);font:inherit;font-size:.875rem;font-weight:600;cursor:pointer}
+.choice-group-options button:hover{color:var(--ui-text)}
+.choice-group-options button.active{background:var(--ui-surface);color:var(--ui-accent);box-shadow:0 1px 3px rgb(0 0 0 / .12)}
+.choice-group-options button:focus-visible{outline:2px solid var(--ui-accent);outline-offset:1px}
+.choice-group small{display:block;margin-top:.5rem;color:var(--ui-muted);font-size:.8125rem;line-height:1.5}
+.appearance-form{gap:1.5rem}
+.appearance-preview{margin:0;padding:.875rem 1rem;border:1px dashed var(--ui-border);border-radius:.625rem;color:var(--ui-subtle);font-size:.9375rem}
+.appearance-preview strong{color:var(--ui-text)}.appearance-preview small{margin-left:.5rem;color:var(--ui-muted);font-size:.8125rem}
+.appearance-status{margin:0;min-height:1.25rem;color:var(--ui-muted);font-size:.8125rem}.appearance-status.error{color:var(--error)}
+
+/* Identity card in the settings sidebar: centred, not pinned to the left edge. */
+@media(min-width:861px){
+  .user-settings-page .settings-side .settings-identity{grid-template-columns:1fr;justify-items:center;text-align:center;gap:.5rem;padding:1.25rem 1rem}
+  .user-settings-page .settings-side .settings-identity>div{justify-items:center;text-align:center}
+  .user-settings-page .settings-side .account-avatar{width:4rem;height:4rem;font-size:1.75rem;border-radius:1.125rem}
+  .user-settings-page .settings-side .account-role{grid-column:auto;justify-self:center}
+}
+@media(max-width:860px){.user-settings-page .settings-side .settings-identity{justify-items:start}}
+.choice-group-options button{white-space:nowrap;flex:none}
+.user-settings-page .choice-group small{display:block;width:100%;margin-top:.5rem}

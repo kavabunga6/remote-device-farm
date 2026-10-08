@@ -1,0 +1,30 @@
+.node-freshness{display:inline-block;color:var(--ui-muted);font-size:.75rem;line-height:1.5;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere}
+.node-freshness.stale{color:var(--ui-warning,#b98628)}
+.node-diagnostics{min-width:0}
+.node-diagnostics summary{color:var(--ui-text);font-size:.9375rem;line-height:1.4;font-weight:650;cursor:pointer}
+.node-diagnostics summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.node-diagnostics-body{display:grid;gap:14px;margin-top:16px}
+.node-diagnostics dl{display:grid;gap:12px;margin:0}
+.node-diagnostics dl>div{display:grid;gap:4px;min-width:0;border-bottom:1px solid var(--ui-border);padding-bottom:12px;font-size:.8125rem;line-height:1.5}
+.node-diagnostics dl>div:last-child{border-bottom:0;padding-bottom:0}
+.node-diagnostics dt{color:var(--ui-muted)}
+.node-diagnostics dd{color:var(--ui-text);margin:0;overflow-wrap:anywhere}
+.node-diagnostics dd small{display:block;color:var(--ui-muted);font-size:.75rem}
+.node-diagnostics-note{margin:0;color:var(--ui-muted);font-size:.75rem;line-height:1.5}
+.node-diagnostics .text-button{justify-self:start;white-space:normal;text-align:left}
+
+.node-gpu-samples{display:grid;gap:10px}.node-gpu-samples>div{display:grid;gap:3px}.node-gpu-samples strong{font-size:.8125rem}
+
+.node-gpu-summary{display:grid;row-gap:8px;min-width:0;margin:0;padding-top:16px;border-top:1px solid var(--ui-border)}
+.node-gpu-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0;font-size:.8125rem;line-height:1.4}
+.node-gpu-heading>strong{color:var(--ui-text);flex:none}
+.node-gpu-status{color:var(--ui-muted);text-align:right;overflow-wrap:anywhere}
+.node-gpu-status[data-ready=true]{color:var(--accent)}
+.node-gpu-model{margin:0;color:var(--ui-subtle);font-size:.8125rem;line-height:1.4;overflow-wrap:anywhere}
+.node-gpu-stats{display:grid;gap:16px;margin:4px 0 0;align-content:start}
+.node-gpu-device{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:16px;row-gap:4px;min-width:0}
+.node-gpu-device>div{display:grid;grid-template-rows:subgrid;grid-row:span 2;min-width:0}
+.node-gpu-stats dt{color:var(--ui-muted);font-size:.75rem;line-height:1.4;overflow-wrap:anywhere}
+.node-gpu-stats dd{margin:0;color:var(--ui-text);font-size:.875rem;line-height:1.4;font-weight:650;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+
+@media(max-width:480px){.node-gpu-device{column-gap:12px}}

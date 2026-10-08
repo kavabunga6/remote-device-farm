@@ -1,0 +1,11 @@
+.shared-with-me{margin:0 0 20px;padding:16px 18px;border:1px solid var(--ui-border,#e1ebe6);border-radius:14px;background:var(--ui-surface,#fff);min-width:0}
+.shared-with-me-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.shared-with-me-head h2{margin:0;font-size:1rem;letter-spacing:-.02em}
+.shared-with-me-head small{color:var(--ui-muted,#859992);font-size:0.75rem}
+.shared-with-me-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.shared-with-me-item{display:flex;align-items:center;gap:14px;min-width:0;padding:10px 12px;border-radius:10px;background:var(--ui-inset,#f5f8f6)}
+.shared-with-me-info{display:grid;gap:2px;min-width:0;flex:1}
+.shared-with-me-info strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.875rem}
+.shared-with-me-info small{color:var(--ui-muted,#859992);font-size:0.75rem}
+:root[data-effective-theme="dark"] .shared-with-me{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.04)}
+:root[data-effective-theme="dark"] .shared-with-me-item{background:rgba(255,255,255,.06)}

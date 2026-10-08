@@ -1,0 +1,79 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-devicefarm}
+      POSTGRES_USER: ${POSTGRES_USER:-devicefarm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-devicefarm} -d ${POSTGRES_DB:-devicefarm}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  server:
+    build:
+      context: ./server
+      additional_contexts:
+        rdf_agent_sources: ./agent
+        rdf_ui_messages: ./shared
+      args:
+        AGENT_BUNDLE_VERSION: ${RDF_RELEASE_VERSION:-0.1.0}
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 45s
+    env_file: .env
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgres://${POSTGRES_USER:-devicefarm}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-devicefarm}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - app_store:${APP_STORE_DIR:-/data/apps}
+      - registry_control:/run/registry-maintenance:ro
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
+  # Built-in registry for farm emulator images. Reachable only through the web service under /v2/, where every request
+  # is authorised by the server with short-lived tokens (pull for sessions, push for the image builder).
+  registry:
+    build: ./deploy/registry
+    restart: unless-stopped
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      REGISTRY_HTTP_ADDR: 127.0.0.1:5002
+    volumes:
+      - registry_data:/var/lib/registry
+      - registry_control:/run/registry-maintenance
+    expose:
+      - "5000"
+
+  web:
+    build:
+      context: ./frontend
+      additional_contexts:
+        rdf_ui_messages: ./shared
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8088}:80"
+    depends_on:
+      server:
+        condition: service_healthy
+      registry:
+        condition: service_started
+
+volumes:
+  registry_control:
+  registry_data:
+  postgres_data:
+  app_store:

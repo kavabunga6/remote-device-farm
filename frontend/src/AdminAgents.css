@@ -1,0 +1,10 @@
+.admin-workspace .agent-inventory-row{align-items:start;gap:14px}
+.admin-workspace .agent-inventory-details{min-width:0;flex:1}
+.agent-inventory-title{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:5px}
+.agent-inventory-title strong{overflow-wrap:anywhere;min-width:0}
+.agent-connection-state,.agent-source-badge{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;font-size:.75rem;font-weight:600;line-height:1.4;background:var(--ui-inset);color:var(--ui-muted);border:1px solid var(--ui-border)}
+.agent-connection-state.online{color:var(--ui-accent);background:color-mix(in srgb,var(--ui-accent) 9%,var(--ui-surface));border-color:color-mix(in srgb,var(--ui-accent) 22%,var(--ui-border))}
+.admin-workspace .agent-source-note{margin:8px 0 0;color:var(--ui-muted);font-size:.8125rem;line-height:1.55;max-width:62ch}
+.agent-inventory-actions{display:flex;align-items:flex-end;flex-direction:column;gap:9px;flex:none}
+.agent-inventory-actions .text-button{display:inline-flex;align-items:center;gap:6px;font-size:.8125rem}
+@media(max-width:640px){.admin-workspace .agent-inventory-row{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px}.agent-inventory-actions{grid-column:2;align-items:flex-start;flex-direction:row;flex-wrap:wrap;gap:10px;margin-top:4px}.agent-inventory-title{gap:6px}}

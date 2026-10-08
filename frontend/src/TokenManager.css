@@ -1,0 +1,15 @@
+/* Muted controls retain readable labels in both themes. */
+.token-page .token-create > .button.primary:disabled,
+.token-page .token-section .token-heading-actions > .button:disabled {
+  opacity: 1;
+  background: var(--ui-inset);
+  border-color: var(--ui-border);
+  color: var(--ui-subtle);
+  box-shadow: none;
+}
+
+.token-page .token-empty > .token-empty-arrow {
+  flex: none;
+  margin-left: auto;
+  color: var(--ui-accent);
+}

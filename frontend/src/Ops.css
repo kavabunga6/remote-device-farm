@@ -1,0 +1,46 @@
+.admin-ops{--ops-s1:#0f6b58;--ops-s2:#c2410c;--ops-s3:#2563eb;--ops-s4:#a21caf;--ops-s5:#8a6d00;--ops-s6:#6d28d9;margin-top:32px;min-width:0}
+:root[data-effective-theme="dark"] .admin-ops{--ops-s1:#34d399;--ops-s2:#fb923c;--ops-s3:#60a5fa;--ops-s4:#e879f9;--ops-s5:#facc15;--ops-s6:#a78bfa}
+.admin-ops .section-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:13px}
+.ops-refresh{min-height:34px;font-size:0.7812rem}
+.ops-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:11px;margin-bottom:13px}
+.ops-card{display:grid;gap:4px;padding:14px 15px;border:1px solid var(--ui-border,#e1ebe6);border-radius:12px;background:var(--ui-surface,#fff);min-width:0}
+.ops-card span{color:var(--ui-muted,#5f726d);font-size:0.75rem;font-weight:700}
+.ops-card strong{color:var(--ui-text,#1f3a34);font-size:1.5rem;line-height:1.2;overflow-wrap:anywhere}
+.ops-card small{color:var(--ui-muted,#5f726d);font-size:0.75rem}
+.ops-card.bad{border-left:4px solid var(--error,#c62828)}
+.ops-panel{padding:15px;margin-bottom:13px;border:1px solid var(--ui-border,#e1ebe6);border-radius:12px;background:var(--ui-surface,#fff);min-width:0}
+.ops-panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.ops-panel-head h3{margin:0;color:var(--ui-text,#1f3a34);font-size:0.9375rem}
+.ops-note{color:var(--ui-muted,#5f726d);font-size:0.75rem}
+.ops-switch{display:flex;gap:3px;padding:3px;border:1px solid var(--ui-border,#e1ebe6);border-radius:9px;background:var(--ui-inset,#edf2f0)}
+.ops-switch button{border:0;border-radius:6px;background:transparent;color:var(--ui-muted,#5f726d);padding:6px 11px;font-size:0.75rem;font-weight:700}
+.ops-switch button.selected{background:var(--ui-surface,#fff);color:var(--accent,#0f6b58);box-shadow:0 1px 3px #163c3824}
+.ops-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 8px;padding:0;list-style:none;color:var(--ui-subtle,#3f5a53);font-size:0.75rem}
+.ops-legend li{display:flex;align-items:center;gap:7px}
+.ops-chart{position:relative;width:100%;min-width:0}
+.ops-chart svg{display:block;max-width:100%;overflow:visible}
+.ops-grid{stroke:var(--ui-border,#e1ebe6);stroke-width:1}
+.ops-axis{stroke:var(--ui-muted,#5f726d);stroke-width:1}
+.ops-tick{fill:var(--ui-muted,#5f726d);font-size:0.75rem;font-family:inherit}
+.ops-cross{stroke:var(--ui-muted,#5f726d);stroke-width:1;stroke-dasharray:3 3}
+.ops-dot{stroke:var(--ui-surface,#fff);stroke-width:2}
+.ops-bar{fill:var(--accent,#0f6b58)}
+.ops-bar.hot{fill:var(--accent-strong,#0b5546)}
+.ops-readout{margin-top:4px;color:var(--ui-muted,#5f726d);font-size:0.75rem;min-height:1.1em}
+.ops-tooltip{position:absolute;z-index:2;display:grid;gap:4px;min-width:140px;max-width:220px;padding:8px 10px;border:1px solid var(--ui-border,#e1ebe6);border-radius:9px;background:var(--ui-surface,#fff);box-shadow:0 4px 14px #0f1f1c26;color:var(--ui-text,#1f3a34);font-size:0.75rem;pointer-events:none}
+.ops-tooltip div{display:flex;align-items:center;gap:6px;color:var(--ui-subtle,#3f5a53)}
+.ops-tooltip i{width:9px;height:9px;border-radius:50%;flex:none}
+.ops-tooltip b{margin-left:auto;padding-left:8px;color:var(--ui-text,#1f3a34)}
+.ops-empty{padding:26px 12px;color:var(--ui-muted,#5f726d);text-align:center;font-size:0.8125rem;border:1px dashed var(--ui-border,#e1ebe6);border-radius:10px}
+.ops-table .num{text-align:right;white-space:nowrap}
+@media(max-width:600px){.ops-refresh{font-size:0;min-width:36px;padding:8px}.ops-card strong{font-size:1.25rem}}
+.ops-table{min-width:0}
+.ops-table th{color:var(--ui-muted,#5f726d)}
+
+.ops-data{margin-top:10px;border-top:1px solid var(--ui-border,#e1ebe6);padding-top:9px}
+.ops-data summary{display:list-item;width:max-content;max-width:100%;cursor:pointer;color:var(--accent,#0f6b58);font-size:.8125rem;font-weight:700}
+.ops-data summary:focus-visible{outline:2px solid var(--accent,#0f6b58);outline-offset:3px;border-radius:3px}
+.ops-data .table-wrap{max-height:22rem;overflow:auto;margin-top:9px}
+.ops-data caption{text-align:left;color:var(--ui-muted,#5f726d);font-size:.75rem;padding:5px 0}
+.ops-data .ops-table{min-width:27rem}
+.ops-chart-note{margin:0 0 6px;color:var(--ui-muted);font-size:.75rem}
