@@ -33,7 +33,7 @@
 - [Локальная разработка с живым обновлением UI](development.md).
 - [Единый словарь и перевод интерфейса](guides/localization.md).
 - [Практические примеры API](api/README.md).
-- [Описание API для CI в OpenAPI](api/openapi.yaml).
+- [Описание HTTP API в OpenAPI](api/openapi.yaml).
 - [Интеграции: быстрый запуск, состав и статус проверок](ci/README.md).
 - [GitHub Actions](ci/github-actions.md) и [GitLab CI](ci/gitlab-ci.md).
 - [Maestro](ci/maestro.md) и [Appium](ci/appium.md) через CLI фермы.

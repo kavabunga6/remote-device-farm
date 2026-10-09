@@ -38,7 +38,7 @@ Authorization: Bearer <API-токен>
 | Очередь, уведомления, webhooks | `/api/queue`, `/api/me/notifications`, `/api/me/webhooks` | [queue-routes.ts](../../server/src/routes/queue-routes.ts) |
 | Нагрузка и метрики | `/api/admin/ops/summary`, `/metrics` | [ops-routes.ts](../../server/src/routes/ops-routes.ts) |
 
-[OpenAPI](../api/openapi.yaml) описывает маршруты для CI. Таблица выше также указывает административные возможности, которые пока не включены в OpenAPI.
+[OpenAPI](../api/openapi.yaml) описывает все HTTP-маршруты сервера, включая административные операции, cookie/Bearer-авторизацию и основные права доступа. Соответствие маршрутам и запросам UI проверяется в тестах.
 
 ## Жизненный цикл сессии
 
