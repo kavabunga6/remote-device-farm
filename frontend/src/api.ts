@@ -320,7 +320,7 @@ export interface DeviceSession {
   audioEnabled?: boolean;
   networkEnabled?: boolean;
   createdAt: string;
-  error?: string;
+  error?: string | null;
   adminAccess?: { username: string; at: string } | null;
   label?: string | null;
   lastActivityAt?: string;
@@ -467,7 +467,7 @@ export const api = {
     return (await request<{ counts: NavigationCounts }>('/navigation-counts')).counts;
   },
   async config(): Promise<AppConfig> {
-    const result = await request<AppConfig & { authMode?: AuthMethod | 'keycloak'; authRequired?: boolean; oidcEnabled?: boolean; enabledAuthMethods?: AuthMethod[] }>('/config');
+    const result = await request<Partial<AppConfig> & { authMode?: AuthMethod | 'keycloak'; authRequired?: boolean; oidcEnabled?: boolean; enabledAuthMethods?: AuthMethod[] }>('/config');
     const modes: AuthMethod[] = result.authMethods ?? result.enabledAuthMethods ?? (result.authRequired === false ? ['none'] : result.authMode === 'keycloak' ? ['oidc'] : result.authMode ? [result.authMode] : ['local']);
     if (result.oidcEnabled && !modes.includes('oidc')) modes.push('oidc');
     return {
