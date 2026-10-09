@@ -127,6 +127,14 @@ jobs:
           PLAYWRIGHT_CHANNEL: chrome
         if: matrix.component == 'frontend'
         run: npm run e2e
+      - name: Install server dependencies for API integration tests
+        if: matrix.component == 'frontend'
+        run: npm --prefix ../server ci
+      - name: Run UI against production HTTP routes and temporary database
+        if: matrix.component == 'frontend'
+        env:
+          PLAYWRIGHT_CHANNEL: chrome
+        run: npm run e2e:api
       - run: npm test
       - run: npm run typecheck
         if: matrix.component == 'frontend'

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
     "dev:live": "node dev/run-live.mjs",
-    "dev:mock": "node dev/run-mock.mjs"
+    "dev:mock": "node dev/run-mock.mjs",
+    "e2e:api": "playwright test --config playwright.api.config.ts"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",

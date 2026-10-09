@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "migrate": "tsx src/migrate.ts",
     "registry:cleanup": "node dist/registry-cleanup.js",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts",
+    "test:contracts": "tsx --test test/api-contract.test.ts"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -26,7 +27,10 @@
     "@types/node": "^24.6.2",
     "@types/pg": "^8.15.5",
     "@types/ws": "^8.18.1",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "yaml": "2.9.1"
   }
 }
