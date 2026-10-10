@@ -141,7 +141,7 @@ export function attachWebSocket(server: Server, context: ServerContext): () => P
           // Register first so a concurrent revoke can close the socket. Then re-check the
           // exact grant before any frame or input can reach it.
           if (grantId) {
-            registerGrantSocket(session.id, { ws, grantId, userId: authenticatedContext.user.id, name: authenticatedContext.user.displayName, mode: access });
+            registerGrantSocket(session.id, { ws, grantId, userId: authenticatedContext.user.id, name: authenticatedContext.user.displayName, mode: access, beforeClose: () => rtc?.close() });
             const timer = setTimeout(() => ws.close(4003, 'share expired'), Math.min(Math.max(0, (grantExpiresAt ?? 0) - Date.now()), 2 ** 31 - 1));
             timer.unref();
             ws.once('close', () => clearTimeout(timer));

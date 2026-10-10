@@ -169,7 +169,7 @@ export async function createSession(
 // what differs is only `params` (an emulator profile or a device to lease).
 export function launchSession(
   context: Pick<ServerContext, 'pool' | 'hub'>, id: string, hostId: string, params: Record<string, unknown>, timeoutMs = STANDARD_START_TIMEOUT_MS,
-): void {
+): Promise<void> {
   const { pool, hub } = context;
   const profile = params.profile as Record<string, unknown> | undefined;
   const safeProfile = profile ? Object.fromEntries(['id', 'name', 'image', 'deviceType', 'resolution', 'cpu', 'memoryMb',
@@ -178,8 +178,24 @@ export function launchSession(
     String((profile.registryAuth as Record<string, unknown> | undefined)?.password || '')] : [];
   const requestedLog = sessionLog(pool, hostId, id, 'session.start_requested', uiMessage('ui.8be4fa5ae2d0') + timeoutMs / 1000 + uiMessage('ui.882b30a2cad2') + redactLog(JSON.stringify(safeProfile), secrets))
 ;
-  const start = hub.command(hostId, id, 'start', params, timeoutMs);
-  void start.then(async data => {
+  const start = (async () => {
+    const owner = (await pool.query('SELECT owner_user_id FROM sessions WHERE id=$1', [id])).rows[0];
+    if (!owner) throw new ApiError(409, 'session_inactive', uiMessage('ui.9fa6e8e66b25', {}, 'en'));
+    let command!: Promise<Record<string, unknown>>;
+    await transaction(pool, async client => {
+      // Preparation may outlive account deletion or an accepted stop. Lock in
+      // allocation order and send start while removal cannot pass this check.
+      await assertUserActive(client, String(owner.owner_user_id));
+      const active = await client.query("SELECT id FROM sessions WHERE id=$1 AND state='starting' FOR SHARE", [id]);
+      if (!active.rowCount) throw new ApiError(409, 'session_inactive', uiMessage('ui.9fa6e8e66b25', {}, 'en'));
+      command = hub.command(hostId, id, 'start', params, timeoutMs);
+      // Attach a rejection handler before committing; the RPC must not keep
+      // transaction locks for the duration of Android startup.
+      void command.catch(() => {});
+    });
+    return command;
+  })();
+  return start.then(async data => {
     await requestedLog;
     const updated = await pool.query(
       `UPDATE sessions SET state='running',container_id=$2,started_at=now(),last_activity_at=now(),startup_progress=$3

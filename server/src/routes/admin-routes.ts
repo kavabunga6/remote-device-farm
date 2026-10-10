@@ -367,7 +367,7 @@ export function registerAdminRoutes(app: Express, context: ServerContext): void 
   app.delete('/api/admin/users/:id', requireAuth, requireAdmin, route(async (req, res) => {
     const userId = req.params.id!;
     if (!isUuid(userId)) throw new ApiError(400, 'invalid_user', uiMessage('ui.6674028f9de8'));
-    await removeUser(pool, userId, current(res).user.id);
+    await removeUser(pool, userId, current(res).user.id, hub);
     res.json({ ok: true });
   }));
 

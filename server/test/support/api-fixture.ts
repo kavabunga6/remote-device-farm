@@ -21,7 +21,7 @@ import { attachWebSocket } from '../../src/websocket.js';
 export const credentials = { username: 'contract-admin', password: 'Synthetic-test-password-42' };
 export const memberCredentials = { username: 'contract-member', password: 'Synthetic-test-password-43' };
 /** PGlite has one connection; pooled queries must wait for transaction release. */
-function testPool(db: PGlite): Pool {
+export function testPool(db: PGlite): Pool {
   let tail = Promise.resolve();
   async function acquire() {
     const previous = tail;

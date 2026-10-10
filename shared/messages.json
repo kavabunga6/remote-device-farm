@@ -8792,8 +8792,8 @@
     "en": "Delete user?"
   },
   "ui.dc52df57efeb": {
-    "ru": "Вход, API-токены и доступ по гостевым ссылкам перестанут работать. Заявки в очереди будут отменены. История действий сохранится.",
-    "en": "Sign-in, API tokens and guest access stop working. Queue requests are cancelled. Action history remains."
+    "ru": "Устройства будут остановлены. Вход, токены, доступ по ADB и общим ссылкам будут отозваны. Заявки в очереди будут отменены. История действий сохранится.",
+    "en": "Devices will be stopped. Sign-in, tokens, ADB access and shared links will be revoked. Queue requests will be cancelled. Action history will remain."
   },
   "ui.d23a5c6db7b7": {
     "ru": "Учётная запись у провайдера останется. Повторный вход этого пользователя будет запрещён.",

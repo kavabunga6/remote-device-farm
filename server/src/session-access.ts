@@ -77,7 +77,7 @@ export function classifyStreamMessage(access: Access, message: Record<string, un
 }
 
 // Open stream sockets of grant holders, so a revoke can cut them immediately.
-type GrantSocket = { ws: WebSocket; grantId: string; userId: string; name: string; mode: Access };
+type GrantSocket = { ws: WebSocket; grantId: string; userId: string; name: string; mode: Access; beforeClose?: () => void };
 const grantSockets = new Map<string, Set<GrantSocket>>();
 
 export function registerGrantSocket(sessionId: string, entry: GrantSocket): void {
@@ -98,6 +98,8 @@ export function closeGrantSockets(sessionId: string, grantIds?: ReadonlySet<stri
   let closed = 0;
   for (const entry of [...(grantSockets.get(sessionId) ?? [])]) {
     if (grantIds && !grantIds.has(entry.grantId)) continue;
+    // Stop media before waiting for an untrusted client to acknowledge close.
+    entry.beforeClose?.();
     entry.ws.close(4003, 'share revoked');
     closed++;
   }

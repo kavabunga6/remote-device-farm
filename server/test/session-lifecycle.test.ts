@@ -1,3 +1,4 @@
+import { testPool } from './support/api-fixture.js';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -77,12 +78,7 @@ test('limits, keep-alive and labels work through the session API', async () => {
     await db.query("INSERT INTO hosts(id,name,slots,status,manual_slots,last_seen_at) VALUES('host-1','Host',4,'online',4,now())");
     await db.query("UPDATE hosts SET slot_cpu=8,slot_memory_mb=32768 WHERE id='host-1'");
     await db.query("INSERT INTO host_slots(host_id,slot_index) VALUES('host-1',0),('host-1',1),('host-1',2),('host-1',3)");
-    const query = async (sql: string, values?: unknown[]) => {
-      const result = await db.query(sql, values);
-      return { ...result, rowCount: result.affectedRows ?? result.rows.length };
-    };
-    const client = { query, release: () => {} };
-    const pool = { query, connect: async () => client } as unknown as Pool;
+    const pool = testPool(db);
     const auth = { authenticate: async () => ({ user: actor === ADMIN
       ? { id: ADMIN, username: 'root', displayName: 'Root', role: 'admin', provider: 'local' }
       : { id: OWNER, username: 'owner', displayName: 'Owner', role: 'user', provider: 'local' }, via: 'cookie' }) } as unknown as AuthService;
@@ -125,7 +121,7 @@ test('limits, keep-alive and labels work through the session API', async () => {
     actor = OWNER;
 
     const id = created.session.id;
-    await db.query("UPDATE sessions SET last_activity_at=now() - interval '50 minutes' WHERE id=$1", [id]);
+    await context.pool.query("UPDATE sessions SET last_activity_at=now() - interval '50 minutes' WHERE id=$1", [id]);
     const kept = await (await send(`/api/sessions/${id}/keepalive`, 'POST')).json() as { session: { lastActivityAt: string } };
     assert.ok(Date.now() - new Date(kept.session.lastActivityAt).getTime() < 60_000);
 
@@ -139,7 +135,7 @@ test('limits, keep-alive and labels work through the session API', async () => {
     assert.equal((await send(`/api/sessions/${id}`, 'PATCH', { label: 'x' })).status, 403, 'only the owner can rename');
     assert.equal((await send(`/api/sessions/${id}/keepalive`, 'POST')).status, 403, 'only the owner can extend');
     actor = OWNER;
-    await db.query("UPDATE sessions SET lease_expires_at=now()-interval '1 second' WHERE id=$1", [id]);
+    await context.pool.query("UPDATE sessions SET lease_expires_at=now()-interval '1 second' WHERE id=$1", [id]);
     const expired = await send(`/api/sessions/${id}/keepalive`, 'POST');
     assert.equal(expired.status, 409);
     assert.equal((await expired.json() as { error: { code: string } }).error.code, 'session_lease_expired');

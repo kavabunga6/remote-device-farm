@@ -5,7 +5,17 @@ import { PGlite } from '@electric-sql/pglite';
 import type { Pool } from 'pg';
 import type WebSocket from 'ws';
 import { AgentHub } from '../src/agent.js';
-import { launchSession } from '../src/session-create.js';
+import { launchSession as startSession } from '../src/session-create.js';
+import { testPool } from './support/api-fixture.js';
+
+const launches = new Map<Pool, Set<Promise<void>>>();
+function launchSession(...args: Parameters<typeof startSession>) {
+  const task = startSession(...args);
+  const active = launches.get(args[0].pool) ?? new Set<Promise<void>>();
+  launches.set(args[0].pool, active); active.add(task);
+  void task.then(() => active.delete(task), () => active.delete(task));
+  return task;
+}
 
 const ID = '55555555-5555-4555-8555-555555555555';
 const USER = '44444444-4444-4444-8444-444444444444';
@@ -13,16 +23,12 @@ const HOST = 'host-1';
 const ready = { sessionId: ID, containerId: 'container-1', preparing: false, bootReady: true, networkEnabled: false };
 async function fixture() {
   const db = new PGlite();
-  for (const file of ['001_init', '005_host_settings', '011_node_management', '012_session_lifecycle', '013_queue_notifications']) {
+  for (const file of ['001_init', '005_host_settings', '011_node_management', '012_session_lifecycle', '013_queue_notifications', '048_user_removal']) {
     await db.exec(await readFile(new URL('../migrations/' + file + '.sql', import.meta.url), 'utf8'));
   }
   await db.exec("CREATE TABLE service_logs(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,occurred_at timestamptz DEFAULT now(), service text,severity text,code text,host_id text,session_id uuid,message text DEFAULT '')");
   await db.exec('ALTER TABLE sessions ADD COLUMN gpu_mode text; ALTER TABLE sessions ADD COLUMN startup_progress jsonb; ALTER TABLE sessions ADD COLUMN startup_deadline_at timestamptz');
-  const query = async (sql: string, values?: unknown[]) => {
-    const result = values === undefined ? (await db.exec(sql)).at(-1) : await db.query(sql, values);
-    return { ...result, rowCount: result?.rows?.length || result?.affectedRows || 0 };
-  };
-  const pool = { query, connect: async () => ({ query, release() {} }) } as unknown as Pool;
+  const pool = testPool(db);
   await db.query("INSERT INTO users(id,provider,subject,username,display_name) VALUES($1,'local','owner','owner','Owner')", [USER]);
   await db.query("INSERT INTO hosts(id,name,slots) VALUES($1,'Host',1)", [HOST]);
   await db.query("INSERT INTO sessions(id,owner_user_id,host_id,profile_id,state,startup_deadline_at) VALUES($1,$2,$3,'android-30','starting',now()+interval '15 minutes')", [ID, USER, HOST]);
@@ -35,7 +41,7 @@ async function fixture() {
   const announce = (ws: WebSocket, type: 'hello' | 'heartbeat', activeSessions: unknown[]) => receive(ws, {
     type, hostId: HOST, name: 'Host', slots: 1, metrics: {}, activeSessions,
   });
-  const state = async () => (await db.query<{ state: string; container_id: string | null; gpu_mode: string | null; startup_progress: { stage: string } | null }>('SELECT state,container_id,gpu_mode,startup_progress FROM sessions WHERE id=$1', [ID])).rows[0];
+  const state = async () => (await pool.query<{ state: string; container_id: string | null; gpu_mode: string | null; startup_progress: { stage: string } | null }>('SELECT state,container_id,gpu_mode,startup_progress FROM sessions WHERE id=$1', [ID])).rows[0];
   const waitRunning = async () => {
     for (let i = 0; i < 50; i++) {
       const row = await state();
@@ -44,8 +50,16 @@ async function fixture() {
     }
     assert.fail('session never became ready');
   };
-  return { db, pool, hub, sent, socket, receive, announce, state, waitRunning,
-    close: async () => { await hub.dispose(); await db.close(); } };
+  const waitStart = async () => {
+    for (let i = 0; i < 100; i++) {
+      const command = sent.find(message => message.action === 'start');
+      if (command) return command;
+      await new Promise(resolve => setTimeout(resolve, 5));
+    }
+    assert.fail('start was not scheduled');
+  };
+  return { db, pool, hub, sent, socket, receive, announce, state, waitRunning, waitStart,
+    close: async () => { await hub.dispose(); await Promise.allSettled([...(launches.get(pool) ?? [])]); launches.delete(pool); await pool.end(); } };
 }
 
 for (const completedOn of ['hello', 'heartbeat'] as const) test('boot-verified ' + completedOn + ' completes the original start after agent restart', async () => {
@@ -55,7 +69,7 @@ for (const completedOn of ['hello', 'heartbeat'] as const) test('boot-verified '
     await f.db.query("UPDATE sessions SET gpu_mode='nvidia' WHERE id=$1", [ID]);
     const launch = { profile: { image: 'registry.example/android:1', gpuMode: 'nvidia', gpuBackend: 'cuda' } };
     launchSession({ pool: f.pool, hub: f.hub }, ID, HOST, launch, 60_000);
-    const start = f.sent.find(message => message.action === 'start'); assert.ok(start);
+    const start = await f.waitStart();
     assert.deepEqual(start.params, launch);
     const restarted = f.socket();
     await f.announce(restarted, 'hello', completedOn === 'hello' ? [ready] : [{ ...ready, preparing: true, bootReady: false }]);
@@ -79,7 +93,7 @@ test('a genuine reconnect or unverified container leaves the original start pend
   try {
     const original = f.socket(); await f.announce(original, 'hello', []);
     launchSession({ pool: f.pool, hub: f.hub }, ID, HOST, {}, 60_000);
-    const start = f.sent.find(message => message.action === 'start'); assert.ok(start);
+    const start = await f.waitStart();
     const reconnected = f.socket();
     await f.announce(reconnected, 'hello', [{ ...ready, preparing: true }]);
     for (const reported of [{ ...ready, bootReady: false }, { ...ready, bootReady: undefined }, { ...ready, containerId: '' }]) {
@@ -101,23 +115,23 @@ test('late startup success preserves only the same already-running host and cont
       ['running', 'other-host', 'container-1', true],
       ['stopping', HOST, 'container-1', true],
     ] as const) {
-      await f.db.query("INSERT INTO hosts(id,name,slots) VALUES('other-host','Other',1) ON CONFLICT DO NOTHING");
-      await f.db.query('UPDATE sessions SET state=$2,host_id=$3,container_id=$4 WHERE id=$1', [ID, state, host, container]);
+      await f.pool.query("INSERT INTO hosts(id,name,slots) VALUES('other-host','Other',1) ON CONFLICT DO NOTHING");
+      await f.pool.query("UPDATE sessions SET state='starting',host_id=$2,container_id=NULL WHERE id=$1", [ID, HOST]);
       const killed: string[] = [];
-      let finish!: () => void;
-      const checked = new Promise<void>(resolve => { finish = resolve; });
-      const query = async (sql: string, values: unknown[]) => {
-        const result = await f.pool.query(sql, values);
-        if (sql.startsWith('SELECT id FROM sessions WHERE id=$1 AND host_id=$2')) finish();
-        return result;
-      };
+      let ready!: () => void, resolve!: (data: Record<string, unknown>) => void;
+      const scheduled = new Promise<void>(r => { ready = r; });
+      const result = new Promise<Record<string, unknown>>(r => { resolve = r; });
       const hub = { hasAgent: () => true, refreshStream: () => {},
         command: async (_host: string, _id: string, action: string) => {
+          if (action === 'start') { ready(); return result; }
           if (action === 'kill') killed.push(_id);
-          return { containerId: 'container-1' };
+          return {};
         } } as unknown as AgentHub;
-      launchSession({ pool: { query } as unknown as Pool, hub }, ID, HOST, {});
-      await checked; await new Promise(resolve => setImmediate(resolve));
+      const launch = launchSession({ pool: f.pool, hub }, ID, HOST, {});
+      await scheduled;
+      await f.pool.query('UPDATE sessions SET state=$2,host_id=$3,container_id=$4 WHERE id=$1', [ID, state, host, container]);
+      resolve({ containerId: 'container-1' });
+      await launch;
       assert.equal(killed.length, shouldKill ? 1 : 0, state + ':' + host + ':' + container);
     }
   } finally { await f.close(); }
@@ -153,7 +167,7 @@ test('a failed launch retains ordered, redacted diagnostics after cleanup and re
   try {
     const ws=f.socket();await f.announce(ws,'hello',[]);
     launchSession({pool:f.pool,hub:f.hub},ID,HOST,{profile:{image:'registry.example/android@sha256:'+'a'.repeat(64),cpu:4,memoryMb:6144,containerEnv:{PASSWORD:'opaque-secret'}}},60000);
-    const start=f.sent.find(m=>m.action==='start')!;assert.ok(start);
+    const start=await f.waitStart();
     const event={code:'container.stderr',message:'Vulkan init failed; password=private-value',severity:'error',service:'emulator'};
     await f.receive(ws,{type:'session-log',requestId:start.id,sessionId:USER,event});
     await f.receive(f.socket(),{type:'session-log',requestId:start.id,sessionId:ID,event});

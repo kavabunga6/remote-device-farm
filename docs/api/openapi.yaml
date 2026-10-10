@@ -615,7 +615,9 @@ paths:
         Browser sessions, personal API tokens and ADB credentials are revoked; guest grants
         are revoked, pending queue requests are cancelled and webhooks are disabled.
         Audit and session history remain available. The current administrator, system identity
-        and last human administrator cannot be removed. Finish active device sessions first.
+        and last human administrator cannot be removed. Active devices are marked stopping and
+        their connections are closed. Cleanup continues asynchronously; a slot remains reserved
+        until the agent confirms teardown, including retries after an agent reconnect.
         An administrator can explicitly create a new local account with the same login.
         LDAP and OIDC identities remain blocked after removal.
       parameters:
@@ -657,7 +659,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "409":
-          description: Own account, last administrator or active device sessions
+          description: Own account or last administrator
           content:
             application/json:
               schema:

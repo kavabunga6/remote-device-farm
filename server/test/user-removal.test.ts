@@ -64,7 +64,6 @@ test('user removal protects accounts, revokes all access and preserves history',
     const session = id();
     await db.query("INSERT INTO hosts(id,name) VALUES('host','Host')");
     await db.query("INSERT INTO sessions(id,owner_user_id,host_id,profile_id,state) VALUES($1,$2,'host','android-30','running')", [session, target]);
-    const busy = await request(target); assert.equal(busy.status, 409); assert.equal((await busy.json()).code, 'user_in_use');
     assert.ok(await auth.loginLocal('reader', password));
     await db.query("UPDATE sessions SET state='stopped',ended_at=now() WHERE id=$1", [session]);
     const raw = newToken();
