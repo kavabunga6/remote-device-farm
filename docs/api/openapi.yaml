@@ -335,6 +335,8 @@ paths:
         Requires users.manage. roleId defaults to the built-in user. Assigning another role
         requires roles.manage. Without roles.manage the selected role cannot grant more
         permissions than the actor has. Legacy role=admin/user remains accepted.
+        A deleted local login can be reused. The new account receives a new ID and does not
+        inherit the deleted account's access, settings or history.
       requestBody:
         required: true
         content:
@@ -614,6 +616,8 @@ paths:
         are revoked, pending queue requests are cancelled and webhooks are disabled.
         Audit and session history remain available. The current administrator, system identity
         and last human administrator cannot be removed. Finish active device sessions first.
+        An administrator can explicitly create a new local account with the same login.
+        LDAP and OIDC identities remain blocked after removal.
       parameters:
         - in: path
           name: id

@@ -316,6 +316,12 @@ export function registerAdminRoutes(app: Express, context: ServerContext): void 
         if (!target) throw new ApiError(400, 'invalid_role', uiMessage('roles.notFound'));
         const targetPermissions: string[] = target.builtin === 'admin' ? allPermissions : target.permissions;
         if (!actorRole?.permissions.includes('roles.manage') && targetPermissions.some(p => !actorRole?.permissions.includes(p))) throw new ApiError(403, 'permission_denied', uiMessage('roles.permissionDenied'));
+        // Release only a deleted local identity during explicit account creation.
+        // Keep its ID and username for history; never restore its credentials or ownership.
+        await client.query(
+          "UPDATE users SET subject='removed:' || id::text WHERE provider='local' AND subject=$1 AND removed_at IS NOT NULL",
+          [username],
+        );
         return client.query(
         `INSERT INTO users(id,provider,subject,username,display_name,password_hash,role,company,job_title,access_role_id)
          VALUES($1,'local',$2,$2,$3,$4,$5,$6,$7,$8) RETURNING id,provider,username,display_name AS "displayName",company,job_title AS "jobTitle",role,created_at AS "createdAt"`,
