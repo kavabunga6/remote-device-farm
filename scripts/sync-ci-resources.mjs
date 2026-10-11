@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const copies = [['scripts/rdf.sh', 'resources/rdf/rdf.sh'], ['integrations/common/run-tests.sh', 'resources/rdf/run-tests.sh']];
+const copies = [['scripts/rdf.sh', 'resources/rdf/rdf.sh'], ['integrations/common/run-tests.sh', 'resources/rdf/run-tests.sh'], ['integrations/common/jenkins-runtime.sh', 'resources/rdf/jenkins-runtime.sh']];
 for (const [source, destination] of copies) {
   const content = readFileSync(join(root, source), 'utf8').replaceAll('\r\n', '\n');
   if (process.argv.includes('--check')) {

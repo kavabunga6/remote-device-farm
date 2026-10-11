@@ -22,13 +22,14 @@ class JenkinsLibraryTest {
                 try { body() } finally { environment.clear(); environment.putAll(previous) }
             },
             string: { Map value -> value },
+            file: { Map value -> value },
             withCredentials: { List values, Closure body ->
-                events << ['credentials', values[0].credentialsId]
+                events << ['credentials', values.collect { it.credentialsId }]
                 credentials++
                 try { body() } finally { credentials-- }
             },
             sh: { Map value ->
-                if (value.script.contains('bash "$RDF_RUNNER_SCRIPT"')) {
+                if (value.script.contains('bash "$RDF_RUNTIME_SCRIPT"')) {
                     assertEquals(1, credentials)
                     events << ['test', environment.RDF_ARTIFACT_DIR]
                     if (flags.testFailure) throw new IllegalStateException('test failure')
@@ -56,7 +57,7 @@ class JenkinsLibraryTest {
         def f = fixture()
         String directory = f.library.call(configuration())
         assertTrue(directory.startsWith('rdf-artifacts/'))
-        assertEquals(['prepare', 'write', 'write', 'credentials', 'test', 'junit', 'archive'], f.events.collect { it[0] })
+        assertEquals(['prepare', 'write', 'write', 'write', 'credentials', 'test', 'junit', 'archive'], f.events.collect { it[0] })
         assertEquals([BUILD_NUMBER: '42'], f.environment)
         assertNotEquals(directory, f.library.call(configuration()))
     }
@@ -84,8 +85,24 @@ class JenkinsLibraryTest {
         catch (IllegalStateException problem) { assertEquals('junit failure', problem.message) }
         assertTrue(f.events.any { it[0] == 'archive' })
     }
+    @Test void bindsAdbAndTlsOnlyForTheManagedRuntime() {
+        def f = fixture()
+        f.library.call(configuration() + [adbKeyCredentialsId: 'adb-key', caCredentialsId: 'tls-pin',
+                                         environmentScript: 'ci/env.sh', label: 'pipeline-tests'])
+        assertEquals(['rdf-api-token', 'adb-key', 'tls-pin'], f.events.find { it[0] == 'credentials' }[1])
+        assertEquals([BUILD_NUMBER: '42'], f.environment)
+    }
+    @Test void callersCanOwnReportPublication() {
+        def f = fixture()
+        f.library.call(configuration() + [publishReports: false])
+        assertFalse(f.events.any { it[0] in ['junit', 'archive'] })
+        def failed = fixture([testFailure: true])
+        try { failed.library.call(configuration() + [publishReports: false]); fail('must fail') }
+        catch (IllegalStateException problem) { assertEquals('test failure', problem.message) }
+        assertFalse(failed.events.any { it[0] in ['junit', 'archive'] })
+    }
     @Test void invalidConfigurationCannotExecuteShellOrBindCredentials() {
-        for (Map invalid : [[credentialsId: ''], [testScript: '../secrets.sh'], [startTimeoutSeconds: '0'], [url: 'x\ny'], [unknown: 'x']]) {
+        for (Map invalid : [[credentialsId: ''], [testScript: '../secrets.sh'], [startTimeoutSeconds: '0'], [url: 'x\ny'], [unknown: 'x'], [publishReports: 'false'], [environmentScript: '../env.sh']]) {
             def f = fixture()
             try { f.library.call(configuration() + invalid); fail('must fail') }
             catch (IllegalArgumentException expected) { }
