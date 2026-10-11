@@ -11,7 +11,7 @@
 | [CLI фермы](../api/README.md#готовый-помощник-для-ci) | Bash-скрипт `scripts/rdf.sh` | Автотесты очереди, ADB, ошибок и очистки; живой запуск через Maestro | Проверка в вашем окружении и с выбранным профилем |
 | [Maestro](maestro.md) | Готовый flow и команды запуска | Android 11, Maestro 2.11.0: тест, скриншот, освобождение слота | Другие версии Android и flows вашего приложения |
 | [Appium](appium.md) | Локальный сервер, UiAutomator2 и smoke-тест | Установка зависимостей, doctor, `/status`, локальные проверки процессов | Полный тест на устройстве, отмена и проверка освобождения |
-| [Jenkins Shared Library](jenkins-library.md) | Шаг `deviceFarm`, встроенный CLI; [Jenkinsfile](jenkins.md) как альтернативный пример | Groovy-тесты шагов, credentials и публикации после ошибок; общий runner | Запуск с CPS в Jenkins, JUnit, отмена и восстановление после рестарта |
+| [Jenkins Shared Library](jenkins-library.md) | Шаг `deviceFarm`, встроенный CLI; [Jenkinsfile](jenkins.md) как альтернативный пример | Groovy и Linux-тесты; живой запуск с CPS, ADB/TLS credentials, JUnit, Allure, ошибки и штатная отмена | Восстановление после рестарта и потери агента, параллельные живые прогоны |
 | [TeamCity](teamcity.md) | Bash-скрипты для Command Line шага | Проверки shell-кода и локального контракта скриптов | Запуск в TeamCity, публикация JUnit, отмена сборки |
 | [GitHub Actions](github-actions.md) | Пример workflow | Структура примера сверена с CLI | Запуск workflow на подготовленном runner |
 | [GitLab CI Component](gitlab-component.md) | Параметризованное задание, проверка SHA256; [обычный job](gitlab-ci.md) | Запуск скрипта компонента с настоящим CLI и моделью API, ошибки и очистка | CI Lint, job на GitLab runner, отмена и JUnit |
