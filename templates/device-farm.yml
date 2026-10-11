@@ -1,0 +1,83 @@
+spec:
+  inputs:
+    job-name:
+      default: device-farm-tests
+    stage:
+      default: test
+    runner-tags:
+      type: array
+      default: [device-farm]
+    resource-group:
+      default: device-farm
+    url:
+      description: HTTPS service address reachable by the runner
+    profile:
+      description: Device profile ID
+    adb-key-id:
+      description: UUID of the public key used by the runner's ADB server
+    token-variable:
+      default: RDF_TOKEN
+      regex: '^[A-Za-z_][A-Za-z0-9_]*$'
+    prepare-script:
+      default: ''
+      description: Optional application build script, executed before device allocation
+    test-script:
+      default: ci/android-tests.sh
+      description: Application test script; receives ANDROID_SERIAL without the API token
+    junit-report:
+      default: app/build/outputs/androidTest-results/connected/**/*.xml
+    test-timeout-seconds:
+      default: '1200'
+      regex: '^[1-9][0-9]{0,4}$'
+    start-timeout-seconds:
+      default: '900'
+      regex: '^[1-9][0-9]{0,4}$'
+---
+"$[[ inputs.job-name ]]":
+  stage: $[[ inputs.stage ]]
+  tags: $[[ inputs.runner-tags ]]
+  resource_group: $[[ inputs.resource-group ]]
+  timeout: 60m
+  variables:
+    RDF_URL: "$[[ inputs.url ]]"
+    RDF_PROFILE: "$[[ inputs.profile ]]"
+    RDF_ADB_KEY_ID: "$[[ inputs.adb-key-id ]]"
+    RDF_TOKEN_VARIABLE: "$[[ inputs.token-variable ]]"
+    RDF_PREPARE_SCRIPT: "$[[ inputs.prepare-script ]]"
+    RDF_TEST_SCRIPT: "$[[ inputs.test-script ]]"
+    RDF_TEST_TIMEOUT_SECONDS: "$[[ inputs.test-timeout-seconds ]]"
+    RDF_START_TIMEOUT_SECONDS: "$[[ inputs.start-timeout-seconds ]]"
+    RDF_LABEL: "gitlab-$CI_PROJECT_ID-$CI_JOB_ID"
+    RDF_ARTIFACT_DIR: "rdf-artifacts/$CI_JOB_ID"
+    RDF_STATE_FILE: "rdf-artifacts/$CI_JOB_ID/session.json"
+  script:
+    - |
+      set +x
+      set -euo pipefail
+      umask 077
+      for tool in bash curl jq adb timeout tee sha256sum; do command -v "$tool" >/dev/null; done
+      [[ "$RDF_TOKEN_VARIABLE" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]
+      export RDF_TOKEN="${!RDF_TOKEN_VARIABLE:?set the configured API token variable}"
+      [ -f "$RDF_TEST_SCRIPT" ] || { echo 'Test script is missing' >&2; exit 2; }
+      [ ! -e "$RDF_STATE_FILE" ] && [ ! -d "$RDF_STATE_FILE.lock" ] || { echo 'Saved state must be released first' >&2; exit 2; }
+      if [ -n "$RDF_PREPARE_SCRIPT" ]; then
+        env -u RDF_TOKEN -u "$RDF_TOKEN_VARIABLE" bash "$RDF_PREPARE_SCRIPT"
+      fi
+      mkdir -p "$RDF_ARTIFACT_DIR/tools"
+      tool_dir="$(cd "$RDF_ARTIFACT_DIR/tools" && pwd)"
+      source_url='https://raw.githubusercontent.com/kavabunga6/remote-device-farm/9bb4429f0685bc4877db5df6f294f912069ab930'
+      curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 "$source_url/scripts/rdf.sh" -o "$tool_dir/rdf.sh"
+      curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 "$source_url/integrations/common/run-tests.sh" -o "$tool_dir/run-tests.sh"
+      (
+        cd "$tool_dir"
+        printf '%s\n' '959f8cea8dbb73f15bcc6e6ee32a967cd53214cca244ef0e2064d2065a4dd52a  rdf.sh' '6525df6321fc3441414c504e8762afc2fd55df8bbf8d125d0ab85e1559e15350  run-tests.sh' | sha256sum --check --strict
+      )
+      export RDF_CLI_SCRIPT="$tool_dir/rdf.sh"
+      bash "$tool_dir/run-tests.sh" -- bash "$RDF_TEST_SCRIPT"
+  artifacts:
+    when: always
+    paths:
+      - rdf-artifacts/$CI_JOB_ID/
+    reports:
+      junit: "$[[ inputs.junit-report ]]"
+    expire_in: 1 week
