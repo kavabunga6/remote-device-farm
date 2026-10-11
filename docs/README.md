@@ -37,6 +37,7 @@
 - [Интеграции: быстрый запуск, состав и статус проверок](ci/README.md).
 - [GitHub Actions](ci/github-actions.md) и [GitLab CI](ci/gitlab-ci.md).
 - [Maestro](ci/maestro.md) и [Appium](ci/appium.md) через CLI фермы.
+- [GitLab CI Component](ci/gitlab-component.md), [Jenkins Shared Library](ci/jenkins-library.md) и [Gradle-плагин](ci/gradle.md): пакеты автоматизации.
 - [Jenkins](ci/jenkins.md) и [TeamCity](ci/teamcity.md): шаблоны заданий.
 
 ## Дополнительные материалы

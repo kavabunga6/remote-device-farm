@@ -4,6 +4,8 @@ import path from 'node:path';
 // Explicit public source files only: never copy working directories, secrets or dependencies.
 export const downloadFiles = [
   'scripts/rdf.sh',
+  'templates/device-farm.yml',
+  'integrations/common/run-tests.sh',
   'examples/maestro/settings-smoke.yaml',
   'examples/jenkins/Jenkinsfile',
   'examples/jenkins/android-tests.sh',

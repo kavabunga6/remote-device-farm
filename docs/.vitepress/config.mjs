@@ -81,6 +81,9 @@ export default defineConfig({
         { text: 'TeamCity', link: '/ci/teamcity' },
         { text: 'GitHub Actions', link: '/ci/github-actions' },
         { text: 'GitLab CI', link: '/ci/gitlab-ci' },
+        { text: 'GitLab CI Component', link: '/ci/gitlab-component' },
+        { text: 'Jenkins Shared Library', link: '/ci/jenkins-library' },
+        { text: 'Gradle-плагин', link: '/ci/gradle' },
       ] },
       { text: 'Разработчикам', collapsed: true, items: [
         { text: 'Локальная разработка', link: '/development' },

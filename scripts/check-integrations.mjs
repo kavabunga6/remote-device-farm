@@ -43,8 +43,9 @@ function checkDocumentation() {
 }
 try {
   if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Use Node.js 24 or newer for the integration checks.');
-  for (const file of ['scripts/rdf.sh', ...files('examples', '.sh')]) run(`Shell syntax: ${file}`, bash, ['-n', file]);
+  for (const file of ['scripts/rdf.sh', ...files('examples', '.sh'), ...files('integrations/common', '.sh')]) run(`Shell syntax: ${file}`, bash, ['-n', file]);
   for (const file of files('examples', '.mjs')) run(`JavaScript syntax: ${file}`, process.execPath, ['--check', file]);
+  run('Bundled Jenkins resources', process.execPath, ['scripts/sync-ci-resources.mjs', '--check']);
   checkDocumentation();
   const tests = files('scripts/test', '.test.mjs');
   if (!tests.length) throw new Error('No integration contract tests found.');
