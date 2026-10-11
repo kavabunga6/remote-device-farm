@@ -7,6 +7,8 @@
 
 # Dependencies, builds and package caches.
 node_modules/
+.gradle/
+rdf-artifacts/
 dist/
 build/
 out/

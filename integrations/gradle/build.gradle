@@ -1,0 +1,55 @@
+plugins {
+    id 'java-gradle-plugin'
+    id 'groovy'
+    id 'maven-publish'
+}
+
+group = 'io.github.kavabunga6'
+version = '0.1.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+    withSourcesJar()
+}
+repositories { mavenCentral() }
+dependencies {
+    testImplementation localGroovy()
+    testImplementation gradleTestKit()
+    testImplementation 'junit:junit:4.13.2'
+}
+gradlePlugin {
+    plugins {
+        deviceFarm {
+            id = 'io.github.kavabunga6.device-farm'
+            implementationClass = 'org.remotedevicefarm.gradle.DeviceFarmPlugin'
+            displayName = 'Remote Device Farm'
+            description = 'Run Android tests with a queued device, renewable lease and confirmed cleanup.'
+        }
+    }
+}
+def repositoryRoot = layout.projectDirectory.dir('../..')
+tasks.named('processResources') {
+    from(repositoryRoot.file('scripts/rdf.sh')) { into 'rdf' }
+    from(repositoryRoot.file('integrations/common/run-tests.sh')) { into 'rdf' }
+    from(repositoryRoot.file('LICENSE')) { into 'META-INF'; rename { 'LICENSE' } }
+}
+tasks.named('test') {
+    dependsOn 'publishAllPublicationsToLocalBuildRepository'
+    maxHeapSize = '256m'
+    maxParallelForks = 1
+    systemProperty 'rdf.repository', repositoryRoot.asFile.absolutePath
+    testLogging { events 'failed', 'skipped'; exceptionFormat = 'short' }
+}
+publishing {
+    repositories { maven { name = 'localBuild'; url = layout.buildDirectory.dir('repository') } }
+    publications.withType(MavenPublication).configureEach {
+        pom {
+            name = 'Remote Device Farm Gradle plugin'
+            description = 'Android test execution through the Remote Device Farm CLI.'
+            url = 'https://github.com/kavabunga6/remote-device-farm'
+            licenses { license { name = 'Apache License, Version 2.0'; url = 'https://www.apache.org/licenses/LICENSE-2.0' } }
+            scm { url = 'https://github.com/kavabunga6/remote-device-farm' }
+        }
+    }
+}
