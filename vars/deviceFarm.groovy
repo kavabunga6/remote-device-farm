@@ -52,7 +52,8 @@ def call(Map configuration) {
         'RDF_LABEL=' + (settings.label ?: env.RDF_LABEL ?: 'jenkins-' + (env.BUILD_NUMBER ?: 'build')),
         'RDF_TOKEN_VARIABLE=RDF_TOKEN', 'RDF_ENV_SCRIPT=' + settings.environmentScript,
         'RDF_CLI_SCRIPT=' + runDirectory + '/tools/rdf.sh', 'RDF_RUNNER_SCRIPT=' + runDirectory + '/tools/run-tests.sh',
-        'RDF_RUNTIME_SCRIPT=' + runDirectory + '/tools/jenkins-runtime.sh'
+        'RDF_RUNTIME_SCRIPT=' + runDirectory + '/tools/jenkins-runtime.sh',
+        'RDF_CLEANUP_SCRIPT=' + runDirectory + '/tools/jenkins-cleanup.sh'
     ]
     def bindings = [string(credentialsId: settings.credentialsId, variable: 'RDF_TOKEN')]
     if (settings.adbKeyCredentialsId) bindings.add(file(credentialsId: settings.adbKeyCredentialsId, variable: 'RDF_ADB_KEY_FILE'))
@@ -69,15 +70,31 @@ umask 077
 mkdir -p -- "$RDF_ARTIFACT_DIR/tools"
 if [ -n "$RDF_PREPARE_SCRIPT" ]; then env -u RDF_TOKEN bash "$RDF_PREPARE_SCRIPT"; fi
 ''')
-            for (def resource in ['rdf.sh', 'run-tests.sh', 'jenkins-runtime.sh']) {
+            for (def resource in ['rdf.sh', 'run-tests.sh', 'jenkins-runtime.sh', 'jenkins-cleanup.sh']) {
                 writeFile(file: runDirectory + '/tools/' + resource, text: libraryResource('rdf/' + resource), encoding: 'UTF-8')
             }
             withCredentials(bindings) {
-                sh(script: '''#!/usr/bin/env bash
+                try {
+                    sh(script: '''#!/usr/bin/env bash
 set +x
 set -euo pipefail
 bash "$RDF_RUNTIME_SCRIPT"
 ''')
+                } catch (problem) {
+                    failure = problem
+                } finally {
+                    try {
+                        sh(script: '''#!/usr/bin/env bash
+set +x
+set -euo pipefail
+bash "$RDF_CLEANUP_SCRIPT"
+''')
+                    } catch (problem) {
+                        echo('deviceFarm: managed cleanup failed; preserve recovery evidence')
+                        if (failure == null) failure = problem
+                    }
+                }
+                if (failure != null) throw failure
             }
         } catch (problem) {
             failure = problem

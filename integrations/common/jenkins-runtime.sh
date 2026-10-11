@@ -47,7 +47,7 @@ cleanup() {
     if jobs -pr | grep -Fxq "$adb_pid"; then server_exited=false; fi
   fi
   if [[ -n "$private_dir" ]]; then
-    rm -f -- "$private_dir/.android/adbkey" "$private_dir/.android/adbkey.pub"
+    rm -f -- "$private_dir/.android/adbkey" "$private_dir/.android/adbkey.pub" "$private_dir/.rdf-owner"
     rmdir -- "$private_dir/.android" "$private_dir" 2>/dev/null || key_removed=false
     jq -n --argjson pid "${adb_pid:-0}" --argjson port "${adb_port:-0}" \
       --argjson exited "$server_exited" --argjson removed "$key_removed" \
@@ -68,6 +68,8 @@ if [ -n "${RDF_ADB_KEY_FILE:-}" ]; then
   temp_root="$(cd -P -- "${TMPDIR:-/tmp}" && pwd)"
   case "$temp_root/" in "$RDF_ARTIFACT_DIR/"*) echo 'Private ADB files must stay outside artifacts' >&2; exit 2 ;; esac
   private_dir="$(mktemp -d "$temp_root/rdf-adb.XXXXXXXX")"
+  printf '%s' "$RDF_ARTIFACT_DIR" > "$private_dir/.rdf-owner"
+  jq -n --arg directory "$private_dir" '{directory:$directory,pid:0,port:0}' > "$RDF_ARTIFACT_DIR/adb-owner.json"
   export ANDROID_USER_HOME="$private_dir/.android"
   mkdir -p -- "$ANDROID_USER_HOME"
   install -m 0600 -- "$RDF_ADB_KEY_FILE" "$ANDROID_USER_HOME/adbkey"
@@ -77,6 +79,9 @@ if [ -n "${RDF_ADB_KEY_FILE:-}" ]; then
   export ANDROID_ADB_SERVER_PORT="$adb_port" ADB_SERVER_SOCKET="tcp:127.0.0.1:$adb_port"
   env -u RDF_TOKEN adb -L "tcp:localhost:$adb_port" nodaemon server > "$RDF_ARTIFACT_DIR/adb-server.log" 2>&1 &
   adb_pid=$!
+  jq -n --arg directory "$private_dir" --argjson pid "$adb_pid" --argjson port "$adb_port" \
+    '{directory:$directory,pid:$pid,port:$port}' > "$RDF_ARTIFACT_DIR/adb-owner.json.tmp"
+  mv -- "$RDF_ARTIFACT_DIR/adb-owner.json.tmp" "$RDF_ARTIFACT_DIR/adb-owner.json"
   server_ready=0
   for attempt in {1..30}; do
     sleep 0.2

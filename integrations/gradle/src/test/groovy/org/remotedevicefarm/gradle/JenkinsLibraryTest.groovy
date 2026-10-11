@@ -29,7 +29,11 @@ class JenkinsLibraryTest {
                 try { body() } finally { credentials-- }
             },
             sh: { Map value ->
-                if (value.script.contains('bash "$RDF_RUNTIME_SCRIPT"')) {
+                if (value.script.contains('bash "$RDF_CLEANUP_SCRIPT"')) {
+                    assertEquals(1, credentials)
+                    events << ['cleanup']
+                    if (flags.cleanupFailure) throw new IllegalStateException('cleanup failure')
+                } else if (value.script.contains('bash "$RDF_RUNTIME_SCRIPT"')) {
                     assertEquals(1, credentials)
                     events << ['test', environment.RDF_ARTIFACT_DIR]
                     if (flags.testFailure) throw new IllegalStateException('test failure')
@@ -57,7 +61,7 @@ class JenkinsLibraryTest {
         def f = fixture()
         String directory = f.library.call(configuration())
         assertTrue(directory.startsWith('rdf-artifacts/'))
-        assertEquals(['prepare', 'write', 'write', 'write', 'credentials', 'test', 'junit', 'archive'], f.events.collect { it[0] })
+        assertEquals(['prepare', 'write', 'write', 'write', 'write', 'credentials', 'test', 'cleanup', 'junit', 'archive'], f.events.collect { it[0] })
         assertEquals([BUILD_NUMBER: '42'], f.environment)
         assertNotEquals(directory, f.library.call(configuration()))
     }
@@ -100,6 +104,16 @@ class JenkinsLibraryTest {
         try { failed.library.call(configuration() + [publishReports: false]); fail('must fail') }
         catch (IllegalStateException problem) { assertEquals('test failure', problem.message) }
         assertFalse(failed.events.any { it[0] in ['junit', 'archive'] })
+    }
+    @Test void alwaysFinalizesWithinCredentialsAndKeepsTheOriginalFailure() {
+        def f = fixture([testFailure: true, cleanupFailure: true])
+        try { f.library.call(configuration()); fail('must fail') }
+        catch (IllegalStateException problem) { assertEquals('test failure', problem.message) }
+        assertTrue(f.events.any { it[0] == 'cleanup' })
+        assertEquals(['junit', 'archive'], f.events.findAll { it[0] in ['junit', 'archive'] }.collect { it[0] })
+        def failed = fixture([cleanupFailure: true])
+        try { failed.library.call(configuration()); fail('must fail') }
+        catch (IllegalStateException problem) { assertEquals('cleanup failure', problem.message) }
     }
     @Test void invalidConfigurationCannotExecuteShellOrBindCredentials() {
         for (Map invalid : [[credentialsId: ''], [testScript: '../secrets.sh'], [startTimeoutSeconds: '0'], [url: 'x\ny'], [unknown: 'x'], [publishReports: 'false'], [environmentScript: '../env.sh']]) {

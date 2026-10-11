@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const net = require('node:net');
 const args = process.argv.slice(2);
+process.title = 'adb';
 if (args[0] === 'pubkey') {
   if (process.env.RDF_TOKEN) process.exit(88);
   console.log('fixture-public-key');

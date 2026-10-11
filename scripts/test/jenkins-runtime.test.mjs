@@ -9,6 +9,7 @@ import test from 'node:test';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const runtime = join(root, 'integrations/common/jenkins-runtime.sh');
+const cleanup = join(root, 'integrations/common/jenkins-cleanup.sh');
 const bash = process.env.RDF_TEST_BASH || (process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : 'bash');
 const shellPath = value => process.platform === 'win32' ? value.replaceAll('\\', '/').replace(/^([A-Za-z]):/, (_, d) => '/' + d.toLowerCase()) : value;
 function fixture(t, extra = {}) {
@@ -47,6 +48,7 @@ function fixture(t, extra = {}) {
   return {
     dir, env, arguments_,
     run: () => spawnSync(bash, arguments_, { cwd: dir, env, encoding: 'utf8', timeout: 20000 }),
+    recover: () => spawnSync(bash, ['--noprofile', '--norc', '-c', 'export PATH="$FAKE_BIN:$PATH"; exec bash "$1"', 'fixture', shellPath(cleanup)], { cwd: dir, env, encoding: 'utf8', timeout: 40000 }),
     json: name => JSON.parse(readFileSync(join(dir, 'artifacts', name), 'utf8')),
     trace: () => existsSync(join(dir, 'trace')) ? readFileSync(join(dir, 'trace'), 'utf8') : '',
   };
@@ -107,4 +109,45 @@ test('Jenkins runtime cancellation waits for CLI release and removes only its ow
   assert.equal(f.json('farm-result.json').releaseConfirmed, true);
   assertPrivateCleanup(f);
   assert.match(f.trace(), /"method":"DELETE","path":"\/api\/sessions/);
+});
+
+
+test('Jenkins finalization recovers a killed shell and its stale lock without replacing the original error', { skip: process.platform === 'win32' }, async t => {
+  const f = fixture(t, { TEST_BLOCK: '1' });
+  const child = spawn(bash, f.arguments_, { cwd: f.dir, env: f.env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const closed = once(child, 'close');
+  let output = ''; child.stdout.on('data', d => output += d); child.stderr.on('data', d => output += d);
+  const limit = Date.now() + 15000;
+  while (!existsSync(join(f.dir, 'ready')) && Date.now() < limit && child.exitCode === null) await new Promise(resolve => setTimeout(resolve, 50));
+  assert.ok(existsSync(join(f.dir, 'ready')), output);
+  const pid = readFileSync(join(f.dir, 'runtime.pid'), 'utf8');
+  const cliPid = readFileSync(join(f.dir, 'artifacts/session.json.lock/pid'), 'utf8').trim();
+  const processes = spawnSync('ps', ['-eo', 'pid=,ppid=,pgid='], { encoding: 'utf8' }).stdout.trim().split('\n').map(line => line.trim().split(/\s+/));
+  const descendants = new Set([cliPid]);
+  let changed = true;
+  while (changed) { changed = false; for (const [processId, parent] of processes) if (descendants.has(parent) && !descendants.has(processId)) { descendants.add(processId); changed = true; } }
+  const groups = [...new Set(processes.filter(([processId]) => descendants.has(processId)).map(([, , group]) => group))].filter(group => descendants.has(group));
+  const stopped = spawnSync(bash, ['-c', 'kill -KILL -- "$@"', 'fixture', ...groups.map(group => '-' + group), ...descendants, pid], { encoding: 'utf8' });
+  assert.equal(stopped.status, 0, stopped.stderr);
+  await closed;
+  assert.ok(existsSync(join(f.dir, 'artifacts/session.json')));
+  const recovered = f.recover();
+  assert.equal(recovered.status, 0, recovered.stdout + recovered.stderr);
+  assert.deepEqual(f.json('farm-result.json'), { cliExitCode: 1, releaseConfirmed: true });
+  assertPrivateCleanup(f);
+  assert.equal(existsSync(join(f.dir, 'artifacts/session.json.lock')), false);
+});
+
+test('Jenkins finalization refuses an unrelated key directory and retains ownership evidence', { skip: process.platform === 'win32' }, t => {
+  const f = fixture(t);
+  mkdirSync(join(f.dir, 'artifacts'));
+  mkdirSync(join(f.dir, 'rdf-adb.12345678/.android'), { recursive: true, mode: 0o700 });
+  writeFileSync(join(f.dir, 'rdf-adb.12345678/.android/adbkey'), 'unrelated-private-key');
+  writeFileSync(join(f.dir, 'rdf-adb.12345678/.rdf-owner'), 'another-run');
+  writeFileSync(join(f.dir, 'artifacts/adb-owner.json'), JSON.stringify({ directory: join(f.dir, 'rdf-adb.12345678'), pid: 0, port: 0 }));
+  const result = f.recover();
+  assert.notEqual(result.status, 0);
+  assert.equal(readFileSync(join(f.dir, 'rdf-adb.12345678/.android/adbkey'), 'utf8'), 'unrelated-private-key');
+  assert.ok(existsSync(join(f.dir, 'artifacts/adb-owner.json')));
+  assert.doesNotMatch(f.trace(), /"method":/);
 });
