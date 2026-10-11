@@ -4,6 +4,12 @@ Browser access to Android emulators and physical devices: screen control, APK in
 
 **Alpha.** APIs and deployment settings may change. Verification status is listed below.
 
+## CI and test automation
+
+Use a shared device pool for Android tests across projects. Integration examples are included for [GitHub Actions](docs/ci/github-actions.md), [GitLab CI](docs/ci/gitlab-ci.md), [Jenkins](docs/ci/jenkins.md) and [TeamCity](docs/ci/teamcity.md), with test examples for [Maestro](docs/ci/maestro.md) and [Appium](docs/ci/appium.md).
+
+The [Bash CLI](docs/api/README.md#готовый-помощник-для-ci) queues device requests, connects ADB, renews the lease during tests and releases the device after completion or cancellation. The examples include artifact collection. These are CLI-based integrations; dedicated installable plugins are not available yet. [Setup and verification status](docs/ci/README.md).
+
 ![Android session in the English interface](docs/screenshots/device-dark.png)
 
 [More screenshots](docs/screenshots/README.md) — current desktop interface with demo data.
