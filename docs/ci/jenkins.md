@@ -1,6 +1,6 @@
 # Android-тесты в Jenkins
 
-[Все интеграции и их статус](README.md) · [API и CLI](../api/README.md) · [Maestro](maestro.md)
+[Jenkins Shared Library](jenkins-library.md) · [Все интеграции и их статус](README.md) · [API и CLI](../api/README.md) · [Maestro](maestro.md)
 
 [Jenkinsfile](../../examples/jenkins/Jenkinsfile) запускается в репозитории Android-приложения. Он собирает APK, получает устройство через `ci/rdf.sh run`, выполняет инструментальные тесты и сохраняет результаты. CLI обслуживает очередь, продлевает аренду и ждёт подтверждения освобождения.
 
