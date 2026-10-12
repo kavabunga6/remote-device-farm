@@ -1,0 +1,164 @@
+version: 2.1
+description: Android tests with queue allocation, ADB and confirmed device release
+display:
+  home_url: https://github.com/kavabunga6/remote-device-farm
+  source_url: https://github.com/kavabunga6/remote-device-farm/tree/main/integrations/circleci
+commands:
+  run-tests:
+    description: Run the project test script and publish JUnit and device artifacts
+    parameters:
+      url:
+        type: string
+      profile:
+        type: string
+      adb-key-id:
+        type: string
+      test-script:
+        type: string
+        default: "ci/android-tests.sh"
+      prepare-script:
+        type: string
+        default: ""
+      environment-script:
+        type: string
+        default: ""
+      artifacts-directory:
+        type: string
+        default: "rdf-artifacts"
+      token-variable:
+        type: env_var_name
+        default: "RDF_TOKEN"
+      adb-key-file:
+        type: string
+        default: ""
+      ca-file:
+        type: string
+        default: ""
+      start-timeout-seconds:
+        type: integer
+        default: 900
+      test-timeout-seconds:
+        type: integer
+        default: 1200
+      junit-report:
+        type: string
+        default: "app/build/outputs/androidTest-results/connected/**/*.xml"
+      label:
+        type: string
+        default: "circleci-tests"
+    steps:
+      - run:
+          name: Remote Device Farm tests
+          environment:
+            RDF_URL: << parameters.url >>
+            RDF_PROFILE: << parameters.profile >>
+            RDF_ADB_KEY_ID: << parameters.adb-key-id >>
+            RDF_TEST_SCRIPT: << parameters.test-script >>
+            RDF_PREPARE_SCRIPT: << parameters.prepare-script >>
+            RDF_ENV_SCRIPT: << parameters.environment-script >>
+            RDF_ARTIFACTS_DIRECTORY: << parameters.artifacts-directory >>
+            RDF_TOKEN_VARIABLE: << parameters.token-variable >>
+            RDF_ADB_KEY_FILE: << parameters.adb-key-file >>
+            RDF_CA_FILE: << parameters.ca-file >>
+            RDF_START_TIMEOUT_SECONDS: << parameters.start-timeout-seconds >>
+            RDF_TEST_TIMEOUT_SECONDS: << parameters.test-timeout-seconds >>
+            RDF_JUNIT_REPORT: << parameters.junit-report >>
+            RDF_LABEL: << parameters.label >>
+          command: |
+            node - <<'NODE'
+            const fs=require('node:fs'),path=require('node:path'),zlib=require('node:zlib');
+            const root=path.resolve('.rdf-ci-tools');
+            fs.mkdirSync(root,{recursive:true,mode:0o700});
+            if(fs.lstatSync(root).isSymbolicLink())throw new Error('Tool directory must be a regular directory');
+            const files=JSON.parse(zlib.gunzipSync(Buffer.from('__RDF_BUNDLE__','base64')));
+            for(const [name,source] of Object.entries(files)){
+              if(name.split('/').includes('..')||path.isAbsolute(name))throw new Error('Invalid bundled resource');
+              const target=path.join(root,name);fs.mkdirSync(path.dirname(target),{recursive:true,mode:0o700});
+              if(fs.realpathSync(path.dirname(target))!==root&&!fs.realpathSync(path.dirname(target)).startsWith(root+path.sep))throw new Error('Tool directory leaves checkout');
+              if(fs.existsSync(target)&&fs.lstatSync(target).isSymbolicLink())throw new Error('Bundled file must be a regular file');
+              fs.writeFileSync(target,source,{mode:0o600});
+            }
+            NODE
+            RDF_TOOL_DIRECTORY="$PWD/.rdf-ci-tools/common" node .rdf-ci-tools/node/cli.cjs run
+      - run:
+          name: Recover pending device release
+          when: always
+          environment:
+            RDF_ARTIFACTS_DIRECTORY: << parameters.artifacts-directory >>
+            RDF_TOKEN_VARIABLE: << parameters.token-variable >>
+          command: |
+            if [ -f .rdf-ci-tools/node/cli.cjs ]; then
+              RDF_TOOL_DIRECTORY="$PWD/.rdf-ci-tools/common" node .rdf-ci-tools/node/cli.cjs recover
+            fi
+      - store_test_results:
+          path: << parameters.artifacts-directory >>
+      - store_artifacts:
+          path: << parameters.artifacts-directory >>
+          destination: device-farm
+jobs:
+  test:
+    description: Checkout the application and run tests on a managed device
+    parameters:
+      executor:
+        type: executor
+      before-tests:
+        type: steps
+        default: []
+      url:
+        type: string
+      profile:
+        type: string
+      adb-key-id:
+        type: string
+      test-script:
+        type: string
+        default: "ci/android-tests.sh"
+      prepare-script:
+        type: string
+        default: ""
+      environment-script:
+        type: string
+        default: ""
+      artifacts-directory:
+        type: string
+        default: "rdf-artifacts"
+      token-variable:
+        type: env_var_name
+        default: "RDF_TOKEN"
+      adb-key-file:
+        type: string
+        default: ""
+      ca-file:
+        type: string
+        default: ""
+      start-timeout-seconds:
+        type: integer
+        default: 900
+      test-timeout-seconds:
+        type: integer
+        default: 1200
+      junit-report:
+        type: string
+        default: "app/build/outputs/androidTest-results/connected/**/*.xml"
+      label:
+        type: string
+        default: "circleci-tests"
+    executor: << parameters.executor >>
+    steps:
+      - checkout
+      - steps: << parameters.before-tests >>
+      - run-tests:
+          url: << parameters.url >>
+          profile: << parameters.profile >>
+          adb-key-id: << parameters.adb-key-id >>
+          test-script: << parameters.test-script >>
+          prepare-script: << parameters.prepare-script >>
+          environment-script: << parameters.environment-script >>
+          artifacts-directory: << parameters.artifacts-directory >>
+          token-variable: << parameters.token-variable >>
+          adb-key-file: << parameters.adb-key-file >>
+          ca-file: << parameters.ca-file >>
+          start-timeout-seconds: << parameters.start-timeout-seconds >>
+          test-timeout-seconds: << parameters.test-timeout-seconds >>
+          junit-report: << parameters.junit-report >>
+          label: << parameters.label >>
