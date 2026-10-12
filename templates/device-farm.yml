@@ -65,12 +65,12 @@ spec:
       fi
       mkdir -p "$RDF_ARTIFACT_DIR/tools"
       tool_dir="$(cd "$RDF_ARTIFACT_DIR/tools" && pwd)"
-      source_url='https://raw.githubusercontent.com/kavabunga6/remote-device-farm/9bb4429f0685bc4877db5df6f294f912069ab930'
+      source_url='https://raw.githubusercontent.com/kavabunga6/remote-device-farm/debf17da3ca1d57b36d7be9dce662b103b719b0f'
       curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 "$source_url/scripts/rdf.sh" -o "$tool_dir/rdf.sh"
       curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 "$source_url/integrations/common/run-tests.sh" -o "$tool_dir/run-tests.sh"
       (
         cd "$tool_dir"
-        printf '%s\n' '959f8cea8dbb73f15bcc6e6ee32a967cd53214cca244ef0e2064d2065a4dd52a  rdf.sh' '6525df6321fc3441414c504e8762afc2fd55df8bbf8d125d0ab85e1559e15350  run-tests.sh' | sha256sum --check --strict
+        printf '%s\n' 'a73e30ddf304ef12b73ba96b2f3ca3e7f011daf20b21c0d43349070fc6668cb3  rdf.sh' '6525df6321fc3441414c504e8762afc2fd55df8bbf8d125d0ab85e1559e15350  run-tests.sh' | sha256sum --check --strict
       )
       export RDF_CLI_SCRIPT="$tool_dir/rdf.sh"
       bash "$tool_dir/run-tests.sh" -- bash "$RDF_TEST_SCRIPT"
