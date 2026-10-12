@@ -101,24 +101,8 @@ async function inspectCapture(page: Page, type: 'image/png' | 'video/webm', time
     const frameWidth = type === 'video/webm' ? landscape ? 1280 : 720 : canvas.width;
     const frameHeight = type === 'video/webm' ? landscape ? 720 : 1280 : canvas.height;
     const left = (canvas.width - frameWidth) / 2, top = (canvas.height - frameHeight) / 2;
-    const seek = (time: number) => new Promise<void>((resolve, reject) => {
-      const timer = window.setTimeout(() => reject(new Error('WebM seek timed out')), 3000);
-      video!.onseeked = () => { clearTimeout(timer); resolve(); }; video!.currentTime = time;
-    });
-    let sampleTimes: number[];
-    if (times === 'timeline') {
-      if (!video) throw new Error('A video is required for timeline inspection');
-      // MediaRecorder WebM starts at its first encoded frame, not at start()'s
-      // performance.now(). Seeking to the end also resolves its initial Infinity duration.
-      await seek(1e6);
-      if (!Number.isFinite(video.duration) || video.duration <= 0) throw new Error('Missing WebM duration');
-      // Sample twice per production capture frame. Inspect actual decoded pixels
-      // across the file, including short taps, without guessing a wall-clock offset.
-      sampleTimes = Array.from({ length: Math.ceil(video.duration * 60) }, (_, index) => index / 60);
-    } else sampleTimes = times;
-    const samples = [];
-    for (const time of sampleTimes) {
-      if (video) await seek(time);
+    const samples: { time: number; count: number; green: number; x: number | null; y: number | null }[] = [];
+    const inspect = (time: number) => {
       context.drawImage(source, 0, 0);
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
       let count = 0, green = 0, sumX = 0, sumY = 0;
@@ -131,6 +115,33 @@ async function inspectCapture(page: Page, type: 'image/png' | 'video/webm', time
         }
       }
       samples.push({ time, count, green, x: count ? (sumX / count - left) / frameWidth : null, y: count ? (sumY / count - top) / frameHeight : null });
+    };
+    if (times === 'timeline') {
+      if (!video) throw new Error('A video is required for timeline inspection');
+      // Inspect presented frames of the real file. A completed seek can still
+      // leave drawImage with the previous compositor frame on some platforms.
+      const player = video; player.playbackRate = .5;
+      await new Promise<void>((resolve, reject) => {
+        let callback = 0;
+        const timer = window.setTimeout(() => { player.cancelVideoFrameCallback(callback); player.pause(); reject(new Error('WebM playback timed out')); }, 15000);
+        const frame: VideoFrameRequestCallback = (_now, metadata) => {
+          inspect(metadata.mediaTime);
+          callback = player.requestVideoFrameCallback(frame);
+        };
+        player.onended = () => { clearTimeout(timer); player.cancelVideoFrameCallback(callback); resolve(); };
+        player.onerror = () => { clearTimeout(timer); player.cancelVideoFrameCallback(callback); reject(new Error('WebM decode failed')); };
+        callback = player.requestVideoFrameCallback(frame);
+        void player.play().catch(reject);
+      });
+    } else {
+      for (const time of times) {
+        if (video) await new Promise<void>((resolve, reject) => {
+          const timer = window.setTimeout(() => reject(new Error('WebM seek timed out')), 3000);
+          video!.onseeked = () => { clearTimeout(timer); requestAnimationFrame(() => requestAnimationFrame(() => resolve())); };
+          video!.currentTime = time;
+        });
+        inspect(time);
+      }
     }
     video?.remove();
     return { mime: blob.type, bytes: blob.size, width: canvas.width, height: canvas.height, samples };
@@ -143,11 +154,14 @@ for (const landscape of [false, true]) {
     await fixture(page, { landscape });
     const touch = page.getByRole('application', { name: 'Сенсорный экран устройства' });
     const marker = touch.locator('.session-touch-marker');
-    const box = (await touch.boundingBox())!;
-    const position = (x: number, y: number) => ({ x: box.x + box.width * x, y: box.y + box.height * y });
+    await page.evaluate(() => document.fonts.ready);
+    const position = async (x: number, y: number) => {
+      const box = (await touch.boundingBox())!;
+      return { x: box.x + box.width * x, y: box.y + box.height * y };
+    };
     await page.getByRole('button', { name: 'Начать запись экрана без звука', exact: true }).click();
     await page.waitForTimeout(200);
-    let point = position(.25, .3);
+    let point = await position(.25, .3);
     const pngDownload = page.waitForEvent('download');
     await page.evaluate(() => {
       // Capture the real tap in its release event, after React has updated the marker.
@@ -170,12 +184,16 @@ for (const landscape of [false, true]) {
     expect(png.samples[0].x).toBeCloseTo(.25, 2); expect(png.samples[0].y).toBeCloseTo(.3, 2);
     await page.waitForTimeout(220);
     await expect(marker).toBeHidden();
-    point = position(.3, .4); await page.mouse.move(point.x, point.y); await page.mouse.down();
+    // Keep a clear interval in the real capture stream between gestures.
+    await page.waitForTimeout(350);
+    point = await position(.3, .4); await page.mouse.move(point.x, point.y); await page.mouse.down();
     await page.waitForTimeout(250);
-    point = position(.7, .6); await page.mouse.move(point.x, point.y, { steps: 5 });
+    point = await position(.7, .6); await page.mouse.move(point.x, point.y, { steps: 5 });
     await page.waitForTimeout(250);
-    await page.mouse.up(); await page.waitForTimeout(240);
-    await page.waitForTimeout(120);
+    await page.mouse.up();
+    // Wait for the browser marker timer before giving the encoder clear frames.
+    await expect(marker).toBeHidden();
+    await page.waitForTimeout(500);
     const webmDownload = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Остановить запись экрана', exact: true }).click();
     await (await webmDownload).saveAs(testInfo.outputPath('touches.webm'));
