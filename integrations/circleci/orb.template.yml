@@ -66,11 +66,11 @@ commands:
             RDF_LABEL: << parameters.label >>
           command: |
             node - <<'NODE'
-            const fs=require('node:fs'),path=require('node:path'),zlib=require('node:zlib');
+            const fs=require('node:fs'),path=require('node:path');
             const root=path.resolve('.rdf-ci-tools');
             fs.mkdirSync(root,{recursive:true,mode:0o700});
             if(fs.lstatSync(root).isSymbolicLink())throw new Error('Tool directory must be a regular directory');
-            const files=JSON.parse(zlib.gunzipSync(Buffer.from('__RDF_BUNDLE__','base64')));
+            const files=JSON.parse(Buffer.from('__RDF_BUNDLE__','base64').toString('utf8'));
             for(const [name,source] of Object.entries(files)){
               if(name.split('/').includes('..')||path.isAbsolute(name))throw new Error('Invalid bundled resource');
               const target=path.join(root,name);fs.mkdirSync(path.dirname(target),{recursive:true,mode:0o700});

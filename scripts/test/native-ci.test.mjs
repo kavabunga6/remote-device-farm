@@ -6,7 +6,6 @@ import {tmpdir} from 'node:os';
 import {join,resolve,delimiter} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
-import {gunzipSync} from 'node:zlib';
 import {orb,bundle,stageAzure,stagePipe} from '../package-native-ci.mjs';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const require=createRequire(import.meta.url),adapter=require('../../integrations/node/adapter.cjs'),platform=require('../../integrations/platform/entry.cjs');
@@ -100,7 +99,7 @@ test('CircleCI Orb is self-contained and publishes tests/artifacts after errors'
  const value=parse(packed),steps=value.commands['run-tests'].steps;
  assert.equal(steps[1].run.when,'always');assert.ok(steps.some(step=>step.store_test_results));assert.ok(steps.some(step=>step.store_artifacts));
  const payload=/Buffer.from\('([^']+)','base64'\)/.exec(steps[0].run.command)[1];
- assert.deepEqual(JSON.parse(gunzipSync(Buffer.from(payload,'base64'))),bundle());
+ assert.deepEqual(JSON.parse(Buffer.from(payload,'base64').toString('utf8')),bundle());
  assert.ok(Buffer.byteLength(packed)<128*1024);
 });
 test('Azure and Bitbucket staged packages contain all dependencies and no repository state',()=>{

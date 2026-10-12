@@ -3,7 +3,6 @@
 import {readFileSync,writeFileSync,mkdirSync,cpSync,existsSync,readdirSync,lstatSync} from 'node:fs';
 import {resolve,dirname,join,relative,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {gzipSync} from 'node:zlib';
 import {spawnSync} from 'node:child_process';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const sources={
@@ -36,7 +35,7 @@ export function bundle(){return Object.fromEntries(Object.entries(sources).map((
 function populate(directory){for(const [name,source] of Object.entries(bundle())){const target=join(directory,name);mkdirSync(dirname(target),{recursive:true});writeFileSync(target,source);}}
 export function orb(){
  const source=readFileSync(join(root,'integrations/circleci/orb.template.yml'),'utf8').replaceAll('\r\n','\n');
- return source.replace('__RDF_BUNDLE__',gzipSync(Buffer.from(JSON.stringify(bundle())),{level:9,mtime:0}).toString('base64'));
+ return source.replace('__RDF_BUNDLE__',Buffer.from(JSON.stringify(bundle())).toString('base64'));
 }
 export function stageAzure(){
  const directory=join(root,'integrations/azure-pipelines/build/package');
