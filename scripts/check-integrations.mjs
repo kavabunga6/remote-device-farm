@@ -9,7 +9,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const bash = process.env.RDF_TEST_BASH || (process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : 'bash');
 function files(directory, suffix) {
   return readdirSync(join(root, directory), { withFileTypes: true }).flatMap(entry => {
-    if (entry.name.startsWith('.') || ['node_modules', 'artifacts', 'dist'].includes(entry.name)) return [];
+    if (entry.name.startsWith('.') || ['node_modules', 'artifacts', 'dist', 'build'].includes(entry.name)) return [];
     const name = join(directory, entry.name);
     return entry.isDirectory() ? files(name, suffix) : name.endsWith(suffix) ? [name] : [];
   }).sort();
@@ -43,8 +43,10 @@ function checkDocumentation() {
 }
 try {
   if (Number(process.versions.node.split('.')[0]) < 24) throw new Error('Use Node.js 24 or newer for the integration checks.');
-  for (const file of ['scripts/rdf.sh', ...files('examples', '.sh'), ...files('integrations/common', '.sh')]) run(`Shell syntax: ${file}`, bash, ['-n', file]);
+  for (const file of ['scripts/rdf.sh', ...files('examples', '.sh'), ...files('integrations', '.sh')]) run(`Shell syntax: ${file}`, bash, ['-n', file]);
   for (const file of files('examples', '.mjs')) run(`JavaScript syntax: ${file}`, process.execPath, ['--check', file]);
+  for (const file of files('integrations', '.cjs')) run(`JavaScript syntax: ${file}`, process.execPath, ['--check', file]);
+  run('CircleCI bundle', process.execPath, ['scripts/package-native-ci.mjs', 'circleci', '--check']);
   run('Bundled Jenkins resources', process.execPath, ['scripts/sync-ci-resources.mjs', '--check']);
   checkDocumentation();
   const tests = files('scripts/test', '.test.mjs');

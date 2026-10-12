@@ -35,10 +35,11 @@
 - [Практические примеры API](api/README.md).
 - [Описание HTTP API в OpenAPI](api/openapi.yaml).
 - [Интеграции: быстрый запуск, состав и статус проверок](ci/README.md).
-- [GitHub Actions](ci/github-actions.md) и [GitLab CI](ci/gitlab-ci.md).
+- [GitHub Action](ci/github-actions.md), [GitLab CI Component](ci/gitlab-component.md) и [Azure Pipelines Task](ci/azure-pipelines.md).
 - [Maestro](ci/maestro.md) и [Appium](ci/appium.md) через CLI фермы.
 - [GitLab CI Component](ci/gitlab-component.md), [Jenkins Shared Library](ci/jenkins-library.md) и [Gradle-плагин](ci/gradle.md): пакеты автоматизации.
-- [Jenkins](ci/jenkins.md) и [TeamCity](ci/teamcity.md): шаблоны заданий.
+- [TeamCity build runner](ci/teamcity.md), [CircleCI Orb](ci/circleci.md) и [Bitbucket Pipe](ci/bitbucket-pipelines.md).
+- [Требования CI и восстановление](ci/native-packages.md).
 
 ## Дополнительные материалы
 

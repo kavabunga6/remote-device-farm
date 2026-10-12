@@ -37,6 +37,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
+      - run: npm ci --prefix integrations --ignore-scripts
       - name: Check integration examples and contracts
         run: |
           for tool in bash curl jq timeout; do command -v "$tool"; done
@@ -76,7 +77,7 @@ jobs:
 
   ci-packages:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
@@ -87,10 +88,46 @@ jobs:
         with:
           node-version: '24'
       - uses: gradle/actions/wrapper-validation@0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d # v4
+      - run: npm ci --prefix integrations --ignore-scripts
+      - run: npm ci --prefix integrations/azure-pipelines --ignore-scripts
+      - name: Audit CI packaging dependencies
+        run: |
+          npm audit --prefix integrations --audit-level=moderate
+          npm audit --prefix integrations/azure-pipelines --audit-level=moderate
       - name: Verify bundled CLI resources
         run: node scripts/sync-ci-resources.mjs --check
       - name: Check Jenkins library, Gradle plugin and Maven packaging
         run: integrations/gradle/gradlew -p integrations/gradle check publishAllPublicationsToLocalBuildRepository
+      - name: Build TeamCity and Azure native packages
+        run: |
+          integrations/gradle/gradlew -p integrations/teamcity check assemble
+          node scripts/package-native-ci.mjs azure
+          node scripts/package-native-ci.mjs circleci --check
+          node scripts/package-native-ci.mjs bitbucket
+          tar -czf integrations/bitbucket-pipe/build/remote-device-farm-pipe-context.tar.gz -C integrations/bitbucket-pipe/build/context .
+      - name: Verify Bitbucket Pipe image
+        run: |
+          docker build --tag rdf-pipe-ci integrations/bitbucket-pipe/build/context
+          docker run --rm --network none --read-only --cap-drop ALL --pids-limit 64 --memory 256m --entrypoint bash rdf-pipe-ci -ec '
+            for tool in node java adb bash curl jq python3 timeout; do command -v "$tool"; done
+            node --check /opt/rdf/node/adapter.cjs
+            bash -n /opt/rdf/common/native-entry.sh
+            test -r /opt/rdf/NOTICE
+          '
+      - name: Verify Pipe execution and recovery against modeled API/ADB
+        env:
+          RDF_TEST_PIPE_IMAGE: rdf-pipe-ci
+        run: node scripts/test/pipe-container.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-ci-packages
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            integrations/teamcity/build/distributions/*.zip
+            integrations/azure-pipelines/build/distributions/*.vsix
+            integrations/circleci/orb.yml
+            integrations/bitbucket-pipe/build/remote-device-farm-pipe-context.tar.gz
 
   appium-dependencies:
     runs-on: ubuntu-latest

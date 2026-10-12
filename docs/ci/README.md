@@ -12,13 +12,16 @@
 | [Maestro](maestro.md) | Готовый flow и команды запуска | Android 11, Maestro 2.11.0: тест, скриншот, освобождение слота | Другие версии Android и flows вашего приложения |
 | [Appium](appium.md) | Локальный сервер, UiAutomator2 и smoke-тест | Установка зависимостей, doctor, `/status`, локальные проверки процессов | Полный тест на устройстве, отмена и проверка освобождения |
 | [Jenkins Shared Library](jenkins-library.md) | Шаг `deviceFarm`, встроенный CLI; [Jenkinsfile](jenkins.md) как альтернативный пример | Groovy и Linux-тесты; живой запуск с CPS, ADB/TLS credentials, JUnit, Allure, ошибки и штатная отмена | Восстановление после рестарта и потери агента, параллельные живые прогоны |
-| [TeamCity](teamcity.md) | Bash-скрипты для Command Line шага | Проверки shell-кода и локального контракта скриптов | Запуск в TeamCity, публикация JUnit, отмена сборки |
-| [GitHub Actions](github-actions.md) | Пример workflow | Структура примера сверена с CLI | Запуск workflow на подготовленном runner |
+| [TeamCity](teamcity.md) | Устанавливаемый ZIP: сервер и агент, тип шага Remote Device Farm | Компиляция с SDK 2024.12, настройки, окружение, команды и отмена | **Not tested**: установка, отображение формы, живой запуск и отмена |
+| [GitHub Actions](github-actions.md) | JavaScript Action с завершающим post hook | Параметры, state/output, CLI, ошибки и повторное освобождение | **Not tested**: запуск Action и отмена на GitHub runner |
 | [GitLab CI Component](gitlab-component.md) | Параметризованное задание, проверка SHA256; [обычный job](gitlab-ci.md) | Запуск скрипта компонента с настоящим CLI и моделью API, ошибки и очистка | CI Lint, job на GitLab runner, отмена и JUnit |
+| [Azure Pipelines](azure-pipelines.md) | Task extension VSIX с post-job recovery | Упаковка VSIX, автономные entry points, параметры и состояние | **Not tested**: установка, Secure Files, живой запуск и отмена |
+| [CircleCI](circleci.md) | Orb с встроенным runtime, JUnit и артефактами | YAML, состав пакета, shared runtime | **Not tested**: CI validation, contexts, живой запуск и отмена |
+| [Bitbucket Pipelines](bitbucket-pipelines.md) | Docker Pipe с восстановлением через after-script | Контекст сборки, метаданные, shared runtime | **Not tested**: Docker execution, registry pull, живой запуск и отмена |
 | [Gradle](gradle.md) | Плагин с задачей `deviceFarmTest`, JAR и Maven marker | Gradle TestKit: CLI, ошибки, токен, configuration cache и повторные аренды | Android instrumentation с AGP/SDK и живым устройством |
 | IntelliJ IDEA / Android Studio | Отдельного плагина пока нет | — | Реализация и проверка расширения IDE |
 
-GitLab Component, Jenkins Shared Library и Gradle-плагин поставляются в исходниках и используют общий CLI. Gradle-пакет можно собрать для внутреннего Maven-репозитория. Публикаций в GitLab CI/CD Catalog, Jenkins Update Center и Gradle Plugin Portal пока нет. TeamCity использует штатный Command Line шаг. Локальные проверки CLI и пакетов не подтверждают работу всех CI-систем.
+Все CI-пакеты используют общий CLI. TeamCity ZIP, Azure VSIX, CircleCI Orb и контекст Docker Pipe собираются из исходников; GitHub CI сохраняет их как артефакт сборки. Публикаций в каталогах CI и Gradle Plugin Portal пока нет. [Требования к агентам и восстановление](native-packages.md). Локальные проверки не подтверждают работу контроллеров CI.
 
 ## Быстро проверить подключение
 

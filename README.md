@@ -6,7 +6,7 @@ Browser access to Android emulators and physical devices: screen control, APK in
 
 ## CI and test automation
 
-Use a shared device pool for Android tests across projects. Packages are included for [GitLab CI Component](docs/ci/gitlab-component.md), [Jenkins Shared Library](docs/ci/jenkins-library.md) and [Gradle](docs/ci/gradle.md). Workflow examples cover [GitHub Actions](docs/ci/github-actions.md) and [TeamCity](docs/ci/teamcity.md), with test examples for [Maestro](docs/ci/maestro.md) and [Appium](docs/ci/appium.md).
+Use a shared device pool for Android tests across projects. Native reusable integrations are included for [TeamCity](docs/ci/teamcity.md), [GitHub Actions](docs/ci/github-actions.md), [GitLab CI](docs/ci/gitlab-component.md), [Jenkins](docs/ci/jenkins-library.md), [Azure Pipelines](docs/ci/azure-pipelines.md), [CircleCI](docs/ci/circleci.md) and [Bitbucket Pipelines](docs/ci/bitbucket-pipelines.md). A [Gradle plugin](docs/ci/gradle.md) and [Maestro](docs/ci/maestro.md)/[Appium](docs/ci/appium.md) examples support application test workflows.
 
 The [Bash CLI](docs/api/README.md#готовый-помощник-для-ci) queues device requests, connects ADB, renews the lease during tests and releases the device after completion or cancellation. The examples include artifact collection. The packages share the CLI lifecycle and are available from source; live CI and Android plugin validation is still incomplete. [Setup and verification status](docs/ci/README.md).
 
