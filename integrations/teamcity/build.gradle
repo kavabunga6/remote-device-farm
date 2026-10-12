@@ -1,0 +1,62 @@
+plugins { id 'java'; id 'groovy' }
+group='io.github.kavabunga6'
+version='0.1.0'
+repositories {
+    mavenCentral()
+    maven { url=uri('https://download.jetbrains.com/teamcity-repository') }
+}
+java { sourceCompatibility=JavaVersion.VERSION_17; targetCompatibility=JavaVersion.VERSION_17 }
+sourceSets {
+    common {}
+    server { compileClasspath+=sourceSets.common.output }
+    agent { compileClasspath+=sourceSets.common.output }
+    test { compileClasspath+=sourceSets.common.output+sourceSets.server.output+sourceSets.agent.output; runtimeClasspath+=sourceSets.common.output+sourceSets.server.output+sourceSets.agent.output }
+}
+dependencies {
+    serverCompileOnly 'org.jetbrains.teamcity:server-api:2024.12'
+    agentCompileOnly 'org.jetbrains.teamcity:agent-api:2024.12'
+    testImplementation 'org.jetbrains.teamcity:server-api:2024.12'
+    testImplementation 'org.jetbrains.teamcity:agent-api:2024.12'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation localGroovy()
+}
+def repositoryRoot=layout.projectDirectory.dir('../..')
+tasks.named('processAgentResources') {
+    from(repositoryRoot.file('scripts/rdf.sh')) { into 'rdf' }
+    for (name in ['run-tests.sh','managed-runtime.sh','managed-cleanup.sh','native-entry.sh']) {
+        from(repositoryRoot.file('integrations/common/'+name)) { into 'rdf' }
+    }
+}
+['agent','server'].each { component ->
+    tasks.register(component+'Jar',Jar) {
+        dependsOn component+'Classes','commonClasses'
+        archiveBaseName='device-farm-'+component
+        from sourceSets[component].output
+        from sourceSets.common.output
+        from(repositoryRoot.file('LICENSE')) { into 'META-INF' }
+        from(repositoryRoot.file('NOTICE')) { into 'META-INF' }
+    }
+}
+tasks.register('agentPlugin',Zip) {
+    dependsOn 'agentJar'
+    archiveFileName='device-farm-agent.zip'
+    from('teamcity-agent.xml')
+    from(tasks.named('agentJar').flatMap { it.archiveFile }) { into 'lib' }
+}
+tasks.register('serverPlugin',Zip) {
+    dependsOn 'serverJar','agentPlugin'
+    archiveFileName='remote-device-farm-teamcity-'+version+'.zip'
+    destinationDirectory=layout.buildDirectory.dir('distributions')
+    from('teamcity-plugin.xml')
+    from(tasks.named('serverJar').flatMap { it.archiveFile }) { into 'server' }
+    from(tasks.named('agentPlugin').flatMap { it.archiveFile }) { into 'agent' }
+    from(repositoryRoot.file('LICENSE'))
+    from(repositoryRoot.file('NOTICE'))
+}
+tasks.withType(AbstractArchiveTask).configureEach { preserveFileTimestamps=false;reproducibleFileOrder=true }
+tasks.named('assemble') { dependsOn 'serverPlugin' }
+tasks.named('test') {
+    dependsOn 'commonClasses','serverClasses','agentClasses','serverPlugin'
+    maxHeapSize='256m'
+    systemProperty 'rdf.repository',repositoryRoot.asFile.absolutePath
+}
