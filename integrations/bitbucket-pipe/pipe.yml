@@ -1,0 +1,14 @@
+name: Remote Device Farm
+description: Run Android tests on a leased device
+image: registry.example.com/remote-device-farm-pipe:0.1.0
+repository: https://github.com/kavabunga6/remote-device-farm
+maintainer: Remote Device Farm
+tags: [android, testing, adb]
+variables:
+  - name: RDF_URL
+  - name: RDF_PROFILE
+  - name: RDF_ADB_KEY_ID
+  - name: RDF_TOKEN
+  - name: RDF_ADB_KEY_BASE64
+  - name: RDF_TEST_SCRIPT
+    default: ci/android-tests.sh
