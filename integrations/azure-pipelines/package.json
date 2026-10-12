@@ -1,0 +1,17 @@
+{
+  "name": "remote-device-farm-azure-packaging",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "scripts": {
+    "package": "node ../../scripts/package-native-ci.mjs azure"
+  },
+  "devDependencies": {
+    "tfx-cli": "0.24.2"
+  },
+  "overrides": {
+    "tfx-cli": {
+      "shelljs": "0.8.5"
+    }
+  }
+}

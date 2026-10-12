@@ -1,0 +1,38 @@
+{
+  "manifestVersion": 1,
+  "id": "remote-device-farm",
+  "name": "Remote Device Farm",
+  "version": "0.1.0",
+  "publisher": "remote-device-farm",
+  "description": "Android test task with queued allocation and confirmed release",
+  "categories": [
+    "Azure Pipelines"
+  ],
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "files": [
+    {
+      "path": "task"
+    }
+  ],
+  "contributions": [
+    {
+      "id": "remote-device-farm-task",
+      "type": "ms.vss-distributed-task.task",
+      "targets": [
+        "ms.vss-distributed-task.tasks"
+      ],
+      "properties": {
+        "name": "task"
+      }
+    }
+  ],
+  "links": {
+    "home": {
+      "uri": "https://github.com/kavabunga6/remote-device-farm"
+    }
+  }
+}

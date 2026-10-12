@@ -1,0 +1,136 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/azure-pipelines-task-lib/master/tasks.schema.json",
+  "id": "b85b45b8-1a39-48f5-b0a7-114b053ce693",
+  "name": "RemoteDeviceFarm",
+  "friendlyName": "Remote Device Farm",
+  "description": "Run Android tests on a leased device",
+  "helpUrl": "https://github.com/kavabunga6/remote-device-farm",
+  "author": "Remote Device Farm",
+  "version": {
+    "Major": 0,
+    "Minor": 1,
+    "Patch": 0
+  },
+  "instanceNameFormat": "Android tests: $(profile)",
+  "category": "Test",
+  "minimumAgentVersion": "4.265.1",
+  "runsOn": [
+    "Agent"
+  ],
+  "inputs": [
+    {
+      "name": "url",
+      "type": "string",
+      "label": "Service URL",
+      "defaultValue": "",
+      "required": true
+    },
+    {
+      "name": "profile",
+      "type": "string",
+      "label": "Device profile ID",
+      "defaultValue": "",
+      "required": true
+    },
+    {
+      "name": "adbKeyId",
+      "type": "string",
+      "label": "Public ADB key UUID",
+      "defaultValue": "",
+      "required": true
+    },
+    {
+      "name": "testScript",
+      "type": "string",
+      "label": "Application test script",
+      "defaultValue": "ci/android-tests.sh",
+      "required": false
+    },
+    {
+      "name": "prepareScript",
+      "type": "string",
+      "label": "Application build script",
+      "defaultValue": "",
+      "required": false
+    },
+    {
+      "name": "environmentScript",
+      "type": "string",
+      "label": "Project tool environment script",
+      "defaultValue": "",
+      "required": false
+    },
+    {
+      "name": "artifactsDirectory",
+      "type": "string",
+      "label": "Artifacts directory",
+      "defaultValue": "rdf-artifacts",
+      "required": false
+    },
+    {
+      "name": "tokenVariable",
+      "type": "string",
+      "label": "Protected API token environment variable",
+      "defaultValue": "RDF_TOKEN",
+      "required": false
+    },
+    {
+      "name": "adbKeyFile",
+      "type": "string",
+      "label": "Protected private ADB key file",
+      "defaultValue": "",
+      "required": false
+    },
+    {
+      "name": "caFile",
+      "type": "string",
+      "label": "Trusted TLS PEM file",
+      "defaultValue": "",
+      "required": false
+    },
+    {
+      "name": "startTimeoutSeconds",
+      "type": "string",
+      "label": "Device start timeout",
+      "defaultValue": "900",
+      "required": false
+    },
+    {
+      "name": "testTimeoutSeconds",
+      "type": "string",
+      "label": "Test timeout",
+      "defaultValue": "1200",
+      "required": false
+    },
+    {
+      "name": "junitReport",
+      "type": "string",
+      "label": "JUnit report glob",
+      "defaultValue": "app/build/outputs/androidTest-results/connected/**/*.xml",
+      "required": false
+    },
+    {
+      "name": "label",
+      "type": "string",
+      "label": "Session label",
+      "defaultValue": "ci-tests",
+      "required": false
+    }
+  ],
+  "outputVariables": [
+    {
+      "name": "artifactsDirectory",
+      "description": "Run artifacts and recovery directory"
+    }
+  ],
+  "execution": {
+    "Node24": {
+      "target": "main.cjs"
+    }
+  },
+  "postjobexecution": {
+    "Node24": {
+      "target": "post.cjs"
+    }
+  }
+}
