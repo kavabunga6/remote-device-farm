@@ -1,0 +1,68 @@
+name: Remote Device Farm
+description: Run Android tests with a queued device and confirmed cleanup
+author: Remote Device Farm
+branding:
+  icon: smartphone
+  color: green
+inputs:
+  url:
+    description: Service URL
+    required: true
+  profile:
+    description: Device profile ID
+    required: true
+  adb-key-id:
+    description: Public ADB key UUID
+    required: true
+  test-script:
+    description: Application test script
+    required: false
+    default: "ci/android-tests.sh"
+  prepare-script:
+    description: Application build script
+    required: false
+    default: ""
+  environment-script:
+    description: Project tool environment script
+    required: false
+    default: ""
+  artifacts-directory:
+    description: Artifacts directory
+    required: false
+    default: "rdf-artifacts"
+  token-variable:
+    description: Protected API token environment variable
+    required: false
+    default: "RDF_TOKEN"
+  adb-key-file:
+    description: Protected private ADB key file
+    required: false
+    default: ""
+  ca-file:
+    description: Trusted TLS PEM file
+    required: false
+    default: ""
+  start-timeout-seconds:
+    description: Device start timeout
+    required: false
+    default: "900"
+  test-timeout-seconds:
+    description: Test timeout
+    required: false
+    default: "1200"
+  junit-report:
+    description: JUnit report glob
+    required: false
+    default: "app/build/outputs/androidTest-results/connected/**/*.xml"
+  label:
+    description: Session label
+    required: false
+    default: "ci-tests"
+outputs:
+  artifacts-directory:
+    description: Unique run directory containing diagnostics and recovery evidence
+runs:
+  using: node24
+  main: integrations/github-action/main.cjs
+  post: integrations/github-action/post.cjs
+  post-if: 'always()'
