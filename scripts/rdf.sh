@@ -155,10 +155,10 @@ cmd_create() {
     + (if $type=="" then {} else {deviceType:$type} end) + (if $form=="" then {} else {form:$form} end)
     + (if $flavor=="" then {} else {flavor:$flavor} end) + (if $abi=="" then {} else {abi:$abi} end)')"
   [[ -n "${RDF_PROFILE:-}" && "$selector" != '{}' ]] && fail 'set RDF_PROFILE or the RDF_ANDROID/RDF_DEVICE_TYPE/... selector, not both'
-  payload="$(jq -n --arg profile "${RDF_PROFILE:-}" --argjson selector "$selector" --arg host "${RDF_HOST:-}" --arg label "${RDF_LABEL:-}" --arg key "$adb_key" --arg gpu "$gpu" --arg lease "$lease" --argjson launch "$launch" '
+  payload="$(jq -n --arg profile "${RDF_PROFILE:-}" --argjson selector "$selector" --arg host "${RDF_HOST:-}" --arg runLabel "${RDF_LABEL:-}" --arg key "$adb_key" --arg gpu "$gpu" --arg lease "$lease" --argjson launch "$launch" '
     (if $profile!="" then {profileId:$profile} elif $selector!={} then {profile:$selector} else {profileId:"android-30"} end)
     + (if $host=="" then {} else {hostId:$host} end)
-    + (if $label=="" then {} else {label:$label} end)
+    + (if $runLabel=="" then {} else {label:$runLabel} end)
     + (if $key=="" then {} else {adbKeyId:$key} end)
     + (if $gpu=="" then {} else {gpuMode:$gpu} end)
     + (if $launch=={} then {} else {launchOptions:$launch} end)
