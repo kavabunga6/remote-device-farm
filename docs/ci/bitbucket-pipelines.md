@@ -56,4 +56,4 @@ The default operation is `run`. `recover` uses the original checkout's `ci-state
 
 Fresh JUnit files are copied into `rdf-artifacts/RUN_UUID/junit/`; the example maps that path to native test-report artifacts. Configure artifact visibility and retention for application data.
 
-**Verification:** build context, metadata and shared runtime checked locally. Docker image execution, registry pull, actual Pipe invocation and cancellation in Bitbucket are **Not tested**.
+**Verification:** build context, metadata and shared runtime checked locally. GitHub CI builds the image and tests its real entry point against modeled API/ADB, including private-key cleanup, failed tests and recovery in a second container. Registry pull, actual Pipe invocation and cancellation in Bitbucket are **Not tested**.

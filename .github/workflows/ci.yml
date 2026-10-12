@@ -164,7 +164,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '24'
+          # PGlite fixture teardown hits Node 24's Wasm code-GC race:
+          # https://github.com/nodejs/node/issues/66366
+          node-version: ${{ matrix.component == 'agent' && '24' || '22' }}
           cache: npm
           cache-dependency-path: ${{ matrix.component }}/package-lock.json
       - run: npm ci

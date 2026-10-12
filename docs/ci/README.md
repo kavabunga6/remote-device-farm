@@ -17,7 +17,7 @@
 | [GitLab CI Component](gitlab-component.md) | Параметризованное задание, проверка SHA256; [обычный job](gitlab-ci.md) | Запуск скрипта компонента с настоящим CLI и моделью API, ошибки и очистка | CI Lint, job на GitLab runner, отмена и JUnit |
 | [Azure Pipelines](azure-pipelines.md) | Task extension VSIX с post-job recovery | Упаковка VSIX, автономные entry points, параметры и состояние | **Not tested**: установка, Secure Files, живой запуск и отмена |
 | [CircleCI](circleci.md) | Orb с встроенным runtime, JUnit и артефактами | YAML, состав пакета, shared runtime | **Not tested**: CI validation, contexts, живой запуск и отмена |
-| [Bitbucket Pipelines](bitbucket-pipelines.md) | Docker Pipe с восстановлением через after-script | Контекст сборки, метаданные, shared runtime | **Not tested**: Docker execution, registry pull, живой запуск и отмена |
+| [Bitbucket Pipelines](bitbucket-pipelines.md) | Docker Pipe с восстановлением через after-script | Контекст сборки; Docker entry point, закрытый ключ, ошибки и восстановление во втором контейнере с моделью API/ADB | **Not tested**: registry pull, живой запуск и отмена |
 | [Gradle](gradle.md) | Плагин с задачей `deviceFarmTest`, JAR и Maven marker | Gradle TestKit: CLI, ошибки, токен, configuration cache и повторные аренды | Android instrumentation с AGP/SDK и живым устройством |
 | IntelliJ IDEA / Android Studio | Отдельного плагина пока нет | — | Реализация и проверка расширения IDE |
 
