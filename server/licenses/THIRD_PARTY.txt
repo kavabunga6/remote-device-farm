@@ -40,3 +40,13 @@ from the lockfiles (`node scripts/license-inventory.mjs`) and checked in CI.
 It records declared licenses, not a compatibility or redistribution certification.
 Font and bundled React licenses are served at `/licenses/`; the agent includes
 scrcpy attribution, and server, agent and registry images carry project notices.
+
+## CI packages
+
+Native CI adapters contain project code and the shared Bash CLI. The TeamCity
+SDK is a compile/test dependency supplied by the installed TeamCity runtime;
+it is not bundled in the plugin ZIP. YAML and Microsoft tfx are packaging/check
+dependencies, recorded in the integration lockfiles, and are not shipped in
+the Action or Azure task. The Pipe retains the Node/Debian base notices and
+installed package copyright files, including ADB and OpenJDK. It does not
+bundle Android system images or Google SDK downloads.

@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
-# Reconcile a managed Jenkins run after its shell has stopped.
+# Reconcile a managed CI run after its shell has stopped.
 set +x
 set -euo pipefail
 umask 077
-[ -z "${RDF_ENV_SCRIPT:-}" ] || source "$RDF_ENV_SCRIPT"
 : "${RDF_ARTIFACT_DIR:?set RDF_ARTIFACT_DIR}"
 [ -d "$RDF_ARTIFACT_DIR" ] || exit 0
 export RDF_ARTIFACT_DIR="$(cd -P -- "$RDF_ARTIFACT_DIR" && pwd)"
 export RDF_STATE_FILE="$RDF_ARTIFACT_DIR/session.json"
-[ -z "${RDF_CA_FILE:-}" ] || export CURL_CA_BUNDLE="$RDF_CA_FILE"
 finish() {
   local status=$?
   trap - EXIT INT TERM
@@ -72,6 +70,8 @@ PY
 trap finish EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+[ -z "${RDF_ENV_SCRIPT:-}" ] || source "$RDF_ENV_SCRIPT"
+[ -z "${RDF_CA_FILE:-}" ] || export CURL_CA_BUNDLE="$RDF_CA_FILE"
 if [ -e "$RDF_STATE_FILE.lock" ]; then
   [[ -d "$RDF_STATE_FILE.lock" && ! -L "$RDF_STATE_FILE.lock" && -f "$RDF_STATE_FILE.lock/pid" && ! -L "$RDF_STATE_FILE.lock/pid" ]] || exit 2
   pid="$(cat "$RDF_STATE_FILE.lock/pid")"

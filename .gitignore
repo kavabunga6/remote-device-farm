@@ -86,3 +86,8 @@ Desktop.ini
 /deploy/emulator/google-starter.json
 /deploy/hqarroum-emulator/pipeline-verification-*.json
 /deploy/hqarroum-emulator/verified-images-*.json
+
+# Local CI job runtime and recovery artifacts.
+.rdf-ci-tools/
+.rdf-ci-tools-*/
+rdf-artifacts/

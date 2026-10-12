@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Jenkins runtime: protected TLS/ADB inputs, managed tests and recovery evidence.
+# CI runtime: protected TLS/ADB inputs, managed tests and recovery evidence.
 set +x
 set -euo pipefail
 umask 077
