@@ -19,6 +19,9 @@ type ActiveRecording = {
   stream: MediaStream;
   drawTimer: number;
   clockTimer: number;
+  drawFrame: () => void;
+  stopTimer: number | null;
+  stopping: boolean;
   chunks: Blob[];
   filename: string;
 };
@@ -134,9 +137,17 @@ export function useSessionCapture({ sessionId, status, format, imageRef, canvasR
 
   const stopRecording = useCallback(() => {
     const active = recordingRef.current;
-    if (!active || active.recorder.state === 'inactive') return;
+    if (!active || active.stopping || active.recorder.state === 'inactive') return;
+    active.stopping = true;
     if (mountedRef.current) { setRecording(false); setSaving(true); }
-    active.recorder.stop();
+    try { active.drawFrame(); }
+    catch { /* Finalize the recording even if its source became unreadable. */ }
+    // Canvas capture delivers the requested frame asynchronously. Let it reach
+    // the encoder before stop() flushes the remaining media data.
+    active.stopTimer = window.setTimeout(() => {
+      active.stopTimer = null;
+      if (active.recorder.state !== 'inactive') active.recorder.stop();
+    }, Math.ceil(3000 / RECORDING_FPS));
   }, []);
 
   const startRecording = useCallback(() => {
@@ -165,20 +176,24 @@ export function useSessionCapture({ sessionId, status, format, imageRef, canvasR
         context.fillStyle = '#101819';
         context.fillRect(0, 0, side, side);
         const current = activeSource(sourceRef.current);
-        if (!current) return;
-        const scale = Math.min(side / current.width, side / current.height);
-        const width = Math.max(1, Math.round(current.width * scale));
-        const height = Math.max(1, Math.round(current.height * scale));
-        const left = Math.floor((side - width) / 2), top = Math.floor((side - height) / 2);
-        context.drawImage(current.element, left, top, width, height);
-        drawTouchIndicator(context, touchRef.current?.(), left, top, width, height);
+        if (current) {
+          const scale = Math.min(side / current.width, side / current.height);
+          const width = Math.max(1, Math.round(current.width * scale));
+          const height = Math.max(1, Math.round(current.height * scale));
+          const left = Math.floor((side - width) / 2), top = Math.floor((side - height) / 2);
+          context.drawImage(current.element, left, top, width, height);
+          drawTouchIndicator(context, touchRef.current?.(), left, top, width, height);
+        }
+        // Explicit requests also capture overlay-only changes on a static device frame.
+        const track = stream?.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack | undefined;
+        track?.requestFrame?.();
       };
       draw();
       stream = canvas.captureStream(RECORDING_FPS);
       const recorder = createRecorder(stream);
       const chunks: Blob[] = [];
       const active: ActiveRecording = {
-        recorder, stream, drawTimer: 0, clockTimer: 0, chunks,
+        recorder, stream, drawTimer: 0, clockTimer: 0, drawFrame: draw, stopTimer: null, stopping: false, chunks,
         filename: filename(sessionId, 'webm'),
       };
       let recordedBytes = 0;
@@ -197,6 +212,7 @@ export function useSessionCapture({ sessionId, status, format, imageRef, canvasR
         stopRecording();
       };
       recorder.onstop = () => {
+        if (active.stopTimer !== null) window.clearTimeout(active.stopTimer);
         window.clearInterval(active.drawTimer);
         window.clearInterval(active.clockTimer);
         active.stream.getTracks().forEach(track => track.stop());
@@ -216,6 +232,7 @@ export function useSessionCapture({ sessionId, status, format, imageRef, canvasR
         }
       };
       recorder.start(1000);
+      draw();
       drawTimer = window.setInterval(draw, 1000 / RECORDING_FPS);
       active.drawTimer = drawTimer;
       const startedAt = Date.now();
@@ -261,6 +278,7 @@ export function useSessionCapture({ sessionId, status, format, imageRef, canvasR
       const active = recordingRef.current;
       if (!active) return;
       recordingRef.current = null;
+      if (active.stopTimer !== null) window.clearTimeout(active.stopTimer);
       window.clearInterval(active.drawTimer);
       window.clearInterval(active.clockTimer);
       if (active.recorder.state !== 'inactive') active.recorder.stop();

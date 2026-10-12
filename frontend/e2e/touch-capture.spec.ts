@@ -191,9 +191,9 @@ for (const landscape of [false, true]) {
     point = await position(.7, .6); await page.mouse.move(point.x, point.y, { steps: 5 });
     await page.waitForTimeout(250);
     await page.mouse.up();
-    // Wait for the browser marker timer before giving the encoder clear frames.
+    // Stop as soon as the marker clears: finalization must encode the new frame
+    // without relying on an extra delay in the caller.
     await expect(marker).toBeHidden();
-    await page.waitForTimeout(500);
     const webmDownload = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Остановить запись экрана', exact: true }).click();
     await (await webmDownload).saveAs(testInfo.outputPath('touches.webm'));
