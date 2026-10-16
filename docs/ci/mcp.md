@@ -101,4 +101,6 @@ After a timeout, retry allocation only with the **same request key and unchanged
 
 Run `npm test --prefix integrations/mcp` for MCP protocol, stdio, lease/idempotency, cleanup state, credential redirects, access errors and APK path checks. The server integration suite exercises MCP against production HTTP routes and a temporary database; Android RPC is modeled.
 
+A live stdio SDK workflow has also been checked on an Android 16 Google APIs emulator: catalog reads, idempotent allocation, readiness, lease renewal, PNG capture, device input, device information, Logcat, opening Android Settings and confirmed release. The temporary account and token were revoked, and its emulator container, networks and slot were verified released. This live check used the local API; external HTTPS client setup and live APK upload/installation through MCP remain **Not tested**.
+
 Installation and behavior in each external AI client require separate verification. Model-driven judgments, long unattended runs, remote MCP HTTP transport and external catalog publication are **Not tested** or not provided by this stdio package. See [verification limits](../verification.md) and the [API guide](../api/README.md).
