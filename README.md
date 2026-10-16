@@ -1,8 +1,25 @@
 # Remote Device Farm
 
-Browser access to Android emulators and physical devices: screen control, APK installation, Logcat, ADB, session sharing and a CI API. The interface supports English and Russian. Administration includes roles, device profiles, image builds, registry storage and node cache cleanup.
+Run Android emulators on your own Linux/KVM servers and use them from a browser, CI or an AI assistant. The interface supports English and Russian.
 
-**Alpha.** APIs and deployment settings may change. Verification status is listed below.
+**Alpha.** APIs and deployment settings may change. See the [verification matrix](docs/verification.md).
+
+## What the service offers
+
+| Feature | What it provides |
+| --- | --- |
+| **MCP for AI assistants** | Request a device, install and open an APK, inspect screenshots and Logcat, send input and release it through a [local stdio MCP package](docs/ci/mcp.md). |
+| **Browser device control** | Android screen, tap/swipe/text input, APK installation, screenshots, recording and device settings. [Sessions](docs/guides/sessions.md) |
+| **ADB and session sharing** | Connect local development tools using personal ADB keys; share a session for viewing or control with expiration and revocation. [Access guide](docs/guides/sessions.md) |
+| **CI integrations and Gradle** | Reusable packages for seven CI platforms, a Gradle plugin, and Maestro/Appium examples. [Setup and validation](docs/ci/README.md) |
+| **Device pool and automation API** | Multiple worker nodes, resource limits, queues, explicit leases, team profile access and per-member quotas. [API](docs/api/README.md) |
+| **GPU acceleration** | Software rendering or GPU modes using NVIDIA/CUDA and DRI, according to node capabilities. [Agent and GPU](docs/deployment/agent.md) |
+| **Own image registry** | Build emulator images from the SDK catalog; manage versions, node caches, retention policies and cleanup from the UI. [Images](docs/guides/image-management.md) |
+| **Application library and diagnostics** | Store APKs, install them into sessions, inspect Logcat and retain startup/stop diagnostics. [Guides](docs/README.md) |
+| **Access administration** | Custom roles and permissions, users, personal API tokens and configurable authentication providers. [Security](SECURITY.md) |
+| **Self-hosted deployment** | Docker Compose for a single host or separate server and Linux/KVM agents, with HTTPS and backup/restore tooling. [Deployment](docs/deployment/server.md) |
+
+MCP ships from source as a local stdio adapter. CI packages also ship from source; external client/controller validation is incomplete. GPU and authentication-provider verification depends on the environment. [Tested and Not tested scenarios](docs/verification.md).
 
 ## CI and test automation
 
