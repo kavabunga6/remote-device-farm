@@ -1,3 +1,4 @@
+import { androidOps } from './android-ops.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseUsbDevices, UsbAndroidProvider } from './usb-android.mjs';
@@ -378,4 +379,12 @@ test('state persistence failure blocks subsequent device leases', async () => {
  assert.equal(store.ready,false);
  const provider=new UsbAndroidProvider({adb:noop,streams:noop,appTransfers:noop,execute:execute({}),store,wiper:okWiper});
  assert.throws(()=>provider.assertCanLease('S1'),/store is unavailable/);
+});
+
+test('Android providers capture the selected serial without starting an unrelated stream', async () => {
+  const calls = [];
+  const frame = { mime: 'image/png', data: 'synthetic-png-data' };
+  const ops = androidOps({ adb: { screenshot: async serial => { calls.push(serial); return frame; } }, streams: {}, appTransfers: {} });
+  assert.equal(await ops.screenshot({ serial: 'owned-device' }), frame);
+  assert.deepEqual(calls, ['owned-device']);
 });

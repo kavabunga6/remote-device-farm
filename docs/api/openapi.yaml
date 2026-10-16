@@ -1959,6 +1959,28 @@ paths:
                 $ref: "#/components/schemas/Error"
       operationId: getSessionsByIdLogcat
       x-permission: sessions.logcat
+  /api/sessions/{id}/screenshot:
+    get:
+      tags: [ Diagnostics ]
+      summary: Current device screen as PNG
+      operationId: getSessionsByIdScreenshot
+      x-permission: sessions.view
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Current PNG screen. The response is not cached.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        default:
+          description: Request rejected. A session must be running and accessible for viewing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /api/sessions/{id}/device-info:
     get:
       tags: [ Diagnostics ]

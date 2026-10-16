@@ -243,6 +243,31 @@ export function registerSessionRoutes(app: Express, context: ServerContext): voi
     await hub.command(session.hostId, session.id, 'logcat-clear', {}, 30_000);
     res.json({ ok: true });
   }));
+  const screenshots = new Map<string, Promise<Record<string, unknown>>>();
+  app.get('/api/sessions/:id/screenshot', requireAuth, route(async (req, res) => {
+    const { session, hostId } = await accessibleSession(context, req.params.id!, current(res), 'view', true);
+    if (session.state !== 'running') throw new ApiError(409, 'session_not_ready', uiMessage('mcp.sessionNotReady', {}, 'en'));
+    let capture = screenshots.get(session.id);
+    if (!capture) {
+      capture = hub.command(hostId, session.id, 'screenshot', {}, 45_000).finally(() => screenshots.delete(session.id));
+      screenshots.set(session.id, capture);
+    }
+    const frame = await capture;
+    // Recheck active sharing grants after the potentially slow device call.
+    await accessibleSession(context, req.params.id!, current(res), 'view', true);
+    if (frame.mime !== 'image/png' || typeof frame.data !== 'string' ||
+        frame.data.length > 4 * Math.ceil(8 * 1024 * 1024 / 3) || !/^[A-Za-z0-9+/]*={0,2}$/.test(frame.data)) {
+      throw new ApiError(502, 'invalid_screenshot', uiMessage('mcp.screenshotUnavailable', {}, 'en'));
+    }
+    const png = Buffer.from(frame.data, 'base64');
+    if (png.length < 24 || png.length > 8 * 1024 * 1024 ||
+        !png.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')) ||
+        png.readUInt32BE(16) < 1 || png.readUInt32BE(20) < 1 ||
+        png.readUInt32BE(16) > 8192 || png.readUInt32BE(20) > 8192) {
+      throw new ApiError(502, 'invalid_screenshot', uiMessage('mcp.screenshotUnavailable', {}, 'en'));
+    }
+    res.set({ 'Content-Type': 'image/png', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }).send(png);
+  }));
   app.get('/api/sessions/:id/device-info', requireAuth, route(async (req, res) => {
     const session = await ownedSession(req.params.id!, current(res), true);
     const [info, profile] = await Promise.all([

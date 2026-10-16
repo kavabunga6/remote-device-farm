@@ -7,6 +7,7 @@ export function androidOps({ adb, streams, appTransfers }) {
     'logcat-apps': (s) => adb.logcatApps(s.serial),
     'logcat-clear': (s) => adb.clearLogcat(s.serial),
     'device-info': (s) => adb.deviceInfo(s.serial),
+    screenshot: (s) => adb.screenshot(s.serial),
     input: (s, p, { sessionId }) => streams.input(sessionId, s.serial, p),
     rotate: (s, p) => adb.rotate(s.serial, p.orientation),
     file: (s, p) => adb.file(s.serial, p),

@@ -168,6 +168,7 @@ export async function apiFixture({ port = 0, origin }: { port?: number; origin?:
     let closed = false;
     return {
       app,
+      context,
       pool,
       hub,
       url: `http://127.0.0.1:${address.port}`,

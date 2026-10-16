@@ -50,3 +50,10 @@ dependencies, recorded in the integration lockfiles, and are not shipped in
 the Action or Azure task. The Pipe retains the Node/Debian base notices and
 installed package copyright files, including ADB and OpenJDK. It does not
 bundle Android system images or Google SDK downloads.
+
+## MCP package
+
+The optional MCP adapter uses the official Model Context Protocol TypeScript SDK
+and Zod, both declared under MIT. Their production dependency licenses are included
+in the versioned npm inventory. Installed dependencies retain their own license files.
+The adapter contains no model weights or Android system images.

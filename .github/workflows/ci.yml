@@ -38,6 +38,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --prefix integrations --ignore-scripts
+      - run: npm ci --prefix integrations/mcp --ignore-scripts
       - name: Check integration examples and contracts
         run: |
           for tool in bash curl jq timeout; do command -v "$tool"; done
@@ -47,6 +48,11 @@ jobs:
           node scripts/check-public-content.mjs
           node scripts/check-repository-privacy.mjs --self-test
           node scripts/check-repository-privacy.mjs
+      - name: Verify MCP package and resources
+        run: |
+          node scripts/sync-mcp-resources.mjs --check
+          npm test --prefix integrations/mcp
+          npm audit --prefix integrations/mcp --audit-level=moderate
       - name: Check registry inventory and cleanup recovery
         run: node --test deploy/registry/*.test.mjs
       - name: Check deployment script syntax
@@ -170,6 +176,9 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ matrix.component }}/package-lock.json
       - run: npm ci
+      - name: Install MCP contract test dependency
+        if: matrix.component == 'server'
+        run: npm ci --prefix ../integrations/mcp --ignore-scripts
       - name: Enable stock ADB protocol test
         if: matrix.component == 'server'
         run: |

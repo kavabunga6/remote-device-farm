@@ -29,7 +29,7 @@ export function requestPermission(method: string, path: string): string | undefi
   if (action === 'files' || action.startsWith('apps/')) return 'sessions.files';
   if (action === 'env') return 'sessions.env';
   if (action.startsWith('logcat')) return 'sessions.logcat';
-  if (action === 'device-info' || action === 'stream' || action === 'keepalive') return 'sessions.view';
+  if (action === 'device-info' || action === 'screenshot' || action === 'stream' || action === 'keepalive') return 'sessions.view';
   return 'sessions.control';
  }
  if (path.startsWith('/api/shares')) return 'sessions.view';

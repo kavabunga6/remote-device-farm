@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const components = ['server', 'agent', 'frontend', 'examples/appium'];
+const components = ['server', 'agent', 'frontend', 'examples/appium', 'integrations/mcp'];
 const legacyLicense = { 'busboy@1.6.0': 'MIT', 'streamsearch@1.1.0': 'MIT', 'ftp-response-parser@1.0.1': 'MIT', 'parse-listing@1.1.3': 'MIT' }; // Upstream package `licenses` metadata, not lockfile `license`.
 const records = components.map(component => {
   const contents = readFileSync(resolve(root, component, 'package-lock.json'), 'utf8').replace(/\r\n/g, '\n');
