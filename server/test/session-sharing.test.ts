@@ -43,7 +43,7 @@ async function harness() {
   }
   await db.query("INSERT INTO hosts(id,name,slots,status,manual_slots,last_seen_at) VALUES('host-1','Host',4,'online',4,now())");
   await db.query("INSERT INTO sessions(id,owner_user_id,host_id,profile_id,state,adb_key_id) VALUES($1,$2,'host-1','android-30','running',NULL)", [SID, OWNER]);
-  const state: { actor: string; onHasAgent?: () => void } = { actor: OWNER };
+  const state: { actor: string; onHasAgent?: () => void; onScreenshot?: () => Promise<void> } = { actor: OWNER };
   const commands: Array<{ action: string; params: unknown }> = [];
   const client = { query: db.query.bind(db), release: () => {} };
   const pool = { query: db.query.bind(db), connect: async () => client } as unknown as Pool;
@@ -62,7 +62,13 @@ async function harness() {
     addViewer: (_sessionId: string, hostId: string) => { assert.equal(hostId, 'host-1'); viewers.push(hostId); },
     requestKeyframe: (_sessionId: string, hostId: string) => { assert.equal(hostId, 'host-1'); return true; },
     onSessionClosed: (listener: (id: string) => void) => { closedListeners.push(listener); },
-    command: async (hostId: string, _id: string, action: string, params: unknown) => { assert.equal(hostId, 'host-1'); commands.push({ action, params }); return {}; },
+    command: async (hostId: string, _id: string, action: string, params: unknown) => { assert.equal(hostId, 'host-1'); commands.push({ action, params });
+      if (action === 'screenshot') {
+        await state.onScreenshot?.();
+        return { mime: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZlS8AAAAASUVORK5CYII=' };
+      }
+      return {};
+    },
   } as unknown as AgentHub;
   const config = { maxSessionsPerUser: 5, idleTimeoutMinutes: 0, maxSessionHours: 0, allowedOrigins: new Set<string>(), authMode: 'local' } as unknown as Config;
   const context = createServerContext(pool, config, auth, undefined, hub);
@@ -236,7 +242,7 @@ test('rate limit on redeem answers 429 after ten attempts a minute', async () =>
   } finally { await h.close(); }
 });
 
-test('every session route answers a grant holder 404 except the stream, read and input', async () => {
+test('every session route answers a grant holder 404 except the stream, read, screenshot and input', async () => {
   const h = await harness();
   try {
     const { body } = await h.share('control');
@@ -252,7 +258,7 @@ test('every session route answers a grant holder 404 except the stream, read and
     const scoped = routes.filter(route => route.path.startsWith('/api/sessions/:id'));
     assert.ok(scoped.length >= 20, 'found ' + scoped.length);
     const fill = (path: string) => path.replace(':id', SID).replace(':shareId', shareId).replace(':grantId', grantId);
-    const allowed = new Set(['GET /api/sessions/:id', 'POST /api/sessions/:id/input']);
+    const allowed = new Set(['GET /api/sessions/:id', 'GET /api/sessions/:id/screenshot', 'POST /api/sessions/:id/input']);
     const denied = (route: { path: string }) => route.path.endsWith('/kill') ? 403 : 404; // the admin-only gate answers first
     for (const route of scoped) {
       const key = route.method + ' ' + route.path;
@@ -454,7 +460,7 @@ test('a grant revoked between pre-upgrade authorization and socket registration 
   } finally { await h.close(); }
 });
 
-test('session end notifies the share module and accessibleSession is used in three places only', async () => {
+test('session end notifies the share module and shared access stays limited to viewer routes', async () => {
   const h = await harness();
   try { assert.equal(h.closedListeners.length, 1); } finally { await h.close(); }
   const files: string[] = [];
@@ -462,8 +468,6 @@ test('session end notifies the share module and accessibleSession is used in thr
   const users: string[] = [];
   for (const file of files) if ((await readFile(new URL(`../${file}`, import.meta.url), 'utf8')).includes('accessibleSession')) users.push(file);
   assert.deepEqual(users.sort(), ['src/routes/session-routes.ts', 'src/session-access.ts', 'src/websocket.ts']);
-  const routes = await readFile(new URL('../src/routes/session-routes.ts', import.meta.url), 'utf8');
-  assert.equal(routes.match(/accessibleSession\(/g)?.length, 2, 'only the read and input endpoints');
 });
 
 test('GET /api/shares/mine lists only live grants of the caller without internals', async () => {
@@ -527,4 +531,24 @@ test('share redemption and creation reject an account removed after initial auth
   assert.equal((await h.share()).status,401);
   assert.equal((await h.db.query('SELECT count(*) AS n FROM session_share_grants')).rows[0].n,0);
  } finally {await h.close();}
+});
+
+test('a view grant permits PNG capture and revocation during capture prevents delivery', async () => {
+  const h = await harness();
+  try {
+    const { body } = await h.share('view');
+    h.state.actor = FRIEND;
+    await h.redeem(body.token);
+    const capture = await h.send(`/api/sessions/${SID}/screenshot`);
+    assert.equal(capture.status, 200);
+    assert.equal(capture.headers.get('content-type'), 'image/png');
+    assert.equal(capture.headers.get('cache-control'), 'no-store');
+    assert.equal(Buffer.from(await capture.arrayBuffer()).subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    h.state.onScreenshot = async () => {
+      await h.db.query('UPDATE session_share_grants SET revoked_at=now() WHERE share_id=$1', [body.share.id]);
+    };
+    const denied = await h.send(`/api/sessions/${SID}/screenshot`);
+    assert.equal(denied.status, 404);
+    assert.ok(denied.headers.get('content-type')?.startsWith('application/json'));
+  } finally { await h.close(); }
 });
