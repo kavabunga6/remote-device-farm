@@ -1,3 +1,4 @@
+import { AgentRequests } from './agent-requests.js';
 import { ApiError } from './http-common.js';
 import { uiMessage } from './messages.js';
 import { emitServiceLog, sessionLog } from './service-log.js';
@@ -14,13 +15,6 @@ import { parseActiveSessions, cleanAgentMetrics, cleanProviderCapabilities, type
 import { physicalDevicesFromProviders } from './physical-devices.js';
 import { cleanStartupProgress, storedStartupProgress, START_CANCEL_TIMEOUT_MS, type StartupStage } from './startup-progress.js';
 
-type Pending = {
-  ws: WebSocket; hostId: string; sessionId: string; action: string; progressWrittenAt?: number; progressStage?: StartupStage;
-  resolve: (value: Record<string, unknown>) => void;
-  reject: (error: Error) => void;
-  timer: NodeJS.Timeout;
-  diagnosticWrites?: Promise<void>; diagnosticCount?: number; progressLoggedAt?: number;
-};
 type Tunnel = { socket: WebSocket; sessionId: string; hostId: string };
 type DeviceTunnel = { socket: Socket; sessionId: string; hostId: string };
 type AgentLink = { ws: WebSocket; hostId: string; lastHeartbeat: number; policyVersion: number; preparingSessions: Set<string> };
@@ -36,7 +30,7 @@ export class AgentHub {
   private readonly maintenanceLogs = new Map<string, { hostId: string; owner: Promise<boolean>; writes: Promise<void>; count: number }>();
   private readonly agents = new Map<string, AgentLink>();
   private readonly seenAlerts = new Set<string>();
-  private readonly pending = new Map<string, Pending>();
+  private readonly pending = new AgentRequests();
   private readonly locallyStartedSessions = new Set<string>();
   private readonly cancellationInFlight = new Set<string>();
   private readonly viewers = new Map<string, Set<WebSocket>>();
@@ -79,11 +73,7 @@ export class AgentHub {
     for (const timer of this.agentSockets.values()) clearTimeout(timer);
     this.agentSockets.clear();
     this.agents.clear();
-    for (const pending of this.pending.values()) {
-      clearTimeout(pending.timer);
-      pending.reject(new Error('server shutting down'));
-    }
-    this.pending.clear();
+    this.pending.rejectWhere(() => true, new Error('server shutting down'));
     for (const viewers of this.viewers.values()) for (const viewer of viewers) {
       this.clearViewerDrainPoll(viewer);
       sockets.add(viewer);
@@ -390,8 +380,7 @@ export class AgentHub {
       const id = String(message.id || '');
       const pending = this.pending.get(id);
       if (!pending || pending.ws !== ws) return;
-      clearTimeout(pending.timer);
-      this.pending.delete(id);
+      this.pending.take(id);
       await pending.diagnosticWrites;
       if (message.ok === true) pending.resolve((message.data && typeof message.data === 'object') ? message.data as Record<string, unknown> : {});
       else pending.reject(typeof message.code === 'string' && message.code.startsWith('input_')
@@ -514,21 +503,10 @@ export class AgentHub {
     if (this.stopped) throw new Error('server shutting down');
     const agent = this.agents.get(hostId);
     if (!agent || agent.ws.readyState !== WebSocket.OPEN) throw new ApiError(503, 'agent_offline', uiMessage('api.agent_offline'));
-    const id = randomUUID();
     if (action === 'start') this.locallyStartedSessions.add(sessionId);
-    return await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        reject(new Error('agent command timed out'));
-      }, timeoutMs);
-      this.pending.set(id, { ws: agent.ws, hostId, sessionId, action, resolve, reject, timer });
-      agent.ws.send(JSON.stringify({ type: 'command', id, sessionId, action, params, ...(input ? { input } : {}) }), error => {
-        if (error) {
-          clearTimeout(timer);
-          this.pending.delete(id);
-          reject(error);
-        }
-      });
+    return this.pending.request({ ws: agent.ws, hostId, sessionId, action }, timeoutMs, (id, fail) => {
+      agent.ws.send(JSON.stringify({ type: 'command', id, sessionId, action, params, ...(input ? { input } : {}) }),
+        error => { if (error) fail(error); });
     });
   }
 
@@ -585,8 +563,7 @@ export class AgentHub {
     if (active.preparing || !active.bootReady || !active.containerId || this.agents.get(link.hostId) !== link) return;
     for (const [id, pending] of this.pending) {
       if (pending.action !== 'start' || pending.sessionId !== sessionId || pending.hostId !== link.hostId || pending.ws !== link.ws) continue;
-      clearTimeout(pending.timer);
-      this.pending.delete(id);
+      this.pending.take(id);
       pending.resolve({ containerId: active.containerId, networkEnabled: active.networkEnabled, ...active.details });
     }
   }
@@ -922,13 +899,7 @@ export class AgentHub {
     this.agents.delete(link.hostId);
     emitServiceLog(this.pool, { service: 'server', severity: 'warning', code: 'agent.disconnected', hostId: link.hostId });
     await this.pool.query(`UPDATE hosts SET status='offline' WHERE id=$1`, [link.hostId]).catch(() => {});
-    for (const [id, pending] of this.pending) {
-      if (pending.ws !== link.ws) continue;
-      if (pending.action === 'start') continue;
-      clearTimeout(pending.timer);
-      this.pending.delete(id);
-      pending.reject(new Error('agent disconnected'));
-    }
+    this.pending.rejectWhere(pending => pending.ws === link.ws && pending.action !== 'start', new Error('agent disconnected'));
     const result = await this.pool.query(`SELECT id FROM sessions WHERE host_id=$1 AND state IN ('starting','running','stopping')`, [link.hostId]).catch(() => ({ rows: [] }));
     for (const row of result.rows) {
       await sessionLog(this.pool, link.hostId, row.id, 'session.agent_disconnected', uiMessage('ui.9ad97d6ce64c'), 'warning');

@@ -1,7 +1,7 @@
 import { can } from './permissions';
 import { localizeText, getLocale, t } from './i18n';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { api, ApiError, KNOWN_ERRORS, type AdbPortAccess, type AdbResult, type AdbUserKey, type NewAdbUserKey, type DeviceSession, type User } from './api';
+import { api, ApiError, KNOWN_ERRORS, type AdbPortAccess, type AdbUserKey, type NewAdbUserKey, type DeviceSession, type User } from './api';
 import { Icon } from './icons';
 import { useNotifications } from './notifications';
 import { lastLaunch } from './CreateSessionModal';
@@ -15,7 +15,8 @@ import { ShareControl, SharedBanner } from './ShareControl';
 import { accessOf } from './share-api';
 import { useSessionAudience } from './useSessionAudience';
 import { audienceDescription } from './session-audience';
-import { CONSOLE_CATEGORIES, getConsoleCommands, completionForCommand, consoleCommandLabel, consoleSuggestions, dynamicConsoleHints, parseConsoleCommand, parseDynamicNames, searchConsoleCatalog, type ConsoleCommandCategory, type ConsoleCommandHint, type DynamicCatalogKind } from './console-commands';
+import { CONSOLE_CATEGORIES, getConsoleCommands } from './console-commands';
+import { useSessionConsole } from './useSessionConsole';
 import { useSessionStream, type ConnectionMode } from './useSessionStream';
 import { SessionMediaStatus } from './SessionMediaStatus';
 import { hasCapability, type Capability } from './devices';
@@ -34,20 +35,6 @@ import { useSessionCapture } from './useSessionCapture';
 
 const CONSOLE_WIDTH_KEY = 'rdf-console-width';
 const CONSOLE_HEIGHT_KEY = 'rdf-console-height';
-
-function requestedDynamicKinds(value: string): DynamicCatalogKind[] {
-  const input = consoleCommandLabel(value).trim();
-  if (/^cmd(?:\s|$)/i.test(input)) return ['cmd'];
-  if (/^dumpsys(?:\s|$)/i.test(input)) return ['dumpsys'];
-  if (/^(?:pm (?:path|dump|clear)|am force-stop|uninstall)(?:\s|$)/i.test(input)) return ['packages'];
-  return [];
-}
-
-const DYNAMIC_ARGV: Record<DynamicCatalogKind, string[]> = {
-  cmd: ['shell', 'cmd', '-l'],
-  dumpsys: ['shell', 'dumpsys', '-l'],
-  packages: ['shell', 'pm', 'list', 'packages', '-3'],
-};
 
 function downloadKeyFile(filename: string, content: string): void {
   const url = URL.createObjectURL(new Blob([content], { type: 'application/octet-stream' }));
@@ -129,16 +116,18 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     }
   };
 
+  const {
+    command, setCommand, shellHistory, setShellHistory, shellBusy,
+    suggestionsOpen, setSuggestionsOpen, suggestionIndex, setSuggestionIndex,
+    catalogOpen, setCatalogOpen, catalogQuery, setCatalogQuery, catalogCategory, setCatalogCategory,
+    consoleNotice, setConsoleNotice, setHistoryIndex, commandInputRef, terminalOutputRef,
+    suggestions, catalogResults, insertConsoleHint, runCommand, handleCommandKeyDown,
+  } = useSessionConsole(sessionId, session?.status === 'running', !shared && can(user, 'sessions.console') && hasCapability(session, 'shell'));
+
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragDepthRef = useRef(0);
-  const [command, setCommand] = useState('');
-  const [shellHistory, setShellHistory] = useState<Array<{ command: string; result?: AdbResult; error?: string }>>([]);
-  const [shellBusy, setShellBusy] = useState(false);
-  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
-  const [suggestionIndex, setSuggestionIndex] = useState(-1);
-  const [catalogOpen, setCatalogOpen] = useState(false);
   const categoryStripRef = useRef<HTMLDivElement>(null);
   const [workspaceMode, setWorkspaceMode] = useState<'split' | 'screen' | 'tools'>('split');
   const [compactWorkspace, setCompactWorkspace] = useState(() => window.matchMedia('(max-width: 1200px)').matches);
@@ -150,19 +139,6 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     return () => media.removeEventListener('change', update);
   }, []);
   const changeWorkspaceMode = (mode: 'split' | 'screen' | 'tools') => setWorkspaceMode(mode);
-  const [catalogQuery, setCatalogQuery] = useState('');
-  const [catalogCategory, setCatalogCategory] = useState<ConsoleCommandCategory | 'all'>('all');
-  const [consoleNotice, setConsoleNotice] = useState('');
-  const [dynamicState, setDynamicState] = useState<{ sessionId: string; names: { cmd: string[]; dumpsys: string[]; packages: string[] } }>({ sessionId, names: { cmd: [], dumpsys: [], packages: [] } });
-  const dynamicNames = dynamicState.sessionId === sessionId ? dynamicState.names : { cmd: [], dumpsys: [], packages: [] };
-  const dynamicSessionRef = useRef(sessionId);
-  const dynamicLoadedRef = useRef(new Set<DynamicCatalogKind>());
-  const dynamicPendingRef = useRef(new Set<DynamicCatalogKind>());
-  const dynamicRetryAfterRef = useRef<Record<DynamicCatalogKind, number>>({ cmd: 0, dumpsys: 0, packages: 0 });
-  const [historyIndex, setHistoryIndex] = useState<number | null>(null);
-  const commandDraftRef = useRef('');
-  const commandInputRef = useRef<HTMLInputElement>(null);
-  const terminalOutputRef = useRef<HTMLDivElement>(null);
   const [adbPortAccess, setAdbPortAccess] = useState<AdbPortAccess | null>(null);
   const [adbPublicKey, setAdbPublicKey] = useState('');
   const [adbUserKey, setAdbUserKey] = useState<AdbUserKey | null>(null);
@@ -204,7 +180,6 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const pointerStartRef = useRef<{ x: number; y: number; time: number; pointerId: number; live: boolean; lastMoveAt: number; lastX: number; lastY: number } | null>(null);
   const audioEnabled = session?.audioEnabled ?? false;
   const networkEnabled = session?.networkEnabled !== false;
-  dynamicSessionRef.current = sessionId;
   const [imageFrameReady, setImageFrameReady] = useState(false);
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>('websocket');
   const stream = useSessionStream(sessionId, audioEnabled, connectionMode);
@@ -236,8 +211,6 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
       notify({ kind: 'info', title: message, key });
     }
   }, [session?.status, stream.status, stream.audioNotice, audioEnabled, captureSupportNotice, sessionId, notify]);
-  const suggestions = consoleSuggestions(command, dynamicConsoleHints(command, dynamicNames));
-  const catalogResults = searchConsoleCatalog(catalogQuery, catalogCategory, dynamicConsoleHints(catalogQuery, dynamicNames));
 
   const sessionRequest = useRef({ active: false, pending: false, missing: false });
   const refresh = useCallback(async () => {
@@ -272,42 +245,6 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
       void refresh();
     }
   }, [stream.audioUnavailableCount, refresh, notifyError]);
-
-  useEffect(() => {
-    dynamicSessionRef.current = sessionId;
-    dynamicLoadedRef.current.clear();
-    dynamicPendingRef.current.clear();
-    dynamicRetryAfterRef.current = { cmd: 0, dumpsys: 0, packages: 0 };
-    setDynamicState({ sessionId, names: { cmd: [], dumpsys: [], packages: [] } });
-  }, [sessionId]);
-
-  useEffect(() => {
-    if (!can(user, 'sessions.console') || session?.status !== 'running') return;
-    const requested = [...new Set([
-      ...requestedDynamicKinds(command),
-      ...(catalogOpen ? requestedDynamicKinds(catalogQuery) : []),
-    ])];
-    for (const kind of requested) {
-      if (dynamicLoadedRef.current.has(kind) || dynamicPendingRef.current.has(kind) || Date.now() < dynamicRetryAfterRef.current[kind]) continue;
-      dynamicPendingRef.current.add(kind);
-      const requestedSession = sessionId;
-      void api.adb(sessionId, DYNAMIC_ARGV[kind]).then(result => {
-        if (dynamicSessionRef.current !== requestedSession) return;
-        if (result.exitCode !== 0) {
-          dynamicRetryAfterRef.current[kind] = Date.now() + 10_000;
-          return;
-        }
-        dynamicLoadedRef.current.add(kind);
-        setDynamicState(current => current.sessionId === requestedSession
-          ? { sessionId: requestedSession, names: { ...current.names, [kind]: parseDynamicNames(result.stdout, kind) } }
-          : current);
-      }).catch(() => {
-        if (dynamicSessionRef.current === requestedSession) dynamicRetryAfterRef.current[kind] = Date.now() + 10_000;
-      }).finally(() => {
-        if (dynamicSessionRef.current === requestedSession) dynamicPendingRef.current.delete(kind);
-      });
-    }
-  }, [sessionId, session?.status, command, catalogOpen, catalogQuery]);
 
   const sendInput = useCallback((payload: Record<string, unknown>) => {
     if (readOnly || !stream.inputReady || session?.status !== 'running') return false;
@@ -421,83 +358,6 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
       finally { setUploading(items => items.filter(name => name !== file.name)); }
     }
   };
-
-  const insertConsoleHint = (hint: ConsoleCommandHint) => {
-    const completion = completionForCommand(hint);
-    if (!completion) {
-      setConsoleNotice(hint.description);
-      setSuggestionsOpen(false);
-      return;
-    }
-    setCommand(completion);
-    setCatalogOpen(false);
-    setConsoleNotice('');
-    setSuggestionsOpen(false);
-    setSuggestionIndex(-1);
-    setHistoryIndex(null);
-    commandInputRef.current?.focus();
-  };
-
-  const executeConsoleCommand = async (value: string) => {
-    const next = value.trim();
-    if (!next || shellBusy) return;
-    let argv: string[];
-    try {
-      argv = parseConsoleCommand(next);
-    } catch (error) {
-      setConsoleNotice(errorText(error));
-      setSuggestionsOpen(false);
-      return;
-    }
-    setConsoleNotice('');
-    setCommand(''); setShellBusy(true);
-    setSuggestionsOpen(false); setSuggestionIndex(-1); setHistoryIndex(null);
-    try {
-      const result = await api.adb(sessionId, argv);
-      setShellHistory(items => [...items, { command: consoleCommandLabel(next), result }].slice(-100));
-    } catch (error) { setShellHistory(items => [...items, { command: consoleCommandLabel(next), error: errorText(error) }].slice(-100)); }
-    finally { setShellBusy(false); }
-  };
-
-  const runCommand = (event: React.FormEvent) => {
-    event.preventDefault();
-    void executeConsoleCommand(command);
-  };
-
-  const handleCommandKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    const hints = suggestions;
-    if (event.key === 'Escape' && suggestionsOpen) {
-      event.preventDefault(); setSuggestionsOpen(false); setSuggestionIndex(-1); return;
-    }
-    if ((event.key === 'Enter' || event.key === 'Tab') && suggestionsOpen && suggestionIndex >= 0 && hints[suggestionIndex]) {
-      event.preventDefault(); insertConsoleHint(hints[suggestionIndex]); return;
-    }
-    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-    const direction = event.key === 'ArrowUp' ? -1 : 1;
-    if (historyIndex !== null) {
-      event.preventDefault();
-      const next = historyIndex + direction;
-      if (next >= shellHistory.length) { setHistoryIndex(null); setCommand(commandDraftRef.current); }
-      else if (next >= 0) { setHistoryIndex(next); setCommand(shellHistory[next].command); }
-      return;
-    }
-    if (suggestionsOpen && hints.length) {
-      event.preventDefault();
-      setSuggestionIndex(current => current < 0 ? (direction > 0 ? 0 : hints.length - 1) : (current + direction + hints.length) % hints.length);
-      return;
-    }
-    if (direction < 0 && shellHistory.length) {
-      event.preventDefault();
-      commandDraftRef.current = command;
-      setHistoryIndex(shellHistory.length - 1);
-      setCommand(shellHistory[shellHistory.length - 1].command);
-    }
-  };
-
-  useEffect(() => {
-    const output = terminalOutputRef.current;
-    if (output) output.scrollTop = output.scrollHeight;
-  }, [shellHistory.length, shellBusy]);
 
   useEffect(() => {
     if (!can(user, 'sessions.adb')) return;
