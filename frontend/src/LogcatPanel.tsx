@@ -42,7 +42,7 @@ function download(name: string, text: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function LogcatPanel({ sessionId, active, running }: { sessionId: string; active: boolean; running: boolean }) {
+export function LogcatPanel({ sessionId, active, running, panelId }: { sessionId: string; active: boolean; running: boolean; panelId?: string }) {
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [readingEntries, setReadingEntries] = useState<LogEntry[] | null>(null);
   const [fontSize, setFontSize] = useState(savedFontSize);
@@ -220,7 +220,7 @@ export function LogcatPanel({ sessionId, active, running }: { sessionId: string;
   const selectApp = (name: string) => { setPackageName(name); update({ pid: null, tag: null }); };
   const hasFilter = packageName !== '' || filter.query !== '' || filter.minLevel !== 'V' || filter.tag !== null || filter.pid !== null;
 
-  return <div className="log-panel" hidden={!active} style={{ '--log-font-size': fontSize + 'px' } as CSSProperties}>
+  return <div className="log-panel" id={panelId} role={panelId ? 'tabpanel' : undefined} aria-labelledby={panelId ? 'tool-tab-logs' : undefined} hidden={!active} style={{ '--log-font-size': fontSize + 'px' } as CSSProperties}>
     <div className="log-head">
       <h2 className="log-sr-only">{t('ui.8e309dfb82e0')}</h2>
       <button type="button" className={'log-control log-live' + (live ? ' on' : '')} onClick={toggleLive} disabled={!running}

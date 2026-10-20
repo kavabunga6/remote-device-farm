@@ -85,7 +85,7 @@ function Meter({ label, used, total }: { label: string; used: number | null; tot
   return <div className="info-meter"><div><span>{label}</span><strong>{kb(used)} {t('ui.e029cc4b39ce')}{kb(total)}</strong></div><div className="info-meter-track" role="img" aria-label={t('ui.7f56d22bb8dc', { p0: label, p1: percent })}><span className={percent > 90 ? 'high' : ''} style={{ width: percent + '%' }} /></div></div>;
 }
 
-export function DeviceInfoPanel({ sessionId, active, running }: { sessionId: string; active: boolean; running: boolean }) {
+export function DeviceInfoPanel({ sessionId, active, running, panelId }: { sessionId: string; active: boolean; running: boolean; panelId?: string }) {
   const [info, setInfo] = useState<DeviceInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -108,7 +108,7 @@ export function DeviceInfoPanel({ sessionId, active, running }: { sessionId: str
   const groups = useMemo(() => info ? sections(info) : [], [info, getLanguage()]);
   const apps = useMemo(() => (info?.apps ?? []).filter(app => app.package.toLowerCase().includes(appQuery.trim().toLowerCase())), [info, appQuery, getLanguage()]);
 
-  return <div className="info-panel" hidden={!active}>
+  return <div className="info-panel" id={panelId} role={panelId ? 'tabpanel' : undefined} aria-labelledby={panelId ? 'tool-tab-info' : undefined} hidden={!active}>
     <div className="log-head info-head">
       <div className="log-title"><h2>{t('ui.1ad70005bb4e')}</h2><p>{t('ui.488d1427969c')}</p>{info && <span className="info-updated">{t('ui.d3a75ac5ad85')}{date(info.collectedAt)}</span>}</div>
       <div className="log-actions">

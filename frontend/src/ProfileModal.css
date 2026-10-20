@@ -5,7 +5,7 @@
 .profile-editor-header p{margin:5px 0 0;color:var(--ui-muted);font-size:.875rem;line-height:1.5}
 .profile-editor-header .icon-button{flex:none;width:40px;height:40px;display:grid;place-items:center}
 .profile-modal .profile-form{min-height:0;display:flex;flex-direction:column;gap:0;overflow:hidden}
-.profile-editor-body{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;display:grid;grid-template-columns:minmax(0,1fr);gap:20px;padding:20px 24px;align-items:start}
+.profile-editor-body{margin:0;border:0;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;display:grid;grid-template-columns:minmax(0,1fr);gap:20px;padding:20px 24px;align-items:start}
 .profile-editor-section{min-width:0;display:grid;align-content:start;gap:12px}
 .profile-editor-section+.profile-editor-section{border-top:1px solid var(--ui-border);padding-top:20px}
 .profile-editor-section h3{margin:0;font-size:1rem;line-height:1.4;color:var(--ui-text)}

@@ -1,3 +1,5 @@
+import { useNotifications } from './notifications';
+import { ActivityIndicator } from './ActivityIndicator';
 import { useAccess } from './permissions';
 import { getLanguage, getLocale, t } from './i18n';
 import { LaunchSettings } from './LaunchSettings';
@@ -81,7 +83,12 @@ export function AdminProfiles({ profiles, onCreate, onEdit, onToggle, onDelete, 
 
   const [importing, setImporting] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const exportPending = useRef(false);
+  const { notifyError } = useNotifications();
   const exportManifest = async () => {
+    if (exportPending.current) return;
+    exportPending.current = true; setExporting(true);
     try {
       const manifest = await api.exportProfiles();
       const link = document.createElement('a');
@@ -89,10 +96,11 @@ export function AdminProfiles({ profiles, onCreate, onEdit, onToggle, onDelete, 
       link.download = 'device-farm-profiles.json';
       link.click();
       window.setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
-    } catch { /* The button stays usable; the next attempt shows the real state. */ }
+    } catch (cause) { notifyError(t('profiles.exportFailed'), cause); }
+    finally { exportPending.current = false; setExporting(false); }
   };
   return <section id="adm-profiles" className="content-section admin-tools admin-profile-catalog" aria-labelledby="admin-profiles-heading">
-    <div className="section-heading"><div><h2 id="admin-profiles-heading">{t('ui.4d8dc88b1785')}</h2><p>{t('ui.d67382f6428f')}</p></div><HeadingSlot slot="actions"><div className="admin-heading-actions">{can('images.view') && <button type="button" className="button outline small" onClick={() => setCatalogOpen(true)}><Icon name="grid" size={16}/>{t('ui.0f624ca5f08a')}</button>}{can('profiles.manage') && <button type="button" className="button outline small" onClick={() => setImporting(true)}><Icon name="upload" size={16}/>{t('ui.011008fbaa2d')}</button>}<button type="button" className="button outline small" onClick={() => void exportManifest()}><Icon name="download" size={16}/>{t('ui.d2ab5a1bb639')}</button>{can('profiles.manage') && <button type="button" className="button primary small" onClick={onCreate}><Icon name="plus" size={16}/>{t('ui.359497aff53e')}</button>}</div></HeadingSlot></div>
+    <div className="section-heading"><div><h2 id="admin-profiles-heading">{t('ui.4d8dc88b1785')}</h2><p>{t('ui.d67382f6428f')}</p></div><HeadingSlot slot="actions"><div className="admin-heading-actions">{can('images.view') && <button type="button" className="button outline small" onClick={() => setCatalogOpen(true)}><Icon name="grid" size={16}/>{t('ui.0f624ca5f08a')}</button>}{can('profiles.manage') && <button type="button" className="button outline small" onClick={() => setImporting(true)}><Icon name="upload" size={16}/>{t('ui.011008fbaa2d')}</button>}<button type="button" className="button outline small" onClick={() => void exportManifest()} disabled={exporting} aria-busy={exporting}>{exporting ? <ActivityIndicator /> : <Icon name="download" size={16}/>} {t(exporting ? 'profiles.exporting' : 'ui.d2ab5a1bb639')}</button>{can('profiles.manage') && <button type="button" className="button primary small" onClick={onCreate}><Icon name="plus" size={16}/>{t('ui.359497aff53e')}</button>}</div></HeadingSlot></div>
     {can('profiles.manage') && <LaunchSettings onChanged={onImported}/>}
     <div className="admin-profiles-controls">
       <div className="admin-profiles-search-row"><label className="admin-profiles-search"><Icon name="search" size={18}/><input type="search" aria-label={t('ui.799525e87625')} placeholder={t('ui.3fe77c2e6713')} value={query} onChange={event => { setQuery(event.target.value); setPage(0); }}/></label><button type="button" className="button outline small" disabled={!hasFilters} onClick={clear}>{t('ui.cd45ec7836b5')}</button></div>

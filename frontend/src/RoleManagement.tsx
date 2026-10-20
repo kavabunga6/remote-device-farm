@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { t, localizeText } from './i18n';
 import { permissionCatalog, permissionLabel, roleLabel, togglePermission, useAccess, type AccessRole } from './permissions';
 import { roleApi } from './roles-api';
@@ -42,6 +42,14 @@ export function RoleManagement({ onChanged }: { onChanged: () => void }) {
   } catch (cause) { setError(cause instanceof Error ? cause.message : t('ui.8f9c4884b8f9')); }
   finally { setBusy(false); }
  };
+ const permissionHint = (id: string) => {
+  if (!permissions.includes(id)) return null;
+  if (id === 'sessions.console' || id === 'sessions.adb' && !permissions.includes('sessions.console')) return t('roles.deviceAccessHint');
+  if (id === 'sessions.configure') return t('roles.launchWarning');
+  if (id === 'roles.manage') return t('roles.manageWarning');
+  if (id === 'tokens.system') return t('roles.tokenWarning');
+  return null;
+ };
  const remove = async () => {
   if (!removing || busy) return; setBusy(true); setDeleteError('');
   try { await roleApi.remove(removing.id); const updated = await load(); choose(updated[0] ?? null); setRemoving(null); notify({ kind: 'success', title: t('roles.deleted') }); onChanged(); }
@@ -58,11 +66,11 @@ export function RoleManagement({ onChanged }: { onChanged: () => void }) {
     {current?.builtin === 'admin' && <p className="role-notice">{t('roles.adminLocked')}</p>}
     <p className="role-notice">{t('roles.dependencyHint')}</p>
     <h4 className="role-permissions-heading">{t('roles.permissions')}<span>{t('roles.count', { p0: permissions.length })}</span></h4>
-    <div className="permission-groups">{permissionCatalog.map(group => <fieldset key={group.id} disabled={busy || locked}><legend>{permissionLabel(group.labelKey)}</legend>{group.actions.map(action => <label key={action.id} className="permission-choice"><input type="checkbox" checked={permissions.includes(action.id)} onChange={event => setPermissions(values => togglePermission(values, action.id, event.target.checked))}/><span>{permissionLabel(action.labelKey)}</span></label>)}</fieldset>)}</div>
-    {(permissions.includes('sessions.console') || permissions.includes('sessions.adb')) && <p className="role-notice">{t('roles.deviceAccessHint')}</p>}
-    {permissions.includes('sessions.configure') && <p className="role-notice">{t('roles.launchWarning')}</p>}
-    {permissions.includes('roles.manage') && <p className="role-notice"><Icon name="shield" size={17}/>{t('roles.manageWarning')}</p>}
-    {permissions.includes('tokens.system') && <p className="role-notice"><Icon name="key" size={17}/>{t('roles.tokenWarning')}</p>}
+    <div className="permission-groups">{permissionCatalog.map(group => <fieldset key={group.id} disabled={busy || locked}><legend>{permissionLabel(group.labelKey)}</legend>{group.actions.map(action => {
+     const hint = permissionHint(action.id), hintId = 'permission-hint-' + action.id;
+     return <Fragment key={action.id}><label className="permission-choice"><input type="checkbox" checked={permissions.includes(action.id)} aria-describedby={hint ? hintId : undefined} onChange={event => setPermissions(values => togglePermission(values, action.id, event.target.checked))}/><span>{permissionLabel(action.labelKey)}</span></label>
+      {hint && <p id={hintId} className="role-notice permission-hint">{hint}</p>}</Fragment>;
+    })}</fieldset>)}</div>
     {error && <p className="inline-error" role="alert">{localizeText(error)}</p>}
     {!locked && <footer className="role-editor-actions"><button type="submit" className="button primary" disabled={busy || !name.trim()}>{busy ? t('ui.9c27c381dd8b') : t('ui.b4d30cae5289')}</button></footer>}
    </form>

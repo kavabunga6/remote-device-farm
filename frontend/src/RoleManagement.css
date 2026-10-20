@@ -27,3 +27,5 @@
 .role-list button { min-width:0; }
 .role-list button>span small { flex:none; }
 .role-assign-content select { width:100%; min-width:0; }
+
+.permission-hint { margin:.35rem 0 1rem 1.75rem; }

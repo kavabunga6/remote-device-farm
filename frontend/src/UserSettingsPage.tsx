@@ -2,13 +2,14 @@ import { can, roleLabel } from './permissions';
 import { getLocale, localizeText, setLanguage, t } from './i18n';
 import { useInterfaceLanguage } from './LanguageControl';
 import { NotificationSettings } from './NotificationSettings';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User } from './api';
 import { AdbKeysPage } from './AdbKeysPage';
 import { Icon } from './icons';
 import { applyUserPreferences } from './user-preferences';
 import { settingsApi, type RentalRecord, type UserPreferences, type UserProfile } from './settings-api';
 import { PasswordTools } from './PasswordTools';
+import { loadUserPreferences, saveUserPreferences } from './preferences-autosave';
 import './UserSettingsPage.css';
 
 type SettingsSection = 'profile' | 'appearance' | 'security' | 'keys' | 'notifications' | 'history';
@@ -67,44 +68,84 @@ export function UserSettingsPage({ user }: { user: User }) {
   }, []);
   const [rentals, setRentals] = useState<RentalRecord[]>([]);
   const [rentalCursor, setRentalCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [preferencesLoading, setPreferencesLoading] = useState(true);
+  const [preferencesReady, setPreferencesReady] = useState(false);
+  const [rentalsLoading, setRentalsLoading] = useState(true);
+  const [profileError, setProfileError] = useState('');
+  const [preferencesError, setPreferencesError] = useState('');
+  const [rentalsError, setRentalsError] = useState('');
+  const [profileRetry, setProfileRetry] = useState(0);
+  const [preferencesRetry, setPreferencesRetry] = useState(0);
+  const [rentalsRetry, setRentalsRetry] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
-    const [savingPassword, setSavingPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [prefsStatus, setPrefsStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const prefsTimer = useRef<number | undefined>(undefined);
+  const preferencesRef = useRef(preferences);
+  const prefsVersion = useRef(0);
+  const pendingPreferences = useRef<{ value: UserPreferences; version: number } | null>(null);
+  const saveScope = useRef({ active: true });
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      settingsApi.profile(),
-      settingsApi.preferences(),
-      settingsApi.myRentals(),
-    ]).then(([nextProfile, nextPreferences, history]) => {
+    setProfileLoading(true); setProfileError('');
+    void settingsApi.profile().then(nextProfile => {
       if (!active) return;
       setProfile(nextProfile);
       setFirstName(nextProfile.firstName || '');
       setLastName(nextProfile.lastName || '');
       setJobTitle(nextProfile.jobTitle || '');
       setCompany(nextProfile.company || '');
-      setPreferences(nextPreferences);
+    }).catch(cause => {
+      if (active) setProfileError(errorText(cause));
+    }).finally(() => {
+      if (active) setProfileLoading(false);
+    });
+    return () => { active = false; };
+  }, [user.id, profileRetry]);
+
+  useEffect(() => {
+    let active = true;
+    setPreferencesLoading(true); setPreferencesError('');
+    void loadUserPreferences(user.id).then(nextPreferences => {
+      if (!active) return;
+      preferencesRef.current = nextPreferences;
+      setPreferences(nextPreferences); setPreferencesReady(true);
       applyUserPreferences(nextPreferences, user.id);
+    }).catch(cause => {
+      if (active) setPreferencesError(errorText(cause));
+    }).finally(() => {
+      if (active) setPreferencesLoading(false);
+    });
+    return () => { active = false; };
+  }, [user.id, preferencesRetry]);
+
+  useEffect(() => {
+    let active = true;
+    setRentalsLoading(true); setRentalsError('');
+    void settingsApi.myRentals().then(history => {
+      if (!active) return;
       setRentals(history.rentals);
       setRentalCursor(history.nextCursor);
     }).catch(cause => {
-      if (active) setError(errorText(cause));
+      if (active) setRentalsError(errorText(cause));
     }).finally(() => {
-      if (active) setLoading(false);
+      if (active) setRentalsLoading(false);
     });
     return () => { active = false; };
-  }, []);
+  }, [user.id, rentalsRetry]);
 
   const saveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!profile || profileLoading || savingProfile || profile.managedByProvider) return;
     setSavingProfile(true); setError(''); setNotice('');
     try {
       const result = await settingsApi.updateProfile({ firstName, lastName, jobTitle, company });
@@ -114,21 +155,43 @@ export function UserSettingsPage({ user }: { user: User }) {
     finally { setSavingProfile(false); }
   };
 
-  // Appearance applies at once and saves itself shortly afterwards; there is no Save button to forget.
-  const [prefsStatus, setPrefsStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const prefsTimer = useRef<number | undefined>(undefined);
+  // Serialize requests, and publish a response only while it is still the latest
+  // choice. The queue also orders writes flushed by an account page that left.
+  const persistPreferences = useCallback(() => {
+    const pending = pendingPreferences.current;
+    if (!pending) return;
+    pendingPreferences.current = null;
+    const scope = saveScope.current;
+    const { theme, fontFamily, fontScale } = pending.value;
+    void saveUserPreferences(user.id, { theme, fontFamily, fontScale }).then(result => {
+      if (!scope.active || pending.version !== prefsVersion.current) return;
+      const next = { ...preferencesRef.current, theme: result.theme, fontFamily: result.fontFamily, fontScale: result.fontScale };
+      preferencesRef.current = next;
+      setPreferences(next); applyUserPreferences(next, user.id);
+      setPrefsStatus('saved'); setPreferencesError('');
+    }).catch(cause => {
+      if (!scope.active || pending.version !== prefsVersion.current) return;
+      setPrefsStatus('error'); setPreferencesError(errorText(cause));
+    });
+  }, [user.id]);
   const changePreferences = (patch: Partial<UserPreferences>) => {
-    // The font choice is gone: any value saved earlier is reset to the system font.
-    const next = { ...preferences, ...patch, fontFamily: 'system' as const };
-    setPreferences(next);
-    applyUserPreferences(next, user.id);
-    setPrefsStatus('saving');
+    if (!preferencesReady || preferencesLoading) return;
+    const next = { ...preferencesRef.current, ...patch, fontFamily: 'system' as const };
+    preferencesRef.current = next;
+    pendingPreferences.current = { value: next, version: ++prefsVersion.current };
+    setPreferences(next); applyUserPreferences(next, user.id);
+    setPrefsStatus('saving'); setPreferencesError('');
     window.clearTimeout(prefsTimer.current);
-    prefsTimer.current = window.setTimeout(() => {
-      settingsApi.updatePreferences(next).then(result => { setPreferences(result); setPrefsStatus('saved'); }).catch(cause => { setPrefsStatus('error'); setError(errorText(cause)); });
-    }, 500);
+    prefsTimer.current = window.setTimeout(persistPreferences, 500);
   };
-  useEffect(() => () => window.clearTimeout(prefsTimer.current), []);
+  useEffect(() => {
+    const scope = { active: true }; saveScope.current = scope;
+    return () => {
+      scope.active = false;
+      window.clearTimeout(prefsTimer.current);
+      persistPreferences();
+    };
+  }, [persistPreferences]);
 
   const savePassword = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -152,24 +215,30 @@ export function UserSettingsPage({ user }: { user: User }) {
 
   const loadMoreRentals = async () => {
     if (!rentalCursor || loadingMore) return;
-    setLoadingMore(true); setError('');
+    setLoadingMore(true); setRentalsError('');
     try {
       const page = await settingsApi.myRentals(rentalCursor);
       setRentals(previous => [...previous, ...page.rentals]);
       setRentalCursor(page.nextCursor);
-    } catch (cause) { setError(errorText(cause)); }
+    } catch (cause) { setRentalsError(errorText(cause)); }
     finally { setLoadingMore(false); }
   };
 
   const setDefaultKey = async (id: string | null) => {
+    if (!preferencesReady || preferencesLoading) return;
     setError(''); setNotice('');
+    window.clearTimeout(prefsTimer.current); persistPreferences();
     try {
-      const result = await settingsApi.updatePreferences({ defaultAdbKeyId: id });
-      setPreferences(result);
-      applyUserPreferences(result, user.id);
+      const result = await saveUserPreferences(user.id, { defaultAdbKeyId: id });
+      preferencesRef.current = { ...preferencesRef.current, defaultAdbKeyId: result.defaultAdbKeyId };
+      setPreferences(previous => ({ ...previous, defaultAdbKeyId: result.defaultAdbKeyId }));
       setNotice(id ? t('ui.bb8652b96f4c') : t('ui.b56c215d43a6'));
     } catch (cause) { setError(errorText(cause)); }
   };
+
+  const loadError = (message: string, retry: () => void) => message && <div className="inline-error settings-feedback" role="alert"><span>{localizeText(message)}</span><button type="button" className="text-button" onClick={retry}>{t('ui.5189135a6110')}</button></div>;
+  const profileFeedback = loadError(profileError, () => setProfileRetry(value => value + 1));
+  const preferencesFeedback = loadError(preferencesError, () => prefsStatus === 'error' ? changePreferences({}) : setPreferencesRetry(value => value + 1));
 
   const passwordCard = profile?.provider === 'local' ? <section className="settings-card settings-password">
       <div className="settings-card-title"><h2>{t('ui.cb1a2074b3a0')}</h2><p>{t('ui.4b3f0ec56a27')}</p></div>
@@ -213,28 +282,30 @@ export function UserSettingsPage({ user }: { user: User }) {
     <div id="settings-profile" className="settings-panel" hidden={section !== 'profile'}>
       <section className="settings-card">
         <div className="settings-card-title"><h2>{t('ui.265bd5fc9cb2')}</h2><p>{profile?.managedByProvider ? t('ui.63b39f64a1f9') : t('ui.02f14dd10eda')}</p></div>
-        {loading ? <p className="settings-muted">{t('ui.22a5d9112486')}</p> :
+        {profileFeedback}
+        {profileLoading ? <p className="settings-muted">{t('ui.22a5d9112486')}</p> :
           <form onSubmit={event => void saveProfile(event)} className="settings-form">
             <div className="settings-form-two">
-              <label>{t('ui.1da7e9372e2f')}<input value={firstName} onChange={event => setFirstName(event.target.value)} maxLength={100} disabled={profile?.managedByProvider} autoComplete="given-name" /></label>
-              <label>{t('ui.353eafa3bb36')}<input value={lastName} onChange={event => setLastName(event.target.value)} maxLength={100} disabled={profile?.managedByProvider} autoComplete="family-name" /></label>
+              <label>{t('ui.1da7e9372e2f')}<input value={firstName} onChange={event => setFirstName(event.target.value)} maxLength={100} disabled={!profile || savingProfile || profile.managedByProvider} autoComplete="given-name" /></label>
+              <label>{t('ui.353eafa3bb36')}<input value={lastName} onChange={event => setLastName(event.target.value)} maxLength={100} disabled={!profile || savingProfile || profile.managedByProvider} autoComplete="family-name" /></label>
             </div>
-            <div className="settings-form-two"><label>{t('ui.64d92044a1ff')}<input value={company} onChange={event => setCompany(event.target.value)} maxLength={150} disabled={profile?.managedByProvider} autoComplete="organization" /></label>
-            <label>{t('ui.65e47aff6622')}<input value={jobTitle} onChange={event => setJobTitle(event.target.value)} maxLength={150} disabled={profile?.managedByProvider} autoComplete="organization-title" /></label></div>
+            <div className="settings-form-two"><label>{t('ui.64d92044a1ff')}<input value={company} onChange={event => setCompany(event.target.value)} maxLength={150} disabled={!profile || savingProfile || profile.managedByProvider} autoComplete="organization" /></label>
+            <label>{t('ui.65e47aff6622')}<input value={jobTitle} onChange={event => setJobTitle(event.target.value)} maxLength={150} disabled={!profile || savingProfile || profile.managedByProvider} autoComplete="organization-title" /></label></div>
             {profile?.managedByProvider ? <p className="settings-hint">{t('ui.48311ccc29ec')}</p> :
-              <button type="submit" className="button primary" disabled={savingProfile}>{savingProfile ? t('ui.9c27c381dd8b') : t('ui.c134971e8f29')}</button>}
+              <button type="submit" className="button primary" disabled={!profile || savingProfile}>{savingProfile ? t('ui.9c27c381dd8b') : t('ui.c134971e8f29')}</button>}
           </form>}
       </section>
     </div>
     <div id="settings-appearance" className="settings-panel" hidden={section !== 'appearance'}>
       <section className="settings-card">
         <div className="settings-card-title"><h2>{t('ui.1731619efa3a')}</h2><p>{t('ui.ec778bdf0deb')}</p></div>
+        {preferencesFeedback}
         <div className="settings-form appearance-form">
           <Segmented legend={t('language.label')} value={language} onChange={setLanguage}
             options={[["ru", t('language.ru')], ["en", t('language.en')]]} />
-          <Segmented legend={t('ui.682f961a0751')} value={preferences.theme} disabled={loading} onChange={theme => changePreferences({ theme })}
+          <Segmented legend={t('ui.682f961a0751')} value={preferences.theme} disabled={preferencesLoading || !preferencesReady} onChange={theme => changePreferences({ theme })}
             options={[['system', t('ui.29e4a4bd7a17')], ['light', t('ui.f0cd3a603372')], ['dark', t('ui.1eecfcaa7bdb')]]} />
-          <Segmented legend={t('ui.be517dba6cd0')} value={preferences.fontScale} disabled={loading} onChange={fontScale => changePreferences({ fontScale })}
+          <Segmented legend={t('ui.be517dba6cd0')} value={preferences.fontScale} disabled={preferencesLoading || !preferencesReady} onChange={fontScale => changePreferences({ fontScale })}
             options={[[0, t('ui.8dca2f783130')], [0.9, '90%'], [1, '100%'], [1.15, '115%'], [1.3, '130%'], [1.5, '150%']]}
             hint={preferences.fontScale === 0 ? t('ui.e60fa06807e0') : t('ui.219e2b97e97a', { p0: Math.round(16 * preferences.fontScale) })} />
           <p className="appearance-preview">{t('ui.501b15dc7dc7')}<strong>{t('ui.9fd8a397265e')}</strong> <small>{t('ui.b77cc129c4cb')}</small></p>
@@ -243,17 +314,20 @@ export function UserSettingsPage({ user }: { user: User }) {
       </section>
     </div>
     <div id="settings-security" className="settings-panel" hidden={section !== 'security'}>
+    {profileFeedback}
     {passwordCard}
     </div>
     <div id="settings-notifications" hidden={section !== 'notifications'}><NotificationSettings /></div>
     <div id="settings-keys" hidden={section !== 'keys'}>
-    {can(user, 'sessions.adb') && <AdbKeysPage user={user} embedded defaultAdbKeyId={preferences.defaultAdbKeyId} onDefaultKeyChanged={setDefaultKey} />}
+    {!preferencesReady && preferencesFeedback}
+    {preferencesLoading ? <p className="settings-muted">{t('ui.22a5d9112486')}</p> : preferencesReady && can(user, 'sessions.adb') && <AdbKeysPage user={user} embedded defaultAdbKeyId={preferences.defaultAdbKeyId} onDefaultKeyChanged={setDefaultKey} />}
     </div>
     <div id="settings-history" hidden={section !== 'history'}>
     <section className="settings-history" aria-labelledby="my-rentals-heading">
       <div className="account-section-heading"><div><h2 id="my-rentals-heading">{t('ui.d9603f333a4a')}</h2><p>{t('ui.96868b8c4fa1')}</p></div></div>
+      {loadError(rentalsError, () => setRentalsRetry(value => value + 1))}
       <div className="settings-history-list">
-        {loading ? <div className="settings-history-empty">{t('ui.efb18c179df6')}</div> : rentals.length === 0 ? <div className="settings-history-empty">{t('ui.74e2bc5eb86a')}</div> :
+        {rentalsLoading ? <div className="settings-history-empty">{t('ui.efb18c179df6')}</div> : rentals.length === 0 ? !rentalsError && <div className="settings-history-empty">{t('ui.74e2bc5eb86a')}</div> :
           rentals.map(rental => <article className="settings-rental" key={rental.id}>
             <div><strong>{rental.profileName}</strong><small>#{rental.sessionId.slice(0, 8)} · {rental.hostName}</small></div>
             <div><span>{t('ui.4e5f1288359e')}{dateLabel(rental.createdAt)}</span><small>{rental.endedAt ? t('ui.89b05059d036') + dateLabel(rental.endedAt) : t('ui.983ec1306814')}</small></div>

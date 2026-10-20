@@ -49,3 +49,5 @@
   .page-overview .queue-item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; }
   .page-overview .queue-item > .button { grid-column: 2; justify-self: start; }
 }
+
+.session-card h3 > .card-primary-action > svg { flex: 0 0 auto; color: var(--accent); }

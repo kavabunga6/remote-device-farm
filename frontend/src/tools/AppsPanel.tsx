@@ -11,7 +11,7 @@ const message = (error: unknown): string => error instanceof Error ? error.messa
 const day = (value: string): string => new Date(value).toLocaleDateString(getLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 
 // Apps: upload an APK once, install it into any of your sessions, or install from a URL.
-export function AppsPanel({ sessionId, active, running }: { sessionId: string; active: boolean; running: boolean }) {
+export function AppsPanel({ sessionId, active, running, panelId }: { sessionId: string; active: boolean; running: boolean; panelId?: string }) {
   const [apps, setApps] = useState<StoredApp[]>([]);
   const [usage, setUsage] = useState<AppUsage | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -92,7 +92,7 @@ export function AppsPanel({ sessionId, active, running }: { sessionId: string; a
   const canInstall = running && installing === null;
 
   return (
-    <div className="apps-panel" hidden={!active}
+    <div className="apps-panel" id={panelId} role={panelId ? 'tabpanel' : undefined} aria-labelledby={panelId ? 'tool-tab-apps' : undefined} hidden={!active}
       onDragOver={event => { event.preventDefault(); setDragging(true); }}
       onDragLeave={event => { if (event.currentTarget === event.target) setDragging(false); }}
       onDrop={event => { event.preventDefault(); setDragging(false); void addFiles([...event.dataTransfer.files]); }}>

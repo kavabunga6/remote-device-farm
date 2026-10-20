@@ -37,8 +37,8 @@ function Card({ title, description, hint, status, children, className = '', init
 }
 
 // Device environment: network conditions, location, appearance, device state, links, app helpers.
-export function EnvPanel({ sessionId, active, running, readForViewer = false, onShowTouchesChange, nativeTouches = false }: {
-  sessionId: string; active: boolean; running: boolean; readForViewer?: boolean; onShowTouchesChange?: (enabled: boolean) => void; nativeTouches?: boolean;
+export function EnvPanel({ sessionId, active, running, readForViewer = false, onShowTouchesChange, nativeTouches = false, panelId }: {
+  sessionId: string; active: boolean; running: boolean; readForViewer?: boolean; onShowTouchesChange?: (enabled: boolean) => void; nativeTouches?: boolean; panelId?: string;
 }) {
   const { notify, notifyError } = useNotifications();
   const [env, setEnv] = useState<EnvState | null>(null);
@@ -168,7 +168,7 @@ export function EnvPanel({ sessionId, active, running, readForViewer = false, on
   const lookDisabled = off || busy('look') || loading || !env;
 
 
-  return <div className="env-panel" hidden={!active}>
+  return <div className="env-panel" id={panelId} role={panelId ? 'tabpanel' : undefined} aria-labelledby={panelId ? 'tool-tab-env' : undefined} hidden={!active}>
     <div className="env-head">
       <div><h2>{t('ui.d606a9df2b84')}</h2><p>{t('ui.ad4afc27d623')}</p></div>
       <button type="button" className="button small" onClick={() => void refresh(true)} disabled={off || loading}><Icon name="refresh" size={16} />{loading ? t('ui.351273476c20') : t('ui.603e460bf59c')}</button>

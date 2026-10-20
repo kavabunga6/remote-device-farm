@@ -3,6 +3,7 @@ import type { Host } from './api';
 import { t, getLocale, localizeText } from './i18n';
 import { Icon } from './icons';
 import { ActivityIndicator } from './ActivityIndicator';
+import { EmulatorCatalogDialog } from './EmulatorCatalogDialog';
 import { ImageInventorySummary } from './ImageInventorySummary';
 import { ManagedImageDetails, ManagedImageUsage, imageDisplay, imageKey, imageReason } from './ManagedImageDetails';
 import { useAccess } from './permissions';
@@ -22,6 +23,7 @@ function ImageDate({ value }: { value?: string | null }) {
 }
 export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged: () => void }) {
   const can = useAccess(), { notify } = useNotifications();
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [tab, setTab] = useState<'registry' | 'cache' | 'policy' | 'history'>('registry');
   const [registry, setRegistry] = useState<{ supported: boolean; repository: string | null; items: ManagedImage[]; maintenance: boolean } | null>(null);
   const [cache, setCache] = useState<ManagedImage[]>([]), [policy, setPolicy] = useState<CleanupPolicy | null>(null), [jobs, setJobs] = useState<CleanupJob[]>([]);
@@ -134,6 +136,7 @@ export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged
       <nav className="image-tabs" aria-label={t('images.title')}>{(['registry', 'cache', 'policy', 'history'] as const).map(value => <button type="button" key={value} aria-current={tab === value ? 'page' : undefined}
         disabled={busy || value === 'cache' && !can('nodes.view')} onClick={() => changeTab(value)}>{msg('images.tab.' + value)}</button>)}</nav>
       <div className="image-toolbar-end">
+        {can('images.view') && <button type="button" className="button outline small" disabled={busy} onClick={() => setCatalogOpen(true)}><Icon name="grid" size={16} />{t('ui.0f624ca5f08a')}</button>}
         {registry?.supported && registry.repository && <div className="image-repository"><Icon name="server" size={15} /><code title={registry.repository}>{registry.repository}</code><button type="button" className="icon-button" title={t('images.copyRepository')} aria-label={t('images.copyRepository')} onClick={() => void copy(registry.repository!, true)}><Icon name="copy" size={15} /></button></div>}
       <button type="button" className="icon-button image-refresh" aria-label={t('images.refresh')} title={t('images.refresh')} disabled={busy || loading} onClick={() => { setLoading(true); void reload(); }}><Icon name="refresh" size={18} /></button></div>
     </div>
@@ -224,5 +227,6 @@ export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged
       {profiles.length > 0 && <div className="image-profile-impact"><h3>{t('images.linkedProfiles')}</h3><p>{t('images.profilesDisabled')}</p><ul>{[...new Map(profiles.map(profile => [profile.id, profile])).values()].map(profile => <li key={profile.id}>{profile.name}</li>)}</ul><label className="image-switch"><input type="checkbox" checked={plans[0].removeProfiles === true} disabled={busy} onChange={event => void toggleProfiles(event.target.checked)} />{t('images.removeProfiles')}</label></div>}
       {!hasWork && <p>{t('images.nothingToClean')}</p>}{dialogError && <p className="inline-error" role="alert">{localizeText(dialogError)}</p>}
     </div><footer><button className="button outline" type="button" disabled={busy} onClick={close}>{t('images.cancel')}</button><button className="button danger" type="button" disabled={busy || !hasWork || Boolean(dialogError)} onClick={() => void apply()}>{busy ? t('images.submitting') : t('images.confirmAction')}</button></footer></section></div>}
+    {catalogOpen && <EmulatorCatalogDialog onClose={() => setCatalogOpen(false)} onChanged={() => { void reload(); onChanged(); }} />}
   </section>;
 }

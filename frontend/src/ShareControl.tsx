@@ -1,5 +1,5 @@
 import { getLocale, localizeText, t } from './i18n';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { DeviceSession, User } from './api';
 import { Icon } from './icons';
 import { shareApi, shareLink, type ShareMode } from './share-api';
@@ -27,19 +27,29 @@ export function ShareControl({ session, user, audience }: { session: DeviceSessi
   const [link, setLink] = useState('');
   const [copied, setCopied] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const close = useCallback((restoreFocus = true) => {
     if (busy) return;
     setOpen(false); setLink(''); setCopied(false);
+    if (restoreFocus) triggerRef.current?.focus();
   }, [busy]);
+
+  useLayoutEffect(() => {
+    if (open) closeButtonRef.current?.focus();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (event: PointerEvent) => { if (!rootRef.current?.contains(event.target as Node)) close(); };
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    const onDown = (event: PointerEvent) => { if (!rootRef.current?.contains(event.target as Node)) close(false); };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || busy) return;
+      event.preventDefault(); event.stopPropagation(); close();
+    };
     document.addEventListener('pointerdown', onDown);
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [open, close]);
+  }, [open, close, busy]);
 
   if (!active || !sessionId) return null;
   const shares = audience.shares;
@@ -66,13 +76,13 @@ export function ShareControl({ session, user, audience }: { session: DeviceSessi
   };
 
   return <div className="share-control" ref={rootRef}>
-    <button type="button" className="button outline share-button" aria-expanded={open} aria-haspopup="dialog" onClick={() => { if (open) close(); else { setOpen(true); void audience.refresh(); } }}>
+    <button ref={triggerRef} type="button" className="button outline share-button" aria-expanded={open} aria-haspopup="dialog" onClick={() => { if (open) close(); else { setOpen(true); void audience.refresh(); } }}>
       <Icon name="user" size={17} />{t('ui.dc120821c212')}{known && (connected > 0 || audience.activeLinks > 0) && <span className="share-count" title={audienceDescription(audience)}>{connected > 0 ? t('ui.6bfac468e8a5') + connected : t('ui.c1500d1211e4') + audience.activeLinks}</span>}{!known && <span className="share-status-unknown" title={audienceDescription(audience)} aria-label={audienceDescription(audience)}>{audience.status === 'loading' ? '…' : '?'}</span>}
     </button>
     {open && <div className="share-popover" role="dialog" aria-label={t('ui.c61ec5a31b0d')}>
       <div className="share-head">
         <div><strong>{t('ui.2f9b62797fb3')}</strong><p>{t('ui.84765be25f80')}</p></div>
-        <button type="button" className="icon-button" aria-label={t('ui.a7a4033657e8')} onClick={close} disabled={busy}><Icon name="close" size={16} /></button>
+        <button ref={closeButtonRef} type="button" className="icon-button" aria-label={t('ui.a7a4033657e8')} onClick={() => close()} disabled={busy}><Icon name="close" size={16} /></button>
       </div>
       {link ? <div className="share-link-box">
         <input readOnly value={link} aria-label={t('ui.ad4145b4c7b2')} onFocus={event => event.currentTarget.select()} />

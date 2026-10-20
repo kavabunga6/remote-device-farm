@@ -87,13 +87,13 @@ function SessionCard({ session, host, profile, onRelease, onRepeat, busy, canMan
       <div className="session-card-state"><div className="session-card-icon"><Icon name="phone" size={22} /></div><SessionStatusBadge status={session.status} /></div>
       {allowed('sessions.stop') && <button type="button" className="icon-button danger-icon card-secondary-action session-card-release" title={t('ui.d5682c76be4c')} aria-label={t('ui.d5682c76be4c')} onClick={onRelease} disabled={busy || !canOpen}><Icon name="power" size={18} /></button>}
     </div>
-    <h3 title={session.label ? (session.profileName || profile?.name || '') : undefined}>{canOpen ? <a className="card-primary-action" href={'#/session/' + encodeURIComponent(session.id)} aria-label={t('ui.442b925f50d7') + name}><span className="session-card-name">{name}</span></a> : name}</h3>
+    <h3 title={session.label ? (session.profileName || profile?.name || '') : undefined}>{canOpen ? <a className="card-primary-action" href={'#/session/' + encodeURIComponent(session.id)} aria-label={t('ui.442b925f50d7') + name}><span className="session-card-name">{name}</span><Icon name="arrowRight" size={18} /></a> : name}</h3>
     <p className="session-meta">{session.label && (session.profileName || profile?.name) ? <>{session.profileName || profile?.name}<span className="middle-dot">·</span></> : null}{profile?.androidVersion ? `Android ${profile.androidVersion}` : 'Android'} <span className="middle-dot">·</span> {session.hostName || host?.name || t('ui.e77a383ee52d')}</p>
     <div className="session-id">#{session.id.slice(0, 8)} <span>·</span> {formatDate(session.createdAt)}</div>
     <div className="session-card-footer">
       {session.status === 'starting' && <SessionStartupProgress progress={session.startupProgress} compact/>}
       {(canRepeat || (session.status === 'error' && canManage)) && <div className="session-card-actions">
-        {canRepeat && <button type="button" className="button primary small card-secondary-action" onClick={onRepeat}><Icon name="plus" size={14}/>{t('ui.199b7ab0c3dc')}</button>}
+        {canRepeat && <button type="button" className="button outline small card-secondary-action" onClick={onRepeat}><Icon name="plus" size={14}/>{t('ui.199b7ab0c3dc')}</button>}
         {session.status === 'error' && canManage && <a className="text-button card-secondary-action" href={'#/admin/journal?tab=logs&session=' + encodeURIComponent(session.id)}>{t('ui.102c44d966fa')}</a>}
       </div>}
     </div>
@@ -124,9 +124,10 @@ function ConfirmModal({ title, detail, action, danger, busy, context, error, onC
   </div>;
 }
 
-function Dashboard({ user, sessionLimitValue, hosts, profiles, adminProfiles, sessions, page, adminSection = 'sessions', loading, error, allowLocalUsers, onRefresh, onCreate, onRent, onOpen, onRelease, onKill }: {
+function Dashboard({ user, sessionLimitValue, hosts, profiles, adminProfiles, sessions, page, adminSection = 'sessions', loading, error, allowLocalUsers, onRefresh, onCreate, onRent, onOpen, onRelease, onKill, onReleaseAll }: {
   user: User; sessionLimitValue: number; hosts: Host[]; profiles: Profile[]; adminProfiles: Profile[]; sessions: DeviceSession[]; page: Page; adminSection?: AdminSection; loading: boolean; error: string; allowLocalUsers: boolean;
   onRefresh: () => void; onCreate: () => void; onRent: () => void; onOpen: (id: string) => void; onRelease: (id: string) => void; onKill: (id: string) => void;
+  onReleaseAll: (sessions: DeviceSession[]) => Promise<boolean>;
 }) {
   const canViewDiagnostics = can(user, 'logs.view');
   const shownHosts = can(user, 'nodes.view') ? hosts : hosts.filter(host => host.status === 'online' && !host.disabled);
@@ -137,9 +138,10 @@ function Dashboard({ user, sessionLimitValue, hosts, profiles, adminProfiles, se
   const mine = sessions.filter(session => session.ownerId === user.id || !session.ownerId);
   const releasable = mine.filter(session => session.status !== 'stopped' && session.status !== 'stopping');
   const releaseAll = async () => {
+    if (bulkBusy) return;
     setBulkBusy(true);
-    await Promise.allSettled(releasable.map(session => api.releaseSession(session.id)));
-    setBulkBusy(false); setBulkConfirm(false); onRefresh();
+    try { if (await onReleaseAll(releasable)) setBulkConfirm(false); }
+    finally { setBulkBusy(false); }
   };
   const sessionLimit = user.role === 'admin' ? 0 : sessionLimitValue;
   const limitReached = sessionLimit > 0 && sessions.filter(session => session.ownerId === user.id).length >= sessionLimit;
@@ -217,6 +219,7 @@ export default function App() {
   const setToast = useCallback((message: string) => notify({ kind: 'info', title: message }), [notify]);
   const [mobileNav, setMobileNav] = useState(false);
   const inventoryRequest = useRef(0);
+  const releaseAllPending = useRef(false);
 
   const boot = useCallback(async () => {
     setBooting(true); setBootError('');
@@ -377,6 +380,31 @@ export default function App() {
     await loadInventory(); navigate({ page: 'overview' });
   };
 
+  const releaseAllSessions = async (targets: DeviceSession[]): Promise<boolean> => {
+    if (releaseAllPending.current || !targets.length) return false;
+    releaseAllPending.current = true;
+    const key = 'sessions.bulkRelease';
+    notify({ kind: 'info', pending: true, title: t('sessions.bulkReleasePending'), key });
+    try {
+      const results = await Promise.allSettled(targets.map(session => api.releaseSession(session.id)));
+      const accepted = new Map<string, boolean>();
+      const failed: string[] = [];
+      results.forEach((result, index) => {
+        const session = targets[index]!;
+        if (result.status === 'fulfilled') accepted.set(session.id, result.value.released === true);
+        else failed.push((session.label || session.profileName || t('ui.f7aa03484689')) + ' · #' + session.id.slice(0, 8) + ': ' + displayError(result.reason));
+      });
+      inventoryRequest.current += 1;
+      setSessions(items => items.flatMap(session => !accepted.has(session.id) ? [session]
+        : accepted.get(session.id) ? [] : [{ ...session, status: 'stopping' as const }]));
+      notify({ kind: failed.length ? 'error' : 'info', title: t(failed.length ? 'sessions.bulkReleaseFailed' : 'sessions.bulkReleaseAccepted'),
+        message: failed.length ? t('sessions.bulkReleaseSummary', { p0: accepted.size, p1: failed.length }) : t('sessions.bulkReleaseCleanup', { p0: accepted.size }),
+        ...(failed.length ? { details: failed.join('\n') } : {}), key });
+      void loadInventory();
+      return failed.length === 0;
+    } finally { releaseAllPending.current = false; }
+  };
+
   const confirmAction = async () => {
     if (!confirm || confirmBusy) return;
     const action = confirm;
@@ -429,7 +457,7 @@ export default function App() {
   return <AccessProvider user={user}><div className="app-shell">
     <aside className={`sidebar ${mobileNav ? 'mobile-open' : ''}`}><div className="sidebar-brand"><a className="brand-link" href="#/overview" aria-label={t('ui.dc22f0654c57')} onClick={refreshView}><Brand /></a><button className="icon-button mobile-close" onClick={() => setMobileNav(false)} aria-label={t('ui.980d22e392a7')}><Icon name="close" size={20} /></button></div><SidebarNavigation page={currentPage} section={allowedRoute.page === 'admin' ? allowedRoute.section : undefined} user={user} counts={navigationCounts} onNavigate={refreshView} /><div className="sidebar-bottom"><button className={`side-profile ${currentPage === 'account' ? 'active' : ''}`} onClick={() => { navigate({ page: 'account' }); refreshView(); }} title={`${user.displayName || user.username} · ${roleLabel(user)}`} aria-label={t('ui.32fe3de56050')}><span className="avatar">{(user.displayName || user.username).slice(0, 1).toUpperCase()}{user.role === 'admin' && <span className="role-badge" aria-label={t('ui.6c7719973e58')}><Icon name="shield" size={10} strokeWidth={2.6} /></span>}</span><span className="side-profile-name">{user.displayName || user.username}<small>{roleLabel(user)}</small></span></button><button className="side-logout" onClick={() => setLogoutOpen(true)}><Icon name="logout" size={18} /><span>{t('ui.5690c2e63b9d')}</span></button></div></aside>
     {mobileNav && <div className="nav-scrim" onClick={() => setMobileNav(false)} />}
-    <div className="app-main"><header className="topbar"><button className="icon-button mobile-menu" onClick={() => setMobileNav(true)} aria-label={t('ui.b2bbe9885780')}><Icon name="menu" size={21} /></button><div className="topbar-context"><span className="connection-dot" />{t('ui.297c7852691a')}</div><div className="topbar-user"><span className="avatar">{(user.displayName || user.username).slice(0, 1).toUpperCase()}</span><span>{user.displayName || user.username}<small>{roleLabel(user)}</small></span></div></header><main key={refreshKey} className={allowedRoute.page === 'session' ? 'main-content session-main' : `main-content page-${allowedRoute.page}`}>{allowedRoute.page === 'shared' ? <SharedRedeemPage token={allowedRoute.token} onOpen={id => navigate({ page: 'session', id })} onCancel={() => setRoute({ page: 'overview' })} /> : allowedRoute.page === 'session' ? <SessionView key={allowedRoute.id} sessionId={allowedRoute.id} user={user} onBack={() => navigate({ page: 'overview' })} onNotFound={sessionNotFound} onRelease={session => setConfirm({ id: session.id, kind: 'release', session })} onKill={can(user, 'sessions.manageAll') ? session => setConfirm({ id: session.id, kind: 'kill', session }) : undefined} onObserved={observeSession} onUpdated={() => void loadInventory()} /> : allowedRoute.page === 'tokens' ? <TokenManager user={user} onChanged={() => void loadInventory()} /> : allowedRoute.page === 'account' ? <UserSettingsPage user={user} /> : <Dashboard user={user} sessionLimitValue={myLimits?.maxSessions ?? config.limits?.maxSessionsPerUser ?? 0} hosts={hosts} profiles={profiles} adminProfiles={adminProfiles} sessions={sessions} page={allowedRoute.page} adminSection={allowedRoute.page === 'admin' ? allowedRoute.section : undefined} loading={inventoryLoading} error={localizeText(inventoryError)} allowLocalUsers={config.authMethods.includes('local')} onRefresh={() => void loadInventory()} onCreate={() => setModal('create')} onRent={() => setModal('rent')} onOpen={id => navigate({ page: 'session', id })} onRelease={id => setConfirm({ id, kind: 'release' })} onKill={id => setConfirm({ id, kind: 'kill' })} />}</main></div>
+    <div className="app-main"><header className="topbar"><button className="icon-button mobile-menu" onClick={() => setMobileNav(true)} aria-label={t('ui.b2bbe9885780')}><Icon name="menu" size={21} /></button><div className="topbar-context"><span className="connection-dot" />{t('ui.297c7852691a')}</div><div className="topbar-user"><span className="avatar">{(user.displayName || user.username).slice(0, 1).toUpperCase()}</span><span>{user.displayName || user.username}<small>{roleLabel(user)}</small></span></div></header><main key={refreshKey} className={allowedRoute.page === 'session' ? 'main-content session-main' : `main-content page-${allowedRoute.page}`}>{allowedRoute.page === 'shared' ? <SharedRedeemPage token={allowedRoute.token} onOpen={id => navigate({ page: 'session', id })} onCancel={() => setRoute({ page: 'overview' })} /> : allowedRoute.page === 'session' ? <SessionView key={allowedRoute.id} sessionId={allowedRoute.id} user={user} onBack={() => navigate({ page: 'overview' })} onNotFound={sessionNotFound} onRelease={session => setConfirm({ id: session.id, kind: 'release', session })} onKill={can(user, 'sessions.manageAll') ? session => setConfirm({ id: session.id, kind: 'kill', session }) : undefined} onObserved={observeSession} onUpdated={() => void loadInventory()} /> : allowedRoute.page === 'tokens' ? <TokenManager user={user} onChanged={() => void loadInventory()} /> : allowedRoute.page === 'account' ? <UserSettingsPage user={user} /> : <Dashboard user={user} sessionLimitValue={myLimits?.maxSessions ?? config.limits?.maxSessionsPerUser ?? 0} hosts={hosts} profiles={profiles} adminProfiles={adminProfiles} sessions={sessions} page={allowedRoute.page} adminSection={allowedRoute.page === 'admin' ? allowedRoute.section : undefined} loading={inventoryLoading} error={localizeText(inventoryError)} allowLocalUsers={config.authMethods.includes('local')} onRefresh={() => void loadInventory()} onCreate={() => setModal('create')} onRent={() => setModal('rent')} onOpen={id => navigate({ page: 'session', id })} onRelease={id => setConfirm({ id, kind: 'release' })} onKill={id => setConfirm({ id, kind: 'kill' })} onReleaseAll={releaseAllSessions} />}</main></div>
     {logoutOpen && <LogoutDialog onClose={() => setLogoutOpen(false)} onConfirm={logout} />}
     {modal === 'rent' && <RentDeviceModal devices={rentableDevices(hosts)} onClose={() => setModal(null)} onRented={session => { setModal(null); setToast(t('ui.b4976e1c20a1')); void loadInventory(); navigate({ page: 'session', id: session.id }); }} />}
     {modal === 'create' && <CreateSessionModal canConfigureContainer={can(user, 'sessions.configure')} hosts={hosts} profiles={profiles} allowedProfileIds={user.role === 'admin' ? null : myLimits?.allowedProfileIds ?? null} onClose={() => setModal(null)} onCreate={createSession} onQueued={() => { setModal(null); setToast(t('ui.a17fda82f223')); }} />}

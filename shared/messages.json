@@ -12666,5 +12666,33 @@
   "agent.c74f3d49fec8": {
     "ru": "Агент отключился",
     "en": "agent disconnected"
+  },
+  "sessions.bulkReleasePending": {
+    "ru": "Отправляем запросы остановки",
+    "en": "Sending stop requests"
+  },
+  "sessions.bulkReleaseFailed": {
+    "ru": "Не все сессии удалось остановить",
+    "en": "Some sessions could not be stopped"
+  },
+  "sessions.bulkReleaseAccepted": {
+    "ru": "Запросы остановки приняты",
+    "en": "Stop requests accepted"
+  },
+  "sessions.bulkReleaseSummary": {
+    "ru": "Принято: {p0}. Не удалось: {p1}. Подробности доступны ниже; оставшиеся сессии можно остановить повторно.",
+    "en": "Accepted: {p0}. Failed: {p1}. Details are available below; the remaining sessions can be stopped again."
+  },
+  "sessions.bulkReleaseCleanup": {
+    "ru": "Принято запросов: {p0}. Остановка и очистка выполняются в фоне.",
+    "en": "Accepted requests: {p0}. Shutdown and cleanup continue in the background."
+  },
+  "profiles.exportFailed": {
+    "ru": "Не удалось экспортировать профили",
+    "en": "Could not export profiles"
+  },
+  "profiles.exporting": {
+    "ru": "Экспортируем…",
+    "en": "Exporting…"
   }
 }
