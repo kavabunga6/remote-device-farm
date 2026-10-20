@@ -1,8 +1,8 @@
-import { devicePlatform, normalizeCapabilities } from './generated/device-contract.js';
+import { devicePlatform, normalizeCapabilities, normalizeDeviceMetadata, type DeviceDescriptor } from './generated/device-contract.js';
 import { cleanLiveTelemetry } from './live-telemetry.js';
 
 // Untrusted agent payload normalization; transport and persistence belong to AgentHub.
-export type ActiveSessionReport = { containerId: string; networkEnabled: boolean | null; preparing: boolean; bootReady: boolean };
+export type ActiveSessionReport = { containerId: string; networkEnabled: boolean | null; preparing: boolean; bootReady: boolean; details?: Partial<DeviceDescriptor> };
 
 export function parseActiveSessions(input: unknown[]): Map<string, ActiveSessionReport> {
   const sessions = new Map<string, ActiveSessionReport>();
@@ -13,6 +13,7 @@ export function parseActiveSessions(input: unknown[]): Map<string, ActiveSession
     const containerId = String(record.containerId || '');
     if (/^[a-f0-9-]{36}$/i.test(sessionId) && containerId.length <= 128) sessions.set(sessionId, {
       containerId, preparing: record.preparing === true, bootReady: record.bootReady === true,
+      ...(Array.isArray(record.capabilities) ? { details: normalizeDeviceMetadata(record) } : {}),
       networkEnabled: typeof record.networkEnabled === 'boolean' ? record.networkEnabled : null,
     });
   }

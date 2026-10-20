@@ -1,3 +1,4 @@
+import { probeAndroid, androidCapabilities } from './android-capabilities.mjs';
 import { diagnosticReporter } from '../session-diagnostics.mjs';
 import { DeviceProvider } from './base.mjs';
 import { resolveGpuBackend } from '../docker-options.mjs';
@@ -48,7 +49,9 @@ export class EmulatorProvider extends DeviceProvider {
     };
   }
 
-  describe(entry) { return { containerId: entry.containerId, networkEnabled: entry.networkEnabled, preparing: entry.startupPending === true, bootReady: entry.bootReady === true }; }
+  sessionCapabilities(entry) { return entry.details?.capabilities ?? androidCapabilities(this.capabilities, null).capabilities; }
+
+  describe(entry) { return { ...(entry.details ?? androidCapabilities(this.capabilities, null)), containerId: entry.containerId, networkEnabled: entry.networkEnabled, preparing: entry.startupPending === true, bootReady: entry.bootReady === true }; }
 
   async recover() {
     for (const entry of await this.control.recover({ onLog: event => {
@@ -73,6 +76,8 @@ export class EmulatorProvider extends DeviceProvider {
           signal.throwIfAborted();
           if (this.sessions.get(sessionId) === entry && result.exitCode === 0 && String(result.stdout).trim() === '1') {
             onLog?.({ sessionId, code: 'session.android_ready', message: 'ADB подключён; sys.boot_completed=1', severity: 'info', service: 'agent' });
+            entry.details = await probeAndroid(this.adb, entry.serial, this.capabilities, { signal });
+            signal.throwIfAborted();
             entry.bootReady = true;
             entry.startupPending = false;
             entry.recoveryPending = false;
@@ -156,10 +161,12 @@ export class EmulatorProvider extends DeviceProvider {
             }
           }
           log('session.android_ready', 'ADB подключён; sys.boot_completed=1');
+          entry.details = await probeAndroid(this.adb, entry.serial, this.capabilities, { signal });
+          signal?.throwIfAborted();
           entry.bootReady = true;
           entry.startupPending = false;
           report({ stage: 'ready' });
-          return { containerId: created.containerId, networkEnabled: created.networkEnabled };
+          return this.describe(entry);
         } catch (error) {
           log('session.agent_start_failed', error.message, 'error');
           // Teardown finishes before releasing the reservation. A failed teardown keeps the session occupied.

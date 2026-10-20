@@ -83,3 +83,20 @@ export function physicalDevicesFromProviderReports(value: unknown): DeviceDescri
       ? [{ ...device, kind: p.kind, platform: p.platform ?? devicePlatform(p.kind) }] : []);
   }));
 }
+
+/** Unknown providers and missing physical-device reports never gain implicit features. */
+export function sessionCapabilities(kind: unknown, value: unknown): DeviceCapability[] {
+  if (!devicePlatform(kind)) return [];
+  if (Array.isArray(value)) return normalizeCapabilities(value);
+  return kind === 'emulator' ? DEVICE_CAPABILITIES.filter(capability => capability !== 'audio') : [];
+}
+export function normalizeDeviceMetadata(value: unknown): Partial<Pick<DeviceDescriptor, 'sdkLevel' | 'osVersion' | 'capabilities' | 'capabilityReasons'>> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const record = value as Record<string, unknown>;
+  return {
+    ...(Array.isArray(record.capabilities) ? { capabilities: normalizeCapabilities(record.capabilities) } : {}),
+    osVersion: boundedText(record.osVersion, 64),
+    sdkLevel: typeof record.sdkLevel === 'number' && Number.isInteger(record.sdkLevel) && record.sdkLevel >= 1 && record.sdkLevel <= 1000 ? record.sdkLevel : null,
+    capabilityReasons: normalizeCapabilityReasons(record.capabilityReasons),
+  };
+}

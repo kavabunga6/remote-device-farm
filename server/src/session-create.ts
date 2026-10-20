@@ -1,3 +1,4 @@
+import { normalizeDeviceMetadata } from './generated/device-contract.js';
 import { assertPermission, roleForUser } from './permissions.js';
 import { uiMessage } from './messages.js';
 import { assertUserActive } from './user-removal.js';
@@ -197,9 +198,11 @@ export function launchSession(
   })();
   return start.then(async data => {
     await requestedLog;
+    const details = normalizeDeviceMetadata(data);
     const updated = await pool.query(
-      `UPDATE sessions SET state='running',container_id=$2,started_at=now(),last_activity_at=now(),startup_progress=$3
-       WHERE id=$1 AND state='starting' RETURNING id`, [id, data.containerId || null, { stage: 'ready', percent: 100, updatedAt: new Date().toISOString() }],
+      `UPDATE sessions SET state='running',container_id=$2,started_at=now(),last_activity_at=now(),startup_progress=$3,
+       capabilities=COALESCE($4::text[],capabilities),device_metadata=COALESCE($5::jsonb,device_metadata)
+       WHERE id=$1 AND state='starting' RETURNING id`, [id, data.containerId || null, { stage: 'ready', percent: 100, updatedAt: new Date().toISOString() }, details.capabilities ?? null, details.capabilities ? details : null],
     );
     if (updated.rowCount) {
       await notifySessionReady(pool, id);

@@ -1,4 +1,4 @@
-import { devicePlatform, type DevicePlatform } from './generated/device-contract.js';
+import { devicePlatform, normalizeDeviceMetadata, sessionCapabilities, type DevicePlatform, type DeviceCapabilityReasons } from './generated/device-contract.js';
 import { uiMessage } from './messages.js';
 import { normalizeProfileResources, mergeLaunchStorage, type LaunchOptions } from './launch-options.js';
 import { validateDockerOptions } from './docker-options.js';
@@ -51,6 +51,7 @@ export type Session = {
   leaseTtlSeconds?: number | null; leaseExpiresAt?: string | null;
   startupProgress?: StartupProgress | null;
   platform?: DevicePlatform;
+  sdkLevel?: number | null; osVersion?: string | null; capabilityReasons?: DeviceCapabilityReasons;
   deviceKind: string; deviceId: string | null; capabilities: string[] | null;
   launchOptions?: LaunchOptions;
   gpuMode: string | null; launchImage: string | null; launchMemoryMb: number | null;
@@ -80,7 +81,8 @@ export function sessionJson(row: Record<string, unknown>): Session {
     ...(devicePlatform(row.device_kind ?? 'emulator') ? { platform: devicePlatform(row.device_kind ?? 'emulator')! } : {}),
     deviceKind: row.device_kind == null ? 'emulator' : String(row.device_kind),
     deviceId: row.device_id == null ? null : String(row.device_id),
-    capabilities: Array.isArray(row.capabilities) ? row.capabilities.map(String) : null,
+    ...normalizeDeviceMetadata(row.device_metadata),
+    capabilities: sessionCapabilities(row.device_kind ?? 'emulator', row.capabilities),
     lastActivityAt: new Date(String(row.last_activity_at ?? row.created_at)).toISOString(),
     leaseTtlSeconds: row.lease_ttl_seconds == null ? null : Number(row.lease_ttl_seconds),
     leaseExpiresAt: row.lease_expires_at == null ? null : new Date(String(row.lease_expires_at)).toISOString(),

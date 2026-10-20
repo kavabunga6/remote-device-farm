@@ -2,13 +2,10 @@ import { normalizePhysicalDevices, type DeviceCapability } from './generated/dev
 import { t } from './i18n';
 import type { DeviceKind, DeviceSession, DeviceState, Host, HostDevice } from './api';
 
-// Capabilities as reported by the agent: video, audio, touch, keys, rotate, files, install, shell, logs,
-// device-info, env, network. A session without a list (all emulators) can do everything.
 export type Capability = DeviceCapability;
 
 export function hasCapability(session: Pick<DeviceSession, 'capabilities'> | null | undefined, capability: Capability): boolean {
-  const list = session?.capabilities;
-  return !Array.isArray(list) || list.includes(capability);
+  return Array.isArray(session?.capabilities) && session.capabilities.includes(capability);
 }
 
 export const DEVICE_KIND_LABEL: Record<DeviceKind, string> = { get 'usb-android'() { return t('ui.d6371a43262b'); } };

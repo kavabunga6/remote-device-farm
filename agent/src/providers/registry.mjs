@@ -43,6 +43,12 @@ export class ProviderRegistry {
     const { provider, session } = this.require(sessionId);
     const op = provider.ops[action];
     if (!op) throw new Error(`"${action}" is not supported for ${provider.kind} devices`);
+    const required = [...provider.capabilityMap()].find(([, actions]) => actions.includes(action))?.[0];
+    if (required && !provider.sessionCapabilities(session).includes(required) && !(action === 'audio' && params?.enabled === false)) {
+      const error = new Error('Device capability is unavailable');
+      error.code = 'device_capability_unavailable';
+      throw error;
+    }
     return op(session, params, { sessionId });
   }
 

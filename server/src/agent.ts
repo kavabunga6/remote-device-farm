@@ -180,6 +180,7 @@ export class AgentHub {
           if (row.state === 'stopping') continue; // Reconciled below, never treated as an orphan.
           if (reported.has(row.id)) {
             const active = reported.get(row.id)!;
+            await this.storeSessionCapabilities(row.id, active);
             if (active.preparing) { await this.releaseStaleStartingSession(row.id); continue; }
             if (row.state === 'starting' && this.hasPendingStart(row.id)) {
               this.completeRecoveredStart(link, row.id, active);
@@ -259,6 +260,7 @@ export class AgentHub {
             else await this.releaseStaleStartingSession(row.id);
           } else {
             const reported = active.get(row.id)!;
+            await this.storeSessionCapabilities(row.id, reported);
             if (reported.preparing) { await this.releaseStaleStartingSession(row.id); continue; }
             if (row.state === 'starting') {
               if (this.hasPendingStart(row.id)) {
@@ -466,6 +468,12 @@ export class AgentHub {
     }
   }
 
+  private async storeSessionCapabilities(sessionId: string, report: ActiveSessionReport): Promise<void> {
+    if (!report.details?.capabilities) return;
+    await this.pool.query('UPDATE sessions SET capabilities=$2,device_metadata=$3 WHERE id=$1 AND (capabilities IS DISTINCT FROM $2 OR device_metadata IS DISTINCT FROM $3)',
+      [sessionId, report.details.capabilities, report.details]);
+  }
+
   private async storeDevices(hostId: string, providers: unknown): Promise<void> {
     if (providers === undefined) return;
     await this.pool.query('UPDATE hosts SET devices=$2,provider_capabilities=$3 WHERE id=$1',
@@ -579,7 +587,7 @@ export class AgentHub {
       if (pending.action !== 'start' || pending.sessionId !== sessionId || pending.hostId !== link.hostId || pending.ws !== link.ws) continue;
       clearTimeout(pending.timer);
       this.pending.delete(id);
-      pending.resolve({ containerId: active.containerId, networkEnabled: active.networkEnabled });
+      pending.resolve({ containerId: active.containerId, networkEnabled: active.networkEnabled, ...active.details });
     }
   }
 

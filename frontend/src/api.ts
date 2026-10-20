@@ -1,3 +1,4 @@
+import { sessionCapabilities } from './generated/device-contract';
 import type { DeviceDescriptor, DevicePlatform, PhysicalDeviceKind, DeviceAvailability } from './generated/device-contract';
 import { withRequestDeadline, RequestTimeoutError } from './request-deadline';
 import { knownErrorMessages, errorMessage, t } from './i18n';
@@ -301,6 +302,7 @@ export interface ProfileImportResult {
 
 export interface DeviceSession {
   platform?: DevicePlatform;
+  sdkLevel?: number | null; osVersion?: string | null; capabilityReasons?: DeviceDescriptor['capabilityReasons'];
   /** Effective launch settings retained for recreating the same session. */
   launchOptions?: SessionLaunchOptions;
   gpuMode?: 'software' | 'nvidia';
@@ -501,19 +503,19 @@ export const api = {
   },
   async sessions(): Promise<DeviceSession[]> {
     const result = await request<{ sessions: Array<Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' }> }>('/sessions');
-    return result.sessions.map(session => ({ ...session, status: session.state === 'failed' ? 'error' : session.state }));
+    return result.sessions.map(session => ({ ...session, capabilities: sessionCapabilities(session.deviceKind ?? 'emulator', session.capabilities), status: session.state === 'failed' ? 'error' : session.state }));
   },
   async session(id: string): Promise<DeviceSession> {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>(`/sessions/${encodeURIComponent(id)}`);
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   async createSession(hostId: string, profileId: string, adbKeyId: string | null = null, gpuMode?: 'software' | 'nvidia', storage: { diskGb?: number; sdcardGb?: number } = {}, launchOptions?: SessionLaunchOptions): Promise<DeviceSession> {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>('/sessions', { method: 'POST', body: json({ hostId, profileId, adbKeyId, gpuMode, ...storage, launchOptions }) });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   async rentDevice(hostId: string, deviceKind: DeviceKind, deviceId: string): Promise<DeviceSession> {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>('/sessions', { method: 'POST', body: json({ hostId, deviceKind, deviceId }) });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   sanitizeDevice: (hostId: string, kind: DeviceKind, deviceId: string) =>
     request<{ clean: boolean }>('/admin/hosts/' + encodeURIComponent(hostId) + '/devices/sanitize', { method: 'POST', body: json({ kind, deviceId }) }),
@@ -521,15 +523,15 @@ export const api = {
   killSession: (id: string) => request<{ ok: boolean; released?: boolean }>(`/sessions/${encodeURIComponent(id)}/kill`, { method: 'POST' }),
   async rotate(id: string, orientation: 'portrait' | 'landscape'): Promise<DeviceSession> {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>(`/sessions/${encodeURIComponent(id)}/rotate`, { method: 'POST', body: json({ orientation }) });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   async setAudio(id: string, enabled: boolean): Promise<DeviceSession> {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>(`/sessions/${encodeURIComponent(id)}/audio`, { method: 'POST', body: json({ enabled }) });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   async setNetwork(id: string, enabled: boolean): Promise<DeviceSession> {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>(`/sessions/${encodeURIComponent(id)}/network`, { method: 'POST', body: json({ enabled }) });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   uploadFile: (id: string, file: File) => {
     const body = new FormData();
@@ -550,11 +552,11 @@ export const api = {
   },
   keepAlive: async (id: string): Promise<DeviceSession> => {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>(`/sessions/${encodeURIComponent(id)}/keepalive`, { method: 'POST' });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   renameSession: async (id: string, label: string | null): Promise<DeviceSession> => {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>(`/sessions/${encodeURIComponent(id)}`, { method: 'PATCH', body: json({ label }) });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   clearLogcat: (id: string) => request<{ ok: boolean }>(`/sessions/${encodeURIComponent(id)}/logcat/clear`, { method: 'POST' }),
   deviceInfo: (id: string) => request<DeviceInfo>(`/sessions/${encodeURIComponent(id)}/device-info`),

@@ -1,3 +1,4 @@
+import { probeAndroid, androidCapabilities } from './android-capabilities.mjs';
 import { PhysicalDeviceProvider } from './physical.mjs';
 import { androidOps } from './android-ops.mjs';
 
@@ -24,12 +25,14 @@ export class UsbAndroidProvider extends PhysicalDeviceProvider {
   constructor({ adb, streams, appTransfers, execute, allowlist = null, store, wiper, alert }) {
     super({ kind: 'usb-android', platform: 'android' }, { store, wiper, alert });
     Object.assign(this, { adb, execute, allowlist });
+    this.deviceDetails = new Map();
     this.shared = androidOps({ adb, streams, appTransfers });
     this.streamsStop = (id) => streams.stop?.(id);
   }
 
   get ops() { return this.shared; }
-  describe(entry) { return { deviceSerial: entry.serial }; }
+  describe(entry) { return { deviceSerial: entry.serial, ...(entry.details ?? androidCapabilities(this.capabilities, null)) }; }
+  sessionCapabilities(entry) { return this.describe(entry).capabilities; }
   deviceId(entry) { return entry.serial; }
 
   async list() {
@@ -39,9 +42,23 @@ export class UsbAndroidProvider extends PhysicalDeviceProvider {
   }
 
   async inventory() {
-    return (await this.list()).map((d) => ({ id: d.serial, model: d.model, hwState: d.state,
-      state: this.deviceState(d.serial, d.state === 'device' ? 'free' : d.state),
-      reason: this.store.reason(this.key(d.serial)) }));
+    const devices = await this.list();
+    const present = new Set(devices.filter(d => d.state === 'device').map(d => d.serial));
+    for (const serial of this.deviceDetails.keys()) if (!present.has(serial)) this.deviceDetails.delete(serial);
+    return devices.map(d => ({ id: d.serial, model: d.model, hwState: d.state,
+      state: d.state === 'device' ? this.deviceState(d.serial) : d.state,
+      reason: this.store.reason(this.key(d.serial)),
+      ...((present.has(d.serial) ? this.deviceDetails.get(d.serial) : null) ?? androidCapabilities(this.capabilities, null)),
+    }));
+  }
+
+  async maintain() {
+    await super.maintain();
+    // Limit recovery probes per heartbeat; a large USB rack must not stall agent reporting.
+    for (const entry of [...this.sessions.values()].filter(entry => !entry.details).slice(0, 2)) {
+      entry.details = await probeAndroid(this.adb, entry.serial, this.capabilities);
+      this.deviceDetails.set(entry.serial, entry.details);
+    }
   }
 
   async listIds() { return (await this.list()).filter((d) => d.state === 'device').map((d) => d.serial); }
@@ -55,7 +72,7 @@ export class UsbAndroidProvider extends PhysicalDeviceProvider {
 
   tunnelTarget(s) { return { deviceTcp: null, adbServer: 'shared', serial: s.serial }; }
 
-  async start(sessionId, params) {
+  async start(sessionId, params, { signal } = {}) {
     const wanted = params?.deviceSerial;
     if (wanted !== undefined && (typeof wanted !== 'string' || !SERIAL_RE.test(wanted))) throw new Error('Invalid device serial');
     const usable = (d) => d.state === 'device' && this.deviceState(d.serial) === 'free';
@@ -63,8 +80,12 @@ export class UsbAndroidProvider extends PhysicalDeviceProvider {
     const device = wanted ? devices.find((d) => d.serial === wanted) : devices.find(usable);
     if (!device) throw new Error(wanted ? 'USB device is not connected' : 'No free USB devices');
     if (device.state !== 'device') throw new Error(`USB device is ${device.state}; authorize this host's ADB key on the phone`);
-    await this.lease(sessionId, { serial: device.serial, model: device.model });
-    return { deviceSerial: device.serial, model: device.model };
+    const details = await probeAndroid(this.adb, device.serial, this.capabilities, { signal });
+    signal?.throwIfAborted();
+    if (!await this.isPresent(device.serial)) throw new Error('USB device is not connected');
+    await this.lease(sessionId, { serial: device.serial, model: device.model, details });
+    this.deviceDetails.set(device.serial, details);
+    return { ...this.describe(this.sessions.get(sessionId)), model: device.model };
   }
 
   async beforeWipe(sessionId, entry) {

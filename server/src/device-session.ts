@@ -1,4 +1,4 @@
-import { PHYSICAL_DEVICE_KINDS, type PhysicalDeviceKind } from './generated/device-contract.js';
+import { PHYSICAL_DEVICE_KINDS, normalizeCapabilities, type PhysicalDeviceKind } from './generated/device-contract.js';
 import { assertStoredPermission } from './permissions.js';
 import { uiMessage } from './messages.js';
 import { assertUserActive } from './user-removal.js';
@@ -62,7 +62,8 @@ export async function createDeviceSession(
     const device = devices.find(item => item.kind === kind && item.id === deviceId);
     if (!device) throw new ApiError(404, 'device_not_found', uiMessage('ui.9b7b0a1e3a84', {}, 'en'));
     if (device.state !== 'free') throw new ApiError(409, 'device_unavailable', uiMessage('ui.3ee4153300d6', { p0: String(device.state) }, 'en'));
-    const capabilities = (row.provider_capabilities as Record<string, string[]> | null)?.[kind] ?? [];
+    const available = normalizeCapabilities((row.provider_capabilities as Record<string, string[]> | null)?.[kind]);
+    const capabilities = normalizeCapabilities(device.capabilities).filter(capability => available.includes(capability));
     try {
       await client.query(
         `INSERT INTO sessions(id,owner_user_id,host_id,profile_id,label,device_kind,device_id,capabilities,state,startup_deadline_at)

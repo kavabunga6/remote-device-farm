@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 import Ajv from 'ajv';
-import { normalizeCapabilities, normalizePhysicalDevices, physicalDevicesFromProviderReports } from '../src/generated/device-contract.js';
+import { sessionCapabilities, normalizeCapabilities, normalizePhysicalDevices, physicalDevicesFromProviderReports } from '../src/generated/device-contract.js';
 import * as agent from '../../agent/src/generated/device-contract.mjs';
 import * as mcp from '../../integrations/mcp/src/device-contract.mjs';
 import { readContract, schemaValidator } from './support/openapi-contract.mjs';
@@ -43,4 +43,12 @@ test('unknown platforms, provider kinds and capacity records never become rentab
   assert.deepEqual(physicalDevicesFromProviderReports([{ kind: 'usb-android', devices: [{ id: 'legacy', state: 'free' }] }]),
     [{ ...phone, id: 'legacy', model: null }]);
   assert.deepEqual(normalizeCapabilities(['files', '__proto__', 'admin', 1, 'video', 'files']), ['files', 'video']);
+});
+
+test('only known legacy emulator records get compatibility capabilities', () => {
+  assert.deepEqual(sessionCapabilities('usb-android', null), []);
+  assert.deepEqual(sessionCapabilities('unknown', ['shell']), []);
+  assert.equal(sessionCapabilities('emulator', null).includes('shell'), true);
+  assert.equal(sessionCapabilities('emulator', null).includes('audio'), false);
+  assert.deepEqual(sessionCapabilities('emulator', []), []);
 });

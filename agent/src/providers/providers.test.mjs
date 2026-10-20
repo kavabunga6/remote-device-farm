@@ -388,3 +388,23 @@ test('Android providers capture the selected serial without starting an unrelate
   assert.equal(await ops.screenshot({ serial: 'owned-device' }), frame);
   assert.deepEqual(calls, ['owned-device']);
 });
+
+test('USB capability cache is refreshed for a restored lease and removed when the phone goes offline', async () => {
+  let online = true;
+  const usb = await usbWith({
+    adb: { run: async () => ({ exitCode: 0, stdout: '[ro.build.version.sdk]: [29]\n[ro.build.version.release]: [10]' }) },
+    execute: async () => ({ exitCode: 0, stdout: online ? ADB_LIST : ADB_LIST.replace('device usb:1-2', 'offline usb:1-2') }),
+  });
+  const reply = await usb.start('s-00000001', {});
+  assert.equal(reply.capabilities.includes('audio'), false);
+  assert.equal(reply.capabilities.includes('video'), true);
+  assert.equal(reply.sdkLevel, 29);
+  usb.sessions.get('s-00000001').details = undefined;
+  await usb.maintain();
+  assert.equal(usb.describe(usb.sessions.get('s-00000001')).sdkLevel, 29);
+  online = false;
+  const inventory = await usb.inventory();
+  assert.equal(inventory[0].state, 'offline');
+  assert.equal(inventory[0].capabilities.includes('video'), false);
+  assert.equal(usb.deviceDetails.size, 0);
+});

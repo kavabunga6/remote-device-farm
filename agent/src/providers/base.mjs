@@ -13,7 +13,7 @@ import { DEVICE_PLATFORMS, devicePlatform } from '../generated/device-contract.m
 export const CAPABILITIES = Object.freeze({
   VIDEO: 'video', AUDIO: 'audio', TOUCH: 'touch', KEYS: 'keys', ROTATE: 'rotate', FILES: 'files',
   INSTALL: 'install', SHELL: 'shell', LOGS: 'logs', INFO: 'device-info', TUNNEL: 'tunnel',
-  ENV: 'env', NETWORK: 'network',
+  ENV: 'env', NETWORK: 'network', SCREENSHOT: 'screenshot',
 });
 
 export class DeviceProvider {
@@ -29,15 +29,17 @@ export class DeviceProvider {
   get ops() { return {}; }
 
   /** Capabilities are derived from the ops, so the UI can never see a feature the agent can't run. */
-  get capabilities() { return [...this.capabilityMap().entries()].filter(([, actions]) => actions.some((a) => a in this.ops)).map(([c]) => c); }
+  get capabilities() { return [...this.capabilityMap().entries()].filter(([capability, actions]) => actions.some((a) => a in this.ops) || (capability === 'tunnel' && this.tunnelTarget !== DeviceProvider.prototype.tunnelTarget)).map(([c]) => c); }
 
   capabilityMap() {
     const C = CAPABILITIES;
     return new Map([[C.VIDEO, ['stream-start']], [C.AUDIO, ['audio']], [C.TOUCH, ['input']], [C.KEYS, ['input']],
       [C.ROTATE, ['rotate']], [C.FILES, ['file']], [C.INSTALL, ['app-begin', 'file']], [C.SHELL, ['adb']],
       [C.LOGS, ['logcat']], [C.INFO, ['device-info']], [C.ENV, ['env']], [C.NETWORK, ['network']],
-      [C.TUNNEL, []]]);
+      [C.SCREENSHOT, ['screenshot']], [C.TUNNEL, []]]);
   }
+
+  sessionCapabilities(entry) { return entry.capabilities ?? this.capabilities; }
 
   async recover() { return []; }
   async reconcile() { return []; }
