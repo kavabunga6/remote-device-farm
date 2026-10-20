@@ -9156,8 +9156,8 @@
     "en": "Upload an APK once and install it in any of your sessions."
   },
   "ui.b5d0b38f9faf": {
-    "ru": " Загрузить APK",
-    "en": " Upload APK"
+    "en": "Upload app",
+    "ru": "Загрузить приложение"
   },
   "ui.07365513d144": {
     "ru": "Отпустите файлы, чтобы загрузить",
@@ -9184,8 +9184,8 @@
     "en": "Session inactive. Installation becomes available after connecting to the device."
   },
   "ui.f8587ba80e89": {
-    "ru": "Библиотека пуста. Перетащите APK сюда или нажмите «Загрузить APK».",
-    "en": "Library empty. Drag an APK here or click Upload APK."
+    "en": "The library is empty. Drop an APK or APK set here, or upload a file.",
+    "ru": "Библиотека пуста. Перетащите APK или набор APK сюда либо загрузите файл."
   },
   "ui.d9ae8e2e1567": {
     "ru": "версия ",
@@ -12894,5 +12894,25 @@
   "agent.appium.androidVersion": {
     "en": "Appium requires a confirmed Android 8 (API 26) or newer device.",
     "ru": "Для Appium нужна подтверждённая версия Android 8 (API 26) или новее."
+  },
+  "apps.invalidSet": {
+    "en": "Upload an APK, a bundletool .apks archive, or a ZIP containing one base APK and its splits.",
+    "ru": "Загрузите APK, архив .apks из bundletool или ZIP с базовым APK и его частями."
+  },
+  "apps.incompatibleSet": {
+    "en": "The APK set could not be installed. Check the device configuration, package versions and signing certificates.",
+    "ru": "Не удалось установить набор APK. Проверьте конфигурацию устройства, версии пакетов и сертификаты подписи."
+  },
+  "apps.bundletoolMissing": {
+    "en": "This agent does not have bundletool. Update the agent to install .apks archives.",
+    "ru": "На этом агенте нет bundletool. Обновите агент для установки архивов .apks."
+  },
+  "apps.deviceSpecFailed": {
+    "en": "Could not read the device configuration for APK selection.",
+    "ru": "Не удалось прочитать конфигурацию устройства для подбора APK."
+  },
+  "apps.setHint": {
+    "en": "APK, .apks from bundletool, or ZIP with base APK and splits for one device configuration. .apks parts are selected automatically for the device.",
+    "ru": "APK, .apks из bundletool или ZIP с базовым APK и частями для одной конфигурации. Части .apks подбираются по устройству автоматически."
   }
 }

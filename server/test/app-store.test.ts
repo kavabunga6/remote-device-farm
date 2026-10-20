@@ -245,6 +245,25 @@ async function harness(apps: Partial<Config['apps']> = {}) {
 type AppBody = { app: { id: string; name: string; packageName: string | null; versionName: string | null; size: number; note: string | null } };
 const code = async (response: Response): Promise<string> => ((await response.json()) as { error: { code: string } }).error.code;
 
+
+test('APK sets retain their format through library storage and chunked installation', async () => {
+  const { zip: setZip } = await import('../../agent/src/test-support/zip.mjs');
+  const h = await harness();
+  try {
+    const set = setZip([{ name: 'toc.pb', data: Buffer.from('table') }, { name: 'splits/base-master.apk', data: apk() }]);
+    const uploaded = await h.upload(set, 'demo.apks');
+    assert.equal(uploaded.status, 201);
+    const created = await uploaded.json() as AppBody;
+    assert.equal(created.app.name, 'demo.apks');
+    const installed = await h.send('/api/sessions/' + SESSION_A + '/apps/install', 'POST', { appId: created.app.id });
+    assert.equal(installed.status, 200); await installed.arrayBuffer();
+    assert.ok(String(h.calls.find(call => call.action === 'app-begin')?.params.name).endsWith('.apks'));
+    assert.ok(h.calls.some(call => call.action === 'app-finish'));
+    const bad = await h.upload(setZip([{ name: '../base.apk', data: apk() }]), 'bad.zip');
+    assert.equal(bad.status, 400); await bad.arrayBuffer();
+  } finally { await h.close(); }
+});
+
 test('uploading stores the file, parses the manifest, lists and deletes it', async () => {
   const h = await harness();
   try {

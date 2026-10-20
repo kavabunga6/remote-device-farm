@@ -290,5 +290,21 @@
   "agent.usbAuthorize": {
     "ru": "USB-устройство в состоянии {p0}. Разрешите ADB-доступ на устройстве.",
     "en": "USB device is {p0}; authorize this host's ADB key on the phone"
+  },
+  "apps.bundletoolMissing": {
+    "en": "This agent does not have bundletool. Update the agent to install .apks archives.",
+    "ru": "На этом агенте нет bundletool. Обновите агент для установки архивов .apks."
+  },
+  "apps.deviceSpecFailed": {
+    "en": "Could not read the device configuration for APK selection.",
+    "ru": "Не удалось прочитать конфигурацию устройства для подбора APK."
+  },
+  "apps.incompatibleSet": {
+    "en": "The APK set could not be installed. Check the device configuration, package versions and signing certificates.",
+    "ru": "Не удалось установить набор APK. Проверьте конфигурацию устройства, версии пакетов и сертификаты подписи."
+  },
+  "apps.invalidSet": {
+    "en": "Upload an APK, a bundletool .apks archive, or a ZIP containing one base APK and its splits.",
+    "ru": "Загрузите APK, архив .apks из bundletool или ZIP с базовым APK и его частями."
   }
 }

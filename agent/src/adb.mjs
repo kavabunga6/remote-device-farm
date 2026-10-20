@@ -1,3 +1,5 @@
+import { agentMessage } from './messages.mjs';
+import { installApkSet } from './apk-sets.mjs';
 import { loadAdbTokenSigner } from './adb-device-auth.mjs';
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -242,12 +244,13 @@ export class AdbClient {
     if (typeof contentBase64 !== 'string' || contentBase64.length > 70_000_000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(contentBase64)) throw new Error('Invalid upload data');
     const data = Buffer.from(contentBase64, 'base64');
     if (data.length === 0 || data.length > 50 * 1024 * 1024) throw new Error('Upload must be 1 byte–50 MiB');
-    if (install && !name.toLowerCase().endsWith('.apk')) throw new Error('Only APK files can be installed');
+    if (install && !/\.(apk|apks|zip)$/i.test(name)) throw new Error(agentMessage('apps.invalidSet'));
     await this.connect(serial);
     const directory = await mkdtemp(path.join(os.tmpdir(), 'rdf-upload-'));
     const local = path.join(directory, name);
     try {
       await writeFile(local, data, { mode: 0o600 });
+      if (install && !/\.apk$/i.test(name)) return await installApkSet(this, serial, { name, local, directory }, this.execute);
       const remote = `/sdcard/Download/${name}`;
       const result = await this.run(serial, install ? ['install', '-r', local] : ['push', local, remote], { timeoutMs: 120000 });
       if (result.exitCode !== 0) throw new Error(result.stderr || result.stdout || 'File transfer failed');

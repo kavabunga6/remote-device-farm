@@ -1,3 +1,6 @@
+import { installApkSet } from './apk-sets.mjs';
+import { runProcess } from './adb.mjs';
+import { agentMessage } from './messages.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, open, rm } from 'node:fs/promises';
 import os from 'node:os';
@@ -21,7 +24,7 @@ export class AppTransfers {
   }
 
   async begin(sessionId, { name, size, sha256 }) {
-    if (!validName(name) || !name.toLowerCase().endsWith('.apk')) throw new Error('Invalid upload name');
+    if (!validName(name) || !/\.(apk|apks|zip)$/i.test(name)) throw new Error(agentMessage('apps.invalidSet'));
     if (!Number.isInteger(size) || size < 1 || size > MAX_TRANSFER_BYTES) throw new Error('Invalid transfer size');
     if (sha256 !== undefined && !/^[a-f0-9]{64}$/.test(sha256)) throw new Error('Invalid checksum');
     if (this.opening.has(sessionId)) throw new Error('Another transfer is in progress');
@@ -100,6 +103,7 @@ export class AppTransfers {
       if (transfer.sha256 && transfer.hash.digest('hex') !== transfer.sha256) throw new Error('Checksum mismatch');
       await transfer.handle.close();
       await this.adb.connect(serial);
+      if (!transfer.name.toLowerCase().endsWith('.apk')) return await installApkSet(this.adb, serial, transfer, runProcess);
       const result = await this.adb.run(serial, ['install', '-r', transfer.local], { timeoutMs: 300_000 });
       if (result.exitCode !== 0) throw new Error(result.stderr || result.stdout || 'Install failed');
       return { installed: true, output: result.stdout };

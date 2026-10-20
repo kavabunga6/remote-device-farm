@@ -128,7 +128,7 @@ export function registerSessionRoutes(app: Express, context: ServerContext): voi
     activity.touch(session.id);
     if (!req.file) throw new ApiError(400, 'file_required', uiMessage('ui.b9f25ab3c2fe', {}, 'en'));
     const name = safeUploadName(req.file.originalname);
-    const install = req.body?.install == null ? name.toLowerCase().endsWith('.apk') : req.body.install === 'true';
+    const install = req.body?.install == null ? /\.(apk|apks)$/i.test(name) : req.body.install === 'true';
     const result = await hub.command(session.hostId, session.id, 'file', {
       name, contentBase64: req.file.buffer.toString('base64'), install,
     }, 180_000);

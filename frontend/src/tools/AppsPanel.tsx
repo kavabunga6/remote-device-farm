@@ -99,11 +99,11 @@ export function AppsPanel({ sessionId, active, running, panelId }: { sessionId: 
       <div className="apps-head">
         <div>
           <h2>{t('ui.39c4b42c8d11')}</h2>
-          <p>{t('ui.f59e007e0f3e')}</p>
+          <p>{t('apps.setHint')}</p>
         </div>
         <button type="button" className="button primary" onClick={() => picker.current?.click()}>
           <Icon name="upload" size={16} /> {t('ui.b5d0b38f9faf')}</button>
-        <input ref={picker} type="file" accept=".apk" multiple hidden
+        <input ref={picker} type="file" accept=".apk,.apks,.zip" multiple hidden
           onChange={event => { void addFiles([...(event.target.files ?? [])]); event.target.value = ''; }} />
       </div>
 

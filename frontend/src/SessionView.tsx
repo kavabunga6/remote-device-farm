@@ -352,7 +352,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
       notify({ kind: 'info', pending: true, title: t('ui.4b0aa1987966'), message: t('ui.f97cf7f88906', { p0: file.name, p1: sessionId.slice(0, 8) }), key: `upload:${sessionId}:${file.name}` });
       try {
         await api.uploadFile(sessionId, file);
-        notify({ kind: 'success', title: /\.apk$/i.test(file.name) ? t('ui.014571e5fcf7') : t('ui.f9a949a75427'), message: t('ui.f97cf7f88906', { p0: file.name, p1: sessionId.slice(0, 8) }), key: `upload:${sessionId}:${file.name}` });
+        notify({ kind: 'success', title: /\.(apk|apks)$/i.test(file.name) ? t('ui.014571e5fcf7') : t('ui.f9a949a75427'), message: t('ui.f97cf7f88906', { p0: file.name, p1: sessionId.slice(0, 8) }), key: `upload:${sessionId}:${file.name}` });
       }
       catch (error) { notify({ kind: 'error', title: t('ui.47935cf9164f'), message: t('ui.f97cf7f88906', { p0: file.name, p1: sessionId.slice(0, 8) }), details: errorText(error), key: `upload:${sessionId}:${file.name}` }); }
       finally { setUploading(items => items.filter(name => name !== file.name)); }
@@ -639,7 +639,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const chooseDeviceFiles = (apkOnly = false) => {
     const input = fileInputRef.current;
     if (!input) return;
-    input.accept = apkOnly ? '.apk' : '';
+    input.accept = apkOnly ? '.apk,.apks' : '';
     input.click();
   };
 

@@ -1,3 +1,4 @@
+import { inspectApkSet } from '../../shared/apk-set-guard.mjs';
 import { createHash } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdir, open, rm, stat } from 'node:fs/promises';
@@ -138,6 +139,12 @@ export async function inspectApk(file: string): Promise<ApkInfo | null> {
   } finally {
     await directory.fd.close();
   }
+}
+
+export async function inspectApplication(file: string, name: string): Promise<ApkInfo | null> {
+  if (/\.apk$/i.test(name)) return inspectApk(file);
+  if (!/\.(apks|zip)$/i.test(name)) return null;
+  try { await inspectApkSet(file, /\.apks$/i.test(name)); return {}; } catch { return null; }
 }
 
 // Minimal AXML reader: string pool plus the attributes of the root <manifest> element.
