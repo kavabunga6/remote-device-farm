@@ -20,7 +20,7 @@ export function dispatchCommand(message, { command, withSessionLock, registry, s
     const realtimeInput = streams.realtimeInput(sessionId, session.serial, message.params);
     if (realtimeInput) { assertInputFresh(); return realtimeInput(); }
   }
-  const realtime = ['input-open', 'input-release', 'rtc-offer', 'rtc-close', 'rtc-renew', 'rtc-capabilities'].includes(message.action) || message.action === 'video-keyframe' || message.action === 'logcat' || message.action === 'logcat-apps' ||
+  const realtime = ['ui-tree', 'ui-tap', 'appium', 'input-open', 'input-release', 'rtc-offer', 'rtc-close', 'rtc-renew', 'rtc-capabilities'].includes(message.action) || message.action === 'video-keyframe' || message.action === 'logcat' || message.action === 'logcat-apps' ||
     message.action === 'device-info' || (message.action === 'input' && message.params?.kind === 'touch');
   return realtime || registry.isNodeAction(message.action)
     ? command() : withSessionLock(message.sessionId, () => {

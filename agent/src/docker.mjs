@@ -37,6 +37,7 @@ import { createHash } from 'node:crypto';
 import http from 'node:http';
 import { Readable } from 'node:stream';
 import { archiveFile } from './docker-archive.mjs';
+import { applyCameraImage } from './camera-image.mjs';
 import { validateNvidiaXorgModuleDir } from './config.mjs';
 import { runEmuConsole, validateEmuConsoleArgs } from './emu-console.mjs';
 
@@ -451,6 +452,8 @@ export class DockerClient {
     if (current.State?.Running === false) throw new Error('Emulator container is not running');
     return runEmuConsole(this, containerId, valid);
   }
+
+  cameraImage(containerId, sessionId, agentId, params) { return applyCameraImage(this, containerId, sessionId, agentId, params); }
 
   async removeSessionNetworks(sessionId, agentId, selfContainerId) {
     const names = sessionNetworks(sessionId);

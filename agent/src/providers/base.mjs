@@ -14,7 +14,7 @@ import { DEVICE_PLATFORMS, devicePlatform } from '../generated/device-contract.m
 export const CAPABILITIES = Object.freeze({
   VIDEO: 'video', AUDIO: 'audio', TOUCH: 'touch', KEYS: 'keys', ROTATE: 'rotate', FILES: 'files',
   INSTALL: 'install', SHELL: 'shell', LOGS: 'logs', INFO: 'device-info', TUNNEL: 'tunnel',
-  ENV: 'env', NETWORK: 'network', SCREENSHOT: 'screenshot',
+  ENV: 'env', NETWORK: 'network', SCREENSHOT: 'screenshot', UI: 'ui',
 });
 
 export class DeviceProvider {
@@ -37,7 +37,7 @@ export class DeviceProvider {
     return new Map([[C.VIDEO, ['stream-start']], [C.AUDIO, ['audio']], [C.TOUCH, ['input']], [C.KEYS, ['input']],
       [C.ROTATE, ['rotate']], [C.FILES, ['file']], [C.INSTALL, ['app-begin', 'file']], [C.SHELL, ['adb']],
       [C.LOGS, ['logcat']], [C.INFO, ['device-info']], [C.ENV, ['env']], [C.NETWORK, ['network']],
-      [C.SCREENSHOT, ['screenshot']], [C.TUNNEL, []]]);
+      [C.SCREENSHOT, ['screenshot']], [C.UI, ['ui-tree', 'ui-tap']], [C.TUNNEL, []]]);
   }
 
   sessionCapabilities(entry) { return entry.capabilities ?? this.capabilities; }

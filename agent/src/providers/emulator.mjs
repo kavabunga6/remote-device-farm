@@ -32,6 +32,7 @@ export class EmulatorProvider extends DeviceProvider {
         s.networkEnabled = result.enabled;
         return result;
       },
+      camera: (s, p, { sessionId }) => this.control.cameraImage(sessionId, p),
       env: (s, p, ctx) => p.op === 'read' ? this.envTools.read(s.serial, ctx) : this.envTools.apply(s.serial, p.op, p.params, ctx),
     };
   }

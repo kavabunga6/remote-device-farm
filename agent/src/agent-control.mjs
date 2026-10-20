@@ -1,4 +1,5 @@
 import { ImageCache } from './image-cache.mjs';
+import { agentMessage } from './messages.mjs';
 import { runKeyed } from './keyed-queue.mjs';
 import os from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -135,6 +136,7 @@ export class AgentControl {
         return { captured: true };
       });
       case 'setEgress': return this.withSessionLock(request.sessionId, () => this.setEgress(request.sessionId, request.enabled));
+      case 'cameraImage': return this.withSessionLock(request.sessionId, () => this.cameraImage(request.sessionId, request.params));
       case 'emuConsole': return this.emuConsole(request.sessionId, request.args);
       case 'setPolicy': return this.serialPolicy(request.policy);
       case 'emulatorCatalog': return this.images.catalog({ refresh: request.refresh });
@@ -423,6 +425,12 @@ export class AgentControl {
     const containers = await this.sessionContainers(sessionId);
     if (containers.length !== 1 || containers[0].State !== 'running') throw new Error('Session is not running on this agent');
     return this.docker.setEgress(containers[0].Id, sessionId, this.config.agentId, enabled);
+  }
+
+  async cameraImage(sessionId, params) {
+    const containers = await this.sessionContainers(sessionId);
+    if (containers.length !== 1 || containers[0].State !== 'running') throw new Error(agentMessage('agent.a14b4d584e08'));
+    return this.docker.cameraImage(containers[0].Id, sessionId, this.config.agentId, params);
   }
 
   async emuConsole(sessionId, args) {

@@ -121,6 +121,8 @@ hw.keyboard=yes
 hw.mainKeys=no
 hw.audioInput=yes
 hw.audioOutput=yes
+hw.camera.back=$([[ "$device" == phone || "$device" == tablet ]] && echo virtualscene || echo none)
+hw.camera.front=emulated
 hw.gpu.enabled=yes
 hw.gpu.mode=$gpu_mode
 hw.sdCard=$([[ "$sdcard" == 0 ]] && echo no || echo yes)

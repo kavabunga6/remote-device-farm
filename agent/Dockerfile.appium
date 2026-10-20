@@ -1,0 +1,22 @@
+# Optional I/O agent with the pinned native Android Appium worker.
+# Build the ordinary agent image first and pass its tag as AGENT_IMAGE.
+ARG AGENT_IMAGE=remote-device-farm-agent:local
+FROM ${AGENT_IMAGE}
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openjdk-17-jdk-headless git unzip \
+    && rm -rf /var/lib/apt/lists/*
+RUN ln -s "$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")" /opt/rdf-java
+WORKDIR /opt/rdf-appium
+COPY package*.json ./
+RUN npm ci --include=dev --no-audit --no-fund \
+    && node node_modules/appium/index.js driver list --installed \
+    && chmod -R a+rX /opt/rdf-appium
+# Supply an operator-managed SDK directory containing platform-tools and build-tools.
+# No SDK archive or licence is accepted or downloaded at service startup.
+ENV RDF_APPIUM_ENTRY=/opt/rdf-appium/node_modules/appium/index.js
+ENV ANDROID_HOME=/opt/android-sdk
+ENV JAVA_HOME=/opt/rdf-java
+ENV PATH=/opt/rdf-java/bin:/opt/android-sdk/platform-tools:${PATH}
+WORKDIR /app
+CMD ["node", "src/main.mjs"]

@@ -16,6 +16,9 @@ import { registerQueueRoutes } from './routes/queue-routes.js';
 import { registerShareRoutes } from './routes/share-routes.js';
 import { registerAppRoutes } from './routes/app-routes.js';
 import { registerEnvRoutes } from './routes/env-routes.js';
+import { registerUiRoutes } from './routes/ui-routes.js';
+import { registerAppiumRoutes } from './routes/appium-routes.js';
+import { registerCameraRoutes } from './routes/camera-routes.js';
 import { registerOpsRoutes } from './routes/ops-routes.js';
 import { httpCounter } from './metrics.js';
 import { registerTeamRoutes } from './routes/team-routes.js';
@@ -81,6 +84,9 @@ export function createHttpApplication(
   registerShareRoutes(app, context);
   registerAppRoutes(app, context);
   registerEnvRoutes(app, context);
+  registerUiRoutes(app, context);
+  registerAppiumRoutes(app, context);
+  registerCameraRoutes(app, context);
   const stopOps = registerOpsRoutes(app, context);
   registerTeamRoutes(app, context);
 

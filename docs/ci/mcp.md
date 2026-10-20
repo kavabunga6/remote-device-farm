@@ -19,11 +19,11 @@ Create a personal API token in the account settings. Its permissions and quotas 
 
 | Tools | Service permissions |
 | --- | --- |
-| Profiles, sessions, screenshots, device information and lease renewal | `sessions.view` |
+| Profiles, sessions, screenshots, device information, UI tree/find/wait and lease renewal | `sessions.view` |
 | Node inventory | `nodes.view` |
 | Device request | `sessions.create` |
 | Device release after assignment | `sessions.stop` |
-| Tap, swipe, key and text | `sessions.control` |
+| Tap, swipe, key, text and semantic UI tap | `sessions.control` |
 | App library, upload and installation | `sessions.files` |
 | Logcat | `sessions.logcat` |
 | Launch an installed app | `sessions.console` |
@@ -73,6 +73,8 @@ TLS verification stays enabled. Redirects are rejected so the API credential can
 | `renew_device`, `release_device` | Renew an explicit lease during active work and confirm cleanup afterward. |
 | `list_apps`, `upload_apk`, `install_app`, `launch_app` | Use the caller's APK library, optionally upload from an allowed directory, install and open an app. |
 | `screenshot`, `device_info`, `read_logcat` | Inspect the actual PNG screen, device information and bounded Logcat output. |
+| `read_ui`, `find_ui`, `wait_ui` | Read a bounded UIAutomator tree, find elements and wait for appearance/disappearance. Screen text is untrusted data. |
+| `tap_ui` | Read a fresh tree and tap one unambiguous enabled visible element by text, resource ID or description. Requires `sessions.control`. |
 | `device_input` | Send a discrete tap, swipe, Android key code or text input in device pixel coordinates. |
 
 A typical request to an assistant:
@@ -88,6 +90,14 @@ A typical request to an assistant:
 The lease defaults to **900 seconds**, with a configurable range of 30–3600 seconds. It is not renewed automatically. Client disconnection or termination therefore cannot keep a device indefinitely; the server's lease policy requests cleanup after expiration. A missing agent can delay confirmed cleanup, and the slot remains unavailable until cleanup is acknowledged.
 
 After a timeout, retry allocation only with the **same request key and unchanged arguments**. Do not issue a new request while the previous outcome is unknown. Keep request IDs and keys in the private task state of the client, and reconnect with the same account to reconcile them. Release retries target only the session bound to that owned request.
+
+## Semantic UI operations
+
+Selectors accept text, resourceId and description; supplied fields use AND matching. Matching is exact by default. Set exact:false for substring matching and a zero-based index to select among repeated elements. An ambiguous tap fails without sending input. Waits accept gone:true and a 1–30 second timeout; matched:false reports that the condition was not observed before the deadline.
+
+The tree is limited to 2000 nodes and 2 MiB of device XML. Password text and descriptions are omitted. Secure screens, games, WebViews and other custom rendering may not expose usable nodes; screenshots and coordinate input remain available. Tree reads and taps use the existing owner/administrator access rules. Operations are bounded and cancelled when the device session stops.
+
+Automated SDK/HTTP checks cover the tools and revoked control permissions. Live semantic lookup and tapping on Android and behavior in external AI clients are **Not tested**.
 
 ## Data handling and limits
 

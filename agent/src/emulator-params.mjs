@@ -18,7 +18,7 @@ const values = {
   '-change-country': (value) => /^[A-Za-z]{2}$/.test(value),
   '-netdelay': (value) => [...networkNames, 'none'].includes(value) || boundedRange(value, 0, 60000),
   '-netspeed': (value) => [...networkNames, 'full'].includes(value) || boundedRange(value, 1, 1000000, false),
-  '-camera-back': (value) => ['emulated', 'none', 'environment'].includes(value),
+  '-camera-back': (value) => ['emulated', 'none', 'environment', 'virtualscene'].includes(value),
   '-camera-front': (value) => ['emulated', 'none', 'environment'].includes(value),
   '-screen': (value) => ['touch', 'multi-touch', 'no-touch'].includes(value),
 };

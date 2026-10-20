@@ -10,7 +10,7 @@ const source = await readFile(new URL('./main.mjs', import.meta.url), 'utf8');
 const connectionCode = source.slice(source.indexOf('function connect() {'), source.indexOf("process.on('SIGINT', shutdown);"));
 
 function fixture() {
-  const sockets = [], intervals = new Set(), reconnects = [], hellos = [], graceTimers = new Set(), stopped = [], released = [];
+  const sockets = [], intervals = new Set(), reconnects = [], hellos = [], graceTimers = new Set(), stopped = [], released = [], appiumClosed = [];
   class FakeWebSocket extends EventEmitter {
     static OPEN = 1;
     constructor() { super(); this.readyState = 0; sockets.push(this); }
@@ -24,11 +24,12 @@ function fixture() {
     setInterval: fn => { intervals.add(fn); return fn; }, clearInterval: id => intervals.delete(id),
     setTimeout: (fn, delay) => { if (delay === 20000) graceTimers.add(fn); else reconnects.push(fn); return fn; },
     clearTimeout: fn => graceTimers.delete(fn),
+    managedAppium: { close: async () => { appiumClosed.push(true); } },
     inputGate: { disconnect: async () => { released.push(true); } }, rtc: { closeAll: async () => {} },
     streams: { streams: new Map([['session-1', {}]]), stop: async id => { stopped.push(id); } }, tunnels: new Map(), process: { exit() {} },
   });
   vm.runInContext('let socket, heartbeatTimer, streamDisconnectTimer; let reconnectDelayMs = 1000; let closing = false;\n' + connectionCode, context);
-  return { sockets, intervals, reconnects, hellos, graceTimers, stopped, released, connect: () => vm.runInContext('connect()', context),
+  return { sockets, intervals, reconnects, hellos, graceTimers, stopped, released, appiumClosed, connect: () => vm.runInContext('connect()', context),
     shutdown: () => vm.runInContext('shutdown()', context) };
 }
 
@@ -71,6 +72,7 @@ test('shutdown while hello is pending prevents a late heartbeat', async () => {
   await flush();
   assert.equal(broker.intervals.size, 0);
   assert.equal(broker.reconnects.length, 0);
+  assert.equal(broker.appiumClosed.length, 1);
 });
 
 

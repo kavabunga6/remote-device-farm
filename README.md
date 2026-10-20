@@ -8,10 +8,12 @@ Run Android emulators on your own Linux/KVM servers and use them from a browser,
 
 | Feature | What it provides |
 | --- | --- |
-| **MCP for AI assistants** | Request a device, install and open an APK, inspect screenshots and Logcat, send input and release it through a [local stdio MCP package](docs/ci/mcp.md). |
+| **MCP for AI assistants** | Request a device, install and open an APK, inspect screenshots, UI trees and Logcat, find or tap elements, wait for UI changes and release it through a [local stdio MCP package](docs/ci/mcp.md). |
 | **Browser device control** | Android screen, tap/swipe/text input, APK installation, screenshots, recording and device settings. [Sessions](docs/guides/sessions.md) |
 | **ADB and session sharing** | Connect local development tools using personal ADB keys; share a session for viewing or control with expiration and revocation. [Access guide](docs/guides/sessions.md) |
 | **CI integrations and Gradle** | Reusable packages for seven CI platforms, a Gradle plugin, and Maestro/Appium examples. [Setup and validation](docs/ci/README.md) |
+| **Managed Appium** | An optional native Android WebDriver endpoint for each session, with API authentication. [Setup and limits](docs/ci/managed-appium.md) |
+| **Virtual camera** | Upload an image to a compatible emulator's virtual scene for camera tests. [Requirements and verification](docs/guides/virtual-camera.md) |
 | **Device pool and automation API** | Multiple worker nodes, resource limits, queues, explicit leases, team profile access and per-member quotas. [API](docs/api/README.md) |
 | **GPU acceleration** | Software rendering or GPU modes using NVIDIA/CUDA and DRI, according to node capabilities. [Agent and GPU](docs/deployment/agent.md) |
 | **Own image registry** | Build emulator images from the SDK catalog; manage versions, node caches, retention policies and cleanup from the UI. [Images](docs/guides/image-management.md) |

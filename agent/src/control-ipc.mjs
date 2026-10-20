@@ -1,4 +1,5 @@
 import net from 'node:net';
+import { agentMessage } from './messages.mjs';
 import { chmod, mkdir, rm } from 'node:fs/promises';
 import { validateNodePolicy } from './node-policy.mjs';
 import { validateRegistryAuth } from './config.mjs';
@@ -9,6 +10,7 @@ export const CONTROL_SOCKET = '/run/agent-control/control.sock';
 const MAX_MESSAGE_BYTES = 16 * 1024;
 const MAX_CACHE_REQUEST_BYTES = 640 * 1024;
 const isCacheOperation = op => ['imageCache','imageCacheRemove'].includes(op);
+const isLargeOperation = op => isCacheOperation(op) || op === 'cameraImage';
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 // Builds take Google system image names only; the image context is fixed in agent/emulator-image.
@@ -27,7 +29,7 @@ function validateBuildRequest(request) {
 
 export function validateControlRequest(request) {
   if (!request || typeof request !== 'object' || Array.isArray(request) ||
-      typeof request.op !== 'string' || !['hostInfo', 'recover', 'inventory', 'start', 'stop', 'diagnostics', 'setEgress', 'emuConsole', 'setPolicy', 'emulatorCatalog', 'emulatorBuild', 'emulatorCancel', 'emulatorJobs', 'prewarmImage', 'imageCache', 'imageCacheRemove'].includes(request.op)) {
+      typeof request.op !== 'string' || !['hostInfo', 'recover', 'inventory', 'start', 'stop', 'diagnostics', 'setEgress', 'emuConsole', 'cameraImage', 'setPolicy', 'emulatorCatalog', 'emulatorBuild', 'emulatorCancel', 'emulatorJobs', 'prewarmImage', 'imageCache', 'imageCacheRemove'].includes(request.op)) {
     throw new Error('Invalid control operation');
   }
   const fields = {
@@ -36,6 +38,7 @@ export function validateControlRequest(request) {
     start: ['op', 'sessionId', 'profile', 'adbPublicKey'],
     stop: ['op', 'sessionId'], diagnostics: ['op', 'sessionId'], setEgress: ['op', 'sessionId', 'enabled'],
     emuConsole: ['op', 'sessionId', 'args'],
+    cameraImage: ['op', 'sessionId', 'params'],
     setPolicy: ['op', 'policy'],
     prewarmImage: ['op', 'image', 'auth'],
     emulatorCatalog: ['op', 'refresh'], emulatorBuild: ['op', 'packages', 'target'], emulatorJobs: ['op', 'acknowledged'], emulatorCancel: ['op', 'jobId'],
@@ -53,6 +56,7 @@ export function validateControlRequest(request) {
     if(request.op==='imageCacheRemove' && (!Array.isArray(request.ids)||!request.ids.length||request.ids.length>100||request.ids.some(id=>typeof id!=='string'||!/^sha256:[a-f0-9]{64}$/.test(id))))throw new Error('Invalid cache image IDs');
   }
   if (request.op === 'setEgress' && typeof request.enabled !== 'boolean') throw new Error('Invalid egress state');
+  if (request.op === 'cameraImage' && (!request.params || !['status', 'set', 'reset', 'show'].includes(request.params.op) || Object.keys(request.params).some(k => !['op', 'imageBase64'].includes(k)) || (request.params.op === 'set' && (typeof request.params.imageBase64 !== 'string' || request.params.imageBase64.length > 350000)))) throw new Error(agentMessage('agent.camera.invalidRequest'));
   if (request.op === 'emuConsole') validateEmuConsoleArgs(request.args);
   if (request.op === 'setPolicy') validateNodePolicy(request.policy);
   if (request.op === 'emulatorCatalog' && typeof request.refresh !== 'boolean') throw new Error('Invalid catalog refresh flag');
@@ -90,7 +94,7 @@ export class ControlClient {
   request(op, fields = {}, timeoutMs = DEFAULT_TIMEOUT_MS, { onProgress, onLog, signal } = {}) {
     signal?.throwIfAborted();
     const message = JSON.stringify({ op, ...fields }) + '\n';
-    const requestLimit=isCacheOperation(op)?MAX_CACHE_REQUEST_BYTES:MAX_MESSAGE_BYTES;
+    const requestLimit=isLargeOperation(op)?MAX_CACHE_REQUEST_BYTES:MAX_MESSAGE_BYTES;
     const responseLimit=isCacheOperation(op)?8*1024*1024:256*1024;
     if (Buffer.byteLength(message) > requestLimit) return Promise.reject(new Error('Control request exceeds limit'));
     return new Promise((resolve, reject) => {
@@ -146,6 +150,7 @@ export class ControlClient {
   diagnostics(sessionId, onLog) { return this.request('diagnostics', { sessionId }, 15_000, { onLog }); }
   stop(sessionId, options = {}) { return this.request('stop', { sessionId }, 120_000, options); }
   setEgress(sessionId, enabled) { return this.request('setEgress', { sessionId, enabled }, 60_000); }
+  cameraImage(sessionId, params) { return this.request('cameraImage', { sessionId, params }, 60_000); }
   emuConsole(sessionId, args) { return this.request('emuConsole', { sessionId, args }, 30_000); }
   setPolicy(policy) { return this.request('setPolicy', { policy }); }
   // The first catalog call builds the sdkmanager tools image, which takes a few minutes.
@@ -184,7 +189,7 @@ export async function createControlServer(control, socketPath = CONTROL_SOCKET) 
       received = true;
       socket.setTimeout(request.op === 'prewarmImage' ? 30 * 60_000 : request.op === 'emulatorCatalog' ? 15 * 60_000 : request.op === 'start' ? 60 * 60_000 : ['recover', 'stop'].includes(request.op) ? 120_000 : 60_000, () => socket.destroy());
       Promise.resolve().then(() => {
-        if(!isCacheOperation(request.op)&&buffer.length>MAX_MESSAGE_BYTES)throw new Error('Control request exceeds limit');
+        if(!isLargeOperation(request.op)&&buffer.length>MAX_MESSAGE_BYTES)throw new Error('Control request exceeds limit');
         return validateControlRequest(request);
       }).then((valid) => control.handle(valid, { onProgress: report, onLog: async event => {
         if (socket.destroyed) return;

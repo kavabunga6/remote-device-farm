@@ -5,6 +5,7 @@ import { CITIES, NETWORK_PRESETS, PACKAGE_RE, PROXY_HOST_RE, getTimeZones, apply
 import type { EnvOp, EnvState } from '../env-api';
 import { Icon } from '../icons';
 import '../Env.css';
+import { CameraPanel } from './CameraPanel';
 import { useNotifications } from '../notifications';
 
 type Status = { kind: 'busy'; text: string } | undefined;
@@ -175,6 +176,8 @@ export function EnvPanel({ sessionId, active, running, readForViewer = false, on
     </div>
     {off && <p className="env-note">{t('ui.0d5380a4cdb5')}</p>}
     {loadError && <p className="env-note" role="status">{localizeText(loadError)}</p>}
+
+    <CameraPanel key={sessionId} sessionId={sessionId} running={running} active={active} />
 
     <Card title={t('ui.26b855cc1660')} description={t('ui.9d4f6e426b84')} className="env-app" initialOpen status={status.app}>
       <div className="env-row env-app-main">

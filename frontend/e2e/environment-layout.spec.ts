@@ -18,7 +18,7 @@ test('environment sections collapse without losing input and presets require an 
     await route.fulfill({ json: { result: { applied: true } } });
   });
   await openEnvironment(page);
-  await expect(page.locator('.env-card summary strong')).toHaveText(['Приложение', 'Ссылка', 'Экран', 'Сеть', 'Геолокация', 'Устройство']);
+  await expect(page.locator('.env-card summary strong')).toHaveText(['Виртуальная камера', 'Приложение', 'Ссылка', 'Экран', 'Сеть', 'Геолокация', 'Устройство']);
   const app = card(page, 'Приложение');
   await app.getByLabel('Пакет', { exact: true }).fill('com.example.app');
   await app.locator('summary').focus(); await page.keyboard.press('Enter');

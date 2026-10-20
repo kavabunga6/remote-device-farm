@@ -115,6 +115,30 @@
     "ru": "Android отклонил настройку {p0}",
     "en": "Android rejected {p0}"
   },
+  "agent.appium.androidVersion": {
+    "en": "Appium requires a confirmed Android 8 (API 26) or newer device.",
+    "ru": "Для Appium нужна подтверждённая версия Android 8 (API 26) или новее."
+  },
+  "agent.appium.busy": {
+    "en": "An Appium command or session is already active.",
+    "ru": "Команда или сессия Appium уже выполняется."
+  },
+  "agent.appium.commandFailed": {
+    "en": "The Appium command failed. Check the selector and device state.",
+    "ru": "Команда Appium не выполнена. Проверьте селектор и состояние устройства."
+  },
+  "agent.appium.failed": {
+    "en": "The Appium worker could not complete the request.",
+    "ru": "Процесс Appium не смог выполнить запрос."
+  },
+  "agent.appium.ready": {
+    "en": "Appium is available for this device session.",
+    "ru": "Appium доступен для этой сессии устройства."
+  },
+  "agent.appium.unavailable": {
+    "en": "Managed Appium is not installed on this node.",
+    "ru": "Управляемый Appium не установлен на этом узле."
+  },
   "agent.b437662d8b65": {
     "ru": "Некорректный размер пакета scrcpy",
     "en": "Invalid scrcpy packet size"
@@ -134,6 +158,22 @@
   "agent.bootProbe": {
     "ru": "ADB ещё не готов: {p0}",
     "en": "ADB is not ready yet: {p0}"
+  },
+  "agent.camera.failed": {
+    "en": "The emulator could not update the virtual camera.",
+    "ru": "Эмулятор не смог обновить виртуальную камеру."
+  },
+  "agent.camera.invalid": {
+    "en": "Use a PNG image up to 256 KiB and 1024 × 1024 pixels.",
+    "ru": "Используйте PNG до 256 КиБ и 1024 × 1024 пикселей."
+  },
+  "agent.camera.invalidRequest": {
+    "en": "Invalid virtual camera command.",
+    "ru": "Некорректная команда виртуальной камеры."
+  },
+  "agent.camera.unavailable": {
+    "en": "This emulator does not have a virtual scene camera. Use a compatible phone or tablet image.",
+    "ru": "У этого эмулятора нет камеры виртуальной сцены. Выберите совместимый образ телефона или планшета."
   },
   "agent.codecFailed": {
     "ru": "Ошибка аудиокодера scrcpy {p0}",
@@ -214,6 +254,30 @@
   "agent.startCheck": {
     "ru": "Проверка ресурсов, KVM и GPU",
     "en": "Checking resources, KVM and GPU"
+  },
+  "agent.ui.ambiguous": {
+    "ru": "Найдено несколько элементов. Уточните ID или индекс.",
+    "en": "Several elements match. Specify a resource ID or index."
+  },
+  "agent.ui.busy": {
+    "ru": "Дерево интерфейса уже запрашивается.",
+    "en": "A UI hierarchy request is already running."
+  },
+  "agent.ui.notActionable": {
+    "ru": "Элемент отключён или находится за пределами экрана.",
+    "en": "The element is disabled or outside the visible screen."
+  },
+  "agent.ui.notFound": {
+    "ru": "Подходящий элемент интерфейса не найден.",
+    "en": "No matching UI element was found."
+  },
+  "agent.ui.selector": {
+    "ru": "Некорректный селектор элемента интерфейса.",
+    "en": "Invalid UI element selector."
+  },
+  "agent.ui.unavailable": {
+    "ru": "Дерево интерфейса недоступно на этом экране.",
+    "en": "The UI hierarchy is unavailable on this screen."
   },
   "agent.unexpectedStop": {
     "ru": "Устройство отключилось или очистка не завершена. Повторная очистка запущена.",

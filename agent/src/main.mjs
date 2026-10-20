@@ -13,6 +13,7 @@ import { ControlClient } from './control-ipc.mjs';
 import { AdbClient, runProcess } from './adb.mjs';
 import { EnvTools } from './env-tools.mjs';
 import { AppTransfers } from './app-transfer.mjs';
+import { ManagedAppium, assertAppiumAndroid } from './managed-appium.mjs';
 import { AdbServerFilter, adbFailure } from './adb-proxy.mjs';
 import { AdbDeviceAuth } from './adb-device-auth.mjs';
 import { StreamManager } from './scrcpy.mjs';
@@ -32,6 +33,7 @@ const hostMetrics = new HostMetricsCollector(control);
 const adb = new AdbClient();
 const envTools = new EnvTools(adb, { control, emuMode: config.emuConsole });
 const appTransfers = new AppTransfers(adb);
+const managedAppium = new ManagedAppium();
 const tunnels = new Map();
 const locks = new Map();
 const startups = new Map();
@@ -180,6 +182,10 @@ async function start(sessionId, params, options) {
 
 async function stop(sessionId, options) {
   validSessionId(sessionId);
+  const entry = registry.owner(sessionId)?.sessions.get(sessionId);
+  entry?.uiAbort?.abort();
+  entry?.automationAbort?.abort();
+  await managedAppium.stop(sessionId);
   relayMedia.delete(sessionId);
   relayNeedsKeyframe.delete(sessionId);
   await rtc.closeSession(sessionId);
@@ -200,6 +206,12 @@ async function command(message, options) {
   const sessionId = validSessionId(message.sessionId);
   const params = message.params || {};
   switch (message.action) {
+    case 'appium': {
+      const { provider, session } = registry.require(sessionId);
+      assertAppiumAndroid(provider.describe(session).sdkLevel);
+      session.automationAbort ??= new AbortController();
+      return managedAppium.request(sessionId, session.serial, params, { signal: session.automationAbort.signal });
+    }
     case 'input-open': registry.require(sessionId); return inputGate.open(sessionId, params.epoch);
     case 'input-release': return inputGate.release(sessionId, params.epoch);
     case 'rtc-capabilities': return rtc.capabilities();
@@ -482,6 +494,7 @@ async function shutdown() {
   await rtc.closeAll();
   socket?.close();
   for (const id of [...tunnels.keys()]) closeTunnel(id);
+  await managedAppium.close();
   await Promise.allSettled([...streams.streams.keys()].map((id) => streams.stop(id)));
   process.exit(0);
 }

@@ -4,7 +4,7 @@ import { normalizeCapabilities, normalizeCapabilityReasons } from '../generated/
 export function androidCapabilities(available, sdkLevel) {
   const capabilities = normalizeCapabilities(available);
   const capabilityReasons = {};
-  const minimumSdk = { video: 21, audio: 30, touch: 21, keys: 21 };
+  const minimumSdk = { video: 21, audio: 30, touch: 21, keys: 21, ui: 18 };
   for (const [feature, minimum] of Object.entries(minimumSdk)) {
     if (!capabilities.includes(feature)) continue;
     if (!Number.isInteger(sdkLevel) || sdkLevel < minimum) {

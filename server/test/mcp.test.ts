@@ -19,6 +19,8 @@ test('MCP uses production HTTP authentication, queue idempotency, PNG capture an
   const original = f.hub.command.bind(f.hub);
   f.hub.command = async (host: string, session: string, action: string, params: Record<string, unknown>) => {
     rpc.push(action);
+    if (action === 'ui-tree') return { nodes: [{ id: 0, text: 'Settings', resourceId: 'android:id/title', description: '' }] };
+    if (action === 'ui-tap') return { tapped: true };
     if (action === 'screenshot') return invalidScreenshot ? { mime: 'text/html', data: 'not-an-image' } :
       { mime: 'image/png', data: png.toString('base64'), width: 1, height: 1 };
     return original(host, session, action, params);
@@ -80,6 +82,11 @@ test('MCP uses production HTTP authentication, queue idempotency, PNG capture an
     const input = await member.client.callTool({ name: 'device_input', arguments: { sessionId, action: { kind: 'tap', x: 1, y: 1 } } });
     assert.equal(output(input).ok, true);
     assert.ok(rpc.includes('input'));
+    assert.equal(output(await member.client.callTool({ name: 'read_ui', arguments: { sessionId } })).nodes[0].text, 'Settings');
+    assert.equal(output(await member.client.callTool({ name: 'find_ui', arguments: { sessionId, selector: { text: 'Settings' } } })).count, 1);
+    assert.equal(output(await member.client.callTool({ name: 'wait_ui', arguments: { sessionId, selector: { text: 'Settings' } } })).matched, true);
+    assert.equal(output(await member.client.callTool({ name: 'tap_ui', arguments: { sessionId, selector: { resourceId: 'android:id/title' } } })).tapped, true);
+    assert.equal(output(await member.client.callTool({ name: 'read_ui', arguments: { sessionId: adminSession.body.session.id } })).httpStatus, 404);
 
     await f.pool.query("UPDATE users SET access_role_id=(SELECT id FROM access_roles WHERE builtin='user') WHERE username=$1", [memberCredentials.username]);
     const roleId = (await f.pool.query("SELECT access_role_id AS id FROM users WHERE username=$1", [memberCredentials.username])).rows[0].id;
@@ -87,6 +94,9 @@ test('MCP uses production HTTP authentication, queue idempotency, PNG capture an
     await f.pool.query('UPDATE access_roles SET permissions=$2 WHERE id=$1', [roleId, permissionList.filter((p: string) => p !== 'sessions.control')]);
     const denied = await member.client.callTool({ name: 'device_input', arguments: { sessionId, action: { kind: 'key', keyCode: 3 } } });
     assert.equal(denied.isError, true); assert.equal(output(denied).httpStatus, 403);
+    const deniedTap = await member.client.callTool({ name: 'tap_ui', arguments: { sessionId, selector: { text: 'Settings' } } });
+    assert.equal(output(deniedTap).httpStatus, 403);
+    assert.ok(output(await member.client.callTool({ name: 'read_ui', arguments: { sessionId } })).nodes);
     const releasing = output(await member.client.callTool({ name: 'release_device', arguments: { requestId: ordered.id } }));
     assert.equal(releasing.released, false);
     await wait(async () => output(await member.client.callTool({ name: 'get_request', arguments: { requestId: ordered.id } })).released === true);

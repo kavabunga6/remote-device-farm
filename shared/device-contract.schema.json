@@ -38,7 +38,8 @@
         "env",
         "network",
         "screenshot",
-        "tunnel"
+        "tunnel",
+        "ui"
       ]
     },
     "DeviceAvailability": {

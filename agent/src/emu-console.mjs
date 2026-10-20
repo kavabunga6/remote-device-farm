@@ -38,7 +38,10 @@ export function validateEmuConsoleArgs(args) {
     num(c, -180, 180, 'longitude');
     num(d, -90, 90, 'latitude');
     if (e !== undefined) num(e, -1000, 10000, 'altitude');
-  } else bad('Invalid emulator console command');
+  } else if (a === 'virtualscene-image' && b === 'wall') {
+    if (args.length !== 2 && !(args.length === 3 && c === '/android-home/rdf-camera.png')) bad('Invalid emulator console command');
+  } else if (a === 'automation' && b === 'play' && c === '/opt/android/emulator/resources/macros/Walk_to_image_room') exact(3);
+  else bad('Invalid emulator console command');
   return [...args];
 }
 
@@ -75,7 +78,7 @@ export function parseDockerStream(buffer, maxBytes = MAX_OUTPUT_BYTES) {
 // Fixed script; only allowlisted commands and agent-owned connection limits enter its environment.
 export const CONSOLE_SCRIPT = readFileSync(new URL('./emu-console-client.sh', import.meta.url), 'utf8');
 
-async function execInContainer(docker, containerId, cmd, env, timeoutMs) {
+export async function execInContainer(docker, containerId, cmd, env, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   const left = () => {
     const remaining = deadline - Date.now();
