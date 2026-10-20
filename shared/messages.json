@@ -13208,8 +13208,8 @@
     "ru": "По времени"
   },
   "networkInspector.structure": {
-    "en": "Structure",
-    "ru": "По хостам"
+    "en": "Tree",
+    "ru": "Дерево"
   },
   "networkInspector.search": {
     "en": "URL, method or status",

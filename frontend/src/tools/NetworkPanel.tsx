@@ -22,7 +22,7 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
   const { state, busy, error, refresh, action, exportPcap } = useTrafficCapture(sessionId, active, running);
   const [pcap, setPcap] = useState(false), [bodies, setBodies] = useState(false), [popover, setPopover] = useState<'settings' | 'export' | null>(null);
   const [query, setQuery] = useState(''), [filter, setFilter] = useState<TrafficFilter>('all');
-  const [mode, setMode] = useState<'sequence' | 'structure'>('sequence');
+  const [mode, setMode] = useState<'sequence' | 'structure'>('structure');
   const [selected, setSelected] = useState<TrafficEntry | undefined>();
   const [frozen, setFrozen] = useState<TrafficState | null>(null);
   const [split, setSplit] = useState(58), [wide, setWide] = useState(false);
@@ -32,7 +32,7 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
   const workspace = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   useEffect(() => {
-    setSelected(undefined); setFrozen(null); setQuery(''); setFilter('all'); setPcap(false); setBodies(false); setDetailOpen(false); setPopover(null);
+    setSelected(undefined); setFrozen(null); setQuery(''); setFilter('all'); setPcap(false); setBodies(false); setDetailOpen(false); setPopover(null); setMode('structure');
   }, [sessionId]);
   useEffect(() => {
     if (!state?.captureId) return;
@@ -157,8 +157,8 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
     {state?.pcapState === 'error' && <p className="traffic-note traffic-warning" role="status">{t('networkInspector.pcapStopHelp')}</p>}
     <div className="traffic-filterbar">
       <div className="traffic-modes" role="group" aria-label={t('networkInspector.view')}>
-        <button type="button" className="traffic-control" aria-pressed={mode === 'sequence'} aria-label={t('networkInspector.sequence')} onClick={() => setMode('sequence')}><Icon name="list" size={15}/><span>{t('networkInspector.sequence')}</span></button>
         <button type="button" className="traffic-control" aria-pressed={mode === 'structure'} aria-label={t('networkInspector.structure')} onClick={() => setMode('structure')}><Icon name="layers" size={15}/><span>{t('networkInspector.structure')}</span></button>
+        <button type="button" className="traffic-control" aria-pressed={mode === 'sequence'} aria-label={t('networkInspector.sequence')} onClick={() => setMode('sequence')}><Icon name="list" size={15}/><span>{t('networkInspector.sequence')}</span></button>
       </div>
       <div className="traffic-search">
         <Icon name="search" size={15}/><input type="search" value={query} onChange={event => setQuery(event.target.value)} aria-label={t('debug.search')} placeholder={t('networkInspector.search')}/>
@@ -170,10 +170,10 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
     </div>
     <div ref={workspace} className="traffic-workspace" data-wide={wide} data-detail-open={detailOpen && Boolean(shownSelected)} style={{ '--traffic-split': split + '%' } as CSSProperties}>
       <div ref={listRef} className="traffic-navigation">
-        {entries.length ? <TrafficList entries={entries} mode={mode} selectedId={shownSelected?.id ?? null}
-          onSelect={selectEntry} searching={Boolean(query.trim()) || filter !== 'all'}/>
-          : <div className="traffic-empty"><Icon name="wifi" size={24}/><p>{t(emptyKey)}</p>
-            {(query || filter !== 'all') && <button type="button" className="traffic-control" onClick={resetFilters}>{t('networkInspector.resetFilters')}</button>}</div>}
+        <TrafficList key={sessionId} entries={entries} mode={mode} selectedId={shownSelected?.id ?? null}
+          onSelect={selectEntry} searching={Boolean(query.trim()) || filter !== 'all'}
+          empty={<div className="traffic-empty"><Icon name="wifi" size={24}/><p>{t(emptyKey)}</p>
+            {(query || filter !== 'all') && <button type="button" className="traffic-control" onClick={resetFilters}>{t('networkInspector.resetFilters')}</button>}</div>}/>
       </div>
       <div className="traffic-divider" role="separator" tabIndex={0} aria-orientation={wide ? 'vertical' : 'horizontal'} aria-label={t('networkInspector.resize')}
         aria-valuemin={25} aria-valuemax={75} aria-valuenow={split} aria-valuetext={t('networkInspector.splitValue', { p0: split })}

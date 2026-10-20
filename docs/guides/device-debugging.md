@@ -4,8 +4,8 @@
 
 Open a running emulator session and select **Traffic**. Start capture, reproduce the request in the Android app, then stop capture. The inspector retains the last 200 HTTP requests and HTTPS CONNECT connections.
 
+- **Tree** is the default view, grouping hosts and URL paths. Folders start expanded and retain their open or closed state during capture updates. Search reveals matching branches; clearing search restores the previous folder state. Arrow keys navigate requests and folders.
 - **Sequence** lists requests by time, with method, path, host, status, duration and transferred bytes. Click a column heading to sort.
-- **Structure** groups requests by host and path directories. Expand a host or directory to inspect individual requests.
 - Select an entry to view **Overview**, **Request** or **Response**. Request and response headers are displayed separately. HTTPS entries describe encrypted tunnels with an explicit open/closed state and live directional byte counts. HTTP status, transport outcome and failure phase are separate fields.
 - Search by URL, method or status. Combine space-separated terms, or filter HTTP requests, TLS tunnels and errors.
 - **Freeze list updates** holds the visible records while capture continues. Resuming displays the latest records. Updates preserve selection and scroll position. The eviction counter reports records removed from the buffer; the selected record remains as its last available snapshot.
