@@ -1,3 +1,4 @@
+import { devicePlatform, normalizeCapabilities } from './generated/device-contract.js';
 import { cleanLiveTelemetry } from './live-telemetry.js';
 
 // Untrusted agent payload normalization; transport and persistence belong to AgentHub.
@@ -24,8 +25,8 @@ export function cleanProviderCapabilities(input: unknown): Record<string, string
   if (!Array.isArray(input)) return result;
   for (const provider of input.slice(0, 8)) {
     const record = provider as Record<string, unknown> | null;
-    if (!record || typeof record.kind !== 'string' || !/^[a-z-]{1,32}$/.test(record.kind) || !Array.isArray(record.capabilities)) continue;
-    result[record.kind] = record.capabilities.filter((c): c is string => typeof c === 'string' && /^[a-z-]{1,32}$/.test(c)).slice(0, 32);
+    if (!record || !devicePlatform(record.kind) || typeof record.kind !== 'string' || !Array.isArray(record.capabilities)) continue;
+    result[record.kind] = normalizeCapabilities(record.capabilities);
   }
   return result;
 }

@@ -4590,6 +4590,17 @@ components:
         type: string
         format: uuid
   schemas:
+    # device-contract:start
+    DevicePlatform: {"type":"string","enum":["android"]}
+    DeviceKind: {"type":"string","enum":["emulator","usb-android"]}
+    PhysicalDeviceKind: {"type":"string","enum":["usb-android"]}
+    DeviceCapability: {"type":"string","enum":["video","audio","touch","keys","rotate","files","install","shell","logs","device-info","env","network","screenshot","tunnel"]}
+    DeviceAvailability: {"type":"string","enum":["free","busy","cleaning","unverified","quarantined","unauthorized","offline","recovery","bootloader","sideload"]}
+    DeviceCapabilityReason: {"type":"string","enum":["not-supported","android-version-unsupported","device-probe-unavailable"]}
+    DeviceCapabilities: {"type":"array","maxItems":32,"uniqueItems":true,"items":{"$ref":"#/components/schemas/DeviceCapability"}}
+    DeviceCapabilityReasons: {"type":"object","maxProperties":32,"additionalProperties":{"$ref":"#/components/schemas/DeviceCapabilityReason"}}
+    DeviceDescriptor: {"type":"object","additionalProperties":false,"required":["kind","platform","id","model","state","reason"],"properties":{"kind":{"$ref":"#/components/schemas/PhysicalDeviceKind"},"platform":{"$ref":"#/components/schemas/DevicePlatform"},"id":{"type":"string","minLength":1,"maxLength":100,"pattern":"^[^\\x00-\\x1f\\x7f]+$"},"model":{"type":"string","maxLength":100,"nullable":true},"state":{"$ref":"#/components/schemas/DeviceAvailability"},"reason":{"type":"string","maxLength":300,"nullable":true},"osVersion":{"type":"string","maxLength":64,"nullable":true},"sdkLevel":{"type":"integer","minimum":1,"maximum":1000,"nullable":true},"capabilities":{"$ref":"#/components/schemas/DeviceCapabilities"},"capabilityReasons":{"$ref":"#/components/schemas/DeviceCapabilityReasons"}}}
+    # device-contract:end
     ImageCleanupRequest:
       type: object
       required: [ scope, action ]
@@ -6266,7 +6277,10 @@ components:
     getHostsResponseHostsItem:
       type: object
       properties:
-        devices: {}
+        devices:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceDescriptor"
         id:
           type: string
         name:
@@ -6376,8 +6390,7 @@ components:
           type: string
           nullable: true
         deviceKind:
-          type: string
-          enum: [ emulator, usb-android ]
+          $ref: "#/components/schemas/DeviceKind"
         deviceId:
           type: string
           nullable: true

@@ -1,3 +1,4 @@
+import { DEVICE_PLATFORMS, devicePlatform } from '../generated/device-contract.mjs';
 // Contract shared by every device backend. main.mjs knows nothing about Docker or USB: it asks the
 // ProviderRegistry (registry.mjs), which routes each session to the provider that owns it.
 //
@@ -16,9 +17,10 @@ export const CAPABILITIES = Object.freeze({
 });
 
 export class DeviceProvider {
-  /** @param {{kind: string, platform: 'android'}} meta */
+  /** @param {{kind: string, platform: string}} meta */
   constructor({ kind, platform }) {
     this.kind = kind;
+    if (!DEVICE_PLATFORMS.includes(platform) || (devicePlatform(kind) && platform !== devicePlatform(kind))) throw new Error('Unsupported device platform');
     this.platform = platform;
     this.sessions = new Map();
   }

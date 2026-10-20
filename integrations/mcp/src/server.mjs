@@ -1,3 +1,4 @@
+import { normalizePhysicalDevices } from './device-contract.mjs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { FarmApi, errorResult, isReleased } from './api.mjs';
@@ -32,8 +33,10 @@ export function createMcpServer(config, api = new FarmApi(config)) {
   }, { readOnly: true });
   tool('list_nodes', {}, async (_params, signal) => {
     const data = await api.request('GET', '/api/hosts', { signal });
-    return json({ hosts: (data.hosts || []).map(host => fields(host,
-      ['id', 'name', 'displayName', 'status', 'disabled', 'slots', 'usedSlots', 'lastSeenAt', 'gpuCapabilities'])) });
+    return json({ hosts: (data.hosts || []).map(host => ({
+      ...fields(host, ['id', 'name', 'displayName', 'status', 'disabled', 'slots', 'usedSlots', 'lastSeenAt', 'gpuCapabilities']),
+      devices: normalizePhysicalDevices(host.devices),
+    })) });
   }, { readOnly: true });
   tool('list_sessions', {}, async (_params, signal) => {
     const data = await api.request('GET', '/api/sessions', { signal });

@@ -1,3 +1,4 @@
+import type { DeviceDescriptor, DevicePlatform, PhysicalDeviceKind, DeviceAvailability } from './generated/device-contract';
 import { withRequestDeadline, RequestTimeoutError } from './request-deadline';
 import { knownErrorMessages, errorMessage, t } from './i18n';
 import { physicalDevices } from './devices';
@@ -48,9 +49,9 @@ export interface LiveHostTelemetry {
   gpuTelemetry?: GpuTelemetry[];
 }
 
-export type DeviceKind = 'usb-android';
-export type DeviceState = 'free' | 'busy' | 'cleaning' | 'quarantined' | 'unauthorized' | 'offline' | string;
-export interface HostDevice { kind: DeviceKind; platform?: string | null; id: string; model: string | null; state: DeviceState; reason: string | null }
+export type DeviceKind = PhysicalDeviceKind;
+export type DeviceState = DeviceAvailability | string;
+export type HostDevice = DeviceDescriptor;
 
 export interface Host extends LiveHostTelemetry {
   privilegedEmulatorsAllowed?: boolean;
@@ -299,6 +300,7 @@ export interface ProfileImportResult {
 }
 
 export interface DeviceSession {
+  platform?: DevicePlatform;
   /** Effective launch settings retained for recreating the same session. */
   launchOptions?: SessionLaunchOptions;
   gpuMode?: 'software' | 'nvidia';

@@ -1,3 +1,4 @@
+import { PHYSICAL_DEVICE_KINDS, type PhysicalDeviceKind } from './generated/device-contract.js';
 import { assertStoredPermission } from './permissions.js';
 import { uiMessage } from './messages.js';
 import { assertUserActive } from './user-removal.js';
@@ -10,8 +11,8 @@ import { STANDARD_START_TIMEOUT_MS } from './startup-progress.js';
 import type { ServerContext } from './server-context.js';
 import { assertProfileAllowed, sessionLimitFor } from './session-policy.js';
 
-export const DEVICE_KINDS = ['usb-android'] as const;
-export type DeviceKind = typeof DEVICE_KINDS[number];
+export const DEVICE_KINDS = PHYSICAL_DEVICE_KINDS;
+export type DeviceKind = PhysicalDeviceKind;
 export const devicePlaceholderProfile = (kind: DeviceKind): string => `device-${kind}`;
 
 export type NewDeviceSession = { hostId: string; kind: DeviceKind; deviceId: string; label?: string | null; leaseTtlSeconds?: number };

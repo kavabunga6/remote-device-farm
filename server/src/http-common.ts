@@ -1,3 +1,4 @@
+import { devicePlatform, type DevicePlatform } from './generated/device-contract.js';
 import { uiMessage } from './messages.js';
 import { normalizeProfileResources, mergeLaunchStorage, type LaunchOptions } from './launch-options.js';
 import { validateDockerOptions } from './docker-options.js';
@@ -49,6 +50,7 @@ export type Session = {
   label: string | null; lastActivityAt: string;
   leaseTtlSeconds?: number | null; leaseExpiresAt?: string | null;
   startupProgress?: StartupProgress | null;
+  platform?: DevicePlatform;
   deviceKind: string; deviceId: string | null; capabilities: string[] | null;
   launchOptions?: LaunchOptions;
   gpuMode: string | null; launchImage: string | null; launchMemoryMb: number | null;
@@ -75,6 +77,7 @@ export function sessionJson(row: Record<string, unknown>): Session {
     ownerName: row.owner_name ? String(row.owner_name) : undefined,
     error: row.error ? String(row.error) : null,
     label: row.label ? String(row.label) : null,
+    ...(devicePlatform(row.device_kind ?? 'emulator') ? { platform: devicePlatform(row.device_kind ?? 'emulator')! } : {}),
     deviceKind: row.device_kind == null ? 'emulator' : String(row.device_kind),
     deviceId: row.device_id == null ? null : String(row.device_id),
     capabilities: Array.isArray(row.capabilities) ? row.capabilities.map(String) : null,
