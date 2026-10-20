@@ -13082,5 +13082,213 @@
   "debug.busy": {
     "en": "Debug requests are already running. Wait for them to finish.",
     "ru": "Отладочные запросы уже выполняются. Дождитесь их завершения."
+  },
+  "networkInspector.durationValue": {
+    "en": "{p0} ms",
+    "ru": "{p0} мс"
+  },
+  "networkInspector.pending": {
+    "en": "Pending",
+    "ru": "Ожидание"
+  },
+  "networkInspector.complete": {
+    "en": "Complete",
+    "ru": "Завершён"
+  },
+  "networkInspector.error": {
+    "en": "Failed",
+    "ru": "Ошибка"
+  },
+  "networkInspector.details": {
+    "en": "Request details",
+    "ru": "Детали запроса"
+  },
+  "networkInspector.overview": {
+    "en": "Overview",
+    "ru": "Обзор"
+  },
+  "networkInspector.request": {
+    "en": "Request",
+    "ru": "Запрос"
+  },
+  "networkInspector.response": {
+    "en": "Response",
+    "ru": "Ответ"
+  },
+  "networkInspector.state": {
+    "en": "State",
+    "ru": "Состояние"
+  },
+  "networkInspector.kind": {
+    "en": "Type",
+    "ru": "Тип"
+  },
+  "networkInspector.tunnel": {
+    "en": "TLS tunnel",
+    "ru": "TLS-туннель"
+  },
+  "networkInspector.httpRequest": {
+    "en": "HTTP request",
+    "ru": "HTTP-запрос"
+  },
+  "networkInspector.started": {
+    "en": "Started",
+    "ru": "Начало"
+  },
+  "networkInspector.duration": {
+    "en": "Duration",
+    "ru": "Длительность"
+  },
+  "networkInspector.transferred": {
+    "en": "Transferred",
+    "ru": "Передано"
+  },
+  "networkInspector.requestHeaders": {
+    "en": "Request headers",
+    "ru": "Заголовки запроса"
+  },
+  "networkInspector.responseHeaders": {
+    "en": "Response headers",
+    "ru": "Заголовки ответа"
+  },
+  "networkInspector.noRecordedHeaders": {
+    "en": "No headers recorded.",
+    "ru": "Заголовки не записаны."
+  },
+  "networkInspector.headerLimits": {
+    "en": "Only Content-Type and Content-Length are retained. Bodies, cookies and authorization headers are not recorded.",
+    "ru": "Сохраняются только Content-Type и Content-Length. Тела сообщений, cookies и заголовки авторизации не записываются."
+  },
+  "networkInspector.encrypted": {
+    "en": "Encrypted CONNECT tunnel. HTTP requests, headers and bodies inside it are not visible. Final duration and transferred bytes appear when the connection closes.",
+    "ru": "Зашифрованный CONNECT-туннель. HTTP-запросы, заголовки и тела сообщений внутри него не видны. Итоговые время и объём появятся после закрытия соединения."
+  },
+  "networkInspector.selectRequest": {
+    "en": "Select a request to inspect its details. Use ↑ and ↓ to move between requests.",
+    "ru": "Выберите запрос для просмотра деталей. Перемещаться между запросами можно клавишами ↑ и ↓."
+  },
+  "networkInspector.expired": {
+    "en": "This entry is no longer in the last 200 records. Select another entry, or freeze the list before inspecting it.",
+    "ru": "Запись больше не входит в последние 200. Выберите другую или заморозьте список перед просмотром."
+  },
+  "networkInspector.copied": {
+    "en": "URL copied",
+    "ru": "URL скопирован"
+  },
+  "networkInspector.copyUrl": {
+    "en": "Copy URL",
+    "ru": "Скопировать URL"
+  },
+  "networkInspector.copyFailed": {
+    "en": "Could not copy the URL",
+    "ru": "Не удалось скопировать URL"
+  },
+  "networkInspector.stopBeforeClear": {
+    "en": "Stop capture before clearing the list.",
+    "ru": "Остановите запись перед очисткой списка."
+  },
+  "networkInspector.harHelp": {
+    "en": "Download the current capture as HAR. Bodies and encrypted contents are not included.",
+    "ru": "Скачать текущую запись в HAR. Тела сообщений и зашифрованное содержимое не включаются."
+  },
+  "networkInspector.pcapDownload": {
+    "en": "Download raw PCAP. It may contain credentials and application data.",
+    "ru": "Скачать исходный PCAP. Он может содержать учётные данные и данные приложений."
+  },
+  "networkInspector.options": {
+    "en": "Capture settings and limits",
+    "ru": "Параметры и ограничения записи"
+  },
+  "networkInspector.view": {
+    "en": "Request view",
+    "ru": "Представление запросов"
+  },
+  "networkInspector.sequence": {
+    "en": "Sequence",
+    "ru": "По времени"
+  },
+  "networkInspector.structure": {
+    "en": "Structure",
+    "ru": "По хостам"
+  },
+  "networkInspector.search": {
+    "en": "URL, method or status",
+    "ru": "URL, метод или статус"
+  },
+  "networkInspector.filter": {
+    "en": "Traffic filter",
+    "ru": "Фильтр трафика"
+  },
+  "networkInspector.all": {
+    "en": "All traffic",
+    "ru": "Весь трафик"
+  },
+  "networkInspector.httpOnly": {
+    "en": "HTTP requests",
+    "ru": "HTTP-запросы"
+  },
+  "networkInspector.tunnelsOnly": {
+    "en": "TLS tunnels",
+    "ru": "TLS-туннели"
+  },
+  "networkInspector.errorsOnly": {
+    "en": "Errors (4xx, 5xx)",
+    "ru": "Ошибки (4xx, 5xx)"
+  },
+  "networkInspector.freeze": {
+    "en": "Freeze list updates. Capture continues.",
+    "ru": "Заморозить обновление списка. Запись продолжится."
+  },
+  "networkInspector.resume": {
+    "en": "Resume list updates",
+    "ru": "Возобновить обновление списка"
+  },
+  "networkInspector.frozen": {
+    "en": "List frozen",
+    "ru": "Список заморожен"
+  },
+  "networkInspector.noMatches": {
+    "en": "No requests match these filters.",
+    "ru": "Нет запросов, подходящих под фильтры."
+  },
+  "networkInspector.resetFilters": {
+    "en": "Reset filters",
+    "ru": "Сбросить фильтры"
+  },
+  "networkInspector.resize": {
+    "en": "Resize request list and details. Arrow keys adjust the split; double-click resets it.",
+    "ru": "Изменить размеры списка и деталей. Стрелки меняют пропорции; двойной клик сбрасывает их."
+  },
+  "networkInspector.splitValue": {
+    "en": "Request list: {p0}%",
+    "ru": "Список запросов: {p0}%"
+  },
+  "networkInspector.shown": {
+    "en": "{p0} of {p1} records",
+    "ru": "{p0} из {p1} записей"
+  },
+  "networkInspector.retention": {
+    "en": "Last 200 · Up to 10 min",
+    "ru": "Последние 200 · До 10 мин"
+  },
+  "networkInspector.requestList": {
+    "en": "Captured requests",
+    "ru": "Записанные запросы"
+  },
+  "networkInspector.durationColumn": {
+    "en": "Time",
+    "ru": "Время"
+  },
+  "networkInspector.sizeColumn": {
+    "en": "Transfer",
+    "ru": "Объём"
+  },
+  "networkInspector.readFailed": {
+    "en": "Capture state unavailable. Use Refresh to try again.",
+    "ru": "Состояние записи недоступно. Нажмите «Обновить», чтобы повторить попытку."
+  },
+  "networkInspector.sortBy": {
+    "en": "Sort by: {p0}",
+    "ru": "Сортировать по: {p0}"
   }
 }

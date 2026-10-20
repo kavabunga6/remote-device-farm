@@ -2,7 +2,15 @@
 
 ## Traffic inspector
 
-Open a running emulator session and select **Traffic**. Start capture, reproduce the request in the Android app, then stop capture. The table shows the last 200 HTTP requests and HTTPS CONNECT connections, status, elapsed time and transferred bytes. Filtering and header inspection do not move the log automatically.
+Open a running emulator session and select **Traffic**. Start capture, reproduce the request in the Android app, then stop capture. The inspector retains the last 200 HTTP requests and HTTPS CONNECT connections.
+
+- **Sequence** lists requests by time, with method, path, host, status, duration and transferred bytes. Click a column heading to sort.
+- **Structure** groups requests by host and path directories. Expand a host or directory to inspect individual requests.
+- Select an entry to view **Overview**, **Request** or **Response**. Request and response headers are displayed separately. HTTPS entries describe encrypted tunnels; final timing and byte counts appear when the connection closes.
+- Search by URL, method or status. Combine space-separated terms, or filter HTTP requests, TLS tunnels and errors.
+- **Freeze list updates** holds the visible records while capture continues. Resuming displays the latest records. Updates preserve selection and scroll position; entries outside the retained 200 records expire.
+- Drag the divider between the list and details to resize them. Arrow keys adjust a focused divider; double-click resets it. Wide panels place details beside the list; compact panels stack them.
+- **Capture settings and limits** contains the raw PCAP option and recording limits. Export HAR from the toolbar; stop capture before downloading PCAP.
 
 The inspector temporarily sets Android's HTTP proxy. Disable an existing custom proxy first. Stopping restores the disabled-proxy setting only when the inspector still owns it; a subsequent manual proxy change is preserved. Existing app connections may require restarting the app.
 
