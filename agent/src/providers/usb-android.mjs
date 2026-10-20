@@ -1,3 +1,4 @@
+import { agentMessage } from '../messages.mjs';
 import { probeAndroid, androidCapabilities } from './android-capabilities.mjs';
 import { PhysicalDeviceProvider } from './physical.mjs';
 import { androidOps } from './android-ops.mjs';
@@ -37,7 +38,7 @@ export class UsbAndroidProvider extends PhysicalDeviceProvider {
 
   async list() {
     const result = await this.execute('adb', ['devices', '-l'], { timeoutMs: 5000, maxOutputBytes: 64 * 1024 });
-    if (result.exitCode !== 0) throw new Error('ADB device list is unavailable');
+    if (result.exitCode !== 0) throw new Error(agentMessage('agent.b9a2aff69247'));
     return parseUsbDevices(result.stdout).filter((d) => !this.allowlist || this.allowlist.has(d.serial));
   }
 
@@ -74,15 +75,15 @@ export class UsbAndroidProvider extends PhysicalDeviceProvider {
 
   async start(sessionId, params, { signal } = {}) {
     const wanted = params?.deviceSerial;
-    if (wanted !== undefined && (typeof wanted !== 'string' || !SERIAL_RE.test(wanted))) throw new Error('Invalid device serial');
+    if (wanted !== undefined && (typeof wanted !== 'string' || !SERIAL_RE.test(wanted))) throw new Error(agentMessage('agent.3d4b5f89dca1'));
     const usable = (d) => d.state === 'device' && this.deviceState(d.serial) === 'free';
     const devices = await this.list();
     const device = wanted ? devices.find((d) => d.serial === wanted) : devices.find(usable);
-    if (!device) throw new Error(wanted ? 'USB device is not connected' : 'No free USB devices');
-    if (device.state !== 'device') throw new Error(`USB device is ${device.state}; authorize this host's ADB key on the phone`);
+    if (!device) throw new Error(wanted ? agentMessage('agent.972c3683897a') : agentMessage('agent.4334ae1a7ebf'));
+    if (device.state !== 'device') throw new Error(agentMessage('agent.usbAuthorize', { p0: device.state }));
     const details = await probeAndroid(this.adb, device.serial, this.capabilities, { signal });
     signal?.throwIfAborted();
-    if (!await this.isPresent(device.serial)) throw new Error('USB device is not connected');
+    if (!await this.isPresent(device.serial)) throw new Error(agentMessage('agent.972c3683897a'));
     await this.lease(sessionId, { serial: device.serial, model: device.model, details });
     this.deviceDetails.set(device.serial, details);
     return { ...this.describe(this.sessions.get(sessionId)), model: device.model };

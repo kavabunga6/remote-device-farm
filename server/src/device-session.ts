@@ -1,4 +1,4 @@
-import { PHYSICAL_DEVICE_KINDS, normalizeCapabilities, type PhysicalDeviceKind } from './generated/device-contract.js';
+import { normalizeProviderStatuses, PHYSICAL_DEVICE_KINDS, normalizeCapabilities, type PhysicalDeviceKind } from './generated/device-contract.js';
 import { assertStoredPermission } from './permissions.js';
 import { uiMessage } from './messages.js';
 import { assertUserActive } from './user-removal.js';
@@ -56,6 +56,9 @@ export async function createDeviceSession(
     const row = host.rows[0];
     if (!row || row.status !== 'online' || !row.last_seen_at || Date.now() - new Date(row.last_seen_at).getTime() > 45_000) {
       throw new ApiError(503, 'agent_offline', uiMessage('ui.75aecf4c8ac3', {}, 'en'));
+    }
+    if (normalizeProviderStatuses(row.provider_status).some(provider => provider.kind === kind && provider.status === 'unavailable')) {
+      throw new ApiError(503, 'provider_unavailable', uiMessage('api.provider_unavailable', {}, 'en'));
     }
     if (row.disabled || row.removed_at) throw new ApiError(409, 'host_unavailable', uiMessage('ui.1276b6393eea', {}, 'en'));
     const devices: Array<Record<string, unknown>> = Array.isArray(row.devices) ? row.devices : [];

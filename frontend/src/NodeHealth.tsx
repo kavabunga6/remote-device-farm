@@ -1,3 +1,4 @@
+import { NodeProviderStatus } from './NodeProviderStatus';
 import { getLocale, t } from './i18n';
 import { useEffect, useState } from 'react';
 import type { Host } from './api';
@@ -53,6 +54,7 @@ export function NodeDiagnostics({ host }: { host: Host }) {
   const usedMemory = host.memoryMb > 0 && available != null && available <= host.memoryMb ? host.memoryMb - available : undefined;
   const usedDisk = host.diskTotalGb != null && host.diskFreeGb != null && host.diskFreeGb <= host.diskTotalGb ? host.diskTotalGb - host.diskFreeGb : undefined;
   return <section className="node-diagnostics">
+    <NodeProviderStatus host={host} />
     <details>
       <summary>{t('ui.6f30534b8e4f')}</summary>
       <div className="node-diagnostics-body">

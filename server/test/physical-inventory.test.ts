@@ -5,7 +5,7 @@ import { PGlite } from '@electric-sql/pglite';
 import type { Pool } from 'pg';
 import type WebSocket from 'ws';
 import { AgentHub } from '../src/agent.js';
-import { hostJson } from '../src/http-common.js';
+import { ApiError, hostJson } from '../src/http-common.js';
 import { cleanPhysicalDevices } from '../src/physical-devices.js';
 
 const phone = { kind: 'usb-android' as const, platform: 'android' as const, id: 'R58M123ABC',
@@ -59,8 +59,29 @@ test('agent hello and heartbeat store USB inventory, retain emulator capacity an
     assert.deepEqual(next.devices, [quarantined]);
     assert.deepEqual(hostJson(next).devices, [quarantined]);
 
+    const providerFailure = { ...usb, status: 'unavailable', code: 'inventory-unavailable', devices: [phone], diagnostic: 'token=private-value' };
+    for (let repeat = 0; repeat < 2; repeat++) await receive.onAgentMessage(socket, 'inventory-node', {
+      type: 'heartbeat', hostId: 'inventory-node', slots: 4, metrics: {}, activeSessions: [], providers: [emulator, providerFailure],
+    }, () => {});
+    const failed = (await db.query<Record<string, unknown>>("SELECT * FROM hosts WHERE id='inventory-node'")).rows[0]!;
+    assert.deepEqual(hostJson(failed).devices, []);
+    assert.deepEqual(hostJson(failed).providers[1], { kind: 'usb-android', platform: 'android', status: 'unavailable', code: 'inventory-unavailable' });
+    assert.equal(JSON.stringify(failed.provider_status).includes('private-value'), false);
+    const failures = (await db.query("SELECT * FROM service_logs WHERE code='agent.provider_unavailable'")).rows;
+    assert.equal(failures.length, 1);
+    await receive.onAgentMessage(socket, 'inventory-node', { type: 'heartbeat', hostId: 'inventory-node', slots: 4,
+      metrics: {}, activeSessions: [], providers: [emulator, { ...usb, status: 'ready', code: null }] }, () => {});
+    assert.equal((await db.query("SELECT * FROM service_logs WHERE code='agent.provider_recovered'")).rows.length, 1);
+
     await receive.onAgentMessage(socket, 'inventory-node', { type: 'heartbeat', hostId: 'inventory-node', slots: 4,
       metrics: {}, activeSessions: [], providers: [emulator, { ...usb, devices: [] }] }, () => {});
+    let requestId = '';
+    socket.send = ((raw: string) => { requestId = JSON.parse(raw).id; }) as typeof socket.send;
+    const denied = assert.rejects(hub.command('inventory-node', 'test-session', 'audio', { enabled: true }, 1000),
+      (error: unknown) => error instanceof ApiError && error.status === 409 && error.code === 'device_capability_unavailable');
+    await receive.onAgentMessage(socket, 'inventory-node', { type: 'result', id: requestId, ok: false,
+      code: 'device_capability_unavailable', error: 'device-controlled-private-detail' }, () => {});
+    await denied;
     const detached = (await db.query<Record<string, unknown>>("SELECT * FROM hosts WHERE id='inventory-node'")).rows[0]!;
     assert.deepEqual(detached.devices, []);
     assert.equal(hostJson(detached).reportedSlots, 4);

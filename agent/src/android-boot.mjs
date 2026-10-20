@@ -1,3 +1,4 @@
+import { agentMessage } from './messages.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 
 export async function waitForAndroidBoot(adb, serial, { signal, timeoutMs = 10 * 60_000, pollMs = 2000, probeTimeoutMs = 5000, isRunning, onProbe } = {}) {
@@ -10,7 +11,7 @@ export async function waitForAndroidBoot(adb, serial, { signal, timeoutMs = 10 *
     try { running = await isRunning({ signal }); }
     catch { combined.throwIfAborted(); return; } // An unavailable control API does not prove the container exited.
     combined.throwIfAborted();
-    if (running === false) throw new Error('Emulator container stopped before Android finished booting');
+    if (running === false) throw new Error(agentMessage('agent.43edc8d561c1'));
   };
   try {
     while (true) {
@@ -26,13 +27,13 @@ export async function waitForAndroidBoot(adb, serial, { signal, timeoutMs = 10 *
         probe.throwIfAborted();
         await onProbe?.(result.exitCode === 0 ? 'sys.boot_completed=' + String(result.stdout).trim() : 'ADB: ' + String(result.stderr || result.stdout));
         ready = result.exitCode === 0 && String(result.stdout).trim() === '1';
-      } catch (error) { await onProbe?.('ADB ещё не готов: ' + error.message); combined.throwIfAborted(); }
+      } catch (error) { await onProbe?.(agentMessage('agent.bootProbe', { p0: error.message })); combined.throwIfAborted(); }
       if (ready) { await assertRunning(probeSignal()); return; }
       await delay(pollMs, undefined, { signal: combined });
     }
   } catch (error) {
-    if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('Session startup cancelled');
-    if (timeout.aborted) throw new Error('Android did not finish booting before the startup timeout');
+    if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error(agentMessage('agent.1af461dcc07c'));
+    if (timeout.aborted) throw new Error(agentMessage('agent.2271047a7f94'));
     throw error;
   }
 }

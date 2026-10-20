@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 import Ajv from 'ajv';
-import { sessionCapabilities, normalizeCapabilities, normalizePhysicalDevices, physicalDevicesFromProviderReports } from '../src/generated/device-contract.js';
+import { normalizeProviderStatuses, sessionCapabilities, normalizeCapabilities, normalizePhysicalDevices, physicalDevicesFromProviderReports } from '../src/generated/device-contract.js';
 import * as agent from '../../agent/src/generated/device-contract.mjs';
 import * as mcp from '../../integrations/mcp/src/device-contract.mjs';
 import { readContract, schemaValidator } from './support/openapi-contract.mjs';
@@ -51,4 +51,25 @@ test('only known legacy emulator records get compatibility capabilities', () => 
   assert.equal(sessionCapabilities('emulator', null).includes('shell'), true);
   assert.equal(sessionCapabilities('emulator', null).includes('audio'), false);
   assert.deepEqual(sessionCapabilities('emulator', []), []);
+});
+
+test('provider health has the same bounded schema in every consumer and OpenAPI', () => {
+  const input = [
+    { kind: 'emulator', platform: 'android', status: 'ready', code: null },
+    { kind: 'usb-android', platform: 'android', status: 'unavailable', code: 'inventory-unavailable', diagnostic: 'private-data' },
+    { kind: 'unknown', status: 'ready' },
+    { kind: 'usb-android', status: 'ready' },
+  ];
+  const expected = [
+    { kind: 'emulator', platform: 'android', status: 'ready', code: null },
+    { kind: 'usb-android', platform: 'android', status: 'unavailable', code: 'inventory-unavailable' },
+  ];
+  const doc = readContract();
+  const valid = schemaValidator(doc)(doc.components.schemas.DeviceProviderStatus);
+  for (const consumer of [{ normalizeProviderStatuses }, agent, mcp]) {
+    assert.deepEqual(consumer.normalizeProviderStatuses(input), expected);
+    for (const status of consumer.normalizeProviderStatuses(input)) assert.ok(valid(status), JSON.stringify(valid.errors));
+  }
+  assert.deepEqual(normalizeProviderStatuses([{ kind: 'emulator', status: 'device-controlled', code: 'private-data' }]),
+    [{ kind: 'emulator', platform: 'android', status: 'unknown', code: null }]);
 });

@@ -92,6 +92,7 @@ test('restart recovery waits for verified Android boot while holding existing sl
     streams: {}, appTransfers: {}, envTools: {},
     control: { recover: async () => [entry], inventory: async () => [{ containerId: 'existing', running: true }], start: async () => { started++; } },
     adb: { connect: async () => {}, run: async (serial, argv, options) => {
+      if (argv.length === 2) return { exitCode: 0, stdout: '[ro.build.version.sdk]: [36]' };
       probes++; assert.equal(serial, 'rdf-recovered:5555'); assert.deepEqual(argv, ['shell', 'getprop', 'sys.boot_completed']);
       assert.equal(options.timeoutMs, 3000); assert.ok(options.signal);
       return { exitCode: 0, stdout: booted ? '1\n' : '0\n' };

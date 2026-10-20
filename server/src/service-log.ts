@@ -1,7 +1,7 @@
 import { redactLog, type ApplicationLog } from './application-log.js';
 import type { Pool } from 'pg';
 
-export type ServiceLogCode = `session.${string}` | `container.${string}` | `image_cleanup.${string}` | 'api.internal_error' | 'websocket.upgrade_error' | 'adb.listener_error' | 'emulator_images.reconcile_failed' | 'agent.connected' | 'agent.disconnected' | 'agent.message_failed';
+export type ServiceLogCode = `session.${string}` | `container.${string}` | `image_cleanup.${string}` | 'api.internal_error' | 'websocket.upgrade_error' | 'adb.listener_error' | 'emulator_images.reconcile_failed' | 'agent.connected' | 'agent.disconnected' | 'agent.message_failed' | 'agent.provider_unavailable' | 'agent.provider_recovered';
 
 export type ServiceLogEvent = {
   service: 'server' | 'agent' | 'emulator';

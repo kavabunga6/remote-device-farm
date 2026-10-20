@@ -4600,6 +4600,9 @@ components:
     DeviceCapabilities: {"type":"array","maxItems":32,"uniqueItems":true,"items":{"$ref":"#/components/schemas/DeviceCapability"}}
     DeviceCapabilityReasons: {"type":"object","maxProperties":32,"additionalProperties":{"$ref":"#/components/schemas/DeviceCapabilityReason"}}
     DeviceDescriptor: {"type":"object","additionalProperties":false,"required":["kind","platform","id","model","state","reason"],"properties":{"kind":{"$ref":"#/components/schemas/PhysicalDeviceKind"},"platform":{"$ref":"#/components/schemas/DevicePlatform"},"id":{"type":"string","minLength":1,"maxLength":100,"pattern":"^[^\\x00-\\x1f\\x7f]+$"},"model":{"type":"string","maxLength":100,"nullable":true},"state":{"$ref":"#/components/schemas/DeviceAvailability"},"reason":{"type":"string","maxLength":300,"nullable":true},"osVersion":{"type":"string","maxLength":64,"nullable":true},"sdkLevel":{"type":"integer","minimum":1,"maximum":1000,"nullable":true},"capabilities":{"$ref":"#/components/schemas/DeviceCapabilities"},"capabilityReasons":{"$ref":"#/components/schemas/DeviceCapabilityReasons"}}}
+    DeviceProviderState: {"type":"string","enum":["ready","unavailable","unknown"]}
+    DeviceProviderCode: {"type":"string","enum":["inventory-unavailable","maintenance-unavailable","reconcile-unavailable"]}
+    DeviceProviderStatus: {"type":"object","additionalProperties":false,"required":["kind","platform","status","code"],"properties":{"kind":{"$ref":"#/components/schemas/DeviceKind"},"platform":{"$ref":"#/components/schemas/DevicePlatform"},"status":{"$ref":"#/components/schemas/DeviceProviderState"},"code":{"type":"string","enum":["inventory-unavailable","maintenance-unavailable","reconcile-unavailable",null],"nullable":true}}}
     # device-contract:end
     ImageCleanupRequest:
       type: object
@@ -6281,6 +6284,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DeviceDescriptor"
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceProviderStatus'
         id:
           type: string
         name:

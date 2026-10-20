@@ -1,4 +1,4 @@
-import { normalizePhysicalDevices } from './device-contract.mjs';
+import { normalizePhysicalDevices, normalizeProviderStatuses } from './device-contract.mjs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { FarmApi, errorResult, isReleased } from './api.mjs';
@@ -35,7 +35,7 @@ export function createMcpServer(config, api = new FarmApi(config)) {
     const data = await api.request('GET', '/api/hosts', { signal });
     return json({ hosts: (data.hosts || []).map(host => ({
       ...fields(host, ['id', 'name', 'displayName', 'status', 'disabled', 'slots', 'usedSlots', 'lastSeenAt', 'gpuCapabilities']),
-      devices: normalizePhysicalDevices(host.devices),
+      devices: normalizePhysicalDevices(host.devices), providers: normalizeProviderStatuses(host.providers),
     })) });
   }, { readOnly: true });
   tool('list_sessions', {}, async (_params, signal) => {

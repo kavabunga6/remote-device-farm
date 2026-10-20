@@ -26,7 +26,7 @@ export function cleanProviderCapabilities(input: unknown): Record<string, string
   if (!Array.isArray(input)) return result;
   for (const provider of input.slice(0, 8)) {
     const record = provider as Record<string, unknown> | null;
-    if (!record || !devicePlatform(record.kind) || typeof record.kind !== 'string' || !Array.isArray(record.capabilities)) continue;
+    if (!record || record.status === 'unavailable' || !devicePlatform(record.kind) || typeof record.kind !== 'string' || !Array.isArray(record.capabilities)) continue;
     result[record.kind] = normalizeCapabilities(record.capabilities);
   }
   return result;

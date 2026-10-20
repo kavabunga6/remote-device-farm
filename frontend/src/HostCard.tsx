@@ -1,3 +1,4 @@
+import { NodeProviderStatus } from './NodeProviderStatus';
 import { getLocale, t } from './i18n';
 import type { Host } from './api';
 import { hostState, HOST_STATE_LABEL, slotOccupancyLevel } from './host-availability';
@@ -61,6 +62,7 @@ export function HostCard({ host, canManage = false, className = '', layout = 'ca
       <div className="host-spec" data-resource="gpu"><span>{t('ui.ea49523d744c')}{gpuLoads.length === 1 && <b aria-label={t('ui.48c67e11c97b') + gpuLoads[0].value + '%'}>{gpuLoads[0].value}%</b>}</span><div><strong title={gpuName}>{gpuName}</strong>{gpuAccess && <small className={'host-gpu-status' + (gpu.ready ? ' gpu-ready' : '')}>{gpuAccess}</small>}</div><div className="host-meters">{gpuLoads.map(sample => <div className="host-gpu-meter" key={sample.index}>{gpu.samples.length > 1 && <span>{t('ui.4bfdcdcaf180')}{sample.index}<b>{sample.value}%</b></span>}<Meter value={sample.value} label={gpu.samples.length > 1 ? t('ui.79b303de256c') + sample.index : t('ui.c3c62108cf2d')}/></div>)}</div></div>
       <div className="host-spec" data-resource="disk"><span>{t('ui.cd9bad6b5a92')}{diskUsed != null && <b title={t('ui.843bf7929e82')} aria-label={t('ui.12626578465e') + diskUsed + '%'}>{diskUsed}%</b>}</span><div><strong>{host.diskTotalGb == null ? t('ui.76848548e29c') : t('ui.38299421d537', { p0: host.diskTotalGb })}</strong><small>{host.diskFreeGb == null ? t('ui.ace019c5938b') : t('ui.78df6bb62418', { p0: host.diskFreeGb })}</small></div><div className="host-meters">{diskUsed != null && <Meter value={diskUsed} label={t('ui.843bf7929e82')}/>}</div></div>
     </div>
+    <NodeProviderStatus host={host} failuresOnly />
     {footer}
   </article>;
 }

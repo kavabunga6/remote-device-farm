@@ -1,4 +1,4 @@
-import { normalizeDeviceMetadata } from './generated/device-contract.js';
+import { normalizeProviderStatuses, normalizeDeviceMetadata } from './generated/device-contract.js';
 import { assertPermission, roleForUser } from './permissions.js';
 import { uiMessage } from './messages.js';
 import { assertUserActive } from './user-removal.js';
@@ -86,6 +86,9 @@ export async function createSession(
     if (!host.rows[0] || host.rows[0].status !== 'online' ||
         !host.rows[0].last_seen_at || Date.now() - new Date(host.rows[0].last_seen_at).getTime() > 45_000) {
       throw new ApiError(503, 'agent_offline', uiMessage('ui.75aecf4c8ac3', {}, 'en'));
+    }
+    if (normalizeProviderStatuses(host.rows[0].provider_status).some(provider => provider.kind === 'emulator' && provider.status === 'unavailable')) {
+      throw new ApiError(503, 'provider_unavailable', uiMessage('api.provider_unavailable', {}, 'en'));
     }
     if (host.rows[0].disabled || host.rows[0].removed_at) {
       throw new ApiError(409, 'host_unavailable', uiMessage('ui.1276b6393eea', {}, 'en'));

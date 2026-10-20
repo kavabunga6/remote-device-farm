@@ -8,6 +8,8 @@ export const PHYSICAL_DEVICE_KINDS = ["usb-android"];
 export const DEVICE_CAPABILITIES = ["video", "audio", "touch", "keys", "rotate", "files", "install", "shell", "logs", "device-info", "env", "network", "screenshot", "tunnel"];
 export const DEVICE_AVAILABILITIES = ["free", "busy", "cleaning", "unverified", "quarantined", "unauthorized", "offline", "recovery", "bootloader", "sideload"];
 export const DEVICE_CAPABILITY_REASONS = ["not-supported", "android-version-unsupported", "device-probe-unavailable"];
+export const DEVICE_PROVIDER_STATES = ["ready", "unavailable", "unknown"];
+export const DEVICE_PROVIDER_CODES = ["inventory-unavailable", "maintenance-unavailable", "reconcile-unavailable"];
 const boundedText = (value, max) => typeof value === 'string' ? value.replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, max) || null : null;
 export function devicePlatform(kind) {
     return typeof kind === 'string' && DEVICE_KINDS.includes(kind) ? 'android' : null;
@@ -66,7 +68,7 @@ export function physicalDevicesFromProviderReports(value) {
         if (!provider || typeof provider !== 'object' || Array.isArray(provider))
             return [];
         const p = provider;
-        if (typeof p.kind !== 'string' || !PHYSICAL_DEVICE_KINDS.includes(p.kind) ||
+        if (p.status === 'unavailable' || typeof p.kind !== 'string' || !PHYSICAL_DEVICE_KINDS.includes(p.kind) ||
             (p.platform !== undefined && p.platform !== devicePlatform(p.kind)) || !Array.isArray(p.devices))
             return [];
         return p.devices.slice(0, 256).flatMap(device => device && typeof device === 'object' && !Array.isArray(device)
@@ -91,4 +93,22 @@ export function normalizeDeviceMetadata(value) {
         sdkLevel: typeof record.sdkLevel === 'number' && Number.isInteger(record.sdkLevel) && record.sdkLevel >= 1 && record.sdkLevel <= 1000 ? record.sdkLevel : null,
         capabilityReasons: normalizeCapabilityReasons(record.capabilityReasons),
     };
+}
+/** Provider health is independent from the number of attached devices. */
+export function normalizeProviderStatuses(value) {
+    if (!Array.isArray(value))
+        return [];
+    const seen = new Set();
+    return value.slice(0, 8).flatMap((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item))
+            return [];
+        const record = item, platform = devicePlatform(record.kind);
+        if (!platform || (record.platform !== undefined && record.platform !== platform) || seen.has(String(record.kind)))
+            return [];
+        seen.add(String(record.kind));
+        const status = record.status === 'ready' || record.status === 'unavailable' ? record.status : 'unknown';
+        return [{ kind: record.kind, platform, status,
+                code: status === 'unavailable' && typeof record.code === 'string' && DEVICE_PROVIDER_CODES.includes(record.code)
+                    ? record.code : null }];
+    });
 }

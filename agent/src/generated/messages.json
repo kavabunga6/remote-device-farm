@@ -1,0 +1,230 @@
+{
+  "agent.1af461dcc07c": {
+    "ru": "Запуск сессии отменён",
+    "en": "Session startup cancelled"
+  },
+  "agent.1c2b5b00ab42": {
+    "ru": "Функция устройства недоступна",
+    "en": "Device capability is unavailable"
+  },
+  "agent.1fa0375b158e": {
+    "ru": "Параметр enabled должен быть логическим",
+    "en": "enabled must be boolean"
+  },
+  "agent.2162454b0b76": {
+    "ru": "Очистка предыдущей сессии ещё не завершена",
+    "en": "Previous session cleanup is still pending"
+  },
+  "agent.2271047a7f94": {
+    "ru": "Android не загрузился за отведённое время",
+    "en": "Android did not finish booting before the startup timeout"
+  },
+  "agent.36ca4f18c906": {
+    "ru": "Чистота устройства ещё не подтверждена. Идёт подготовка.",
+    "en": "Device has not been verified clean yet; it is being prepared"
+  },
+  "agent.3d4b5f89dca1": {
+    "ru": "Некорректный серийный номер устройства",
+    "en": "Invalid device serial"
+  },
+  "agent.4334ae1a7ebf": {
+    "ru": "Нет свободных USB-устройств",
+    "en": "No free USB devices"
+  },
+  "agent.43edc8d561c1": {
+    "ru": "Контейнер эмулятора остановился до завершения загрузки Android",
+    "en": "Emulator container stopped before Android finished booting"
+  },
+  "agent.45a7afcab5b9": {
+    "ru": "Некорректное действие касания",
+    "en": "Invalid touch action"
+  },
+  "agent.4603ecd59333": {
+    "ru": "Очистка этого устройства уже выполняется",
+    "en": "Cleaning is already in progress for this device"
+  },
+  "agent.51d321a3854e": {
+    "ru": "Некорректные координаты касания",
+    "en": "Invalid touch coordinates"
+  },
+  "agent.55b0b1c11639": {
+    "ru": "Пакет scrcpy превысил лимит",
+    "en": "scrcpy packet exceeds limit"
+  },
+  "agent.5c9e04a77662": {
+    "ru": "Неподдерживаемый тип устройства",
+    "en": "Unsupported device kind"
+  },
+  "agent.653f16499e77": {
+    "ru": "Некорректный заголовок scrcpy",
+    "en": "Invalid scrcpy header"
+  },
+  "agent.66cfc47a68a2": {
+    "ru": "Устройство для этого действия не найдено",
+    "en": "No device matched this action"
+  },
+  "agent.690472e46a6e": {
+    "ru": "Некорректный код клавиши Android",
+    "en": "Invalid Android keycode"
+  },
+  "agent.79aacfc01a6b": {
+    "ru": "Агенту недоступен /dev/kvm",
+    "en": "/dev/kvm is not available to the agent"
+  },
+  "agent.802d346781b7": {
+    "ru": "Буфер приёма scrcpy превысил лимит",
+    "en": "scrcpy receive buffer exceeded limit"
+  },
+  "agent.8c1dd88736bc": {
+    "ru": "Неподдерживаемая платформа устройства",
+    "en": "Unsupported device platform"
+  },
+  "agent.8e0728d7bf55": {
+    "ru": "Устройство не подключено или не управляется этим агентом",
+    "en": "Device is not connected or not managed by this agent"
+  },
+  "agent.91b23cf76718": {
+    "ru": "Соединение scrcpy закрыто",
+    "en": "scrcpy socket closed"
+  },
+  "agent.94a6b461a77a": {
+    "ru": "Устройство уже используется",
+    "en": "Device is already in use"
+  },
+  "agent.972c3683897a": {
+    "ru": "USB-устройство не подключено",
+    "en": "USB device is not connected"
+  },
+  "agent.a13554e0b9b5": {
+    "ru": "Хранилище состояния устройств недоступно. Выдача запрещена.",
+    "en": "Device state store is unavailable; refusing to lease"
+  },
+  "agent.a14b4d584e08": {
+    "ru": "Сессия не работает на этом агенте",
+    "en": "Session is not running on this agent"
+  },
+  "agent.a3e284efaef3": {
+    "ru": "Устройство очищается и пока недоступно",
+    "en": "Device is being cleaned and is not available yet"
+  },
+  "agent.androidReady": {
+    "ru": "ADB подключён; sys.boot_completed=1",
+    "en": "ADB connected; sys.boot_completed=1"
+  },
+  "agent.androidRejected": {
+    "ru": "Android отклонил настройку {p0}",
+    "en": "Android rejected {p0}"
+  },
+  "agent.b437662d8b65": {
+    "ru": "Некорректный размер пакета scrcpy",
+    "en": "Invalid scrcpy packet size"
+  },
+  "agent.b8ca0338ba26": {
+    "ru": "Некорректный аудиозаголовок scrcpy",
+    "en": "Invalid scrcpy audio header"
+  },
+  "agent.b9a2aff69247": {
+    "ru": "Список устройств ADB недоступен",
+    "en": "ADB device list is unavailable"
+  },
+  "agent.ba6ac7423541": {
+    "ru": "Чистота устройства уже подтверждена",
+    "en": "Device is already verified clean"
+  },
+  "agent.bootProbe": {
+    "ru": "ADB ещё не готов: {p0}",
+    "en": "ADB is not ready yet: {p0}"
+  },
+  "agent.codecFailed": {
+    "ru": "Ошибка аудиокодера scrcpy {p0}",
+    "en": "scrcpy {p0} audio encoder failed"
+  },
+  "agent.codecUnexpected": {
+    "ru": "Неожиданный аудиокодек scrcpy: {p0}",
+    "en": "Unexpected scrcpy audio codec {p0}"
+  },
+  "agent.containerStarted": {
+    "ru": "Контейнер запущен: {p0}",
+    "en": "Container started: {p0}"
+  },
+  "agent.dummyByte": {
+    "ru": "Некорректный байт подтверждения scrcpy: {p0}",
+    "en": "Invalid scrcpy dummy byte: {p0}"
+  },
+  "agent.e7e47949c94a": {
+    "ru": "Контейнер эмулятора остался после остановки",
+    "en": "Emulator container still exists after stop"
+  },
+  "agent.eb3597029ef9": {
+    "ru": "Запуск сессии ещё не завершён",
+    "en": "Session startup is still pending"
+  },
+  "agent.edb6e60881d1": {
+    "ru": "Восстановление сессии отменено",
+    "en": "Session recovery cancelled"
+  },
+  "agent.f4309a285e65": {
+    "ru": "Некорректный идентификатор касания",
+    "en": "Invalid touch pointer ID"
+  },
+  "agent.f4e60ac952ee": {
+    "ru": "Некорректный текст ввода",
+    "en": "Invalid input text"
+  },
+  "agent.fc8ecbf72def": {
+    "ru": "Некорректные размеры экрана касаний",
+    "en": "Invalid touch screen dimensions"
+  },
+  "agent.fe61e1669f6e": {
+    "ru": "Устройство используется",
+    "en": "Device is in use"
+  },
+  "agent.handshakeFailed": {
+    "ru": "Не удалось установить соединение scrcpy: {p0}",
+    "en": "scrcpy forward handshake failed: {p0}"
+  },
+  "agent.noWiper": {
+    "ru": "Стратегия очистки для {p0} не настроена. Выдача устройства запрещена.",
+    "en": "No wipe strategy configured for {p0} devices; refusing to lease"
+  },
+  "agent.operationTimeout": {
+    "ru": "Истекло время ожидания: {p0}",
+    "en": "{p0} timed out"
+  },
+  "agent.providerFailure": {
+    "ru": "Провайдер {p0}: ошибка {p1}: {p2}",
+    "en": "Provider {p0}: {p1} failed: {p2}"
+  },
+  "agent.providerRecovered": {
+    "ru": "Провайдер {p0}: {p1} восстановлен",
+    "en": "Provider {p0}: {p1} recovered"
+  },
+  "agent.providerStart": {
+    "ru": "Провайдер {p0} не поддерживает запуск сессий",
+    "en": "Provider {p0} cannot start sessions"
+  },
+  "agent.providerStop": {
+    "ru": "Провайдер {p0} не поддерживает остановку сессий",
+    "en": "Provider {p0} cannot stop sessions"
+  },
+  "agent.quarantined": {
+    "ru": "Устройство в карантине: {p0}",
+    "en": "Device is quarantined: {p0}"
+  },
+  "agent.startCheck": {
+    "ru": "Проверка ресурсов, KVM и GPU",
+    "en": "Checking resources, KVM and GPU"
+  },
+  "agent.unexpectedStop": {
+    "ru": "Устройство отключилось или очистка не завершена. Повторная очистка запущена.",
+    "en": "The device disconnected or cleanup did not finish. Cleanup is being retried."
+  },
+  "agent.unsupportedAction": {
+    "ru": "Действие \"{p0}\" не поддерживается устройствами {p1}",
+    "en": "\"{p0}\" is not supported for {p1} devices"
+  },
+  "agent.usbAuthorize": {
+    "ru": "USB-устройство в состоянии {p0}. Разрешите ADB-доступ на устройстве.",
+    "en": "USB device is {p0}; authorize this host's ADB key on the phone"
+  }
+}

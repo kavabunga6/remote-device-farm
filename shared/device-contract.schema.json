@@ -142,6 +142,55 @@
           "$ref": "#/definitions/DeviceCapabilityReasons"
         }
       }
+    },
+    "DeviceProviderState": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "unavailable",
+        "unknown"
+      ]
+    },
+    "DeviceProviderCode": {
+      "type": "string",
+      "enum": [
+        "inventory-unavailable",
+        "maintenance-unavailable",
+        "reconcile-unavailable"
+      ]
+    },
+    "DeviceProviderStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "platform",
+        "status",
+        "code"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/DeviceKind"
+        },
+        "platform": {
+          "$ref": "#/definitions/DevicePlatform"
+        },
+        "status": {
+          "$ref": "#/definitions/DeviceProviderState"
+        },
+        "code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "inventory-unavailable",
+            "maintenance-unavailable",
+            "reconcile-unavailable",
+            null
+          ]
+        }
+      }
     }
   }
 }

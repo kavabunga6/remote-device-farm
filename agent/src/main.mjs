@@ -1,3 +1,4 @@
+import { agentMessage } from './messages.mjs';
 import { runKeyed } from './keyed-queue.mjs';
 import { redactDiagnostic } from './session-diagnostics.mjs';
 import WebSocket from 'ws';
@@ -134,9 +135,9 @@ function runMaintenance() {
   if (maintenanceTask) return maintenanceTask;
   maintenanceTask = (async () => {
     await reconcileStoppedSessions();
-    for (const provider of providers) await provider.maintain?.({
+    await registry.maintainAll({
       onLog: event => send({ type: 'session-log', sessionId: event.sessionId, event }),
-    }).catch((error) => console.warn(`${provider.kind} maintenance failed: ${error.message}`));
+    });
   })().catch(error => console.warn(`Agent maintenance failed: ${error.message}`))
     .finally(() => { maintenanceTask = undefined; });
   return maintenanceTask;
@@ -144,13 +145,13 @@ function runMaintenance() {
 
 async function reconcileStoppedSessions() {
   for (const provider of providers) {
-    for (const sessionId of await provider.reconcile().catch((error) => { console.warn(`${provider.kind} reconcile failed: ${error.message}`); return []; })) {
+    for (const sessionId of await registry.reconcile(provider.kind)) {
       await withSessionLock(sessionId, async () => {
         const current = provider.sessions.get(sessionId);
         if (!current) return;
         console.warn(`${provider.kind} session ${sessionId} lost its device; cleaning up`);
         const onLog = event => send({ type: 'session-log', sessionId, event });
-        onLog({ code: 'session.unexpected_stop', message: 'РЈСЃС‚СЂРѕР№СЃС‚РІРѕ РїСЂРѕРїР°Р»Рѕ РёР»Рё РѕС‡РёСЃС‚РєР° РЅРµ Р±С‹Р»Р° Р·Р°РІРµСЂС€РµРЅР°; РЅР°С‡РёРЅР°РµС‚СЃСЏ РїРѕРІС‚РѕСЂРЅР°СЏ РѕС‡РёСЃС‚РєР°', severity: 'error', service: 'agent' });
+        onLog({ code: 'session.unexpected_stop', message: agentMessage('agent.unexpectedStop'), severity: 'error', service: 'agent' });
         try { await stop(sessionId, { onLog }); }
         catch (error) { onLog({ code: 'session.cleanup_deferred', message: error.message, severity: 'error', service: 'agent' }); console.warn(`Cleanup pending for ${sessionId}: ${error.message}`); }
       });
@@ -237,7 +238,7 @@ async function handleCommand(message) {
     if (startups.has(message.sessionId)) { send({ type: 'result', id, ok: false, error: 'Session startup is already pending' }); return; }
     startups.set(message.sessionId, startup);
   }
-  if (['stop', 'kill'].includes(message.action)) startups.get(message.sessionId)?.abort(new Error('Session startup cancelled'));
+  if (['stop', 'kill'].includes(message.action)) startups.get(message.sessionId)?.abort(new Error(agentMessage('agent.1af461dcc07c')));
   const options = startup ? { signal: AbortSignal.any([startup.signal, AbortSignal.timeout(60 * 60_000)]), onProgress: progressReporter(progress =>
     send({ type: 'startup-progress', requestId: id, sessionId: message.sessionId, progress })) } : {};
   if (['start', 'stop', 'kill'].includes(message.action)) options.onLog = event => send({ type: 'session-log', requestId: id, sessionId: message.sessionId, event });
@@ -247,7 +248,7 @@ async function handleCommand(message) {
     });
     send({ type: 'result', id, ok: true, data });
   } catch (error) {
-    send({ type: 'result', id, ok: false, error: ['start', 'stop', 'kill'].includes(message.action) ? redactDiagnostic(error.message || 'Agent command failed', [...Object.values(message.params?.profile?.containerEnv || {}), message.params?.profile?.registryAuth?.password]) : error.message || 'Agent command failed', ...(typeof error.code === 'string' && error.code.startsWith('input_') ? { code: error.code } : {}) });
+    send({ type: 'result', id, ok: false, error: ['start', 'stop', 'kill'].includes(message.action) ? redactDiagnostic(error.message || 'Agent command failed', [...Object.values(message.params?.profile?.containerEnv || {}), message.params?.profile?.registryAuth?.password]) : error.message || 'Agent command failed', ...(typeof error.code === 'string' && (error.code.startsWith('input_') || error.code === 'device_capability_unavailable') ? { code: error.code } : {}) });
   } finally { if (startup && startups.get(message.sessionId) === startup) startups.delete(message.sessionId); }
 }
 

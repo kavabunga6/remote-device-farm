@@ -1,3 +1,4 @@
+import { agentMessage } from '../messages.mjs';
 // Android actions that only need an adb serial. Emulators and USB phones both speak adb, so both providers
 // reuse this table instead of duplicating it behind `if (kind === ...)`.
 export function androidOps({ adb, streams, appTransfers }) {
@@ -12,7 +13,7 @@ export function androidOps({ adb, streams, appTransfers }) {
     rotate: (s, p) => adb.rotate(s.serial, p.orientation),
     file: (s, p) => adb.file(s.serial, p),
     audio: async (s, p, { sessionId }) => {
-      if (typeof p.enabled !== 'boolean') throw new Error('enabled must be boolean');
+      if (typeof p.enabled !== 'boolean') throw new Error(agentMessage('agent.1fa0375b158e'));
       const newlyStarted = p.enabled && !streams.streams.has(sessionId);
       if (newlyStarted) await streams.start(sessionId, s.serial);
       try { return await streams.setAudio(sessionId, p.enabled); }

@@ -1,3 +1,4 @@
+import { agentMessage } from './messages.mjs';
 import net from 'node:net';
 
 const SCRCPY_VERSION = '4.1';
@@ -24,7 +25,7 @@ export class SocketReader {
     this.error = null;
     socket.on('data', (data) => {
       if (this.buffer.length + data.length > 32 * 1024 * 1024) {
-        socket.destroy(new Error('scrcpy receive buffer exceeded limit'));
+        socket.destroy(new Error(agentMessage('agent.802d346781b7')));
         return;
       }
       this.buffer = this.buffer.length ? Buffer.concat([this.buffer, data]) : data;
@@ -44,13 +45,13 @@ export class SocketReader {
         resolve(value);
       } else if (this.ended) {
         this.waiting.shift();
-        reject(this.error || new Error('scrcpy socket closed'));
+        reject(this.error || new Error(agentMessage('agent.91b23cf76718')));
       } else break;
     }
   }
 
   read(length) {
-    if (!Number.isInteger(length) || length < 0 || length > 16 * 1024 * 1024) throw new Error('Invalid scrcpy packet size');
+    if (!Number.isInteger(length) || length < 0 || length > 16 * 1024 * 1024) throw new Error(agentMessage('agent.b437662d8b65'));
     return new Promise((resolve, reject) => {
       this.waiting.push({ length, resolve, reject });
       this.flush();
@@ -59,9 +60,9 @@ export class SocketReader {
 }
 
 export function parseMediaHeader(header) {
-  if (!Buffer.isBuffer(header) || header.length !== 12) throw new Error('Invalid scrcpy header');
+  if (!Buffer.isBuffer(header) || header.length !== 12) throw new Error(agentMessage('agent.653f16499e77'));
   const packetSize = header.readUInt32BE(8);
-  if (packetSize > 16 * 1024 * 1024) throw new Error('scrcpy packet exceeds limit');
+  if (packetSize > 16 * 1024 * 1024) throw new Error(agentMessage('agent.55b0b1c11639'));
   const ptsAndFlags = header.readBigUInt64BE(0);
   return {
     session: Boolean(ptsAndFlags & (1n << 63n)),
@@ -73,16 +74,16 @@ export function parseMediaHeader(header) {
 }
 
 export function parseAudioCodecHeader(header, requestedCodec) {
-  if (!Buffer.isBuffer(header) || header.length !== 4) throw new Error('Invalid scrcpy audio header');
+  if (!Buffer.isBuffer(header) || header.length !== 4) throw new Error(agentMessage('agent.b8ca0338ba26'));
   const status = header.readUInt32BE(0);
   if (status === 0) return { available: false, codec: null };
   if (status === 1) {
-    const error = new Error(`scrcpy ${requestedCodec} audio encoder failed`);
+    const error = new Error(agentMessage('agent.codecFailed', { p0: requestedCodec }));
     error.code = 'SCRCPY_AUDIO_CODEC_ERROR';
     throw error;
   }
   const codec = header.toString('ascii').replace(/^\0+/, '');
-  if (codec !== requestedCodec) throw new Error(`Unexpected scrcpy audio codec ${codec}`);
+  if (codec !== requestedCodec) throw new Error(agentMessage('agent.codecUnexpected', { p0: codec }));
   return { available: true, codec };
 }
 
@@ -95,13 +96,13 @@ export function shouldRetryAac(error) {
 // fixed-point pressure and two button masks (32 bytes, network byte order).
 export function encodeTouchEvent({ action, x, y, pointerId = 0 }, width, height) {
   const actions = { down: 0, up: 1, move: 2 };
-  if (!Object.hasOwn(actions, action)) throw new Error('Invalid touch action');
-  if (!Number.isInteger(pointerId) || pointerId < 0 || pointerId > 9) throw new Error('Invalid touch pointer ID');
+  if (!Object.hasOwn(actions, action)) throw new Error(agentMessage('agent.45a7afcab5b9'));
+  if (!Number.isInteger(pointerId) || pointerId < 0 || pointerId > 9) throw new Error(agentMessage('agent.f4309a285e65'));
   if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 8192 || height > 8192) {
-    throw new Error('Invalid touch screen dimensions');
+    throw new Error(agentMessage('agent.fc8ecbf72def'));
   }
   if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
-    throw new Error('Invalid touch coordinates');
+    throw new Error(agentMessage('agent.51d321a3854e'));
   }
   const message = Buffer.alloc(32);
   message[0] = 2;
@@ -119,7 +120,7 @@ export function encodeTouchEvent({ action, x, y, pointerId = 0 }, width, height)
 // pair in one write so other input cannot leave the key pressed between them.
 export function encodeKeyPress(keyCode) {
   const code = Number(keyCode);
-  if (!Number.isInteger(code) || code < 1 || code > 300) throw new Error('Invalid Android keycode');
+  if (!Number.isInteger(code) || code < 1 || code > 300) throw new Error(agentMessage('agent.690472e46a6e'));
   const message = Buffer.alloc(28);
   for (const [offset, action] of [[0, 0], [14, 1]]) {
     message[offset] = 0;
@@ -131,7 +132,7 @@ export function encodeKeyPress(keyCode) {
 }
 
 export function encodeTextInput(text) {
-  if (typeof text !== 'string' || text.length > 1000 || /[\r\n\0]/.test(text)) throw new Error('Invalid input text');
+  if (typeof text !== 'string' || text.length > 1000 || /[\r\n\0]/.test(text)) throw new Error(agentMessage('agent.f4e60ac952ee'));
   const packets = [];
   let parts = [];
   let length = 0;
@@ -176,7 +177,7 @@ export function within(promise, timeoutMs, label) {
   let timer;
   return Promise.race([
     promise,
-    new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs); }),
+    new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(agentMessage('agent.operationTimeout', { p0: label }))), timeoutMs); }),
   ]).finally(() => clearTimeout(timer));
 }
 
@@ -192,7 +193,7 @@ export async function connectVideoPortWithHandshake(port, timeoutMs = 15000) {
       socket = await connectPort(port, Math.max(1, deadline - Date.now()));
       const reader = new SocketReader(socket);
       const dummy = await within(reader.read(1), Math.min(2000, Math.max(1, deadline - Date.now())), 'scrcpy handshake');
-      if (dummy[0] !== 0) throw new Error(`Invalid scrcpy dummy byte: ${dummy[0]}`);
+      if (dummy[0] !== 0) throw new Error(agentMessage('agent.dummyByte', { p0: dummy[0] }));
       return { socket, reader };
     } catch (error) {
       socket?.destroy();
@@ -201,5 +202,5 @@ export async function connectVideoPortWithHandshake(port, timeoutMs = 15000) {
       await new Promise((resolve) => setTimeout(resolve, Math.min(200, deadline - Date.now())));
     }
   } while (Date.now() < deadline);
-  throw new Error(`scrcpy forward handshake failed: ${lastError?.message || 'timeout'}`);
+  throw new Error(agentMessage('agent.handshakeFailed', { p0: lastError?.message ?? '' }));
 }

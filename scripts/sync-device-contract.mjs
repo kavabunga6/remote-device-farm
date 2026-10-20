@@ -11,7 +11,7 @@ const defs = schema.definitions;
 const constants = {
   DevicePlatform: 'DEVICE_PLATFORMS', DeviceKind: 'DEVICE_KINDS', PhysicalDeviceKind: 'PHYSICAL_DEVICE_KINDS',
   DeviceCapability: 'DEVICE_CAPABILITIES', DeviceAvailability: 'DEVICE_AVAILABILITIES',
-  DeviceCapabilityReason: 'DEVICE_CAPABILITY_REASONS',
+  DeviceCapabilityReason: 'DEVICE_CAPABILITY_REASONS', DeviceProviderState: 'DEVICE_PROVIDER_STATES', DeviceProviderCode: 'DEVICE_PROVIDER_CODES',
 };
 function type(s) {
   if (s.$ref) {
@@ -45,6 +45,21 @@ const files = {
   'agent/src/generated/device-contract.mjs': header + javascript,
   'integrations/mcp/src/device-contract.mjs': header + javascript,
 };
+const dictionary = JSON.parse(fs.readFileSync(path.join(root, 'shared/messages.json'), 'utf8'));
+const usedKeys = new Set();
+function readAgentMessages(directory) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.name === 'generated' || entry.name.endsWith('.test.mjs')) continue;
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory()) readAgentMessages(file);
+    else if (entry.name.endsWith('.mjs')) for (const match of fs.readFileSync(file, 'utf8').matchAll(/agentMessage\('([^']+)'/g)) usedKeys.add(match[1]);
+  }
+}
+readAgentMessages(path.join(root, 'agent/src'));
+files['agent/src/generated/messages.json'] = JSON.stringify(Object.fromEntries([...usedKeys].sort().map(key => {
+  if (!dictionary[key]?.en || !dictionary[key]?.ru) throw new Error('Missing translated agent message: ' + key);
+  return [key, dictionary[key]];
+})), null, 2) + '\n';
 function openapi(value) {
   if (Array.isArray(value)) return value.map(openapi);
   if (!value || typeof value !== 'object') return value;

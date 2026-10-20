@@ -1,3 +1,4 @@
+import { DeviceProvider } from './providers/base.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { dispatchCommand, dispatchNodeAction } from './command-dispatch.mjs';
@@ -16,8 +17,9 @@ function fixture() {
   streams.streams.set(sessionId, stream);
   let releaseSlow;
   const slow = new Promise(resolve => { releaseSlow = resolve; });
-  const provider = { kind: 'emulator', sessions: new Map([[sessionId, { serial }]]), nodeOps: {},
-    ops: { ...androidOps({ adb, streams }), slow: () => slow } };
+  const provider = new DeviceProvider({ kind: 'emulator', platform: 'android' });
+  provider.sessions.set(sessionId, { serial });
+  Object.defineProperty(provider, 'ops', { value: { ...androidOps({ adb, streams }), slow: () => slow } });
   const registry = new ProviderRegistry([provider]);
   let tail = Promise.resolve();
   const withSessionLock = (id, command) => {

@@ -60,6 +60,9 @@ function architectureMatches(profile: Profile, host: Host): boolean {
 /** Compatibility and availability; occupied slots are handled separately so a valid request can queue. */
 export function hostLaunchIssues(profile: Profile | undefined, host: Host, mode: LaunchMode, privileged = false, options: SessionLaunchOptions = {}): LaunchIssue[] {
   const issues: LaunchIssue[] = [];
+  if (host.providers?.some(provider => provider.kind === 'emulator' && provider.status === 'unavailable')) {
+    issues.push(nodeIssue(host, 'provider_unavailable', t('api.provider_unavailable'), t('providers.unavailableHint')));
+  }
   if (host.disabled) issues.push(nodeIssue(host, 'host_disabled', t('ui.da96a62f49ba'),
     t('ui.6c3bb15db73e')));
   if (host.status !== 'online') issues.push(nodeIssue(host, 'host_offline', t('ui.e97506a30a79'),

@@ -1,5 +1,5 @@
-import { sessionCapabilities } from './generated/device-contract';
-import type { DeviceDescriptor, DevicePlatform, PhysicalDeviceKind, DeviceAvailability } from './generated/device-contract';
+import { normalizeProviderStatuses, sessionCapabilities } from './generated/device-contract';
+import type { DeviceProviderStatus, DeviceDescriptor, DevicePlatform, PhysicalDeviceKind, DeviceAvailability } from './generated/device-contract';
 import { withRequestDeadline, RequestTimeoutError } from './request-deadline';
 import { knownErrorMessages, errorMessage, t } from './i18n';
 import { physicalDevices } from './devices';
@@ -55,6 +55,7 @@ export type DeviceState = DeviceAvailability | string;
 export type HostDevice = DeviceDescriptor;
 
 export interface Host extends LiveHostTelemetry {
+  providers?: DeviceProviderStatus[];
   privilegedEmulatorsAllowed?: boolean;
   devices: HostDevice[];
   id: string;
@@ -103,6 +104,7 @@ export interface Host extends LiveHostTelemetry {
 }
 
 interface HostPayload {
+  providers?: unknown;
   devices?: unknown;
   id: string;
   name: string;
@@ -153,7 +155,7 @@ interface HostPayload {
 
 function hostFromPayload(host: HostPayload): Host {
   return {
-    id: host.id, name: host.name, agentName: host.agentName, devices: physicalDevices(host.devices),
+    id: host.id, name: host.name, agentName: host.agentName, devices: physicalDevices(host.devices), providers: normalizeProviderStatuses(host.providers),
     displayName: host.displayName, status: host.status,
     cpuCores: host.metrics?.cpuCores ?? 0,
     cpuPhysicalCores: host.metrics?.cpuPhysicalCores, cpuThreads: host.metrics?.cpuThreads,

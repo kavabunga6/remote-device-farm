@@ -1,3 +1,4 @@
+import { agentMessage } from '../messages.mjs';
 import { probeAndroid, androidCapabilities } from './android-capabilities.mjs';
 import { diagnosticReporter } from '../session-diagnostics.mjs';
 import { DeviceProvider } from './base.mjs';
@@ -26,7 +27,7 @@ export class EmulatorProvider extends DeviceProvider {
     return {
       ...this.shared,
       network: async (s, p, { sessionId }) => {
-        if (typeof p.enabled !== 'boolean') throw new Error('enabled must be boolean');
+        if (typeof p.enabled !== 'boolean') throw new Error(agentMessage('agent.1fa0375b158e'));
         const result = await this.control.setEgress(sessionId, p.enabled);
         s.networkEnabled = result.enabled;
         return result;
@@ -75,7 +76,7 @@ export class EmulatorProvider extends DeviceProvider {
             { timeoutMs: 3000, maxOutputBytes: 4096, signal });
           signal.throwIfAborted();
           if (this.sessions.get(sessionId) === entry && result.exitCode === 0 && String(result.stdout).trim() === '1') {
-            onLog?.({ sessionId, code: 'session.android_ready', message: 'ADB подключён; sys.boot_completed=1', severity: 'info', service: 'agent' });
+            onLog?.({ sessionId, code: 'session.android_ready', message: agentMessage('agent.androidReady'), severity: 'info', service: 'agent' });
             entry.details = await probeAndroid(this.adb, entry.serial, this.capabilities, { signal });
             signal.throwIfAborted();
             entry.bootReady = true;
@@ -112,10 +113,10 @@ export class EmulatorProvider extends DeviceProvider {
       onLog?.(event);
     };
     const log = diagnosticReporter(emit, Object.values(params?.profile?.containerEnv || {}));
-    log('session.agent_start', 'Агент начал проверку ресурсов, KVM и GPU');
+    log('session.agent_start', agentMessage('agent.startCheck'));
     const host = await this.metrics();
     signal?.throwIfAborted();
-    if (!host.kvm) throw new Error('/dev/kvm is not available to the agent');
+    if (!host.kvm) throw new Error(agentMessage('agent.79aacfc01a6b'));
     const profile = validateProfile(params?.profile, this.config.allowedPrefixes, this.config.trustedPrefixes ?? []);
     assertProfileWithinPolicy(profile, this.policy);
     profile.gpuBackend = resolveGpuBackend(profile, host);
@@ -129,7 +130,7 @@ export class EmulatorProvider extends DeviceProvider {
           const created = await this.control.start(sessionId, profile, key, report, { signal, onLog: emit });
           Object.assign(entry, created, { serial: `${created.name}:5555` });
           signal?.throwIfAborted();
-          log('session.container_started', 'Контейнер запущен: ' + created.containerId);
+          log('session.container_started', agentMessage('agent.containerStarted', { p0: created.containerId }));
           report({ stage: 'booting' });
           let lastProbeAt = 0, lastProbe = '', lastSnapshotAt = 0;
           await waitForAndroidBoot(this.adb, entry.serial, {
@@ -154,13 +155,13 @@ export class EmulatorProvider extends DeviceProvider {
               const result = await this.adb.run(entry.serial,
                 ['shell', 'settings', '--user', 'current', 'put', 'system', setting, value],
                 { timeoutMs: 5000, signal });
-              if (result.exitCode !== 0) throw new Error('Android rejected ' + setting);
+              if (result.exitCode !== 0) throw new Error(agentMessage('agent.androidRejected', { p0: setting }));
             } catch (error) {
               signal?.throwIfAborted();
               console.warn('Could not initialize ' + setting + ' for ' + sessionId + ': ' + error.message);
             }
           }
-          log('session.android_ready', 'ADB подключён; sys.boot_completed=1');
+          log('session.android_ready', agentMessage('agent.androidReady'));
           entry.details = await probeAndroid(this.adb, entry.serial, this.capabilities, { signal });
           signal?.throwIfAborted();
           entry.bootReady = true;
@@ -183,10 +184,10 @@ export class EmulatorProvider extends DeviceProvider {
   // agent-control; we then verify the container is really gone. Any doubt keeps the slot occupied.
   async stop(sessionId, { onLog } = {}) {
     const entry = this.sessions.get(sessionId);
-    entry?.recoveryAbort?.abort(new Error('Session recovery cancelled'));
+    entry?.recoveryAbort?.abort(new Error(agentMessage('agent.edb6e60881d1')));
     await this.control.stop(sessionId, { onLog });
     if (entry && (await this.control.inventory()).some((c) => c.containerId === entry.containerId)) {
-      throw new Error('Emulator container still exists after stop');
+      throw new Error(agentMessage('agent.e7e47949c94a'));
     }
     this.sessions.delete(sessionId);
   }

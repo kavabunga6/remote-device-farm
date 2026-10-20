@@ -1,3 +1,4 @@
+import { agentMessage } from '../messages.mjs';
 import { DEVICE_PLATFORMS, devicePlatform } from '../generated/device-contract.mjs';
 // Contract shared by every device backend. main.mjs knows nothing about Docker or USB: it asks the
 // ProviderRegistry (registry.mjs), which routes each session to the provider that owns it.
@@ -20,7 +21,7 @@ export class DeviceProvider {
   /** @param {{kind: string, platform: string}} meta */
   constructor({ kind, platform }) {
     this.kind = kind;
-    if (!DEVICE_PLATFORMS.includes(platform) || (devicePlatform(kind) && platform !== devicePlatform(kind))) throw new Error('Unsupported device platform');
+    if (!DEVICE_PLATFORMS.includes(platform) || (devicePlatform(kind) && platform !== devicePlatform(kind))) throw new Error(agentMessage('agent.8c1dd88736bc'));
     this.platform = platform;
     this.sessions = new Map();
   }
@@ -46,8 +47,8 @@ export class DeviceProvider {
   /** Heartbeat housekeeping (e.g. enrolling and wiping newly attached physical devices). */
   async maintain() {}
   async inventory() { return []; }
-  async start() { throw new Error(`Provider ${this.kind} cannot start sessions`); }
-  async stop() { throw new Error(`Provider ${this.kind} cannot stop sessions`); }
+  async start() { throw new Error(agentMessage('agent.providerStart', { p0: this.kind })); }
+  async stop() { throw new Error(agentMessage('agent.providerStop', { p0: this.kind })); }
   tunnelTarget() { return null; }
   activeSessions() { return [...this.sessions].map(([sessionId, entry]) => ({ sessionId, kind: this.kind, ...this.describe(entry) })); }
   describe() { return {}; }

@@ -1,3 +1,4 @@
+import { agentMessage } from '../messages.mjs';
 import { DeviceProvider } from './base.mjs';
 import { sanitize } from './wipe.mjs';
 
@@ -27,13 +28,13 @@ export class PhysicalDeviceProvider extends DeviceProvider {
   }
 
   assertCanLease(id) {
-    if (!this.store.ready) throw new Error('Device state store is unavailable; refusing to lease');
-    if (!this.wiper) throw new Error(`No wipe strategy configured for ${this.kind} devices; refusing to lease`);
+    if (!this.store.ready) throw new Error(agentMessage('agent.a13554e0b9b5'));
+    if (!this.wiper) throw new Error(agentMessage('agent.noWiper', { p0: this.kind }));
     const key = this.key(id);
-    if (this.store.isQuarantined(key)) throw new Error(`Device is quarantined: ${this.store.reason(key)}`);
-    if ([...this.sessions.values()].some((e) => this.deviceId(e) === id)) throw new Error('Device is already in use');
-    if (this.store.isDirty(key)) throw new Error('Device is being cleaned and is not available yet');
-    if (!this.store.isClean(key)) throw new Error('Device has not been verified clean yet; it is being prepared');
+    if (this.store.isQuarantined(key)) throw new Error(agentMessage('agent.quarantined', { p0: this.store.reason(key) }));
+    if ([...this.sessions.values()].some((e) => this.deviceId(e) === id)) throw new Error(agentMessage('agent.94a6b461a77a'));
+    if (this.store.isDirty(key)) throw new Error(agentMessage('agent.a3e284efaef3'));
+    if (!this.store.isClean(key)) throw new Error(agentMessage('agent.36ca4f18c906'));
   }
 
   async lease(sessionId, entry) {
@@ -74,7 +75,7 @@ export class PhysicalDeviceProvider extends DeviceProvider {
   // One wipe per device at a time: a second one racing the first could mark the device clean while it is still
   // being erased (or erase it again after it was leased).
   async cleanDevice(id, context) {
-    if (this.locks.has(id)) throw new Error('Cleaning is already in progress for this device');
+    if (this.locks.has(id)) throw new Error(agentMessage('agent.4603ecd59333'));
     const key = this.key(id);
     const done = (async () => {
       const ctx = { canary: this.store.canaryOf(key) };
@@ -132,9 +133,9 @@ export class PhysicalDeviceProvider extends DeviceProvider {
       'device-sanitize': async (params) => {
         if (params?.kind !== this.kind) return undefined;
         const id = String(params?.deviceId ?? '');
-        if ([...this.sessions.values()].some((e) => this.deviceId(e) === id)) throw new Error('Device is in use');
-        if (this.store.isClean(this.key(id))) throw new Error('Device is already verified clean');
-        if (!(await this.listIds()).includes(id)) throw new Error('Device is not connected or not managed by this agent');
+        if ([...this.sessions.values()].some((e) => this.deviceId(e) === id)) throw new Error(agentMessage('agent.fe61e1669f6e'));
+        if (this.store.isClean(this.key(id))) throw new Error(agentMessage('agent.ba6ac7423541'));
+        if (!(await this.listIds()).includes(id)) throw new Error(agentMessage('agent.8e0728d7bf55'));
         return { deviceId: id, clean: await this.cleanDevice(id, 'manual sanitize') };
       },
     };

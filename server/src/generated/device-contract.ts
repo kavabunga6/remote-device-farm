@@ -28,6 +28,16 @@ export type DeviceDescriptor = {
   capabilities?: DeviceCapabilities;
   capabilityReasons?: DeviceCapabilityReasons;
 };
+export const DEVICE_PROVIDER_STATES = ["ready","unavailable","unknown"] as const;
+export type DeviceProviderState = typeof DEVICE_PROVIDER_STATES[number];
+export const DEVICE_PROVIDER_CODES = ["inventory-unavailable","maintenance-unavailable","reconcile-unavailable"] as const;
+export type DeviceProviderCode = typeof DEVICE_PROVIDER_CODES[number];
+export type DeviceProviderStatus = {
+  kind: DeviceKind;
+  platform: DevicePlatform;
+  status: DeviceProviderState;
+  code: "inventory-unavailable" | "maintenance-unavailable" | "reconcile-unavailable" | null;
+};
 const boundedText = (value: unknown, max: number): string | null =>
   typeof value === 'string' ? value.replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, max) || null : null;
 
@@ -77,7 +87,7 @@ export function physicalDevicesFromProviderReports(value: unknown): DeviceDescri
   return normalizePhysicalDevices(value.slice(0, 8).flatMap(provider => {
     if (!provider || typeof provider !== 'object' || Array.isArray(provider)) return [];
     const p = provider as Record<string, unknown>;
-    if (typeof p.kind !== 'string' || !(PHYSICAL_DEVICE_KINDS as readonly string[]).includes(p.kind) ||
+    if (p.status === 'unavailable' || typeof p.kind !== 'string' || !(PHYSICAL_DEVICE_KINDS as readonly string[]).includes(p.kind) ||
         (p.platform !== undefined && p.platform !== devicePlatform(p.kind)) || !Array.isArray(p.devices)) return [];
     return p.devices.slice(0, 256).flatMap(device => device && typeof device === 'object' && !Array.isArray(device)
       ? [{ ...device, kind: p.kind, platform: p.platform ?? devicePlatform(p.kind) }] : []);
@@ -99,4 +109,20 @@ export function normalizeDeviceMetadata(value: unknown): Partial<Pick<DeviceDesc
     sdkLevel: typeof record.sdkLevel === 'number' && Number.isInteger(record.sdkLevel) && record.sdkLevel >= 1 && record.sdkLevel <= 1000 ? record.sdkLevel : null,
     capabilityReasons: normalizeCapabilityReasons(record.capabilityReasons),
   };
+}
+
+/** Provider health is independent from the number of attached devices. */
+export function normalizeProviderStatuses(value: unknown): DeviceProviderStatus[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value.slice(0, 8).flatMap((item): DeviceProviderStatus[] => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const record = item as Record<string, unknown>, platform = devicePlatform(record.kind);
+    if (!platform || (record.platform !== undefined && record.platform !== platform) || seen.has(String(record.kind))) return [];
+    seen.add(String(record.kind));
+    const status: DeviceProviderState = record.status === 'ready' || record.status === 'unavailable' ? record.status : 'unknown';
+    return [{ kind: record.kind as DeviceKind, platform, status,
+      code: status === 'unavailable' && typeof record.code === 'string' && (DEVICE_PROVIDER_CODES as readonly string[]).includes(record.code)
+        ? record.code as DeviceProviderCode : null }];
+  });
 }

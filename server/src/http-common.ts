@@ -1,4 +1,4 @@
-import { devicePlatform, normalizeDeviceMetadata, sessionCapabilities, type DevicePlatform, type DeviceCapabilityReasons } from './generated/device-contract.js';
+import { devicePlatform, normalizeProviderStatuses, normalizeDeviceMetadata, sessionCapabilities, type DevicePlatform, type DeviceCapabilityReasons } from './generated/device-contract.js';
 import { uiMessage } from './messages.js';
 import { normalizeProfileResources, mergeLaunchStorage, type LaunchOptions } from './launch-options.js';
 import { validateDockerOptions } from './docker-options.js';
@@ -134,6 +134,7 @@ export function hostJson(row: Record<string, unknown>) {
     slotMemoryMb: Number(row.slot_memory_mb ?? 4096), disabled, policySupported, imageBuilder: row.image_builder === true,
     policyPending: policySupported && Number(row.applied_policy_revision) !== Number(row.policy_revision),
     usedSlots: Number(row.used_slots || 0), metrics: row.metrics || {}, devices: cleanPhysicalDevices(row.devices),
+    providers: normalizeProviderStatuses(row.provider_status),
     lastSeenAt: row.last_seen_at ? new Date(String(row.last_seen_at)).toISOString() : null,
   };
 }

@@ -103,7 +103,7 @@ test('blocked cleanup cannot delay heartbeats or enqueue overlapping maintenance
   const context = vm.createContext({
     config: { agentId: 'node-1', name: 'Node' }, emulator: { policy: { slots: 1, revision: 1 } },
     metrics: async () => ({ kvm: true }), send: event => { messages.push(event); return true; },
-    registry: { activeSessions: () => [{ sessionId: 'stopping-session' }], describeProviders: async () => [] },
+    registry: { activeSessions: () => [{ sessionId: 'stopping-session' }], describeProviders: async () => [], maintainAll: async () => { maintained++; } },
     reconcileStoppedSessions: async () => { reconciliations++; await cleanup; },
     providers: [{ kind: 'emulator', maintain: async () => { maintained++; } }],
     console: { warn() {} },
@@ -126,7 +126,7 @@ test('slow heartbeat probes coalesce and cannot publish to a replacement socket'
     config: { agentId: 'node-1' }, emulator: { policy: { slots: 1 } },
     metrics: () => { probes++; return new Promise(resolve => { resolveProbe = resolve; }); },
     send: event => { messages.push(event); return true; },
-    registry: { activeSessions: () => [], describeProviders: async () => [] },
+    registry: { activeSessions: () => [], describeProviders: async () => [], maintainAll: async () => {} },
     reconcileStoppedSessions: async () => {}, providers: [], console: { warn() {} },
   });
   vm.runInContext('let maintenanceTask; let closing = false; let socket = { readyState: 1 }; const WebSocket = { OPEN: 1 }; const heartbeatTasks = new WeakMap();\n' + announcementCode, context);

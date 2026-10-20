@@ -82,3 +82,14 @@ test('start reply persists confirmed capabilities and metadata instead of the pr
     assert.equal(JSON.stringify(row.device_metadata).includes('not-stored'), false);
   } finally { await pool.end(); }
 });
+
+test('an unavailable USB provider blocks new leases even if stale inventory still says free', async () => {
+  const { pool, context, commands } = await setup([{ kind: 'usb-android', id: 'phone', state: 'free' }]);
+  try {
+    await pool.query("UPDATE hosts SET provider_status=$1 WHERE id='h1'", [JSON.stringify([{ kind: 'usb-android', platform: 'android', status: 'unavailable', code: 'reconcile-unavailable' }])]);
+    await assert.rejects(createDeviceSession(context, { id: U1, role: 'user' }, { hostId: 'h1', kind: 'usb-android', deviceId: 'phone' }),
+      (error: unknown) => error instanceof ApiError && error.status === 503 && error.code === 'provider_unavailable');
+    assert.equal(commands.length, 0);
+    assert.equal((await pool.query('SELECT * FROM sessions')).rowCount, 0);
+  } finally { await pool.end(); }
+});

@@ -1,7 +1,8 @@
+import { normalizeProviderStatuses } from './generated/device-contract.js';
 import { AgentRequests } from './agent-requests.js';
 import { ApiError } from './http-common.js';
 import { uiMessage } from './messages.js';
-import { emitServiceLog, sessionLog } from './service-log.js';
+import { emitServiceLog, recordServiceLog, sessionLog } from './service-log.js';
 import { randomUUID } from 'node:crypto';
 import { INPUT_MAX_AGE_MS, readInputMetadata, StreamInputError, type InputMetadata } from './stream-input.js';
 import type { Socket } from 'node:net';
@@ -385,7 +386,9 @@ export class AgentHub {
       if (message.ok === true) pending.resolve((message.data && typeof message.data === 'object') ? message.data as Record<string, unknown> : {});
       else pending.reject(typeof message.code === 'string' && message.code.startsWith('input_')
         ? new StreamInputError(message.code, String(message.error || 'Input rejected'))
-        : new Error(String(message.error || 'agent rejected command')));
+        : message.code === 'device_capability_unavailable'
+          ? new ApiError(409, message.code, uiMessage('api.device_capability_unavailable', {}, 'en'))
+          : new Error(String(message.error || 'agent rejected command')));
       return;
     }
     if (['frame', 'video-config', 'video-frame', 'audio-config', 'audio-frame', 'audio-unavailable'].includes(String(message.type))) {
@@ -465,8 +468,23 @@ export class AgentHub {
 
   private async storeDevices(hostId: string, providers: unknown): Promise<void> {
     if (providers === undefined) return;
-    await this.pool.query('UPDATE hosts SET devices=$2,provider_capabilities=$3 WHERE id=$1',
-      [hostId, JSON.stringify(physicalDevicesFromProviders(providers)), JSON.stringify(cleanProviderCapabilities(providers))]).catch(() => {});
+    const statuses = normalizeProviderStatuses(providers);
+    const old = await transaction(this.pool, async client => {
+      const previous = await client.query('SELECT provider_status FROM hosts WHERE id=$1 FOR UPDATE', [hostId]);
+      await client.query('UPDATE hosts SET devices=$2,provider_capabilities=$3,provider_status=$4 WHERE id=$1',
+        [hostId, JSON.stringify(physicalDevicesFromProviders(providers)), JSON.stringify(cleanProviderCapabilities(providers)), JSON.stringify(statuses)]);
+      return normalizeProviderStatuses(previous.rows[0]?.provider_status);
+    });
+    for (const status of statuses) {
+      const previous = old.find(item => item.kind === status.kind);
+      if (status.status === 'unavailable' && (previous?.status !== status.status || previous.code !== status.code)) {
+        await recordServiceLog(this.pool, { hostId, service: 'agent', severity: 'error', code: 'agent.provider_unavailable',
+          message: uiMessage('providers.failedLog', { p0: status.kind, p1: status.code ?? 'unknown' }) });
+      } else if (status.status === 'ready' && previous?.status === 'unavailable') {
+        await recordServiceLog(this.pool, { hostId, service: 'agent', severity: 'info', code: 'agent.provider_recovered',
+          message: uiMessage('providers.recoveredLog', { p0: status.kind }) });
+      }
+    }
   }
 
   // A device failed its wipe (or an emulator could not be destroyed). The agent keeps it out of rotation; here

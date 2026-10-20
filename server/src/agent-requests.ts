@@ -1,3 +1,4 @@
+import { uiMessage } from './messages.js';
 import { randomUUID } from 'node:crypto';
 import type WebSocket from 'ws';
 import type { StartupStage } from './startup-progress.js';
@@ -30,7 +31,7 @@ export class AgentRequests {
     const id = randomUUID();
     return new Promise((resolve, reject) => {
       const fail = (error: Error) => this.take(id)?.reject(error);
-      const timer = setTimeout(() => fail(new Error('agent command timed out')), timeoutMs);
+      const timer = setTimeout(() => fail(new Error(uiMessage('agent.e73e28a04029', {}, 'en'))), timeoutMs);
       this.entries.set(id, { ...meta, resolve, reject, timer });
       try { send(id, fail); } catch (error) { fail(error instanceof Error ? error : new Error(String(error))); }
     });

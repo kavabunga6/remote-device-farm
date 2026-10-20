@@ -153,7 +153,7 @@ test('hub disposal rejects pending RPCs, closes channels, and clears its timers'
   assert.equal(hub.hasAgent('host'), false);
   assert.equal(hub.hasActiveTunnel('session'), false);
   for (const socket of [agent, viewer, tunnel, awaitingHello]) assert.equal(socket.readyState, WebSocket.CLOSED);
-  assert.equal(internal.pending.size, 0);
+  assert.equal([...internal.pending.values()].length, 0);
   assert.equal(internal.viewerDrainPolls.has(viewer), false);
   t.mock.timers.tick(120_000);
   await assert.rejects(hub.command('host', 'session', 'start', {}), /shutting down/);
