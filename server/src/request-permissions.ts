@@ -24,6 +24,7 @@ export function requestPermission(method: string, path: string): string | undefi
   if (!action) return read ? 'sessions.view' : method === 'DELETE' ? 'sessions.stop' : 'sessions.control';
   if (action === 'kill') return 'sessions.manageAll';
   if (action === 'shares' || action.startsWith('shares/')) return 'sessions.share';
+  if (action === 'webviews') return 'sessions.console';
   if (action.startsWith('appium/')) return 'sessions.console';
   if (action === 'adb') return 'sessions.console';
   if (action === 'ui') return read ? 'sessions.view' : 'sessions.control';

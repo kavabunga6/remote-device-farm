@@ -12914,5 +12914,77 @@
   "apps.setHint": {
     "en": "APK, .apks from bundletool, or ZIP with base APK and splits for one device configuration. .apks parts are selected automatically for the device.",
     "ru": "APK, .apks из bundletool или ZIP с базовым APK и частями для одной конфигурации. Части .apks подбираются по устройству автоматически."
+  },
+  "webviews.title": {
+    "en": "WebView",
+    "ru": "WebView"
+  },
+  "webviews.description": {
+    "en": "Inspect debuggable WebViews and Chrome pages on this device.",
+    "ru": "Просмотр отладочных WebView и страниц Chrome на устройстве."
+  },
+  "webviews.failed": {
+    "en": "Could not inspect the page. Refresh the list and check that WebView debugging is enabled.",
+    "ru": "Не удалось прочитать страницу. Обновите список и проверьте, что отладка WebView включена."
+  },
+  "webviews.busy": {
+    "en": "A page inspection is already running. Try again when it finishes.",
+    "ru": "Проверка страницы уже выполняется. Дождитесь её завершения."
+  },
+  "webviews.empty": {
+    "en": "No debuggable pages. Open the app or Chrome. WebView debugging must be enabled by the app.",
+    "ru": "Нет страниц для отладки. Откройте приложение или Chrome. Отладка WebView должна быть включена в приложении."
+  },
+  "webviews.page": {
+    "en": "Page",
+    "ru": "Страница"
+  },
+  "webviews.document": {
+    "en": "Read HTML",
+    "ru": "Прочитать HTML"
+  },
+  "webviews.expression": {
+    "en": "JavaScript expression",
+    "ru": "Выражение JavaScript"
+  },
+  "webviews.run": {
+    "en": "Run",
+    "ru": "Выполнить"
+  },
+  "webviews.scriptHint": {
+    "en": "JavaScript runs in the selected page and can change its data.",
+    "ru": "JavaScript выполняется в выбранной странице и может изменять её данные."
+  },
+  "webviews.appium": {
+    "en": "Appium endpoint",
+    "ru": "Адрес Appium"
+  },
+  "debug.refresh": {
+    "en": "Refresh",
+    "ru": "Обновить"
+  },
+  "debug.working": {
+    "en": "Working…",
+    "ru": "Выполняется…"
+  },
+  "debug.stopped": {
+    "en": "Start the device to use this tool.",
+    "ru": "Запустите устройство для работы с этим инструментом."
+  },
+  "debug.search": {
+    "en": "Filter by URL or method",
+    "ru": "Фильтр по URL или методу"
+  },
+  "debug.har": {
+    "en": "HAR",
+    "ru": "HAR"
+  },
+  "debug.pcap": {
+    "en": "PCAP",
+    "ru": "PCAP"
+  },
+  "debug.busy": {
+    "en": "Debug requests are already running. Wait for them to finish.",
+    "ru": "Отладочные запросы уже выполняются. Дождитесь их завершения."
   }
 }

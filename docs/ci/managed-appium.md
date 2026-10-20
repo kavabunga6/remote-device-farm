@@ -4,11 +4,13 @@ Remote Device Farm can run a separate Appium worker for each active device sessi
 
 The existing [client-side Appium example](appium.md) remains available.
 
+For hybrid apps, use the W3C context APIs to switch between NATIVE_APP and an available WEBVIEW context. JavaScript execution is accepted only after the worker confirms a web context; mobile shell execution remains disabled. browserName can be Chrome or Chromium, and appium:autoWebview is supported. The browser's WebView panel provides page discovery, HTML and JavaScript inspection without an Appium worker.
+
 ## Agent setup
 
-The optional image uses the Appium and UiAutomator2 versions pinned in examples/appium/package-lock.json. It supports native automation on Android 8 (API 26) and newer; the device version must be confirmed by the agent. WebView/Chromedriver provisioning, arbitrary mobile scripts and Appium plugins are not provided.
+The optional image uses the Appium and UiAutomator2 versions pinned in examples/appium/package-lock.json. It supports native and debuggable WebView/Chrome automation on Android 8 (API 26) and newer; the device version must be confirmed by the agent. Compatible ChromeDriver versions are downloaded by the pinned UiAutomator2 driver into each worker's temporary directory. This requires outbound access to the upstream ChromeDriver download services; the directory is removed with the worker. Client-supplied executable paths, download URLs, arbitrary mobile scripts and Appium plugins are not provided.
 
-Install an Android SDK on the worker host, accept its licences and include Platform Tools and compatible Build Tools. The agent user must be able to read the directory. The optional image includes JDK 17. SDK tools are mounted read-only; runtime downloads and automatic licence acceptance are disabled.
+Install an Android SDK on the worker host, accept its licences and include Platform Tools and compatible Build Tools. The agent user must be able to read the directory. The optional image includes JDK 17. SDK tools are mounted read-only; SDK runtime downloads and automatic licence acceptance are disabled. ChromeDriver provisioning is separate from the SDK mount.
 
 Build the base agent from the same source revision:
 
@@ -55,7 +57,7 @@ Install APKs through the service's application API before creating the W3C sessi
 
 All commands require an active device session accessible to its owner or an authorized administrator and sessions.control, sessions.files and sessions.console. Sharing a screen does not grant Appium access. Current account permissions and token revocation are checked for every HTTP request.
 
-Supported commands cover native element lookup, clicks, text entry, W3C actions, source, screenshot, orientation, timeouts and selected gestures. The agent rejects unlisted routes, another driver's ID, arbitrary execute scripts, shell execution, host file operations and client-selected ADB servers. Appium's insecure features remain disabled.
+Supported commands cover native element lookup, clicks, text entry, W3C actions, source, screenshot, orientation, timeouts and selected gestures. The agent rejects unlisted routes, another driver's ID, JavaScript outside a confirmed web context, shell execution, host file operations and client-selected ADB servers. Only UiAutomator2's ChromeDriver download feature is enabled; other insecure features remain disabled.
 
 Only one command may be in flight per device. A second session creation is rejected without replacing the active worker. Command and startup deadlines are finite. An uncertain upstream request stops the worker; automatic action retries are not performed. Stopping or expiring the device session terminates its worker and removes its temporary directory. Deleting only the W3C session does not release the device lease.
 

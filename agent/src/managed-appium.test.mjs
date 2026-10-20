@@ -22,6 +22,29 @@ test('Appium pins the device and rejects host paths, downloads, external servers
   assert.ok(validateAppiumRequest({ method: 'POST', path: '/session/id/element', body: { using: 'id', value: 'login' } }));
 });
 
+test('JavaScript is limited to a confirmed web context and executable capabilities stay broker-owned', async () => {
+  assert.equal(sessionCapabilities({ capabilities: { alwaysMatch: { browserName: 'Chrome', 'appium:autoWebview': true } } }, 'owned', 8201).capabilities.alwaysMatch.browserName, 'Chrome');
+  for (const input of [{ 'appium:chromedriverExecutableDir': '/host' }, { 'appium:chromedriverChromeMappingFile': '/host/map' }, { browserName: 'Safari' }])
+    assert.throws(() => sessionCapabilities({ capabilities: { alwaysMatch: input } }, 'owned', 8201));
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'rdf-appium-'));
+  let context = 'NATIVE_APP', executions = 0;
+  const manager = new ManagedAppium({ entry: process.execPath, fetchImpl: async url => {
+    if (url.endsWith('/context')) return new Response(JSON.stringify({ value: context }));
+    executions++; return new Response(JSON.stringify({ value: 2 }));
+  } });
+  manager.workers.set('session', { origin: 'http://127.0.0.1:4723', driverId: 'owned', signal: new AbortController().signal, life: new AbortController(), directory });
+  const request = { method: 'POST', path: '/session/owned/execute/sync', body: { script: 'return 1 + 1', args: [] } };
+  try {
+    await assert.rejects(manager.request('session', 'owned-device', request));
+    assert.equal(executions, 0);
+    context = 'WEBVIEW_example';
+    assert.equal((await manager.request('session', 'owned-device', request)).body.value, 2);
+    assert.equal(executions, 1);
+    await assert.rejects(manager.request('session', 'owned-device', { ...request, body: { script: 'mobile: shell', args: [] } }));
+    assert.equal(executions, 1);
+  } finally { await manager.close(); }
+});
+
 test('loopback workers bind one driver, redact upstream errors and terminate with their lease', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'rdf-appium-test-'));
   const directory = path.join(root, 'node_modules', 'appium');

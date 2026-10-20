@@ -306,5 +306,13 @@
   "apps.invalidSet": {
     "en": "Upload an APK, a bundletool .apks archive, or a ZIP containing one base APK and its splits.",
     "ru": "Загрузите APK, архив .apks из bundletool или ZIP с базовым APK и его частями."
+  },
+  "webviews.busy": {
+    "en": "A page inspection is already running. Try again when it finishes.",
+    "ru": "Проверка страницы уже выполняется. Дождитесь её завершения."
+  },
+  "webviews.failed": {
+    "en": "Could not inspect the page. Refresh the list and check that WebView debugging is enabled.",
+    "ru": "Не удалось прочитать страницу. Обновите список и проверьте, что отладка WebView включена."
   }
 }
