@@ -5,6 +5,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
+COPY --from=rdf_ui_messages / /shared/
 RUN npm run build
 
 FROM ${NODE_IMAGE} AS agent-bundle

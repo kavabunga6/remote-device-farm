@@ -28,7 +28,9 @@ test('debug routes enforce ownership, environment and file permissions before ag
     assert.equal((await request('GET', root + '/network-inspector', member)).status, 200);
     assert.equal((await request('GET', root + '/network-inspector/har', member)).status, 200);
     assert.equal((await request('POST', root + '/webviews', member, { op: 'document', target: 'webview_devtools_remote_1/page' })).status, 200);
-    assert.equal((await request('POST', root + '/network-inspector', member, { op: 'start', pcap: false })).status, 200);
+    assert.equal((await request('POST', root + '/network-inspector', member, { op: 'start', pcap: false, captureBodies: true })).status, 200);
+    assert.equal((await request('POST', root + '/network-inspector', member, { op: 'start', pcap: false, captureBodies: 'true' })).status, 400);
+    assert.equal((await request('POST', root + '/network-inspector', member, { op: 'pcap', offset: 0, captureId: 'invalid' })).status, 400);
     assert.equal((await request('POST', root + '/network-inspector', member, { op: 'start', pcap: 'false' })).status, 400);
     assert.equal((await request('POST', root + '/webviews', member, { op: 'shell' })).status, 400);
     const other = (await request('POST', '/api/sessions', admin, { hostId: 'contract-node', profileId: 'contract-profile' })).body.session.id;
@@ -51,5 +53,7 @@ test('HAR preserves timings but never invents decrypted HTTPS requests', () => {
   assert.equal(har.log.entries[0]._encrypted, true);
   assert.equal(har.log.entries[0].request.method, 'CONNECT');
   assert.deepEqual(har.log.entries[0].request.cookies, []);
-  assert.equal(har.log.entries[0].time, 15);
+  assert.equal(har.log.entries[0].time, 0);
+  assert.equal(har.log.entries[0]._elapsedMs, 15);
+  assert.equal(har.log.entries[0]._timingsMeasured, false);
 });

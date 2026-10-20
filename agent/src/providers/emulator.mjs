@@ -83,7 +83,7 @@ export class EmulatorProvider extends DeviceProvider {
             onLog?.({ sessionId, code: 'session.android_ready', message: agentMessage('agent.androidReady'), severity: 'info', service: 'agent' });
             entry.details = await probeAndroid(this.adb, entry.serial, this.capabilities, { signal });
             signal.throwIfAborted();
-            if (entry.inspectorRecovery) { await this.inspector.command(sessionId, entry.serial, { op: 'stop' }).catch(() => {}); entry.inspectorRecovery = false; }
+            if (entry.inspectorRecovery) { await this.inspector.command(sessionId, entry.serial, { op: 'stop', reason: 'recovery' }).catch(() => {}); entry.inspectorRecovery = false; }
             entry.bootReady = true;
             entry.startupPending = false;
             entry.recoveryPending = false;

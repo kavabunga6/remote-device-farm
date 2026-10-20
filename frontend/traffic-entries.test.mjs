@@ -4,11 +4,11 @@ import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 const bundle = await build({ entryPoints: [fileURLToPath(new URL('./src/tools/traffic-entries.ts', import.meta.url))], bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent' });
 const { filterTraffic, trafficTree, trafficAddress, trafficPhase } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].contents).toString('base64'));
-const entry = (id, url, extra = {}) => ({ id, url, method: 'GET', status: 200, durationMs: 42, bytes: 1200, startedAt: id, requestHeaders: [], responseHeaders: [], ...extra });
+const entry = (id, url, extra = {}) => ({ id, url, method: 'GET', status: 200, durationMs: 42, bytes: 1200, outcome: 'complete', startedAt: id, requestHeaders: [], responseHeaders: [], ...extra });
 const rows = [
   entry(3, 'http://api.example.test/api/v1/orders?token=%5Bredacted%5D', { status: 503 }),
   entry(1, 'http://api.example.test/api/v1/items'),
-  entry(4, 'https://secure.example.test:8443', { method: 'CONNECT', status: null, durationMs: null }),
+  entry(4, 'https://secure.example.test:8443', { method: 'CONNECT', status: null, durationMs: null, outcome: 'pending' }),
   entry(2, 'http://assets.example.test/image.png'),
 ];
 test('filters distinguish HTTP requests, encrypted tunnels and HTTP failures', () => {
@@ -49,7 +49,7 @@ test('deep paths are bounded and retain every path segment in the leaf', () => {
 test('IPv6 authorities, invalid addresses and pending transfers remain inspectable', () => {
   assert.equal(trafficAddress(entry(1, 'https://[2001:db8::1]:8443/a')).host, '[2001:db8::1]:8443');
   assert.equal(trafficAddress(entry(1, 'not a URL')).path, 'not a URL');
-  assert.equal(trafficPhase(rows[0]), 'error');
+  assert.equal(trafficPhase(rows[0]), 'httpError');
   assert.equal(trafficPhase(rows[1]), 'complete');
   assert.equal(trafficPhase(rows[2]), 'pending');
 });

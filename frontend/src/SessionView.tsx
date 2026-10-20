@@ -920,7 +920,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
         <LogcatPanel panelId="tool-panel-logs" sessionId={sessionId} active={toolAllowed('logs') && toolTab === 'logs'} running={isRunning} />
         <DeviceInfoPanel panelId="tool-panel-info" sessionId={sessionId} active={toolTab === 'info'} running={isRunning} />
         <EnvPanel panelId="tool-panel-env" sessionId={sessionId} active={toolTab === 'env'} running={canReadEnvironment} readForViewer={!shared && can(user, 'sessions.env') && hasCapability(session, 'env')} onShowTouchesChange={touchIndicator.setEnabled} nativeTouches={stream.nativeTouches} />
-        <NetworkPanel sessionId={sessionId} active={toolAllowed('traffic') && toolTab === 'traffic'} running={isRunning} canExport={can(user, 'sessions.files')} />
+        <NetworkPanel sessionId={sessionId} active={toolAllowed('traffic') && toolTab === 'traffic'} running={isRunning} canExport={can(user, 'sessions.files')} onExpand={activeWorkspaceMode !== 'tools' ? () => changeWorkspaceMode('tools') : undefined} />
         <WebViewsPanel sessionId={sessionId} active={toolAllowed('webviews') && toolTab === 'webviews'} running={isRunning} />
         <AppsPanel panelId="tool-panel-apps" sessionId={sessionId} active={toolAllowed('apps') && toolTab === 'apps'} running={isRunning} />
         </>}

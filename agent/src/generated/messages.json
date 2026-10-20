@@ -315,6 +315,10 @@
     "en": "Traffic capture is already running.",
     "ru": "Запись трафика уже идёт."
   },
+  "networkInspector.captureChanged": {
+    "en": "Capture changed during download. Download the file again.",
+    "ru": "Запись изменилась во время скачивания. Скачайте файл заново."
+  },
   "networkInspector.failed": {
     "en": "Could not update traffic capture. Refresh its state and try again.",
     "ru": "Не удалось изменить запись трафика. Обновите состояние и повторите попытку."
@@ -322,6 +326,10 @@
   "networkInspector.proxyConflict": {
     "en": "Disable the device's custom HTTP proxy before starting traffic capture.",
     "ru": "Перед записью трафика выключите пользовательский HTTP-прокси устройства."
+  },
+  "networkInspector.restartRequired": {
+    "en": "Update the agent and start a new session for detailed traffic diagnostics.",
+    "ru": "Для подробной диагностики обновите агент и создайте новую сессию."
   },
   "networkInspector.stopBeforeExport": {
     "en": "Stop capture before downloading the PCAP.",

@@ -1,4 +1,5 @@
 import net from 'node:net';
+import { validateNetworkInspectorParams } from './network-inspector.mjs';
 import { agentMessage } from './messages.mjs';
 import { chmod, mkdir, rm } from 'node:fs/promises';
 import { validateNodePolicy } from './node-policy.mjs';
@@ -55,7 +56,7 @@ export function validateControlRequest(request) {
     if(!Array.isArray(request.protectedRefs) || request.protectedRefs.length>1000 || request.protectedRefs.some(ref=>typeof ref!=='string'||ref.length>512))throw new Error('Invalid protected images');
     if(request.op==='imageCacheRemove' && (!Array.isArray(request.ids)||!request.ids.length||request.ids.length>100||request.ids.some(id=>typeof id!=='string'||!/^sha256:[a-f0-9]{64}$/.test(id))))throw new Error('Invalid cache image IDs');
   }
-  if (request.op === 'networkInspector' && (!request.params || !['status', 'start', 'stop', 'clear', 'pcap'].includes(request.params.op) || Object.keys(request.params).some(k => !['op', 'pcap', 'offset'].includes(k)))) throw new Error('Invalid network inspector command');
+  if (request.op === 'networkInspector') validateNetworkInspectorParams(request.params);
   if (request.op === 'setEgress' && typeof request.enabled !== 'boolean') throw new Error('Invalid egress state');
   if (request.op === 'cameraImage' && (!request.params || !['status', 'set', 'reset', 'show'].includes(request.params.op) || Object.keys(request.params).some(k => !['op', 'imageBase64'].includes(k)) || (request.params.op === 'set' && (typeof request.params.imageBase64 !== 'string' || request.params.imageBase64.length > 350000)))) throw new Error(agentMessage('agent.camera.invalidRequest'));
   if (request.op === 'emuConsole') validateEmuConsoleArgs(request.args);

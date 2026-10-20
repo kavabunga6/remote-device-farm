@@ -1,27 +1,46 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { t } from '../i18n';
 import { Icon } from '../icons';
-import type { TrafficEntry } from './debug-api';
+import { trafficHar } from '../../../shared/traffic-har.mjs';
+import { downloadDebug, type TrafficEntry, type TrafficState } from './debug-api';
 import { filterTraffic, type TrafficFilter } from './traffic-entries';
-import { TrafficDetails } from './TrafficDetails';
+import { TrafficDetails, trafficSize } from './TrafficDetails';
 import { TrafficList } from './TrafficList';
 import { useTrafficCapture } from './useTrafficCapture';
 import './DeviceDebug.css';
 import './NetworkPanel.css';
 
-export function NetworkPanel({ sessionId, active, running, canExport }: { sessionId: string; active: boolean; running: boolean; canExport: boolean }) {
+const stopKeys = { manual: 'networkInspector.stoppedManual', time_limit: 'networkInspector.stoppedTime', size_limit: 'networkInspector.stoppedSize',
+  recovery: 'networkInspector.stoppedRecovery', start_failed: 'networkInspector.stoppedFailed' } as const;
+const pcapKeys = { none: 'networkInspector.pcapOff', starting: 'networkInspector.pcapStarting', recording: 'networkInspector.pcapRecording',
+  finalizing: 'networkInspector.pcapFinalizing', stopped: 'networkInspector.pcapReady', error: 'networkInspector.pcapFailed' } as const;
+
+export function NetworkPanel({ sessionId, active, running, canExport, onExpand }: {
+  sessionId: string; active: boolean; running: boolean; canExport: boolean; onExpand?: () => void;
+}) {
   const { state, busy, error, refresh, action, exportPcap } = useTrafficCapture(sessionId, active, running);
-  const [pcap, setPcap] = useState(false), [options, setOptions] = useState(false);
+  const [pcap, setPcap] = useState(false), [bodies, setBodies] = useState(false), [options, setOptions] = useState(false);
   const [query, setQuery] = useState(''), [filter, setFilter] = useState<TrafficFilter>('all');
   const [mode, setMode] = useState<'sequence' | 'structure'>('sequence');
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [frozen, setFrozen] = useState<TrafficEntry[] | null>(null);
+  const [selected, setSelected] = useState<TrafficEntry | undefined>();
+  const [frozen, setFrozen] = useState<TrafficState | null>(null);
   const [split, setSplit] = useState(48), [wide, setWide] = useState(false);
+  const [now, setNow] = useState(Date.now);
   const workspace = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   useEffect(() => {
-    setSelectedId(null); setFrozen(null); setQuery(''); setFilter('all');
+    setSelected(undefined); setFrozen(null); setQuery(''); setFilter('all'); setPcap(false); setBodies(false);
   }, [sessionId]);
+  useEffect(() => {
+    if (!state?.captureId) return;
+    setPcap(Boolean(state.pcapRequested)); setBodies(Boolean(state.captureBodies));
+  }, [state?.captureId]);
+  useEffect(() => {
+    if (!active || !state?.recording) return;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [active, state?.recording]);
   useEffect(() => {
     if (!active || !workspace.current) return;
     const observer = new ResizeObserver(([entry]) => {
@@ -32,18 +51,33 @@ export function NetworkPanel({ sessionId, active, running, canExport }: { sessio
     return () => observer.disconnect();
   }, [active]);
 
-  const allEntries = frozen ?? state?.entries ?? [];
+  const view = frozen ?? state;
+  const allEntries = view?.entries ?? [];
   const entries = useMemo(() => filterTraffic(allEntries, query, filter), [allEntries, query, filter]);
-  const selected = selectedId === null ? undefined : allEntries.find(entry => entry.id === selectedId);
-  const expired = selectedId !== null && !selected;
+  const latestSelected = selected && allEntries.find(entry => entry.id === selected.id && entry.captureId === selected.captureId);
+  const shownSelected = latestSelected || selected;
+  useEffect(() => { if (latestSelected && latestSelected !== selected) setSelected(latestSelected); }, [latestSelected, selected]);
+  const detached = Boolean(selected && !latestSelected);
+  const selectedFiltered = Boolean(shownSelected && !detached && !entries.some(entry => entry.id === shownSelected.id));
   const recording = state?.recording === true;
-  const canAct = running && state?.available === true && !busy;
+  const finalizing = state?.finalizing === true;
+  const stopNeeded = recording || state?.proxyActive || state?.pcapState === 'error';
+  const canAct = running && state?.available === true && !busy && !finalizing;
+  const sameCapture = !frozen || state?.captureId === frozen.captureId;
+  const added = frozen && sameCapture ? Math.max(0, (state?.totalCaptured ?? state?.entries.length ?? 0) - (frozen.totalCaptured ?? frozen.entries.length)) : 0;
+  const showOptions = () => setOptions(true);
   const toggleCapture = async () => {
-    const op = recording || state?.proxyActive ? 'stop' : 'start';
-    if (await action(op, pcap) && op === 'start') { setFrozen(null); setSelectedId(null); }
+    const op = stopNeeded ? 'stop' : 'start';
+    if (await action(op, pcap, bodies) && op === 'start') { setFrozen(null); setSelected(undefined); }
   };
   const clear = async () => {
-    if (await action('clear')) { setSelectedId(null); setFrozen(null); }
+    if (await action('clear')) { setSelected(undefined); setFrozen(null); }
+  };
+  const exportRows = (rows: TrafficEntry[], single = false) => {
+    const data = trafficHar({ ...(view ?? {}), entries: rows }, {
+      tunnel: t('networkInspector.harTunnelNote'), unmeasured: t('networkInspector.harUnmeasured'),
+    });
+    downloadDebug('traffic-' + (single ? 'request-' + rows[0]!.id : 'visible') + '-' + sessionId.slice(0, 8) + '.har', [JSON.stringify(data, null, 2)], 'application/json');
   };
   const resetFilters = () => { setFilter('all'); setQuery(''); };
   const resizeKey = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -52,13 +86,20 @@ export function NetworkPanel({ sessionId, active, running, canExport }: { sessio
     event.preventDefault();
     setSplit(value => event.key === 'Home' ? 25 : event.key === 'End' ? 75 : Math.max(25, Math.min(75, value + (event.key === forward ? 5 : -5))));
   };
+  const elapsed = state?.startedAt ? Math.max(0, Math.floor(((recording ? now / 1000 : state.stoppedAt ?? now / 1000) - state.startedAt))) : 0;
+  const clock = String(Math.floor(elapsed / 60)).padStart(2, '0') + ':' + String(elapsed % 60).padStart(2, '0');
+  const emptyKey = !state && running ? error ? 'networkInspector.readFailed' : 'networkInspector.loading'
+    : allEntries.length ? 'networkInspector.noMatches' : recording ? 'networkInspector.emptyRecording' : 'networkInspector.emptyIdle';
+  const stateKey = busy ? 'debug.working' : !running ? 'debug.stopped' : !state ? error ? 'networkInspector.readFailed' : 'networkInspector.loading'
+    : finalizing ? 'networkInspector.pcapFinalizing' : recording && state.proxyActive === false ? 'networkInspector.proxyDisconnected'
+    : recording ? 'networkInspector.recording' : state.stopReason ? stopKeys[state.stopReason] : 'networkInspector.idle';
   return <section className="device-debug-panel traffic-panel" id="tool-panel-traffic" role="tabpanel" aria-labelledby="tool-tab-traffic" hidden={!active}>
     <h2 className="traffic-sr-only">{t('networkInspector.title')}</h2>
     <div className="traffic-toolbar">
       <div className="traffic-toolbar-group">
         <button type="button" className="traffic-control traffic-record" disabled={!canAct} onClick={() => void toggleCapture()} data-recording={recording}>
-          {busy ? <span className="mini-spinner"/> : <Icon name={recording || state?.proxyActive ? 'stop' : 'record'} size={15}/>}
-          {t(recording || state?.proxyActive ? 'networkInspector.stop' : 'networkInspector.start')}
+          {busy ? <span className="mini-spinner"/> : <Icon name={stopNeeded ? 'stop' : 'record'} size={15}/>}
+          {t(recording ? 'networkInspector.stop' : state?.pcapState === 'error' ? 'networkInspector.retryStop' : state?.proxyActive ? 'networkInspector.disconnectProxy' : 'networkInspector.start')}
         </button>
         <button type="button" className="traffic-control traffic-icon" disabled={!canAct || recording || !state?.entries.length} onClick={() => void clear()}
           aria-label={t('networkInspector.clear')} title={t(recording ? 'networkInspector.stopBeforeClear' : 'networkInspector.clear')}><Icon name="trash" size={15}/></button>
@@ -66,22 +107,32 @@ export function NetworkPanel({ sessionId, active, running, canExport }: { sessio
       </div>
       <div className="traffic-toolbar-group traffic-exports">
         {canExport && <>
-          <a className="traffic-control" href={'/api/sessions/' + encodeURIComponent(sessionId) + '/network-inspector/har'} aria-disabled={!running || busy || !state?.entries.length}
-            onClick={event => { if (!running || busy || !state?.entries.length) event.preventDefault(); }} title={t('networkInspector.harHelp')}><Icon name="download" size={15}/>{t('debug.har')}</a>
-          <button type="button" className="traffic-control" disabled={!canAct || recording || !state?.pcapBytes} onClick={() => void exportPcap()}
-            title={t(recording ? 'networkInspector.stopBeforeExport' : 'networkInspector.pcapDownload')}><Icon name="download" size={15}/>{t('debug.pcap')}</button>
+          <button type="button" className="traffic-control" disabled={busy || !entries.length} onClick={() => exportRows(entries)} title={t('networkInspector.exportShown')}>
+            <Icon name="download" size={15}/>{t('networkInspector.harShown')}</button>
+          <button type="button" className="traffic-control" disabled={!canAct || recording || !state?.pcapBytes || state.pcapState === 'error'} onClick={() => void exportPcap()}
+            title={t(recording ? 'networkInspector.stopBeforeExport' : !state?.pcapBytes ? 'networkInspector.enablePcap' : 'networkInspector.pcapDownload')}><Icon name="download" size={15}/>{t('debug.pcap')}</button>
         </>}
-        <button type="button" className="traffic-control traffic-icon" onClick={() => setOptions(value => !value)} aria-expanded={options} aria-controls="traffic-options"
-          aria-label={t('networkInspector.options')} title={t('networkInspector.options')}><Icon name="info" size={16}/></button>
+        <button type="button" className="traffic-control" onClick={() => setOptions(value => !value)} aria-expanded={options} aria-controls="traffic-options"
+          title={t('networkInspector.options')}><Icon name="more" size={16}/>{t('networkInspector.optionsShort')}</button>
+        {onExpand && <button type="button" className="traffic-control traffic-expand" onClick={onExpand}><Icon name="grid" size={15}/>{t('networkInspector.expand')}</button>}
       </div>
     </div>
+    <div className="traffic-capture-options">
+      <label className="traffic-pcap-toggle"><input type="checkbox" checked={pcap} disabled={!canAct || recording} onChange={event => setPcap(event.target.checked)}/>{t('networkInspector.pcap')}</label>
+      <span>{t('networkInspector.visibleScope')}</span>
+      {pcap && state?.pcapState === 'none' && !recording && <span className="traffic-warning">{t('networkInspector.pcapWarningShort')}</span>}
+    </div>
     <div className="traffic-options" id="traffic-options" hidden={!options}>
-      <label className="device-debug-check"><input type="checkbox" checked={pcap} disabled={busy || recording} onChange={event => setPcap(event.target.checked)}/>{t('networkInspector.pcap')}</label>
-      <p>{t('networkInspector.hint')}</p><p>{t('networkInspector.pcapWarning')}</p>
+      <label className="device-debug-check"><input type="checkbox" checked={bodies} disabled={!canAct || recording} onChange={event => setBodies(event.target.checked)}/>{t('networkInspector.captureBodies')}</label>
+      <p>{t('networkInspector.bodyWarning')}</p><p>{t('networkInspector.hint')}</p><p>{t('networkInspector.pcapWarning')}</p>
     </div>
     {(!running || state?.available === false || error) && <div className={error ? 'traffic-error' : 'traffic-note'} role={error ? 'alert' : undefined}>
       {error || t(!running ? 'debug.stopped' : 'networkInspector.unavailable')}
     </div>}
+    {state?.available && state.protocolVersion !== 2 && <p className="traffic-note">{t('networkInspector.restartRequired')}</p>}
+    {recording && state?.proxyActive === false && <p className="traffic-note traffic-warning" role="status">{t('networkInspector.proxyDisconnectedHelp')}</p>}
+    {Boolean(state?.rejectedConnections) && <p className="traffic-note traffic-warning" role="status">{t('networkInspector.overloaded', { p0: state!.rejectedConnections })}</p>}
+    {state?.pcapState === 'error' && <p className="traffic-note traffic-warning" role="status">{t('networkInspector.pcapStopHelp')}</p>}
     <div className="traffic-filterbar">
       <div className="traffic-modes" role="group" aria-label={t('networkInspector.view')}>
         <button type="button" className="traffic-control" aria-pressed={mode === 'sequence'} onClick={() => setMode('sequence')}><Icon name="list" size={15}/>{t('networkInspector.sequence')}</button>
@@ -95,13 +146,14 @@ export function NetworkPanel({ sessionId, active, running, canExport }: { sessio
         <option value="tunnels">{t('networkInspector.tunnelsOnly')}</option><option value="errors">{t('networkInspector.errorsOnly')}</option>
       </select>
       <button type="button" className="traffic-control traffic-icon traffic-freeze" aria-pressed={frozen !== null} disabled={!state}
-        onClick={() => setFrozen(value => value === null ? [...state!.entries] : null)} aria-label={t(frozen ? 'networkInspector.resume' : 'networkInspector.freeze')}
+        onClick={() => setFrozen(value => value === null ? state : null)} aria-label={t(frozen ? 'networkInspector.resume' : 'networkInspector.freeze')}
         title={t(frozen ? 'networkInspector.resume' : 'networkInspector.freeze')}><Icon name={frozen ? 'play' : 'pause'} size={15}/></button>
     </div>
     <div ref={workspace} className="traffic-workspace" data-wide={wide} style={{ '--traffic-split': split + '%' } as CSSProperties}>
       <div className="traffic-navigation">
-        {entries.length ? <TrafficList entries={entries} mode={mode} selectedId={selectedId} onSelect={setSelectedId} searching={Boolean(query.trim()) || filter !== 'all'}/>
-          : <div className="traffic-empty"><Icon name="wifi" size={24}/><p>{t(!state && running ? error ? 'networkInspector.readFailed' : 'networkInspector.loading' : allEntries.length ? 'networkInspector.noMatches' : 'networkInspector.empty')}</p>
+        {entries.length ? <TrafficList entries={entries} mode={mode} selectedId={shownSelected?.id ?? null}
+          onSelect={id => setSelected(allEntries.find(entry => entry.id === id))} searching={Boolean(query.trim()) || filter !== 'all'}/>
+          : <div className="traffic-empty"><Icon name="wifi" size={24}/><p>{t(emptyKey)}</p>
             {(query || filter !== 'all') && <button type="button" className="traffic-control" onClick={resetFilters}>{t('networkInspector.resetFilters')}</button>}</div>}
       </div>
       <div className="traffic-divider" role="separator" tabIndex={0} aria-orientation={wide ? 'vertical' : 'horizontal'} aria-label={t('networkInspector.resize')}
@@ -117,16 +169,21 @@ export function NetworkPanel({ sessionId, active, running, canExport }: { sessio
         onPointerUp={event => { dragging.current = false; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }}
         onLostPointerCapture={() => { dragging.current = false; }}
         onPointerCancel={() => { dragging.current = false; }}/>
-      <TrafficDetails entry={selected} expired={expired}/>
+      <TrafficDetails entry={shownSelected} detached={detached} filtered={selectedFiltered} onOptions={showOptions}
+        onExport={canExport ? entry => exportRows([entry], true) : undefined}/>
     </div>
     <footer className="traffic-footer">
       <span className="traffic-capture-state" data-recording={recording} role="status">
-        {busy || (!state && running && !error) ? <span className="mini-spinner"/> : <Icon name={recording ? 'record' : 'stop'} size={12}/>}
-        {t(busy ? 'debug.working' : !running ? 'debug.stopped' : !state ? error ? 'networkInspector.readFailed' : 'networkInspector.loading' : recording ? 'networkInspector.recording' : 'networkInspector.idle')}
+        {busy || finalizing || (!state && running && !error) ? <span className="mini-spinner"/> : <Icon name={recording ? 'record' : 'stop'} size={12}/>}
+        {t(stateKey)}{state?.startedAt && <span>{clock}</span>}
       </span>
       <span>{t('networkInspector.shown', { p0: entries.length, p1: allEntries.length })}</span>
-      {frozen && <span className="traffic-paused"><Icon name="pause" size={12}/>{t('networkInspector.frozen')}</span>}
-      <span className="traffic-limit" title={t('networkInspector.hint')}>{t('networkInspector.retention')}</span>
+      <span>{t('networkInspector.bufferLimit', { p0: state?.limit ?? 200 })}</span>
+      {Boolean(view?.evicted) && <span className="traffic-warning">{t('networkInspector.evicted', { p0: view!.evicted })}</span>}
+      {frozen && <span className="traffic-paused"><Icon name="pause" size={12}/>{t(!sameCapture ? 'networkInspector.oldSnapshot' : 'networkInspector.frozenNew', { p0: added })}</span>}
+      {state?.captureBodies && <span>{t('networkInspector.bodyPreviewOn')}</span>}
+      {state?.pcapRequested && <span>{t(pcapKeys[state.pcapState ?? 'none'])}{Boolean(state.pcapBytes) && <> · {trafficSize(state.pcapBytes!)}</>}</span>}
+      {recording && state?.activeConnections != null && <span>{t('networkInspector.connections', { p0: state.activeConnections, p1: state.connectionLimit ?? 64 })}</span>}
     </footer>
   </section>;
 }

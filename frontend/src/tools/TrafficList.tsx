@@ -10,7 +10,8 @@ export function TrafficList({ entries, mode, selectedId, onSelect, searching }: 
 }) {
   const [sort, setSort] = useState<{ key: 'startedAt' | 'status' | 'durationMs' | 'bytes'; descending: boolean }>({ key: 'startedAt', descending: false });
   const sorted = useMemo(() => entries.slice().sort((a, b) => {
-    const first = a[sort.key], second = b[sort.key];
+    const value = (item: TrafficEntry) => sort.key === 'durationMs' ? item.durationMs ?? item.elapsedMs ?? null : item[sort.key];
+    const first = value(a), second = value(b);
     if (first === null) return second === null ? a.id - b.id : 1;
     if (second === null) return -1;
     return (first - second || a.id - b.id) * (sort.descending ? -1 : 1);
@@ -29,13 +30,15 @@ export function TrafficList({ entries, mode, selectedId, onSelect, searching }: 
     data-entry-id={entry.id} aria-pressed={entry.id === selectedId} title={entry.url} onKeyDown={navigate} onClick={() => onSelect(entry.id)}>
     <span className="traffic-request-line"><span className="traffic-method">{entry.method}</span>
       {entry.method === 'CONNECT' && <Icon name="shield" size={13}/>}<span className="traffic-path">{entry.method === 'CONNECT' ? t('networkInspector.tunnel') : label}</span></span>
-    {!treeMode && <small>{trafficAddress(entry).host}<span> · </span><time dateTime={new Date(entry.startedAt * 1000).toISOString()}>{trafficStarted(entry.startedAt)}</time></small>}
+    <small>{!treeMode && <>{trafficAddress(entry).host}<span> · </span></>}<time dateTime={new Date(entry.startedAt * 1000).toISOString()}>{trafficStarted(entry.startedAt)}</time>
+      {treeMode && <><span> · </span>{trafficTime(entry.durationMs ?? entry.elapsedMs)}<span> · </span>{trafficSize(entry.bytes)}</>}
+      {!treeMode && <span className="traffic-compact-size"><span> · </span>{trafficSize(entry.bytes)}</span>}</small>
   </button>;
   const node = (item: TrafficNode, root = false) => <details className="traffic-tree-node" key={item.key + searching} open={root || searching}>
     <summary title={item.label}><Icon name={root ? 'server' : 'layers'} size={14}/><span>{item.label}</span><small>{item.count}</small></summary>
     <div className="traffic-tree-children">{item.children.map(child => node(child))}
       {item.entries.map(({ entry, label }) => <div key={entry.id} className="traffic-tree-leaf" data-selected={entry.id === selectedId} data-phase={trafficPhase(entry)}>
-        {request(entry, label, true)}<TrafficStatus entry={entry} compact/></div>)}
+        {request(entry, label, true)}<TrafficStatus entry={entry}/></div>)}
     </div>
   </details>;
   const column = (key: typeof sort.key, label: string) => <th aria-sort={sort.key === key ? sort.descending ? 'descending' : 'ascending' : 'none'}>
@@ -45,11 +48,11 @@ export function TrafficList({ entries, mode, selectedId, onSelect, searching }: 
       {label}{sort.key === key && <Icon name={sort.descending ? 'arrowDown' : 'arrowUp'} size={12}/>}</button></th>;
   return <div className="traffic-list" tabIndex={0} role="region" aria-label={t('networkInspector.requestList')}>
     {mode === 'structure' ? <div className="traffic-tree">{tree.map(item => node(item, true))}</div> : <table className="traffic-sequence">
-      <thead><tr>{column('startedAt', t('networkInspector.url'))}{column('status', t('networkInspector.status'))}
+      <thead><tr>{column('startedAt', t('networkInspector.requestAndTime'))}{column('status', t('networkInspector.status'))}
         {column('durationMs', t('networkInspector.durationColumn'))}{column('bytes', t('networkInspector.sizeColumn'))}</tr></thead>
       <tbody>{sorted.map(entry => <tr key={entry.id} data-selected={entry.id === selectedId} data-phase={trafficPhase(entry)}>
-        <td>{request(entry, trafficAddress(entry).path)}</td><td><TrafficStatus entry={entry} compact/></td>
-        <td>{trafficTime(entry.durationMs)}</td><td>{trafficSize(entry.bytes)}</td></tr>)}</tbody>
+        <td>{request(entry, trafficAddress(entry).path)}</td><td><TrafficStatus entry={entry}/></td>
+        <td>{trafficTime(entry.durationMs ?? entry.elapsedMs)}</td><td>{trafficSize(entry.bytes)}</td></tr>)}</tbody>
     </table>}
   </div>;
 }

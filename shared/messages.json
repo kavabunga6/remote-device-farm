@@ -13028,12 +13028,12 @@
     "ru": "Читаем состояние записи"
   },
   "networkInspector.pcap": {
-    "en": "Record raw PCAP",
-    "ru": "Записывать исходный PCAP"
+    "en": "Record packets (PCAP)",
+    "ru": "Записывать пакеты (PCAP)"
   },
   "networkInspector.hint": {
-    "en": "The inspector temporarily uses the Android HTTP proxy. HTTPS remains encrypted; apps that ignore the proxy appear only in PCAP. The list retains the last 200 requests. Capture stops after 10 minutes or about 30 MiB of PCAP.",
-    "ru": "Инспектор временно использует HTTP-прокси Android. HTTPS остаётся зашифрованным; приложения, игнорирующие прокси, видны только в PCAP. В списке — последние 200 запросов. Запись останавливается через 10 минут или примерно при 30 МиБ PCAP."
+    "en": "The inspector temporarily uses Android's HTTP proxy. The buffer retains 200 records and reports evictions. Capture stops after 10 minutes or about 30 MiB of PCAP. Up to 64 proxy connections can stay open; resource refusals are counted.",
+    "ru": "Инспектор временно использует HTTP-прокси Android. Буфер хранит 200 записей и показывает вытеснение. Запись останавливается через 10 минут или примерно при 30 МиБ PCAP. Открытых соединений прокси — до 64; отказы по лимиту учитываются."
   },
   "networkInspector.pcapWarning": {
     "en": "Raw PCAP may contain credentials and application data. Store and share it with care.",
@@ -13156,12 +13156,12 @@
     "ru": "Заголовки не записаны."
   },
   "networkInspector.headerLimits": {
-    "en": "Only Content-Type and Content-Length are retained. Bodies, cookies and authorization headers are not recorded.",
-    "ru": "Сохраняются только Content-Type и Content-Length. Тела сообщений, cookies и заголовки авторизации не записываются."
+    "en": "A fixed header allowlist is retained. Cookies and authorization headers are excluded.",
+    "ru": "Сохраняются заголовки из фиксированного списка. Cookies и заголовки авторизации исключены."
   },
   "networkInspector.encrypted": {
-    "en": "Encrypted CONNECT tunnel. HTTP requests, headers and bodies inside it are not visible. Final duration and transferred bytes appear when the connection closes.",
-    "ru": "Зашифрованный CONNECT-туннель. HTTP-запросы, заголовки и тела сообщений внутри него не видны. Итоговые время и объём появятся после закрытия соединения."
+    "en": "Encrypted CONNECT tunnel. HTTP messages inside it are not visible. Directional counts include encrypted data; only the connection phase is measured.",
+    "ru": "Зашифрованный CONNECT-туннель. HTTP-сообщения внутри него не видны. Объёмы включают зашифрованные данные; измеряется только фаза подключения."
   },
   "networkInspector.selectRequest": {
     "en": "Select a request to inspect its details. Use ↑ and ↓ to move between requests.",
@@ -13220,8 +13220,8 @@
     "ru": "Фильтр трафика"
   },
   "networkInspector.all": {
-    "en": "All traffic",
-    "ru": "Весь трафик"
+    "en": "All records",
+    "ru": "Все записи"
   },
   "networkInspector.httpOnly": {
     "en": "HTTP requests",
@@ -13290,5 +13290,329 @@
   "networkInspector.sortBy": {
     "en": "Sort by: {p0}",
     "ru": "Сортировать по: {p0}"
+  },
+  "networkInspector.restartRequired": {
+    "en": "Update the agent and start a new session for detailed traffic diagnostics.",
+    "ru": "Для подробной диагностики обновите агент и создайте новую сессию."
+  },
+  "networkInspector.captureChanged": {
+    "en": "Capture changed during download. Download the file again.",
+    "ru": "Запись изменилась во время скачивания. Скачайте файл заново."
+  },
+  "networkInspector.harTunnelNote": {
+    "en": "Encrypted tunnel metadata. Connection duration and directional bytes are in _tunnel; no decrypted HTTP response is represented.",
+    "ru": "Метаданные зашифрованного туннеля. Время соединения и объёмы по направлениям — в _tunnel; расшифрованный HTTP-ответ отсутствует."
+  },
+  "networkInspector.harUnmeasured": {
+    "en": "Timing phases were not measured. Required HAR timing fields use zero placeholders; elapsed time is retained in _elapsedMs.",
+    "ru": "Фазы не измерялись. Обязательные поля времени HAR заполнены нулевыми заглушками; прошедшее время сохранено в _elapsedMs."
+  },
+  "networkInspector.secondsValue": {
+    "en": "{p0} s",
+    "ru": "{p0} с"
+  },
+  "networkInspector.transportError": {
+    "en": "Transfer failed",
+    "ru": "Ошибка передачи"
+  },
+  "networkInspector.httpError": {
+    "en": "HTTP error",
+    "ru": "HTTP-ошибка"
+  },
+  "networkInspector.connecting": {
+    "en": "Connecting",
+    "ru": "Подключение"
+  },
+  "networkInspector.sending": {
+    "en": "Sending request",
+    "ru": "Отправка запроса"
+  },
+  "networkInspector.waiting": {
+    "en": "Waiting for response",
+    "ru": "Ожидание ответа"
+  },
+  "networkInspector.receiving": {
+    "en": "Receiving response",
+    "ru": "Получение ответа"
+  },
+  "networkInspector.connectionOpen": {
+    "en": "Open",
+    "ru": "Открыто"
+  },
+  "networkInspector.connectionClosed": {
+    "en": "Closed",
+    "ru": "Закрыто"
+  },
+  "networkInspector.captureStoppedEntry": {
+    "en": "Capture stopped; transfer may continue",
+    "ru": "Запись остановлена; передача могла продолжиться"
+  },
+  "networkInspector.unknownOutcome": {
+    "en": "Outcome not recorded",
+    "ru": "Исход не записан"
+  },
+  "networkInspector.errorDns": {
+    "en": "DNS lookup failed.",
+    "ru": "Не удалось определить адрес сервера."
+  },
+  "networkInspector.errorTimeout": {
+    "en": "The network operation timed out.",
+    "ru": "Истекло время ожидания сетевой операции."
+  },
+  "networkInspector.errorRefused": {
+    "en": "The remote host refused the connection.",
+    "ru": "Сервер отклонил подключение."
+  },
+  "networkInspector.errorIncomplete": {
+    "en": "The HTTP message ended before the declared body was received.",
+    "ru": "HTTP-сообщение оборвалось до получения полного тела."
+  },
+  "networkInspector.errorReset": {
+    "en": "The connection was reset or closed during transfer.",
+    "ru": "Соединение было сброшено или закрыто во время передачи."
+  },
+  "networkInspector.errorProtocol": {
+    "en": "The proxy could not process the HTTP message.",
+    "ru": "Прокси не удалось обработать HTTP-сообщение."
+  },
+  "networkInspector.errorIo": {
+    "en": "A network read or write failed.",
+    "ru": "Ошибка чтения или записи в сеть."
+  },
+  "networkInspector.proxyShort": {
+    "en": "Proxy",
+    "ru": "Прокси"
+  },
+  "networkInspector.upstreamStatus": {
+    "en": "Server HTTP status",
+    "ru": "HTTP-статус сервера"
+  },
+  "networkInspector.proxyStatus": {
+    "en": "Proxy status",
+    "ru": "Статус прокси"
+  },
+  "networkInspector.errorPhase": {
+    "en": "Failed during",
+    "ru": "Фаза сбоя"
+  },
+  "networkInspector.elapsed": {
+    "en": "Elapsed",
+    "ru": "Прошло"
+  },
+  "networkInspector.fromDevice": {
+    "en": "From device",
+    "ru": "От устройства"
+  },
+  "networkInspector.toDevice": {
+    "en": "To device",
+    "ru": "К устройству"
+  },
+  "networkInspector.requestBytes": {
+    "en": "Request body",
+    "ru": "Тело запроса"
+  },
+  "networkInspector.responseBytes": {
+    "en": "Response body",
+    "ru": "Тело ответа"
+  },
+  "networkInspector.payloadBytes": {
+    "en": "Byte counts exclude HTTP headers.",
+    "ru": "В объёмы не входят HTTP-заголовки."
+  },
+  "networkInspector.timings": {
+    "en": "Measured phases",
+    "ru": "Измеренные фазы"
+  },
+  "networkInspector.connectTiming": {
+    "en": "Connect, including DNS",
+    "ru": "Подключение, включая DNS"
+  },
+  "networkInspector.bodyPreview": {
+    "en": "Body preview",
+    "ru": "Предпросмотр тела"
+  },
+  "networkInspector.bodyTruncated": {
+    "en": "Only the first {p0} bytes were retained.",
+    "ru": "Сохранены только первые {p0} байт."
+  },
+  "networkInspector.bodyEmpty": {
+    "en": "No body bytes recorded.",
+    "ru": "Байты тела не записаны."
+  },
+  "networkInspector.bodyBinary": {
+    "en": "Binary content is not retained in the text preview.",
+    "ru": "Бинарное содержимое не сохраняется в текстовом предпросмотре."
+  },
+  "networkInspector.bodyEncoded": {
+    "en": "Compressed or encoded content is not decoded for the preview.",
+    "ru": "Сжатое или кодированное содержимое не декодируется для предпросмотра."
+  },
+  "networkInspector.bodyDisabled": {
+    "en": "Body previews were disabled for this capture.",
+    "ru": "Для этой записи предпросмотр тел был выключен."
+  },
+  "networkInspector.nextCaptureOptions": {
+    "en": "Next capture settings",
+    "ru": "Параметры следующей записи"
+  },
+  "networkInspector.retained": {
+    "en": "This request left the buffer. Its last available snapshot is retained here; it no longer receives updates.",
+    "ru": "Запрос вытеснен из буфера. Здесь сохранён последний доступный снимок; он больше не обновляется."
+  },
+  "networkInspector.filteredSelection": {
+    "en": "The selected request is hidden by the current filters.",
+    "ru": "Выбранный запрос скрыт текущими фильтрами."
+  },
+  "networkInspector.exportSelected": {
+    "en": "Download selected request as HAR",
+    "ru": "Скачать выбранный запрос в HAR"
+  },
+  "networkInspector.exportShown": {
+    "en": "Download the displayed records as HAR, including the frozen snapshot and filters.",
+    "ru": "Скачать показанные записи в HAR с учётом заморозки и фильтров."
+  },
+  "networkInspector.harShown": {
+    "en": "HAR · shown",
+    "ru": "HAR · список"
+  },
+  "networkInspector.enablePcap": {
+    "en": "Enable packet recording before starting capture to create a PCAP file.",
+    "ru": "Чтобы получить файл PCAP, включите запись пакетов перед запуском."
+  },
+  "networkInspector.optionsShort": {
+    "en": "Settings",
+    "ru": "Параметры"
+  },
+  "networkInspector.expand": {
+    "en": "Expand",
+    "ru": "Развернуть"
+  },
+  "networkInspector.visibleScope": {
+    "en": "HTTP: headers and metadata · HTTPS: encrypted connections",
+    "ru": "HTTP: заголовки и метаданные · HTTPS: зашифрованные соединения"
+  },
+  "networkInspector.captureBodies": {
+    "en": "Retain HTTP text body previews",
+    "ru": "Сохранять предпросмотр текстовых HTTP-тел"
+  },
+  "networkInspector.bodyWarning": {
+    "en": "Off by default. Up to 4 KiB per request and response; previews and HAR can contain credentials and application data. HTTPS is not decrypted.",
+    "ru": "По умолчанию выключено. До 4 КиБ на запрос и ответ; предпросмотр и HAR могут содержать учётные данные и данные приложений. HTTPS не расшифровывается."
+  },
+  "networkInspector.proxyDisconnected": {
+    "en": "Device proxy disconnected",
+    "ru": "Прокси устройства отключён"
+  },
+  "networkInspector.proxyDisconnectedHelp": {
+    "en": "Capture is enabled, but the Android proxy no longer points to the inspector. HTTP requests may be missing; PCAP can continue independently. Stop capture before starting again.",
+    "ru": "Запись включена, но прокси Android больше не направлен на инспектор. HTTP-запросы могут отсутствовать; PCAP записывается независимо. Остановите запись перед новым запуском."
+  },
+  "networkInspector.overloaded": {
+    "en": "The proxy rejected {p0} connections at its resource limit. These attempts are absent from the list.",
+    "ru": "Прокси отклонил соединений из-за лимита ресурсов: {p0}. Эти попытки отсутствуют в списке."
+  },
+  "networkInspector.pcapStopHelp": {
+    "en": "Packet capture stop could not be confirmed. Retry stopping before starting another capture or downloading PCAP.",
+    "ru": "Остановку записи пакетов не удалось подтвердить. Повторите остановку перед новой записью или скачиванием PCAP."
+  },
+  "networkInspector.retryStop": {
+    "en": "Retry stop",
+    "ru": "Повторить остановку"
+  },
+  "networkInspector.disconnectProxy": {
+    "en": "Disconnect proxy",
+    "ru": "Отключить прокси"
+  },
+  "networkInspector.emptyRecording": {
+    "en": "Capture is running. Open or restart the Android app to create new connections. HTTPS appears as CONNECT; apps that ignore the system proxy are visible only in PCAP.",
+    "ru": "Запись идёт. Откройте или перезапустите Android-приложение для новых соединений. HTTPS виден как CONNECT; трафик приложений, игнорирующих системный прокси, доступен только в PCAP."
+  },
+  "networkInspector.emptyIdle": {
+    "en": "Start capture, then reproduce the action in the Android app. HTTP bodies require a separate setting; HTTPS content remains encrypted.",
+    "ru": "Начните запись и повторите действие в Android-приложении. Для HTTP-тел нужна отдельная настройка; содержимое HTTPS остаётся зашифрованным."
+  },
+  "networkInspector.stoppedManual": {
+    "en": "Stopped manually",
+    "ru": "Остановлено вручную"
+  },
+  "networkInspector.stoppedTime": {
+    "en": "Stopped: 10-minute limit",
+    "ru": "Остановлено: лимит 10 минут"
+  },
+  "networkInspector.stoppedSize": {
+    "en": "Stopped: PCAP size limit",
+    "ru": "Остановлено: лимит размера PCAP"
+  },
+  "networkInspector.stoppedRecovery": {
+    "en": "Stopped during recovery",
+    "ru": "Остановлено при восстановлении"
+  },
+  "networkInspector.stoppedFailed": {
+    "en": "Capture start failed",
+    "ru": "Запись не запустилась"
+  },
+  "networkInspector.pcapOff": {
+    "en": "PCAP off",
+    "ru": "PCAP выключен"
+  },
+  "networkInspector.pcapStarting": {
+    "en": "Starting PCAP",
+    "ru": "Запуск PCAP"
+  },
+  "networkInspector.pcapRecording": {
+    "en": "PCAP recording",
+    "ru": "Идёт запись PCAP"
+  },
+  "networkInspector.pcapFinalizing": {
+    "en": "Finalizing PCAP",
+    "ru": "Завершение PCAP"
+  },
+  "networkInspector.pcapReady": {
+    "en": "PCAP ready",
+    "ru": "PCAP готов"
+  },
+  "networkInspector.pcapFailed": {
+    "en": "PCAP stop unconfirmed",
+    "ru": "Остановка PCAP не подтверждена"
+  },
+  "networkInspector.bufferLimit": {
+    "en": "Buffer: {p0}",
+    "ru": "Буфер: {p0}"
+  },
+  "networkInspector.evicted": {
+    "en": "Evicted: {p0}",
+    "ru": "Вытеснено: {p0}"
+  },
+  "networkInspector.oldSnapshot": {
+    "en": "Previous capture snapshot",
+    "ru": "Снимок предыдущей записи"
+  },
+  "networkInspector.frozenNew": {
+    "en": "Frozen · {p0} new",
+    "ru": "Заморожено · новых: {p0}"
+  },
+  "networkInspector.connections": {
+    "en": "Connections: {p0}/{p1}",
+    "ru": "Соединения: {p0}/{p1}"
+  },
+  "networkInspector.snapshotShort": {
+    "en": "Snapshot",
+    "ru": "Снимок"
+  },
+  "networkInspector.requestAndTime": {
+    "en": "Request / start",
+    "ru": "Запрос / начало"
+  },
+  "networkInspector.pcapWarningShort": {
+    "en": "Raw PCAP can include credentials and private data.",
+    "ru": "Исходный PCAP может содержать учётные данные и приватные данные."
+  },
+  "networkInspector.bodyPreviewOn": {
+    "en": "HTTP body previews on",
+    "ru": "Предпросмотр HTTP-тел включён"
+  },
+  "networkInspector.bodyUnavailable": {
+    "en": "No body preview is available for this entry. The response may not have arrived or the capture did not retain it.",
+    "ru": "Предпросмотр тела для этой записи недоступен. Ответ мог ещё не поступить или запись не сохранила его."
   }
 }

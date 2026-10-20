@@ -20,7 +20,7 @@ export function filterTraffic(entries: TrafficEntry[], query: string, filter: Tr
   return entries.filter(entry => {
     if (filter === 'http' && entry.method === 'CONNECT') return false;
     if (filter === 'tunnels' && entry.method !== 'CONNECT') return false;
-    if (filter === 'errors' && (entry.status === null || entry.status < 400)) return false;
+    if (filter === 'errors' && entry.outcome !== 'error' && (entry.status === null || entry.status < 400)) return false;
     const text = (entry.method + ' ' + readable(entry.url) + ' ' + (entry.status ?? '')).toLowerCase();
     return terms.every(term => text.includes(term));
   }).slice().sort((a, b) => a.startedAt - b.startedAt || a.id - b.id);
@@ -69,6 +69,13 @@ export function trafficTree(entries: TrafficEntry[]): TrafficNode[] {
   return [...hosts.values()];
 }
 
-export function trafficPhase(entry: TrafficEntry): 'error' | 'pending' | 'complete' {
-  return entry.status !== null && entry.status >= 400 ? 'error' : entry.durationMs === null ? 'pending' : 'complete';
+export function trafficPhase(entry: TrafficEntry) {
+  if (entry.outcome === 'error') return 'error' as const;
+  if (entry.status !== null && entry.status >= 400) return 'httpError' as const;
+  if (entry.outcome === 'open') return 'open' as const;
+  if (entry.outcome === 'stopped') return 'stopped' as const;
+  if (entry.outcome === 'complete') return 'complete' as const;
+  if (entry.outcome === 'pending' || entry.durationMs === null)
+    return ({ connect: 'connecting', send: 'sending', wait: 'waiting', receive: 'receiving' } as const)[entry.phase as 'connect' | 'send' | 'wait' | 'receive'] ?? 'pending';
+  return 'unknown' as const;
 }

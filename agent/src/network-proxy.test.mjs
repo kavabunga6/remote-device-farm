@@ -7,6 +7,7 @@ test('the real HTTP proxy streams requests, omits credentials and tunnels CONNEC
   const script = [
     'import importlib.util,http.client,http.server,json,socket,socketserver,threading',
     'spec=importlib.util.spec_from_file_location("proxy",'+JSON.stringify(source)+'); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)',
+    'm.capture.start()',
     'class Origin(http.server.BaseHTTPRequestHandler):',
     ' def do_POST(self):',
     '  body=self.rfile.read(int(self.headers["Content-Length"])); self.send_response(201); self.send_header("Content-Type","text/plain"); self.send_header("Set-Cookie","private=secret"); self.end_headers(); self.wfile.write(body)',
