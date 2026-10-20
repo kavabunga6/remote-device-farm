@@ -13614,5 +13614,41 @@
   "networkInspector.bodyUnavailable": {
     "en": "No body preview is available for this entry. The response may not have arrived or the capture did not retain it.",
     "ru": "Предпросмотр тела для этой записи недоступен. Ответ мог ещё не поступить или запись не сохранила его."
+  },
+  "networkInspector.recordShort": {
+    "en": "Record",
+    "ru": "Запись"
+  },
+  "networkInspector.stopShort": {
+    "en": "Stop",
+    "ru": "Стоп"
+  },
+  "networkInspector.exportMenu": {
+    "en": "Export",
+    "ru": "Экспорт"
+  },
+  "networkInspector.harMenuHelp": {
+    "en": "The displayed list, including filters and frozen records.",
+    "ru": "Показанный список с учётом фильтров и заморозки."
+  },
+  "networkInspector.scopeShort": {
+    "en": "HTTP · TLS tunnels",
+    "ru": "HTTP · TLS-туннели"
+  },
+  "networkInspector.backToList": {
+    "en": "Back to requests",
+    "ru": "К списку запросов"
+  },
+  "networkInspector.queryParameters": {
+    "en": "Query parameters",
+    "ru": "Параметры запроса"
+  },
+  "networkInspector.detailsEmptyTitle": {
+    "en": "Inspect a request",
+    "ru": "Выберите запрос"
+  },
+  "networkInspector.detailsEmptyHint": {
+    "en": "Select a row to view headers, body previews and timings.",
+    "ru": "Нажмите на строку, чтобы увидеть заголовки, предпросмотр тела и время передачи."
   }
 }

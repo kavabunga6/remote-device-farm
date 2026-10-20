@@ -9,8 +9,8 @@ Open a running emulator session and select **Traffic**. Start capture, reproduce
 - Select an entry to view **Overview**, **Request** or **Response**. Request and response headers are displayed separately. HTTPS entries describe encrypted tunnels with an explicit open/closed state and live directional byte counts. HTTP status, transport outcome and failure phase are separate fields.
 - Search by URL, method or status. Combine space-separated terms, or filter HTTP requests, TLS tunnels and errors.
 - **Freeze list updates** holds the visible records while capture continues. Resuming displays the latest records. Updates preserve selection and scroll position. The eviction counter reports records removed from the buffer; the selected record remains as its last available snapshot.
-- Drag the divider between the list and details to resize them. Arrow keys adjust a focused divider; double-click resets it. Wide panels place details beside the list; compact panels stack them.
-- **Record packets (PCAP)** enables packet capture before starting. **Settings** contains the optional HTTP body preview and limits. The toolbar HAR export contains exactly the displayed, filtered or frozen records. The selected request has a separate HAR download; stop capture before downloading PCAP.
+- Wide panels place details beside the list. Drag the divider or use its arrow keys to resize the panes; double-click resets it. In a compact panel, selecting a request opens its details at full height. **Back to requests** restores the list and selection.
+- **Settings** contains **Record packets (PCAP)**, the optional HTTP body preview and limits. Both recording options are off by default. **Export** offers HAR for the displayed, filtered or frozen records and the raw PCAP download. The selected request has a separate HAR download; stop capture before downloading PCAP.
 
 The inspector temporarily sets Android's HTTP proxy. Disable an existing custom proxy first. Stopping restores the disabled-proxy setting only when the inspector still owns it; a subsequent manual proxy change is preserved. Existing app connections may require restarting the app.
 

@@ -6,8 +6,9 @@ import type { TrafficEntry } from './debug-api';
 import { trafficAddress, trafficPhase } from './traffic-entries';
 
 export function trafficSize(bytes: number) {
-  return new Intl.NumberFormat(getLocale(), { style: 'unit', unitDisplay: 'narrow', unit: bytes >= 1000 ? 'kilobyte' : 'byte', maximumFractionDigits: 1 })
-    .format(bytes >= 1000 ? bytes / 1000 : bytes);
+  const scale = bytes >= 1e9 ? 1e9 : bytes >= 1e6 ? 1e6 : bytes >= 1000 ? 1000 : 1;
+  const unit = scale === 1e9 ? 'gigabyte' : scale === 1e6 ? 'megabyte' : scale === 1000 ? 'kilobyte' : 'byte';
+  return new Intl.NumberFormat(getLocale(), { style: 'unit', unitDisplay: 'narrow', unit, maximumFractionDigits: 1 }).format(bytes / scale);
 }
 export function trafficTime(ms: number | null | undefined) {
   if (ms == null) return '—';
@@ -47,8 +48,9 @@ type DetailTab = 'overview' | 'request' | 'response';
 const tabs: DetailTab[] = ['overview', 'request', 'response'];
 const tabKeys = { overview: 'networkInspector.overview', request: 'networkInspector.request', response: 'networkInspector.response' } as const;
 
-export function TrafficDetails({ entry, detached, filtered, onOptions, onExport }: {
-  entry?: TrafficEntry; detached: boolean; filtered: boolean; onOptions: () => void; onExport?: (entry: TrafficEntry) => void;
+export function TrafficDetails({ entry, detached, filtered, onOptions, onExport, onBack }: {
+  entry?: TrafficEntry; detached: boolean; filtered: boolean; onOptions: () => void;
+  onExport?: (entry: TrafficEntry) => void; onBack?: () => void;
 }) {
   const [tab, setTab] = useState<DetailTab>('overview');
   const { notify, notifyError } = useNotifications();
@@ -73,56 +75,74 @@ export function TrafficDetails({ entry, detached, filtered, onOptions, onExport 
       notify({ kind: 'success', title: t('networkInspector.copied') });
     } catch (cause) { notifyError(t('networkInspector.copyFailed'), cause); }
   };
+  let preview = body?.text;
+  if (preview && body?.mimeType.includes('json')) {
+    try { preview = JSON.stringify(JSON.parse(preview), null, 2); } catch { /* Keep a partial text preview readable. */ }
+  }
+  const timingTotal = entry?.timings ? Math.max(1, ...Object.values(entry.timings)) : 1;
+  let query: [string, string][] = [];
+  if (entry && tab === 'request' && !tunnel) {
+    try { query = [...new URL(entry.url).searchParams.entries()]; } catch { /* Keep the recorded URL. */ }
+  }
   return <section className="traffic-detail" aria-label={t('networkInspector.details')}>
-    <div className="traffic-detail-tabs" role="tablist" aria-label={t('networkInspector.details')} onKeyDown={navigateTabs}>
-      {tabs.map(id => <button key={id} type="button" role="tab" id={'traffic-detail-tab-' + id} aria-controls={'traffic-detail-' + id}
-        tabIndex={id === tab ? 0 : -1} aria-selected={id === tab} onClick={() => setTab(id)}>{t(tabKeys[id])}</button>)}
-    </div>
-    <div className="traffic-detail-body" role="tabpanel" id={'traffic-detail-' + tab} aria-labelledby={'traffic-detail-tab-' + tab} tabIndex={0}>
-      {!entry ? <div className="traffic-empty"><Icon name="list" size={24}/><p>{t('networkInspector.selectRequest')}</p></div> : <>
-        {(detached || filtered) && <p className="traffic-note traffic-retained">{t(detached ? 'networkInspector.retained' : 'networkInspector.filteredSelection')}</p>}
+    {onBack && <button type="button" className="traffic-back" onClick={onBack}><Icon name="chevronLeft" size={16}/>{t('networkInspector.backToList')}</button>}
+    {!entry ? <div className="traffic-empty traffic-detail-empty"><Icon name="list" size={24}/><strong>{t('networkInspector.detailsEmptyTitle')}</strong><p>{t('networkInspector.detailsEmptyHint')}</p></div> : <>
+      <header className="traffic-detail-header">
         <div className="traffic-selected-title">
-          <strong>{entry.method}</strong><span title={address!.host}>{address!.host}</span>
+          <span className="traffic-method-tag">{entry.method}</span><strong title={address!.pathname}>{tunnel ? address!.host : address!.pathname}</strong>
           <div className="traffic-detail-actions">
             {onExport && <button className="traffic-control traffic-icon" type="button" onClick={() => onExport(entry)} aria-label={t('networkInspector.exportSelected')} title={t('networkInspector.exportSelected')}><Icon name="download" size={15}/></button>}
             <button className="traffic-control traffic-icon" type="button" onClick={() => void copyUrl()} aria-label={t('networkInspector.copyUrl')} title={t('networkInspector.copyUrl')}><Icon name="copy" size={15}/></button>
           </div>
         </div>
-        <div className="traffic-full-url">{entry.url}</div>
+        <div className="traffic-full-url" title={entry.url}>{entry.url}</div>
+      </header>
+      <div className="traffic-detail-tabs" role="tablist" aria-label={t('networkInspector.details')} onKeyDown={navigateTabs}>
+        {tabs.map(id => <button key={id} type="button" role="tab" id={'traffic-detail-tab-' + id} aria-controls={'traffic-detail-' + id}
+          tabIndex={id === tab ? 0 : -1} aria-selected={id === tab} onClick={() => setTab(id)}>{t(tabKeys[id])}</button>)}
+      </div>
+      <div className="traffic-detail-body" role="tabpanel" id={'traffic-detail-' + tab} aria-labelledby={'traffic-detail-tab-' + tab} tabIndex={0}>
+        {(detached || filtered) && <p className="traffic-note traffic-retained">{t(detached ? 'networkInspector.retained' : 'networkInspector.filteredSelection')}</p>}
         {entry.outcome === 'error' && <p className="traffic-note traffic-error"><Icon name="alert" size={16}/>{t(errorKeys[entry.errorKind ?? 'io'])}</p>}
         {tunnel && <p className="traffic-note"><Icon name="shield" size={16}/>{t('networkInspector.encrypted')}</p>}
         {tab === 'overview' ? <>
-          <dl className="traffic-properties">
-            <div><dt>{t(entry.statusSource === 'proxy' ? 'networkInspector.proxyStatus' : 'networkInspector.upstreamStatus')}</dt><dd>{entry.status ?? '—'}</dd></div>
-            <div><dt>{t('networkInspector.state')}</dt><dd>{t(phaseKeys[trafficPhase(entry)])}</dd></div>
-            {entry.errorPhase && <div><dt>{t('networkInspector.errorPhase')}</dt><dd>{t(stageKeys[entry.errorPhase as keyof typeof stageKeys] ?? 'networkInspector.unknownOutcome')}</dd></div>}
-            <div><dt>{t('networkInspector.kind')}</dt><dd>{t(tunnel ? 'networkInspector.tunnel' : 'networkInspector.httpRequest')}</dd></div>
-            <div><dt>{t('networkInspector.started')}</dt><dd>{new Date(entry.startedAt * 1000).toLocaleString(getLocale(), { hour12: false })}</dd></div>
+          <dl className="traffic-summary">
+            <div><dt>{t(entry.statusSource === 'proxy' ? 'networkInspector.proxyStatus' : 'networkInspector.upstreamStatus')}</dt><dd><TrafficStatus entry={entry}/></dd></div>
             <div><dt>{t(entry.durationMs === null ? 'networkInspector.elapsed' : 'networkInspector.duration')}</dt><dd>{trafficTime(entry.durationMs ?? entry.elapsedMs)}</dd></div>
             <div><dt>{t(tunnel ? 'networkInspector.fromDevice' : 'networkInspector.requestBytes')}</dt><dd>{entry.bytesSent == null ? '—' : trafficSize(entry.bytesSent)}</dd></div>
             <div><dt>{t(tunnel ? 'networkInspector.toDevice' : 'networkInspector.responseBytes')}</dt><dd>{entry.bytesReceived == null ? '—' : trafficSize(entry.bytesReceived)}</dd></div>
           </dl>
-          {!tunnel && <p className="traffic-note">{t('networkInspector.payloadBytes')}</p>}
-          {entry.timings && <><h3>{t('networkInspector.timings')}</h3><dl className="traffic-properties">
-            <div><dt>{t('networkInspector.connectTiming')}</dt><dd>{trafficTime(entry.timings.connect)}</dd></div>
-            {!tunnel && (['send', 'wait', 'receive'] as const).map(stage => <div key={stage}><dt>{t(stageKeys[stage])}</dt><dd>{trafficTime(entry.timings![stage])}</dd></div>)}
-          </dl></>}
+          <dl className="traffic-properties">
+            <div><dt>{t('networkInspector.state')}</dt><dd>{t(phaseKeys[trafficPhase(entry)])}</dd></div>
+            {entry.errorPhase && <div><dt>{t('networkInspector.errorPhase')}</dt><dd>{t(stageKeys[entry.errorPhase as keyof typeof stageKeys] ?? 'networkInspector.unknownOutcome')}</dd></div>}
+            <div><dt>{t('networkInspector.started')}</dt><dd>{new Date(entry.startedAt * 1000).toLocaleString(getLocale(), { hour12: false })}</dd></div>
+          </dl>
+          {entry.timings && <div className="traffic-timings"><h3>{t('networkInspector.timings')}</h3><dl>
+            {(tunnel ? ['connect'] as const : ['connect', 'send', 'wait', 'receive'] as const).map(stage => <div key={stage}>
+              <dt>{t(stage === 'connect' ? 'networkInspector.connectTiming' : stageKeys[stage])}</dt>
+              <dd><span className="traffic-timing-track" aria-hidden="true"><span style={{ width: (entry.timings![stage] / timingTotal * 100) + '%' }}/></span><span>{trafficTime(entry.timings![stage])}</span></dd>
+            </div>)}
+          </dl></div>}
+          {!tunnel && <p className="traffic-footnote">{t('networkInspector.payloadBytes')}</p>}
         </> : tunnel ? null : <>
           <h3>{t(tab === 'request' ? 'networkInspector.requestHeaders' : 'networkInspector.responseHeaders')}</h3>
           {headers.length ? <dl className="traffic-properties traffic-headers">{headers.map((header, index) =>
             <div key={index}><dt>{header.name}</dt><dd>{header.value}</dd></div>)}</dl>
             : <p className="traffic-muted">{t('networkInspector.noRecordedHeaders')}</p>}
-          <p className="traffic-note">{t('networkInspector.headerLimits')}</p>
+          <p className="traffic-footnote">{t('networkInspector.headerLimits')}</p>
+          {query.length > 0 && <><h3>{t('networkInspector.queryParameters')}</h3><dl className="traffic-properties traffic-headers">
+            {query.map(([name, value], index) => <div key={index}><dt>{name}</dt><dd>{value}</dd></div>)}
+          </dl></>}
           <h3>{t('networkInspector.bodyPreview')}</h3>
-          {typeof body?.text === 'string' ? <>
-            {body.truncated && <p className="traffic-note">{t('networkInspector.bodyTruncated', { p0: body.limit })}</p>}
-            {body.text ? <pre className="traffic-body-preview">{body.text}</pre> : <p className="traffic-muted">{t('networkInspector.bodyEmpty')}</p>}
-          </> : <>
-            <p className="traffic-muted">{t(!body ? 'networkInspector.bodyUnavailable' : body.reason === 'binary' ? 'networkInspector.bodyBinary' : body?.reason === 'encoded' ? 'networkInspector.bodyEncoded' : 'networkInspector.bodyDisabled')}</p>
+          {typeof preview === 'string' ? <>
+            {body?.truncated && <p className="traffic-note">{t('networkInspector.bodyTruncated', { p0: body.limit })}</p>}
+            {preview ? <pre className="traffic-body-preview">{preview}</pre> : <p className="traffic-muted">{t('networkInspector.bodyEmpty')}</p>}
+          </> : <div className="traffic-body-empty">
+            <p>{t(!body ? 'networkInspector.bodyUnavailable' : body.reason === 'binary' ? 'networkInspector.bodyBinary' : body.reason === 'encoded' ? 'networkInspector.bodyEncoded' : 'networkInspector.bodyDisabled')}</p>
             {(!body || body.reason === 'disabled') && <button className="traffic-control" type="button" onClick={onOptions}>{t('networkInspector.nextCaptureOptions')}</button>}
-          </>}
+          </div>}
         </>}
-      </>}
-    </div>
+      </div>
+    </>}
   </section>;
 }

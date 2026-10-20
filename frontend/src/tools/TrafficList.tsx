@@ -51,7 +51,7 @@ export function TrafficList({ entries, mode, selectedId, onSelect, searching }: 
       <thead><tr>{column('startedAt', t('networkInspector.requestAndTime'))}{column('status', t('networkInspector.status'))}
         {column('durationMs', t('networkInspector.durationColumn'))}{column('bytes', t('networkInspector.sizeColumn'))}</tr></thead>
       <tbody>{sorted.map(entry => <tr key={entry.id} data-selected={entry.id === selectedId} data-phase={trafficPhase(entry)}>
-        <td>{request(entry, trafficAddress(entry).path)}</td><td><TrafficStatus entry={entry}/></td>
+        <td>{request(entry, trafficAddress(entry).pathname)}</td><td><TrafficStatus entry={entry}/></td>
         <td>{trafficTime(entry.durationMs ?? entry.elapsedMs)}</td><td>{trafficSize(entry.bytes)}</td></tr>)}</tbody>
     </table>}
   </div>;
