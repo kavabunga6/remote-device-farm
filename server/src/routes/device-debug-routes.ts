@@ -32,7 +32,7 @@ export function registerDeviceDebugRoutes(app: Express, context: ServerContext):
     const params = req.method === 'GET' ? { op: feature === 'webviews' ? 'list' : 'status' } : req.body;
     const allowed = feature === 'webviews' ? ['document', 'evaluate'] : ['start', 'stop', 'clear', 'pcap'];
     if (req.method !== 'GET' && (!params || !allowed.includes(params.op) || JSON.stringify(params).length > 20000))
-      throw new ApiError(400, 'invalid_debug_command', uiMessage('webviews.failed'));
+      throw new ApiError(400, 'invalid_debug_command', uiMessage(feature === 'webviews' ? 'webviews.failed' : 'networkInspector.failed'));
     if (req.method !== 'GET') {
       const fields = feature === 'webviews' ? (params.op === 'evaluate' ? ['op', 'target', 'expression'] : ['op', 'target'])
         : params.op === 'start' ? ['op', 'pcap'] : params.op === 'pcap' ? ['op', 'offset'] : ['op'];
@@ -41,7 +41,7 @@ export function registerDeviceDebugRoutes(app: Express, context: ServerContext):
           (params.op === 'evaluate' && (typeof params.expression !== 'string' || !params.expression.trim() || params.expression.length > 16384)) ||
           (params.op === 'start' && typeof params.pcap !== 'boolean') ||
           (params.op === 'pcap' && (!Number.isSafeInteger(params.offset) || params.offset < 0 || params.offset > 40 * 1024 * 1024)))
-        throw new ApiError(400, 'invalid_debug_command', uiMessage('webviews.failed'));
+        throw new ApiError(400, 'invalid_debug_command', uiMessage(feature === 'webviews' ? 'webviews.failed' : 'networkInspector.failed'));
     }
     if (params.op === 'pcap') assertPermission(user, 'sessions.files');
     activity.touch(session.id);
@@ -64,4 +64,7 @@ export function registerDeviceDebugRoutes(app: Express, context: ServerContext):
   });
   app.get('/api/sessions/:id/webviews', requireAuth, handle('webviews'));
   app.post('/api/sessions/:id/webviews', requireAuth, handle('webviews'));
+  app.get('/api/sessions/:id/network-inspector', requireAuth, handle('network-inspector'));
+  app.post('/api/sessions/:id/network-inspector', requireAuth, handle('network-inspector'));
+  app.get('/api/sessions/:id/network-inspector/har', requireAuth, handle('network-inspector', 'har'));
 }

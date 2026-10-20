@@ -29,7 +29,7 @@ function validateBuildRequest(request) {
 
 export function validateControlRequest(request) {
   if (!request || typeof request !== 'object' || Array.isArray(request) ||
-      typeof request.op !== 'string' || !['hostInfo', 'recover', 'inventory', 'start', 'stop', 'diagnostics', 'setEgress', 'emuConsole', 'cameraImage', 'setPolicy', 'emulatorCatalog', 'emulatorBuild', 'emulatorCancel', 'emulatorJobs', 'prewarmImage', 'imageCache', 'imageCacheRemove'].includes(request.op)) {
+      typeof request.op !== 'string' || !['hostInfo', 'recover', 'inventory', 'start', 'stop', 'diagnostics', 'setEgress', 'emuConsole', 'networkInspector', 'cameraImage', 'setPolicy', 'emulatorCatalog', 'emulatorBuild', 'emulatorCancel', 'emulatorJobs', 'prewarmImage', 'imageCache', 'imageCacheRemove'].includes(request.op)) {
     throw new Error('Invalid control operation');
   }
   const fields = {
@@ -38,7 +38,7 @@ export function validateControlRequest(request) {
     start: ['op', 'sessionId', 'profile', 'adbPublicKey'],
     stop: ['op', 'sessionId'], diagnostics: ['op', 'sessionId'], setEgress: ['op', 'sessionId', 'enabled'],
     emuConsole: ['op', 'sessionId', 'args'],
-    cameraImage: ['op', 'sessionId', 'params'],
+    cameraImage: ['op', 'sessionId', 'params'], networkInspector: ['op', 'sessionId', 'params'],
     setPolicy: ['op', 'policy'],
     prewarmImage: ['op', 'image', 'auth'],
     emulatorCatalog: ['op', 'refresh'], emulatorBuild: ['op', 'packages', 'target'], emulatorJobs: ['op', 'acknowledged'], emulatorCancel: ['op', 'jobId'],
@@ -55,6 +55,7 @@ export function validateControlRequest(request) {
     if(!Array.isArray(request.protectedRefs) || request.protectedRefs.length>1000 || request.protectedRefs.some(ref=>typeof ref!=='string'||ref.length>512))throw new Error('Invalid protected images');
     if(request.op==='imageCacheRemove' && (!Array.isArray(request.ids)||!request.ids.length||request.ids.length>100||request.ids.some(id=>typeof id!=='string'||!/^sha256:[a-f0-9]{64}$/.test(id))))throw new Error('Invalid cache image IDs');
   }
+  if (request.op === 'networkInspector' && (!request.params || !['status', 'start', 'stop', 'clear', 'pcap'].includes(request.params.op) || Object.keys(request.params).some(k => !['op', 'pcap', 'offset'].includes(k)))) throw new Error('Invalid network inspector command');
   if (request.op === 'setEgress' && typeof request.enabled !== 'boolean') throw new Error('Invalid egress state');
   if (request.op === 'cameraImage' && (!request.params || !['status', 'set', 'reset', 'show'].includes(request.params.op) || Object.keys(request.params).some(k => !['op', 'imageBase64'].includes(k)) || (request.params.op === 'set' && (typeof request.params.imageBase64 !== 'string' || request.params.imageBase64.length > 350000)))) throw new Error(agentMessage('agent.camera.invalidRequest'));
   if (request.op === 'emuConsole') validateEmuConsoleArgs(request.args);
@@ -95,7 +96,7 @@ export class ControlClient {
     signal?.throwIfAborted();
     const message = JSON.stringify({ op, ...fields }) + '\n';
     const requestLimit=isLargeOperation(op)?MAX_CACHE_REQUEST_BYTES:MAX_MESSAGE_BYTES;
-    const responseLimit=isCacheOperation(op)?8*1024*1024:256*1024;
+    const responseLimit=isCacheOperation(op)||op==='networkInspector'?8*1024*1024:256*1024;
     if (Buffer.byteLength(message) > requestLimit) return Promise.reject(new Error('Control request exceeds limit'));
     return new Promise((resolve, reject) => {
       const socket = net.createConnection(this.socketPath);
@@ -150,6 +151,7 @@ export class ControlClient {
   diagnostics(sessionId, onLog) { return this.request('diagnostics', { sessionId }, 15_000, { onLog }); }
   stop(sessionId, options = {}) { return this.request('stop', { sessionId }, 120_000, options); }
   setEgress(sessionId, enabled) { return this.request('setEgress', { sessionId, enabled }, 60_000); }
+  networkInspector(sessionId, params) { return this.request('networkInspector', { sessionId, params }, 60_000); }
   cameraImage(sessionId, params) { return this.request('cameraImage', { sessionId, params }, 60_000); }
   emuConsole(sessionId, args) { return this.request('emuConsole', { sessionId, args }, 30_000); }
   setPolicy(policy) { return this.request('setPolicy', { policy }); }

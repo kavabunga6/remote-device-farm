@@ -12975,6 +12975,102 @@
     "en": "Filter by URL or method",
     "ru": "Фильтр по URL или методу"
   },
+  "networkInspector.title": {
+    "en": "Traffic",
+    "ru": "Трафик"
+  },
+  "networkInspector.description": {
+    "en": "HTTP requests and HTTPS connections for this session.",
+    "ru": "HTTP-запросы и HTTPS-соединения этой сессии."
+  },
+  "networkInspector.failed": {
+    "en": "Could not update traffic capture. Refresh its state and try again.",
+    "ru": "Не удалось изменить запись трафика. Обновите состояние и повторите попытку."
+  },
+  "networkInspector.unavailable": {
+    "en": "Traffic inspection requires a compatible emulator image with Python 3. Rebuild the image and start a new session.",
+    "ru": "Для инспектора нужен совместимый образ эмулятора с Python 3. Пересоберите образ и запустите новую сессию."
+  },
+  "networkInspector.alreadyStarted": {
+    "en": "Traffic capture is already running.",
+    "ru": "Запись трафика уже идёт."
+  },
+  "networkInspector.proxyConflict": {
+    "en": "Disable the device's custom HTTP proxy before starting traffic capture.",
+    "ru": "Перед записью трафика выключите пользовательский HTTP-прокси устройства."
+  },
+  "networkInspector.stopBeforeExport": {
+    "en": "Stop capture before downloading the PCAP.",
+    "ru": "Остановите запись перед скачиванием PCAP."
+  },
+  "networkInspector.start": {
+    "en": "Start capture",
+    "ru": "Начать запись"
+  },
+  "networkInspector.stop": {
+    "en": "Stop capture",
+    "ru": "Остановить запись"
+  },
+  "networkInspector.clear": {
+    "en": "Clear list",
+    "ru": "Очистить список"
+  },
+  "networkInspector.recording": {
+    "en": "Recording traffic",
+    "ru": "Идёт запись трафика"
+  },
+  "networkInspector.idle": {
+    "en": "Capture stopped",
+    "ru": "Запись остановлена"
+  },
+  "networkInspector.loading": {
+    "en": "Reading capture state",
+    "ru": "Читаем состояние записи"
+  },
+  "networkInspector.pcap": {
+    "en": "Record raw PCAP",
+    "ru": "Записывать исходный PCAP"
+  },
+  "networkInspector.hint": {
+    "en": "The inspector temporarily uses the Android HTTP proxy. HTTPS remains encrypted; apps that ignore the proxy appear only in PCAP. The list retains the last 200 requests. Capture stops after 10 minutes or about 30 MiB of PCAP.",
+    "ru": "Инспектор временно использует HTTP-прокси Android. HTTPS остаётся зашифрованным; приложения, игнорирующие прокси, видны только в PCAP. В списке — последние 200 запросов. Запись останавливается через 10 минут или примерно при 30 МиБ PCAP."
+  },
+  "networkInspector.pcapWarning": {
+    "en": "Raw PCAP may contain credentials and application data. Store and share it with care.",
+    "ru": "Исходный PCAP может содержать учётные данные и данные приложений. Учитывайте это при хранении и передаче файла."
+  },
+  "networkInspector.empty": {
+    "en": "Requests will appear here after capture starts. Open or restart the Android app if it keeps using an existing connection.",
+    "ru": "Запросы появятся после начала записи. Откройте или перезапустите Android-приложение, если оно использует уже открытое соединение."
+  },
+  "networkInspector.url": {
+    "en": "Request",
+    "ru": "Запрос"
+  },
+  "networkInspector.status": {
+    "en": "Status",
+    "ru": "Статус"
+  },
+  "networkInspector.time": {
+    "en": "Time, ms",
+    "ru": "Время, мс"
+  },
+  "networkInspector.size": {
+    "en": "Bytes",
+    "ru": "Байт"
+  },
+  "networkInspector.headers": {
+    "en": "Recorded headers",
+    "ru": "Записанные заголовки"
+  },
+  "networkInspector.noHeaders": {
+    "en": "No recorded headers. HTTPS content is encrypted.",
+    "ru": "Нет записанных заголовков. Содержимое HTTPS зашифровано."
+  },
+  "networkInspector.exportFailed": {
+    "en": "Could not download the capture.",
+    "ru": "Не удалось скачать запись."
+  },
   "debug.har": {
     "en": "HAR",
     "ru": "HAR"

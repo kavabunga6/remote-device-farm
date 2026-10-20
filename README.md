@@ -17,7 +17,7 @@ Run Android emulators on your own Linux/KVM servers and use them from a browser,
 | **Device pool and automation API** | Multiple worker nodes, resource limits, queues, explicit leases, team profile access and per-member quotas. [API](docs/api/README.md) |
 | **GPU acceleration** | Software rendering or GPU modes using NVIDIA/CUDA and DRI, according to node capabilities. [Agent and GPU](docs/deployment/agent.md) |
 | **Own image registry** | Build emulator images from the SDK catalog; manage versions, node caches, retention policies and cleanup from the UI. [Images](docs/guides/image-management.md) |
-| **Application library and diagnostics** | Store APKs, install them into sessions, inspect Logcat and retain startup/stop diagnostics. [Guides](docs/README.md) |
+| **Application library and diagnostics** | Store APKs and APK sets, select compatible .apks parts, inspect Logcat and WebViews, capture HTTP/HTTPS connection metadata, export HAR/PCAP and retain startup/stop diagnostics. [Guides](docs/README.md) |
 | **Access administration** | Custom roles and permissions, users, personal API tokens and configurable authentication providers. [Security](SECURITY.md) |
 | **Self-hosted deployment** | Docker Compose for a single host or separate server and Linux/KVM agents, with HTTPS and backup/restore tooling. [Deployment](docs/deployment/server.md) |
 

@@ -35,7 +35,7 @@ test('createEmulator applies the allowlisted container options and custom variab
   assert.ok(!body.Env.some((value) => value.startsWith('ADBKEY_PUB=') || value.startsWith('EMULATOR_PARAMS=')));
   assert.equal(body.HostConfig.ShmSize, 256 * 1024 * 1024);
   assert.deepEqual(body.HostConfig.Ulimits, [{ Name: 'nofile', Soft: 1, Hard: 2 }]);
-  assert.deepEqual(body.HostConfig.Tmpfs, { '/dev/shm': 'rw,noexec,nosuid,size=8m' });
+  assert.deepEqual(body.HostConfig.Tmpfs, { '/dev/shm': 'rw,noexec,nosuid,size=8m', '/rdf-network': 'rw,noexec,nosuid,size=40m,mode=0700' });
   assert.deepEqual(body.HostConfig.Sysctls, { 'net.core.somaxconn': '128' });
   assert.deepEqual(body.Entrypoint, ['/start.sh']);
   assert.deepEqual(body.Cmd, ['run', '--x']);

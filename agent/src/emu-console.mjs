@@ -30,6 +30,8 @@ export function validateEmuConsoleArgs(args) {
   const exact = (n) => { if (args.length !== n) bad('Invalid emulator console command'); };
   if (a === 'network') {
     if (b === 'status') exact(2);
+    else if (b === 'capture' && c === 'start' && d === '/rdf-network/capture.pcap') exact(4);
+    else if (b === 'capture' && c === 'stop') exact(3);
     else if (b === 'speed' && NETWORK_SPEEDS.includes(c)) exact(3);
     else if (b === 'delay' && NETWORK_DELAYS.includes(c)) exact(3);
     else bad('Invalid emulator console command');
@@ -78,7 +80,7 @@ export function parseDockerStream(buffer, maxBytes = MAX_OUTPUT_BYTES) {
 // Fixed script; only allowlisted commands and agent-owned connection limits enter its environment.
 export const CONSOLE_SCRIPT = readFileSync(new URL('./emu-console-client.sh', import.meta.url), 'utf8');
 
-export async function execInContainer(docker, containerId, cmd, env, timeoutMs) {
+export async function execInContainer(docker, containerId, cmd, env, timeoutMs, maxOutputBytes = MAX_OUTPUT_BYTES) {
   const deadline = Date.now() + timeoutMs;
   const left = () => {
     const remaining = deadline - Date.now();
@@ -90,8 +92,8 @@ export async function execInContainer(docker, containerId, cmd, env, timeoutMs) 
   }, { timeoutMs: left() });
   if (!created?.Id || !/^[a-f0-9]{8,128}$/i.test(String(created.Id))) throw new Error('Docker did not return an exec id');
   const raw = await docker.requestRaw('POST', `/exec/${created.Id}/start`, { Detach: false, Tty: false },
-    { maxBytes: 4 * MAX_OUTPUT_BYTES, timeoutMs: left() });
-  const parsed = parseDockerStream(Buffer.isBuffer(raw) ? raw : Buffer.from(String(raw ?? '')));
+    { maxBytes: 4 * maxOutputBytes, timeoutMs: left() });
+  const parsed = parseDockerStream(Buffer.isBuffer(raw) ? raw : Buffer.from(String(raw ?? '')), maxOutputBytes);
   let exitCode = null;
   for (let i = 0; i < 10; i += 1) {
     const info = await docker.request('GET', `/exec/${created.Id}/json`, undefined, { timeoutMs: left() });

@@ -346,7 +346,7 @@ export class DockerClient {
         AutoRemove: false,
         ...(options.shmSizeMb ? { ShmSize: options.shmSizeMb * 1024 * 1024 } : {}),
         ...(options.ulimits ? { Ulimits: options.ulimits.map((item) => ({ Name: item.name, Soft: item.soft, Hard: item.hard })) } : {}),
-        ...(options.tmpfs ? { Tmpfs: Object.fromEntries(options.tmpfs.map((item) => [item.path, `rw,noexec,nosuid,size=${item.sizeMb}m`])) } : {}),
+        Tmpfs: { ...Object.fromEntries((options.tmpfs ?? []).map((item) => [item.path, `rw,noexec,nosuid,size=${item.sizeMb}m`])), '/rdf-network': 'rw,noexec,nosuid,size=40m,mode=0700' },
         ...(options.sysctls ? { Sysctls: options.sysctls } : {}),
       },
       NetworkingConfig: { EndpointsConfig: {} },

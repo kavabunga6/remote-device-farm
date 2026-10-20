@@ -56,7 +56,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Libraries the headless emulator links against, socat for the two forwarded ports, Xorg for optional NVIDIA rendering.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       bash coreutils iproute2 socat tini ca-certificates \
+       bash coreutils iproute2 socat tini ca-certificates python3 \
        libpulse0 libnss3 libxcomposite1 libxcursor1 libxi6 libxtst6 libxdamage1 libxrandr2 libxkbfile1 libxkbcommon0 \
        libasound2 libbsd0 libdrm2 libgbm1 libgl1 libegl1 libgles2 libglx0 libvulkan1 libx11-xcb1 libxcb1 \
        xserver-xorg-core xauth mesa-utils \

@@ -1,3 +1,4 @@
+import { NetworkInspector } from '../network-inspector.mjs';
 import { agentMessage } from '../messages.mjs';
 import { probeAndroid, androidCapabilities } from './android-capabilities.mjs';
 import { diagnosticReporter } from '../session-diagnostics.mjs';
@@ -21,6 +22,7 @@ export class EmulatorProvider extends DeviceProvider {
     this.recoveryDiagnostics = [];
     this.shared = androidOps({ adb, streams, appTransfers });
     this.envTools = envTools;
+    this.inspector = new NetworkInspector(adb, control);
   }
 
   get ops() {
@@ -32,6 +34,7 @@ export class EmulatorProvider extends DeviceProvider {
         s.networkEnabled = result.enabled;
         return result;
       },
+      'network-inspector': (s, p, { sessionId }) => this.inspector.command(sessionId, s.serial, p),
       camera: (s, p, { sessionId }) => this.control.cameraImage(sessionId, p),
       env: (s, p, ctx) => p.op === 'read' ? this.envTools.read(s.serial, ctx) : this.envTools.apply(s.serial, p.op, p.params, ctx),
     };
@@ -59,7 +62,7 @@ export class EmulatorProvider extends DeviceProvider {
     for (const entry of await this.control.recover({ onLog: event => {
       if (this.recoveryDiagnostics.length < 4000) this.recoveryDiagnostics.push(event);
     } })) this.sessions.set(entry.sessionId, {
-      ...entry, serial: `${entry.name}:5555`, startupPending: true, recoveryPending: true, bootReady: false,
+      ...entry, serial: `${entry.name}:5555`, inspectorRecovery: true, startupPending: true, recoveryPending: true, bootReady: false,
     });
     await this.maintain({ onLog: event => { if (this.recoveryDiagnostics.length < 4000) this.recoveryDiagnostics.push(event); } });
   }
@@ -80,6 +83,7 @@ export class EmulatorProvider extends DeviceProvider {
             onLog?.({ sessionId, code: 'session.android_ready', message: agentMessage('agent.androidReady'), severity: 'info', service: 'agent' });
             entry.details = await probeAndroid(this.adb, entry.serial, this.capabilities, { signal });
             signal.throwIfAborted();
+            if (entry.inspectorRecovery) { await this.inspector.command(sessionId, entry.serial, { op: 'stop' }).catch(() => {}); entry.inspectorRecovery = false; }
             entry.bootReady = true;
             entry.startupPending = false;
             entry.recoveryPending = false;
@@ -185,6 +189,7 @@ export class EmulatorProvider extends DeviceProvider {
   // agent-control; we then verify the container is really gone. Any doubt keeps the slot occupied.
   async stop(sessionId, { onLog } = {}) {
     const entry = this.sessions.get(sessionId);
+    this.inspector.dispose(sessionId);
     entry?.recoveryAbort?.abort(new Error(agentMessage('agent.edb6e60881d1')));
     await this.control.stop(sessionId, { onLog });
     if (entry && (await this.control.inventory()).some((c) => c.containerId === entry.containerId)) {

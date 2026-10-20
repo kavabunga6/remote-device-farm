@@ -10,6 +10,7 @@ import { SessionStatusBadge } from './SessionStatusBadge';
 import { LogcatPanel } from './LogcatPanel';
 import { DeviceInfoPanel } from './DeviceInfoPanel';
 import { EnvPanel } from './tools/EnvPanel';
+import { NetworkPanel } from './tools/NetworkPanel';
 import { WebViewsPanel } from './tools/WebViewsPanel';
 import { AppsPanel } from './tools/AppsPanel';
 import { ShareControl, SharedBanner } from './ShareControl';
@@ -25,10 +26,10 @@ import './ConsoleResize.css';
 import { useTouchIndicator } from './useTouchIndicator';
 import './TouchIndicator.css';
 
-type ToolTabId = 'console' | 'logs' | 'info' | 'env' | 'apps' | 'webviews';
+type ToolTabId = 'console' | 'logs' | 'info' | 'env' | 'apps' | 'traffic' | 'webviews';
 // Each tool needs a device capability; physical phones may offer fewer than emulators.
 function toolTabs(): ReadonlyArray<readonly [ToolTabId, string, Capability]> { return [
-  ['console', t('ui.a58f47dbc474'), 'shell'], ['logs', t('ui.1ebab145dea4'), 'logs'], ['info', t('ui.bd38d43cf415'), 'device-info'], ['env', t('ui.d606a9df2b84'), 'env'], ['apps', t('ui.39c4b42c8d11'), 'install'], ['webviews', t('webviews.title'), 'shell'],
+  ['console', t('ui.a58f47dbc474'), 'shell'], ['logs', t('ui.1ebab145dea4'), 'logs'], ['info', t('ui.bd38d43cf415'), 'device-info'], ['env', t('ui.d606a9df2b84'), 'env'], ['apps', t('ui.39c4b42c8d11'), 'install'], ['traffic', t('networkInspector.title'), 'network'], ['webviews', t('webviews.title'), 'shell'],
 ]; }
 import { useSessionCapture } from './useSessionCapture';
 
@@ -85,8 +86,8 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const shared = access === 'view' || access === 'control';
   const audience = useSessionAudience(session, user);
   const readOnly = access === 'view' || !can(user, 'sessions.control');
-  const toolPermission: Record<ToolTabId, string> = { console: 'sessions.console', logs: 'sessions.logcat', info: 'sessions.view', env: 'sessions.env', apps: 'sessions.files', webviews: 'sessions.console' };
-  const toolAllowed = (id: ToolTabId) => can(user, toolPermission[id]);
+  const toolPermission: Record<ToolTabId, string> = { console: 'sessions.console', logs: 'sessions.logcat', info: 'sessions.view', env: 'sessions.env', apps: 'sessions.files', traffic: 'sessions.console', webviews: 'sessions.console' };
+  const toolAllowed = (id: ToolTabId) => can(user, toolPermission[id]) && (id !== 'traffic' || (can(user, 'sessions.env') && session?.deviceKind !== 'usb-android'));
   const canReadEnvironment = session?.id === sessionId && session.status === 'running' && !shared && can(user, 'sessions.env') && hasCapability(session, 'env');
   const [sessionError, setSessionError] = useState('');
   const [busy, setBusy] = useState('');
@@ -919,6 +920,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
         <LogcatPanel panelId="tool-panel-logs" sessionId={sessionId} active={toolAllowed('logs') && toolTab === 'logs'} running={isRunning} />
         <DeviceInfoPanel panelId="tool-panel-info" sessionId={sessionId} active={toolTab === 'info'} running={isRunning} />
         <EnvPanel panelId="tool-panel-env" sessionId={sessionId} active={toolTab === 'env'} running={canReadEnvironment} readForViewer={!shared && can(user, 'sessions.env') && hasCapability(session, 'env')} onShowTouchesChange={touchIndicator.setEnabled} nativeTouches={stream.nativeTouches} />
+        <NetworkPanel sessionId={sessionId} active={toolAllowed('traffic') && toolTab === 'traffic'} running={isRunning} canExport={can(user, 'sessions.files')} />
         <WebViewsPanel sessionId={sessionId} active={toolAllowed('webviews') && toolTab === 'webviews'} running={isRunning} />
         <AppsPanel panelId="tool-panel-apps" sessionId={sessionId} active={toolAllowed('apps') && toolTab === 'apps'} running={isRunning} />
         </>}
