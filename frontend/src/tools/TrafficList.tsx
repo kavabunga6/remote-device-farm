@@ -5,8 +5,8 @@ import type { TrafficEntry } from './debug-api';
 import { trafficAddress, trafficPhase, trafficTree, type TrafficNode } from './traffic-entries';
 import { TrafficStatus, trafficSize, trafficTime, trafficStarted } from './TrafficDetails';
 
-export function TrafficList({ entries, mode, selectedId, onSelect, searching, empty }: {
-  entries: TrafficEntry[]; mode: 'sequence' | 'structure'; selectedId: number | null; onSelect: (id: number) => void; searching: boolean; empty: ReactNode;
+export function TrafficList({ entries, mode, selectedId, onSelect, onOrderChange, searching, empty }: {
+  entries: TrafficEntry[]; mode: 'sequence' | 'structure'; selectedId: number | null; onSelect: (id: number) => void; searching: boolean; empty: ReactNode; onOrderChange: (ids: number[]) => void;
 }) {
   const [sort, setSort] = useState<{ key: 'startedAt' | 'status' | 'durationMs' | 'bytes'; descending: boolean }>({ key: 'startedAt', descending: false });
   const sorted = useMemo(() => entries.slice().sort((a, b) => {
@@ -17,14 +17,21 @@ export function TrafficList({ entries, mode, selectedId, onSelect, searching, em
     return (first - second || a.id - b.id) * (sort.descending ? -1 : 1);
   }), [entries, sort]);
   const tree = useMemo(() => trafficTree(entries), [entries]);
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const [branches, setBranches] = useState<Map<string, boolean>>(() => new Map());
+  const navigation = useMemo(() => {
+    if (mode === 'sequence') return sorted.map(entry => entry.id);
+    const ids: number[] = [];
+    const collect = (nodes: TrafficNode[]) => { for (const item of nodes) { collect(item.children); ids.push(...item.entries.map(row => row.entry.id)); } };
+    collect(tree); return ids;
+  }, [mode, sorted, tree]);
+  useEffect(() => onOrderChange(navigation), [navigation, onOrderChange]);
   useEffect(() => {
     if (searching) return;
     const keys = new Set<string>();
     const collect = (nodes: TrafficNode[]) => { for (const item of nodes) { keys.add(item.key); collect(item.children); } };
     collect(tree);
-    setCollapsed(previous => {
-      const retained = new Set([...previous].filter(key => keys.has(key)));
+    setBranches(previous => {
+      const retained = new Map([...previous].filter(([key]) => keys.has(key)));
       return retained.size === previous.size ? previous : retained;
     });
   }, [tree, searching]);
@@ -70,14 +77,14 @@ export function TrafficList({ entries, mode, selectedId, onSelect, searching, em
       {treeMode && <><span> · </span>{trafficTime(entry.durationMs ?? entry.elapsedMs)}<span> · </span>{trafficSize(entry.bytes)}</>}
       {!treeMode && <span className="traffic-compact-size"><span> · </span>{trafficSize(entry.bytes)}</span>}</small>
   </button>;
-  const node = (item: TrafficNode, root = false) => <details className="traffic-tree-node" key={item.key} data-node-key={item.key} open={searching || !collapsed.has(item.key)}
+  const node = (item: TrafficNode, root = false) => <details className="traffic-tree-node" key={item.key} data-node-key={item.key} open={searching || (branches.get(item.key) ?? root)}
     onToggle={event => {
       if (searching) return;
       const open = event.currentTarget.open;
-      setCollapsed(previous => {
-        if (open === !previous.has(item.key)) return previous;
-        const next = new Set(previous);
-        if (open) next.delete(item.key); else next.add(item.key);
+      setBranches(previous => {
+        if (open === (previous.get(item.key) ?? root)) return previous;
+        const next = new Map(previous);
+        if (open === root) next.delete(item.key); else next.set(item.key, open);
         return next;
       });
     }}>

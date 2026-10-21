@@ -76,8 +76,8 @@ for (const variant of [
   const rows = () => cleared ? [] : Array.from({ length: extra ? 41 : 40 }, (_, n) => ({
     id: n + 1, method: n === 2 ? 'CONNECT' : n === 3 ? 'POST' : 'GET',
     url: n === 2 ? 'https://secure.example.test:443' : n === 1 ? 'http://assets.example.test/images/icon.png' : 'http://api.example.test/api/v1/items/' + (n + 1) + '?token=%5Bredacted%5D',
-    startedAt: 1792492200 + n, status: n === 3 ? 503 : 200, captureId,
-    statusSource: n === 2 ? 'proxy' : 'upstream', outcome: n === 2 ? recording ? 'open' : 'stopped' : n === 4 ? 'error' : 'complete',
+    startedAt: 1792492200 + n, status: n === 6 ? null : n === 3 ? 503 : 200, captureId,
+    statusSource: n === 2 ? 'proxy' : 'upstream', outcome: n === 2 ? recording ? 'open' : 'stopped' : n === 4 ? 'error' : n === 5 || n === 6 ? 'stopped' : 'complete',
     phase: n === 2 && recording ? 'tunnel' : 'done', errorKind: n === 4 ? 'incomplete' : null, errorPhase: n === 4 ? 'receive' : null,
     durationMs: n === 2 ? recording ? null : 1000 : n === 0 && updated ? 1850 : 42 + n, elapsedMs: n === 2 ? recording ? 4000 : 1000 : 42 + n, bytes: 256 * (n + 1), bytesSent: 20, bytesReceived: 256 * (n + 1) - 20,
     timings: { connect: 10, send: 4, wait: 20, receive: n === 0 && updated ? 1816 : 8 + n },
@@ -118,6 +118,9 @@ for (const variant of [
   await expect(traffic.locator('.traffic-tree-leaf')).toHaveCount(40);
   const host = traffic.locator('.traffic-tree > .traffic-tree-node').first();
   const hostSummary = host.locator(':scope > summary');
+  await expect(host.locator('.traffic-tree-children > .traffic-tree-node').first()).not.toHaveAttribute('open');
+  await expect(traffic.locator('.traffic-tree > .traffic-tree-node > summary')).toHaveCount(3);
+  await traffic.screenshot({ path: info.outputPath('traffic-hosts.png') });
   await hostSummary.press('ArrowLeft');
   await expect(host).not.toHaveAttribute('open');
   await traffic.getByRole('button', { name: /Обновить|Refresh/ }).click();
@@ -135,8 +138,22 @@ for (const variant of [
   await expect(host).toHaveAttribute('open');
   await hostSummary.press('ArrowDown');
   await expect(host.locator('.traffic-tree-children > .traffic-tree-node > summary').first()).toBeFocused();
+  for (let depth = 0; depth < 8 && !await traffic.locator('[data-entry-id="1"]').isVisible(); depth++)
+    await host.locator('.traffic-tree-node:not([open]) > summary:visible').first().press('ArrowRight');
   await traffic.screenshot({ path: info.outputPath('traffic-default-tree-list.png') });
   await traffic.locator('[data-entry-id="1"]').click();
+  const nextRequest = details.getByRole('button', { name: /^(Следующий запрос|Next request)$/ });
+  const previousRequest = details.getByRole('button', { name: /^(Предыдущий запрос|Previous request)$/ });
+  await expect(previousRequest).toBeDisabled();
+  await nextRequest.click();
+  await expect(details.locator('.traffic-full-url')).toContainText('/items/4?');
+  await expect(nextRequest).toBeFocused();
+  await previousRequest.click();
+  await expect(details.locator('.traffic-full-url')).toContainText('/items/1?');
+  await details.locator('.traffic-detail-body').press('Alt+ArrowDown');
+  await expect(details.locator('.traffic-full-url')).toContainText('/items/4?');
+  await details.locator('.traffic-detail-body').press('Alt+ArrowUp');
+  await expect(details.locator('.traffic-full-url')).toContainText('/items/1?');
   await traffic.screenshot({ path: info.outputPath('traffic-default-tree.png') });
   await page.screenshot({ path: info.outputPath('traffic-default-tree-page.png') });
   const back = details.getByRole('button', { name: /К списку запросов|Back to requests/ });
@@ -148,11 +165,20 @@ for (const variant of [
   await traffic.getByRole('checkbox', { name: /Записывать пакеты|Record packets/ }).check();
   await page.screenshot({ path: info.outputPath('traffic-settings.png') });
   await traffic.getByRole('button', { name: /^(Параметры|Settings)$/ }).click();
+  await expect(traffic.getByRole('button', { name: /Начать запись|Start capture/ }).locator('span').last()).toBeVisible();
   await traffic.getByRole('button', { name: /Начать запись|Start capture/ }).click();
   await expect(traffic.locator('.traffic-capture-state')).toHaveAttribute('data-recording', 'true');
   await expect(traffic.getByRole('button', { name: /Очистить список|Clear list/ })).toBeDisabled();
+  await traffic.getByRole('button', { name: /^(Параметры|Settings)$/ }).click();
+  await expect(traffic.getByRole('checkbox', { name: /Записывать пакеты|Record packets/ })).toBeDisabled();
+  await expect(traffic.getByRole('dialog', { name: /^(Параметры|Settings)$/ })).toContainText(/Остановите запись, чтобы изменить|Stop capture to change/);
+  await page.screenshot({ path: info.outputPath('traffic-recording-settings.png') });
+  await page.keyboard.press('Escape');
   await traffic.getByRole('button', { name: /Остановить запись|Stop capture/ }).click();
   await expect(traffic.locator('.traffic-capture-state')).toHaveAttribute('data-recording', 'false');
+  await expect(traffic.locator('tr:has([data-entry-id="5"]) .traffic-status')).toContainText(/Обрыв|Interrupted/);
+  await expect(traffic.locator('tr:has([data-entry-id="6"]) .traffic-status')).toContainText(/Снимок|Snapshot/);
+  await expect(traffic.locator('tr:has([data-entry-id="7"]) .traffic-status')).toHaveText(/Снимок|Snapshot/);
   await traffic.locator('[data-entry-id="1"]').click();
   await expect(traffic.locator('tr[data-selected=true]')).toHaveCount(1);
   await traffic.screenshot({ path: info.outputPath('traffic-initial.png') });
@@ -169,6 +195,28 @@ for (const variant of [
   await expect(details.locator('.traffic-summary')).toContainText(/1[,.]9/);
   const compact = await traffic.locator('.traffic-workspace').getAttribute('data-wide') === 'false';
   if (compact) {
+    await search.fill('POST 503');
+    await expect(list).toBeVisible();
+    await expect(details).toBeHidden();
+    await expect(traffic.locator('tbody tr')).toHaveCount(1);
+    await traffic.locator('[data-entry-id="4"]').click();
+    await search.fill('');
+    await expect(list).toBeVisible();
+    await traffic.locator('[data-entry-id="4"]').click();
+    await traffic.getByRole('combobox', { name: /Фильтр трафика|Traffic filter/ }).selectOption('errors');
+    await expect(list).toBeVisible();
+    await expect(traffic.locator('tbody tr')).toHaveCount(2);
+    await traffic.locator('[data-entry-id="5"]').click();
+    await expect(previousRequest).toBeEnabled();
+    await expect(nextRequest).toBeDisabled();
+    await previousRequest.click();
+    await expect(details.locator('.traffic-full-url')).toContainText('/items/4?');
+    await traffic.getByRole('button', { name: /^(Дерево|Tree)$/ }).click();
+    await expect(list).toBeVisible();
+    await expect(traffic.locator('.traffic-tree-leaf')).toHaveCount(2);
+    await traffic.getByRole('button', { name: /^(По времени|Sequence)$/ }).click();
+    await traffic.getByRole('combobox', { name: /Фильтр трафика|Traffic filter/ }).selectOption('all');
+    await traffic.locator('[data-entry-id="1"]').click();
     await expect(details).toBeVisible();
     await expect(list).toBeHidden();
     await expect(details.getByRole('button', { name: /К списку запросов|Back to requests/ })).toBeVisible();
@@ -225,6 +273,11 @@ for (const variant of [
   const headings = traffic.locator('.traffic-sequence thead');
   await headings.getByRole('button', { name: /Sort by: Time|Сортировать по: Время/ }).click();
   await headings.getByRole('button', { name: /Sort by: Time|Сортировать по: Время/ }).click();
+  await expect(nextRequest).toBeDisabled();
+  await previousRequest.click();
+  await expect(details.locator('.traffic-full-url')).toContainText('/items/4?');
+  await nextRequest.click();
+  await expect(details.locator('.traffic-full-url')).toContainText('/images/icon.png');
   await expect(traffic.locator('tbody .traffic-request').first()).toHaveAttribute('data-entry-id', '1');
   await expect(traffic.locator('[data-entry-id="2"]')).toHaveAttribute('aria-pressed', 'true');
   await headings.getByRole('button', { name: /Sort by: Started|Сортировать по: Начало/ }).click();

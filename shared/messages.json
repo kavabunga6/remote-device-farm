@@ -13616,8 +13616,8 @@
     "ru": "Предпросмотр тела для этой записи недоступен. Ответ мог ещё не поступить или запись не сохранила его."
   },
   "networkInspector.recordShort": {
-    "en": "Record",
-    "ru": "Запись"
+    "en": "Start",
+    "ru": "Начать"
   },
   "networkInspector.stopShort": {
     "en": "Stop",
@@ -13650,5 +13650,41 @@
   "networkInspector.detailsEmptyHint": {
     "en": "Select a row to view headers, body previews and timings.",
     "ru": "Нажмите на строку, чтобы увидеть заголовки, предпросмотр тела и время передачи."
+  },
+  "networkInspector.settingsLocked": {
+    "en": "Stop capture to change these settings.",
+    "ru": "Остановите запись, чтобы изменить параметры."
+  },
+  "networkInspector.settingsFinalizing": {
+    "en": "Wait for PCAP finalization before changing settings.",
+    "ru": "Дождитесь завершения PCAP, чтобы изменить параметры."
+  },
+  "networkInspector.previousRequest": {
+    "en": "Previous request",
+    "ru": "Предыдущий запрос"
+  },
+  "networkInspector.nextRequest": {
+    "en": "Next request",
+    "ru": "Следующий запрос"
+  },
+  "networkInspector.previousRequestHint": {
+    "en": "Previous request (Alt+ArrowUp)",
+    "ru": "Предыдущий запрос (Alt+ArrowUp)"
+  },
+  "networkInspector.nextRequestHint": {
+    "en": "Next request (Alt+ArrowDown)",
+    "ru": "Следующий запрос (Alt+ArrowDown)"
+  },
+  "networkInspector.requestNavigation": {
+    "en": "Request navigation",
+    "ru": "Переход между запросами"
+  },
+  "networkInspector.interruptedShort": {
+    "en": "Interrupted",
+    "ru": "Обрыв"
+  },
+  "networkInspector.failedShort": {
+    "en": "Failed",
+    "ru": "Сбой"
   }
 }

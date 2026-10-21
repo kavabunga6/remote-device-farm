@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { t } from '../i18n';
 import { Icon } from '../icons';
 import { trafficHar } from '../../../shared/traffic-har.mjs';
@@ -24,6 +24,8 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
   const [query, setQuery] = useState(''), [filter, setFilter] = useState<TrafficFilter>('all');
   const [mode, setMode] = useState<'sequence' | 'structure'>('structure');
   const [selected, setSelected] = useState<TrafficEntry | undefined>();
+  const [orderedIds, setOrderedIds] = useState<number[]>([]);
+  const updateOrder = useCallback((ids: number[]) => setOrderedIds(previous => previous.length === ids.length && previous.every((id, index) => id === ids[index]) ? previous : ids), []);
   const [frozen, setFrozen] = useState<TrafficState | null>(null);
   const [split, setSplit] = useState(58), [wide, setWide] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -32,7 +34,7 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
   const workspace = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   useEffect(() => {
-    setSelected(undefined); setFrozen(null); setQuery(''); setFilter('all'); setPcap(false); setBodies(false); setDetailOpen(false); setPopover(null); setMode('structure');
+    setSelected(undefined); setOrderedIds([]); setFrozen(null); setQuery(''); setFilter('all'); setPcap(false); setBodies(false); setDetailOpen(false); setPopover(null); setMode('structure');
   }, [sessionId]);
   useEffect(() => {
     if (!state?.captureId) return;
@@ -60,8 +62,8 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
   const latestSelected = selected && allEntries.find(entry => entry.id === selected.id && entry.captureId === selected.captureId);
   const shownSelected = latestSelected || selected;
   useEffect(() => {
-    if (!wide && detailOpen && shownSelected) workspace.current?.querySelector<HTMLButtonElement>('.traffic-back')?.focus({ preventScroll: true });
-  }, [wide, detailOpen, shownSelected?.id]);
+    if (!wide && detailOpen) workspace.current?.querySelector<HTMLButtonElement>('.traffic-back')?.focus({ preventScroll: true });
+  }, [wide, detailOpen]);
   useEffect(() => { if (latestSelected && latestSelected !== selected) setSelected(latestSelected); }, [latestSelected, selected]);
   const detached = Boolean(selected && !latestSelected);
   const selectedFiltered = Boolean(shownSelected && !detached && !entries.some(entry => entry.id === shownSelected.id));
@@ -91,7 +93,10 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
     });
     downloadDebug('traffic-' + (single ? 'request-' + rows[0]!.id : 'visible') + '-' + sessionId.slice(0, 8) + '.har', [JSON.stringify(data, null, 2)], 'application/json');
   };
-  const resetFilters = () => { setFilter('all'); setQuery(''); };
+  const resetFilters = () => { setFilter('all'); setQuery(''); setDetailOpen(false); };
+  const currentPosition = shownSelected ? orderedIds.indexOf(shownSelected.id) : -1;
+  const previousId = currentPosition > 0 ? orderedIds[currentPosition - 1] : undefined;
+  const nextId = currentPosition >= 0 ? orderedIds[currentPosition + 1] : undefined;
   const resizeKey = (event: KeyboardEvent<HTMLDivElement>) => {
     const backward = wide ? 'ArrowLeft' : 'ArrowUp', forward = wide ? 'ArrowRight' : 'ArrowDown';
     if (![backward, forward, 'Home', 'End'].includes(event.key)) return;
@@ -136,6 +141,7 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
           </button>
         </TrafficPopover>}
         <TrafficPopover label={t('networkInspector.optionsShort')} icon="sliders" open={popover === 'settings'} onOpenChange={open => setPopover(current => open ? 'settings' : current === 'settings' ? null : current)}>
+          {(recording || finalizing) && <p className="traffic-settings-hint" role="status">{t(recording ? 'networkInspector.settingsLocked' : 'networkInspector.settingsFinalizing')}</p>}
           <label className="traffic-setting"><input type="checkbox" checked={pcap} disabled={!canAct || recording} onChange={event => setPcap(event.target.checked)} data-autofocus/>
             <span><strong>{t('networkInspector.pcap')}</strong><small>{t('networkInspector.pcapWarningShort')}</small></span></label>
           <label className="traffic-setting"><input type="checkbox" checked={bodies} disabled={!canAct || recording} onChange={event => setBodies(event.target.checked)}/>
@@ -157,13 +163,13 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
     {state?.pcapState === 'error' && <p className="traffic-note traffic-warning" role="status">{t('networkInspector.pcapStopHelp')}</p>}
     <div className="traffic-filterbar">
       <div className="traffic-modes" role="group" aria-label={t('networkInspector.view')}>
-        <button type="button" className="traffic-control" aria-pressed={mode === 'structure'} aria-label={t('networkInspector.structure')} onClick={() => setMode('structure')}><Icon name="layers" size={15}/><span>{t('networkInspector.structure')}</span></button>
-        <button type="button" className="traffic-control" aria-pressed={mode === 'sequence'} aria-label={t('networkInspector.sequence')} onClick={() => setMode('sequence')}><Icon name="list" size={15}/><span>{t('networkInspector.sequence')}</span></button>
+        <button type="button" className="traffic-control" aria-pressed={mode === 'structure'} aria-label={t('networkInspector.structure')} onClick={() => { setMode('structure'); setDetailOpen(false); }}><Icon name="layers" size={15}/><span>{t('networkInspector.structure')}</span></button>
+        <button type="button" className="traffic-control" aria-pressed={mode === 'sequence'} aria-label={t('networkInspector.sequence')} onClick={() => { setMode('sequence'); setDetailOpen(false); }}><Icon name="list" size={15}/><span>{t('networkInspector.sequence')}</span></button>
       </div>
       <div className="traffic-search">
-        <Icon name="search" size={15}/><input type="search" value={query} onChange={event => setQuery(event.target.value)} aria-label={t('debug.search')} placeholder={t('networkInspector.search')}/>
+        <Icon name="search" size={15}/><input type="search" value={query} onChange={event => { setQuery(event.target.value); setDetailOpen(false); }} aria-label={t('debug.search')} placeholder={t('networkInspector.search')}/>
       </div>
-      <select className="traffic-filter" value={filter} onChange={event => setFilter(event.target.value as TrafficFilter)} aria-label={t('networkInspector.filter')}>
+      <select className="traffic-filter" value={filter} onChange={event => { setFilter(event.target.value as TrafficFilter); setDetailOpen(false); }} aria-label={t('networkInspector.filter')}>
         <option value="all">{t('networkInspector.all')}</option><option value="http">{t('networkInspector.httpOnly')}</option>
         <option value="tunnels">{t('networkInspector.tunnelsOnly')}</option><option value="errors">{t('networkInspector.errorsOnly')}</option>
       </select>
@@ -171,7 +177,7 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
     <div ref={workspace} className="traffic-workspace" data-wide={wide} data-detail-open={detailOpen && Boolean(shownSelected)} style={{ '--traffic-split': split + '%' } as CSSProperties}>
       <div ref={listRef} className="traffic-navigation">
         <TrafficList key={sessionId} entries={entries} mode={mode} selectedId={shownSelected?.id ?? null}
-          onSelect={selectEntry} searching={Boolean(query.trim()) || filter !== 'all'}
+          onSelect={selectEntry} onOrderChange={updateOrder} searching={Boolean(query.trim()) || filter !== 'all'}
           empty={<div className="traffic-empty"><Icon name="wifi" size={24}/><p>{t(emptyKey)}</p>
             {(query || filter !== 'all') && <button type="button" className="traffic-control" onClick={resetFilters}>{t('networkInspector.resetFilters')}</button>}</div>}/>
       </div>
@@ -189,7 +195,9 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
         onLostPointerCapture={() => { dragging.current = false; }}
         onPointerCancel={() => { dragging.current = false; }}/>
       <TrafficDetails entry={shownSelected} detached={detached} filtered={selectedFiltered} onOptions={showOptions} onBack={!wide ? backToList : undefined}
-        onExport={canExport ? entry => exportRows([entry], true) : undefined}/>
+        onExport={canExport ? entry => exportRows([entry], true) : undefined}
+        onPrevious={previousId !== undefined ? () => selectEntry(previousId) : undefined}
+        onNext={nextId !== undefined ? () => selectEntry(nextId) : undefined}/>
     </div>
     <footer className="traffic-footer">
       <span>{t('networkInspector.shown', { p0: entries.length, p1: allEntries.length })}</span>

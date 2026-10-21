@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { getLocale, t } from '../i18n';
 import { Icon } from '../icons';
 import { useNotifications } from '../notifications';
@@ -35,11 +35,15 @@ export function TrafficStatus({ entry }: { entry: TrafficEntry }) {
   const pending = ['pending', 'connecting', 'sending', 'waiting', 'receiving'].includes(phase);
   const failed = phase === 'error' || phase === 'httpError';
   const label = entry.method === 'CONNECT' && phase === 'complete' ? t('networkInspector.connectionClosed') : t(phaseKeys[phase]);
+  const qualifier = entry.outcome === 'stopped' ? t('networkInspector.snapshotShort')
+    : entry.outcome === 'error' && entry.statusSource === 'upstream'
+      ? t(entry.errorKind === 'incomplete' || entry.errorKind === 'reset' ? 'networkInspector.interruptedShort' : 'networkInspector.failedShort') : '';
   return <span className="traffic-status" data-phase={failed ? 'error' : phase} title={label}>
     {pending && <span className="mini-spinner"/>}
     {failed && <Icon name="alert" size={13}/>}
     {phase === 'open' && <Icon name="wifi" size={13}/>}
-    {entry.method === 'CONNECT' ? <span className={pending ? 'traffic-sr-only' : undefined}>{phase === 'error' || phase === 'httpError' ? t('networkInspector.error') : phase === 'stopped' ? t('networkInspector.snapshotShort') : phase === 'unknown' ? '—' : label}</span> : <span>{entry.status ?? <span className="traffic-sr-only">{label}</span>}
+    {entry.method === 'CONNECT' ? <span className={pending ? 'traffic-sr-only' : undefined}>{phase === 'error' || phase === 'httpError' ? t('networkInspector.error') : phase === 'stopped' ? t('networkInspector.snapshotShort') : phase === 'unknown' ? '—' : label}</span> : <span>{entry.status ?? (qualifier || <span className="traffic-sr-only">{label}</span>)}
+      {qualifier && entry.status !== null && <small className="traffic-status-qualifier">{qualifier}</small>}
       {entry.statusSource === 'proxy' && <small>{t('networkInspector.proxyShort')}</small>}</span>}
   </span>;
 }
@@ -48,11 +52,26 @@ type DetailTab = 'overview' | 'request' | 'response';
 const tabs: DetailTab[] = ['overview', 'request', 'response'];
 const tabKeys = { overview: 'networkInspector.overview', request: 'networkInspector.request', response: 'networkInspector.response' } as const;
 
-export function TrafficDetails({ entry, detached, filtered, onOptions, onExport, onBack }: {
+export function TrafficDetails({ entry, detached, filtered, onOptions, onExport, onBack, onPrevious, onNext }: {
   entry?: TrafficEntry; detached: boolean; filtered: boolean; onOptions: () => void;
   onExport?: (entry: TrafficEntry) => void; onBack?: () => void;
+  onPrevious?: () => void; onNext?: () => void;
 }) {
   const [tab, setTab] = useState<DetailTab>('overview');
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = 0; }, [entry?.id, tab]);
+  const neighbours = <div className="traffic-neighbours" role="group" aria-label={t('networkInspector.requestNavigation')}>
+    <button type="button" className="traffic-control traffic-icon" disabled={!onPrevious} onClick={onPrevious}
+      aria-label={t('networkInspector.previousRequest')} title={t('networkInspector.previousRequestHint')} aria-keyshortcuts="Alt+ArrowUp"><Icon name="arrowUp" size={15}/></button>
+    <button type="button" className="traffic-control traffic-icon" disabled={!onNext} onClick={onNext}
+      aria-label={t('networkInspector.nextRequest')} title={t('networkInspector.nextRequestHint')} aria-keyshortcuts="Alt+ArrowDown"><Icon name="arrowDown" size={15}/></button>
+  </div>;
+  const navigateRequests = (event: KeyboardEvent<HTMLElement>) => {
+    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    if ((event.target as HTMLElement).closest('input,textarea,select,[contenteditable=true]')) return;
+    event.preventDefault(); event.stopPropagation();
+    (event.key === 'ArrowUp' ? onPrevious : onNext)?.();
+  };
   const { notify, notifyError } = useNotifications();
   const address = entry ? trafficAddress(entry) : null;
   const tunnel = entry?.method === 'CONNECT';
@@ -84,13 +103,14 @@ export function TrafficDetails({ entry, detached, filtered, onOptions, onExport,
   if (entry && tab === 'request' && !tunnel) {
     try { query = [...new URL(entry.url).searchParams.entries()]; } catch { /* Keep the recorded URL. */ }
   }
-  return <section className="traffic-detail" aria-label={t('networkInspector.details')}>
-    {onBack && <button type="button" className="traffic-back" onClick={onBack}><Icon name="chevronLeft" size={16}/>{t('networkInspector.backToList')}</button>}
+  return <section className="traffic-detail" aria-label={t('networkInspector.details')} onKeyDown={navigateRequests}>
+    {onBack && <div className="traffic-detail-nav"><button type="button" className="traffic-back" onClick={onBack}><Icon name="chevronLeft" size={16}/>{t('networkInspector.backToList')}</button>{neighbours}</div>}
     {!entry ? <div className="traffic-empty traffic-detail-empty"><Icon name="list" size={24}/><strong>{t('networkInspector.detailsEmptyTitle')}</strong><p>{t('networkInspector.detailsEmptyHint')}</p></div> : <>
       <header className="traffic-detail-header">
         <div className="traffic-selected-title">
           <span className="traffic-method-tag">{entry.method}</span><strong title={address!.pathname}>{tunnel ? address!.host : address!.pathname}</strong>
           <div className="traffic-detail-actions">
+            {!onBack && neighbours}
             {onExport && <button className="traffic-control traffic-icon" type="button" onClick={() => onExport(entry)} aria-label={t('networkInspector.exportSelected')} title={t('networkInspector.exportSelected')}><Icon name="download" size={15}/></button>}
             <button className="traffic-control traffic-icon" type="button" onClick={() => void copyUrl()} aria-label={t('networkInspector.copyUrl')} title={t('networkInspector.copyUrl')}><Icon name="copy" size={15}/></button>
           </div>
@@ -101,7 +121,7 @@ export function TrafficDetails({ entry, detached, filtered, onOptions, onExport,
         {tabs.map(id => <button key={id} type="button" role="tab" id={'traffic-detail-tab-' + id} aria-controls={'traffic-detail-' + id}
           tabIndex={id === tab ? 0 : -1} aria-selected={id === tab} onClick={() => setTab(id)}>{t(tabKeys[id])}</button>)}
       </div>
-      <div className="traffic-detail-body" role="tabpanel" id={'traffic-detail-' + tab} aria-labelledby={'traffic-detail-tab-' + tab} tabIndex={0}>
+      <div ref={bodyRef} className="traffic-detail-body" role="tabpanel" id={'traffic-detail-' + tab} aria-labelledby={'traffic-detail-tab-' + tab} tabIndex={0}>
         {(detached || filtered) && <p className="traffic-note traffic-retained">{t(detached ? 'networkInspector.retained' : 'networkInspector.filteredSelection')}</p>}
         {entry.outcome === 'error' && <p className="traffic-note traffic-error"><Icon name="alert" size={16}/>{t(errorKeys[entry.errorKind ?? 'io'])}</p>}
         {tunnel && <p className="traffic-note"><Icon name="shield" size={16}/>{t('networkInspector.encrypted')}</p>}
