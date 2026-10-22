@@ -511,8 +511,14 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     }
   };
 
-  const maxConsoleWidth = () => Math.max(320, (workspaceRef.current?.clientWidth ?? 1400) - 344);
-  const clampConsoleWidth = (value: number) => Math.max(320, Math.min(maxConsoleWidth(), Math.round(value)));
+  const workspaceGap = () => workspaceRef.current ? Number.parseFloat(getComputedStyle(workspaceRef.current).columnGap) || 0 : 24;
+  const maxConsoleWidth = () => Math.max(320, Math.floor((workspaceRef.current?.clientWidth ?? 1400) - 320 - workspaceGap()));
+  const minConsoleWidth = () => {
+    const workspace = workspaceRef.current;
+    const viewer = Number.parseFloat(workspace?.style.getPropertyValue('--viewer-width') || '') || 320;
+    return Math.min(maxConsoleWidth(), Math.max(320, Math.round((workspace?.clientWidth ?? 1400) - viewer - workspaceGap())));
+  };
+  const clampConsoleWidth = (value: number) => Math.max(minConsoleWidth(), Math.min(maxConsoleWidth(), Math.round(value)));
   const maxConsoleHeight = () => {
     const viewport = window.innerHeight;
     if (window.innerWidth <= 1200) return Math.max(180, Math.min(420, Math.floor(viewport * 0.44)));
@@ -540,7 +546,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     const current = dimension === 'width'
       ? workspaceRef.current?.querySelector<HTMLElement>('.terminal-panel')?.getBoundingClientRect().width ?? consoleWidth
       : terminalOutputRef.current?.getBoundingClientRect().height ?? consoleHeight;
-    const minimum = dimension === 'width' ? 320 : 180;
+    const minimum = dimension === 'width' ? minConsoleWidth() : 180;
     const maximum = dimension === 'width' ? maxConsoleWidth() : maxConsoleHeight();
     const next = Math.max(minimum, Math.min(maximum, Math.round(event.key === 'Home' ? minimum : event.key === 'End' ? maximum : current + (event.key === increase ? 24 : -24))));
     if (dimension === 'width') { setConsoleResized(true); setConsoleWidth(next); }
@@ -688,13 +694,17 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
       setPx('--session-fit-height', available);
       const output = terminalOutputRef.current;
       const terminal = workspace.querySelector<HTMLElement>('.terminal-panel');
-      if (output && terminal && output.getBoundingClientRect().height > 0) {
-        const outputBox = output.getBoundingClientRect();
+      if (terminal && terminal.getBoundingClientRect().width > 0) {
         const terminalBox = terminal.getBoundingClientRect();
-        const chrome = (terminalBox.height - outputBox.height) / scale;
-        setPx('--session-console-output-fit', Math.max(180, available - chrome));
-        const width = Math.round(terminalBox.width / scale), height = Math.round(outputBox.height / scale);
-        setVisibleConsoleSize(previous => previous.width === width && previous.height === height ? previous : { width, height });
+        const outputBox = output?.getBoundingClientRect();
+        const width = Math.round(terminalBox.width / scale);
+        const height = outputBox?.height ? Math.round(outputBox.height / scale) : null;
+        if (outputBox?.height) {
+          const chrome = (terminalBox.height - outputBox.height) / scale;
+          setPx('--session-console-output-fit', Math.max(180, available - chrome));
+        }
+        setVisibleConsoleSize(previous => previous.width === width && (height === null || previous.height === height)
+          ? previous : { width, height: height ?? previous.height });
       }
     };
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(measure); };
@@ -741,7 +751,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     </div>;
   const frameWidth = Math.max(1, stream.size.width);
   const frameHeight = Math.max(1, stream.size.height);
-  const viewerWidth = Math.max(compactWorkspace ? 320 : 440, Math.ceil(stageSize.height * frameWidth / frameHeight + stageHorizontalPadding + 2));
+  const viewerWidth = Math.max(320, Math.ceil(stageSize.height * frameWidth / frameHeight + stageHorizontalPadding + 2));
   const displayScale = Math.min(Math.max(0, stageSize.width) / frameWidth, Math.max(0, stageSize.height) / frameHeight);
 
   return <div className="session-layout" data-shared={shared ? access : undefined} data-workspace-mode={activeWorkspaceMode}>
@@ -884,7 +894,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
           setToolTab(id);
           event.currentTarget.querySelector<HTMLButtonElement>('#tool-tab-' + id)?.focus();
         }}>{availableToolTabs.map(([id, label]) => <button key={id} type="button" role="tab" id={'tool-tab-' + id} aria-controls={'tool-panel-' + id} aria-selected={toolTab === id} tabIndex={toolTab === id ? 0 : -1} className={toolTab === id ? 'active' : ''} onClick={() => setToolTab(id)}>{label}</button>)}</div>
-        <div className="console-width-handle" role="separator" aria-orientation="vertical" aria-label={t('ui.aad9553c58e7')} aria-valuemin={320} aria-valuemax={maxConsoleWidth()} aria-valuenow={visibleConsoleSize.width || Math.min(consoleWidth, maxConsoleWidth())} tabIndex={0} onPointerDown={startWidthResize} onPointerMove={moveWidthResize} onPointerUp={endWidthResize} onPointerCancel={endWidthResize} title={t('ui.84def31d6544')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'width')}><span /></div>
+        <div className="console-width-handle" role="separator" aria-orientation="vertical" aria-label={t('ui.aad9553c58e7')} aria-valuemin={minConsoleWidth()} aria-valuemax={maxConsoleWidth()} aria-valuenow={visibleConsoleSize.width || Math.min(consoleWidth, maxConsoleWidth())} tabIndex={0} onPointerDown={startWidthResize} onPointerMove={moveWidthResize} onPointerUp={endWidthResize} onPointerCancel={endWidthResize} title={t('ui.84def31d6544')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'width')}><span /></div>
         <div className="tool-content terminal-tool" id="tool-panel-console" role="tabpanel" aria-labelledby="tool-tab-console" data-catalog-open={catalogOpen || undefined} style={toolAllowed('console') && toolTab === 'console' ? undefined : { display: 'none' }}>
           <div className="terminal-topline"><div className="tool-header"><h2>{t('ui.415b2ea14558')}</h2><p>{t('ui.5a8b4be5b13d')}</p></div><div className="terminal-header-actions"><button type="button" className="console-size-reset icon-button" title={t('ui.acb4297e7d57')} aria-label={t('ui.acb4297e7d57')} onClick={resetConsoleSize} disabled={!consoleResized && !consoleHeightResized}><Icon name="refresh" size={16} /></button><button type="button" className="console-catalog-toggle" aria-expanded={catalogOpen} aria-controls="console-catalog-panel" onClick={() => { setSuggestionsOpen(false); setCatalogOpen(open => !open); }}>{t('ui.3c69ec43782e')}{getConsoleCommands().length}</button><button type="button" className="terminal-clear" onClick={() => setShellHistory([])} disabled={!shellHistory.length} title={t('ui.20dd55101aa2')}>{t('ui.8965271d3c97')}</button></div></div>
           <div className="terminal-output" ref={terminalOutputRef} style={{ height: consoleHeight }} aria-live="polite">{shellHistory.length ? shellHistory.map((line, index) => <div className="terminal-entry" key={index}><div className="terminal-command"><span aria-hidden="true">{t('ui.77d57e39b407')}</span> {line.command}</div>{line.result?.stdout && <pre>{line.result.stdout}</pre>}{line.result?.stderr && <pre className="terminal-stderr">{line.result.stderr}</pre>}{line.error && <pre className="terminal-stderr">{line.error}</pre>}{line.result && <small>{t('ui.a1e1777a4cb9')}{line.result.exitCode}</small>}</div>) : <div className="terminal-empty"><strong>{t('ui.fadad01443a1')}</strong><p>{t('ui.087d5eca2dbf')}</p></div>}{shellBusy && <div className="terminal-running"><span className="mini-spinner" />{t('ui.176e44dd22ac')}</div>}</div>

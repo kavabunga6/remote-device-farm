@@ -68,6 +68,7 @@ for (const variant of [
   { language: 'en', theme: 'dark', scale: 1.5, width: 1440, layout: 'tools' },
   { language: 'ru', theme: 'dark', scale: 1, width: 768, layout: 'tools' },
   { language: 'en', theme: 'light', scale: 1, width: 1920, layout: 'split' },
+  { language: 'ru', theme: 'dark', scale: 1.25, width: 1366, layout: 'split' },
 ]) test('traffic and WebView tools ' + JSON.stringify(variant), async ({ page }, info) => {
   let recording = false, updated = false, extra = false, cleared = false, bodies = false, packets = false, evicted = false;
   const captureId = 'a'.repeat(32);
@@ -116,6 +117,16 @@ for (const variant of [
   const search = traffic.getByRole('searchbox');
   await expect(traffic.getByRole('button', { name: /^(Дерево|Tree)$/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(traffic.locator('.traffic-tree-leaf')).toHaveCount(40);
+  if (variant.layout === 'split') {
+    await expect.poll(() => page.locator('.device-screen').evaluate(element => element.getBoundingClientRect().width)).toBeGreaterThan(150);
+    const geometry = await page.evaluate(() => {
+      const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+      return { viewer: rect('.viewer-panel').width, device: rect('.device-screen').width,
+        tools: rect('.terminal-panel').width, workspace: rect('.workspace-grid').width };
+    });
+    expect(geometry.viewer - geometry.device).toBeLessThanOrEqual(Math.max(26, 320 - geometry.device) + 1);
+    expect(geometry.tools).toBeGreaterThan(geometry.workspace / 2);
+  }
   const host = traffic.locator('.traffic-tree > .traffic-tree-node').first();
   const hostSummary = host.locator(':scope > summary');
   await expect(host.locator('.traffic-tree-children > .traffic-tree-node').first()).not.toHaveAttribute('open');
@@ -240,9 +251,11 @@ for (const variant of [
     await expect(traffic.getByRole('dialog', { name: /^(Экспорт|Export)$/ })).not.toBeVisible();
     if (variant.layout === 'split') {
       await traffic.getByRole('button', { name: /Развернуть|Expand/ }).click();
-      await expect(traffic.locator('.traffic-workspace')).toHaveAttribute('data-wide', 'true');
+      await expect(layout.getByRole('button', { name: /^(Инструменты|Tools)$/ })).toHaveAttribute('aria-pressed', 'true');
       await expect(list).toBeVisible();
-      await expect(details).toBeVisible();
+      // Enlarged text may still require compact request details at the full workspace width.
+      if (await traffic.locator('.traffic-workspace').getAttribute('data-wide') === 'true') await expect(details).toBeVisible();
+      else await expect(details).toBeHidden();
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     expect(operations).toEqual(['start', 'stop']);
@@ -315,7 +328,7 @@ for (const variant of [
   const selectMetrics = await traffic.locator('select').evaluate(el => { const s = getComputedStyle(el); return { top: s.paddingTop, bottom: s.paddingBottom }; });
   expect(selectMetrics).toEqual({ top: '0px', bottom: '0px' });
   expect(await traffic.locator('tbody td:first-child').first().evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(160);
-  if (variant.layout === 'split') expect(box!.width).toBeLessThan(500);
+  if (variant.layout === 'split') expect(box!.width).toBeGreaterThan(800);
   await traffic.screenshot({ path: info.outputPath('traffic.png') });
   await page.screenshot({ path: info.outputPath('traffic-page.png') });
   const divider = traffic.getByRole('separator');

@@ -320,7 +320,8 @@
 
 @media(min-width:1201px){
   .session-layout:not([data-shared])[data-workspace-mode=split] .workspace-grid{grid-template-columns:minmax(0,min(var(--viewer-width),calc(100% - 320px - 1.5rem))) minmax(320px,1fr)}
-  .session-layout:not([data-shared])[data-workspace-mode=split] .workspace-grid[data-console-resized]{grid-template-columns:minmax(0,1fr) minmax(320px,min(var(--console-width),calc(100% - 344px)))}
+  /* A saved tool width can shrink the viewer, but must not add empty space around the device. */
+  .session-layout:not([data-shared])[data-workspace-mode=split] .workspace-grid[data-console-resized]{grid-template-columns:minmax(0,min(var(--viewer-width),max(320px,calc(100% - var(--console-width) - 1.5rem)))) minmax(320px,1fr)}
   .session-layout:not([data-shared])[data-workspace-mode=split] .console-width-handle{display:grid;left:-1.375rem;width:1.25rem}
 }
 

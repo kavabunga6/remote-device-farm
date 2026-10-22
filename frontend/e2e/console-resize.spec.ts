@@ -38,16 +38,20 @@ for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 108
     const initialWidth = await size(panel, 'width');
     const initialPhoneHeight = await size(phone, 'height');
 
-    await drag(page, widthHandle, 64, 0);
-    await expect.poll(() => size(panel, 'width')).toBeCloseTo(initialWidth - 64, 0);
-    await widthHandle.press('ArrowLeft');
-    await expect.poll(() => size(panel, 'width')).toBeCloseTo(initialWidth - 40, 0);
-    await expect.poll(() => page.evaluate(() => Number(localStorage.getItem('rdf-console-width')))).toBeCloseTo(initialWidth - 40, 0);
-    await expect(widthHandle).toHaveAttribute('aria-valuenow', String(Math.round(initialWidth - 40)));
+    const minimumWidth = Number(await widthHandle.getAttribute('aria-valuemin'));
+    const maximumWidth = Number(await widthHandle.getAttribute('aria-valuemax'));
+    const draggedWidth = Math.min(maximumWidth, initialWidth + 64);
+    const savedWidth = Math.max(minimumWidth, draggedWidth - 24);
+    await drag(page, widthHandle, -64, 0);
+    await expect.poll(() => size(panel, 'width')).toBeCloseTo(draggedWidth, 0);
+    await widthHandle.press('ArrowRight');
+    await expect.poll(() => size(panel, 'width')).toBeCloseTo(savedWidth, 0);
+    await expect.poll(() => page.evaluate(() => Number(localStorage.getItem('rdf-console-width')))).toBeCloseTo(savedWidth, 0);
+    await expect(widthHandle).toHaveAttribute('aria-valuenow', String(Math.round(savedWidth)));
     await expect(input).toBeInViewport();
     await page.reload();
     await expect(input).toBeEnabled();
-    await expect.poll(() => size(panel, 'width')).toBeCloseTo(initialWidth - 40, 0);
+    await expect.poll(() => size(panel, 'width')).toBeCloseTo(savedWidth, 0);
     await reset.click();
     await expect.poll(() => size(panel, 'width')).toBeCloseTo(initialWidth, 0);
     await expect.poll(() => size(phone, 'height')).toBeCloseTo(initialPhoneHeight, 0);
@@ -106,6 +110,8 @@ async function fittedWorkspace(page: Page) {
       bottom: Math.max(viewer.bottom, tools.bottom, device.bottom, input.bottom, controls.bottom),
       toolsWidth: tools.width,
       workspaceWidth: workspace.width,
+      preferredViewerWidth: Number.parseFloat((document.querySelector('.workspace-grid') as HTMLElement).style.getPropertyValue('--viewer-width')),
+      viewerWidth: viewer.width, deviceWidth: device.width, gap,
       documentOverflow: document.documentElement.scrollWidth - innerWidth,
       verticalOverflow: document.documentElement.scrollHeight - innerHeight,
       rootFontSize: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
@@ -133,7 +139,9 @@ for (const [savedWidth, scale] of [[600, 1], [960, 1], [5000, 1], [960, 1.25]] a
       const geometry = await fittedWorkspace(page);
       expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
       expect(geometry.verticalOverflow).toBeLessThanOrEqual(1);
-      expect(geometry.toolsWidth).toBeCloseTo(Math.min(savedWidth, geometry.workspaceWidth - 344), 0);
+      const minimum = Math.max(320, geometry.workspaceWidth - geometry.preferredViewerWidth - geometry.gap);
+      expect(geometry.toolsWidth).toBeCloseTo(Math.max(minimum, Math.min(savedWidth, geometry.workspaceWidth - 320 - geometry.gap)), 0);
+      expect(geometry.viewerWidth - geometry.deviceWidth).toBeLessThanOrEqual(Math.max(26, 320 - geometry.deviceWidth) + 1);
       expect(await page.evaluate(() => localStorage.getItem('rdf-console-width'))).toBe(String(savedWidth));
     };
     await page.goto('/#/session/' + sessionId);
