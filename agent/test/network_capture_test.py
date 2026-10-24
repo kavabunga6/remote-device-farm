@@ -205,11 +205,14 @@ class ProxyTests(unittest.TestCase):
 
     def test_capacity_refusal_is_explicit_and_counted(self):
         with patch.object(m, "slots", threading.BoundedSemaphore(0)):
-            client = http.client.HTTPConnection("127.0.0.1", self.proxy.server_port, timeout=3)
-            client.request("GET", "http://example.test/")
-            self.assertEqual(client.getresponse().status, 503)
-            client.close()
-        self.assertEqual(m.capture.snapshot()["rejectedConnections"], 1)
+            for _ in range(20):
+                client = http.client.HTTPConnection("127.0.0.1", self.proxy.server_port, timeout=3)
+                client.request("GET", "http://example.test/")
+                response = client.getresponse()
+                self.assertEqual(response.status, 503)
+                self.assertEqual(response.read(), b"")
+                client.close()
+        self.assertEqual(m.capture.snapshot()["rejectedConnections"], 20)
 
     def test_connect_keeps_idle_socket_and_reports_open_then_complete(self):
         listener = socket.socket()

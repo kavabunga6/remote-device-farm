@@ -45,6 +45,17 @@ class Threaded(socketserver.ThreadingMixIn, http.server.HTTPServer):
             try:
                 request.settimeout(.1)
                 request.sendall(b"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 0\r\nRetry-After: 1\r\n\r\n")
+                # Preserve the response when the peer is still sending its request.
+                # Closing a socket with unread data can reset it before 503 is read.
+                request.shutdown(socket.SHUT_WR)
+                deadline = time.monotonic() + .1
+                remaining = 8192
+                while remaining > 0 and time.monotonic() < deadline:
+                    request.settimeout(max(.001, deadline - time.monotonic()))
+                    data = request.recv(min(4096, remaining))
+                    if not data:
+                        break
+                    remaining -= len(data)
             except OSError:
                 pass
             self.shutdown_request(request)
