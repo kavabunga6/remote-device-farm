@@ -6,13 +6,13 @@ The existing [client-side Appium example](appium.md) remains available.
 
 For hybrid apps, use the W3C context APIs to switch between NATIVE_APP and an available WEBVIEW context. JavaScript execution is accepted only after the worker confirms a web context; mobile shell execution remains disabled. browserName can be Chrome or Chromium, and appium:autoWebview is supported. The browser's WebView panel provides page discovery, HTML and JavaScript inspection without an Appium worker.
 
-**Build status:** dependency installation and runtime-source compilation use one pinned lockfile. Upstream development dependencies and tests are not installed or built. Native Android and WebView automation still require live acceptance; a local `/status` response does not validate device automation.
+**Build status:** dependency installation and runtime-source compilation use one pinned lockfile. Upstream development dependencies and tests are not installed or built. The Linux image has passed native Android and WebView automation through the service API. A local `/status` response alone does not validate device automation.
 
 ## Agent setup
 
 The optional image uses the Appium and UiAutomator2 versions pinned in examples/appium/package-lock.json. It supports native and debuggable WebView/Chrome automation on Android 8 (API 26) and newer; the device version must be confirmed by the agent. Compatible ChromeDriver versions are downloaded by the pinned UiAutomator2 driver into each worker's temporary directory. This requires outbound access to the upstream ChromeDriver download services; the directory is removed with the worker. Client-supplied executable paths, download URLs, arbitrary mobile scripts and Appium plugins are not provided.
 
-Install an Android SDK on the worker host, accept its licences and include Platform Tools and compatible Build Tools. The agent user must be able to read the directory. The optional image includes JDK 17. SDK tools are mounted read-only; SDK runtime downloads and automatic licence acceptance are disabled. ChromeDriver provisioning is separate from the SDK mount.
+Install an Android SDK on the worker host, accept its licences and include Platform Tools and compatible Build Tools. The agent user must be able to read the directory. The optional image includes JDK 17 and the Linux libraries needed to run ChromeDriver, including libxcb. SDK tools are mounted read-only; SDK runtime downloads and automatic licence acceptance are disabled. ChromeDriver provisioning is separate from the SDK mount.
 
 Build the base agent from the same source revision:
 
@@ -65,6 +65,6 @@ Only one command may be in flight per device. A second session creation is rejec
 
 ## Verification
 
-Automated checks exercise real loopback child-process startup/termination, driver affinity, capability restrictions, response redaction, temporary-directory cleanup and production HTTP authorization. The pinned Appium package has also answered /status locally and stopped cleanly.
+Automated checks exercise real loopback child-process startup/termination, driver affinity, capability restrictions, response redaction, temporary-directory cleanup and production HTTP authorization. The pinned Appium package has also answered /status locally and stopped cleanly. A Linux/SDK deployment with Android 16 passed native element lookup and clicks, source, PNG, a WEBVIEW context, automatic ChromeDriver provisioning and JavaScript through the service API. Ending the device session with Appium, ChromeDriver and packet capture active removed their processes, private worker directory, capture container, session networks and ADB forwards. A separate account was denied access to the Appium endpoint.
 
-Full UiAutomator2 execution on Android, the optional Linux image/SDK deployment, WebDriver client compatibility and concurrent live device runs are **Not tested**. See [verification limits](../verification.md).
+The live check used a debuggable fixture app, 2 GiB of guest RAM and a 6 GiB emulator-container limit with software rendering. Memory requirements depend on the app and rendering workload. Other Android/WebView versions, WebDriver clients and concurrent live device runs remain **Not tested**. See [verification limits](../verification.md).
