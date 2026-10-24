@@ -6,7 +6,7 @@ The existing [client-side Appium example](appium.md) remains available.
 
 For hybrid apps, use the W3C context APIs to switch between NATIVE_APP and an available WEBVIEW context. JavaScript execution is accepted only after the worker confirms a web context; mobile shell execution remains disabled. browserName can be Chrome or Chromium, and appium:autoWebview is supported. The browser's WebView panel provides page discovery, HTML and JavaScript inspection without an Appium worker.
 
-**Build status:** the pinned UiAutomator2 source currently fails its unit-test TypeScript compilation during a clean Linux dependency install. The optional image needs a build fix before use. A local `/status` response does not validate Android automation.
+**Build status:** dependency installation and runtime-source compilation use one pinned lockfile. Upstream development dependencies and tests are not installed or built. Native Android and WebView automation still require live acceptance; a local `/status` response does not validate device automation.
 
 ## Agent setup
 
@@ -22,7 +22,7 @@ export RDF_ANDROID_SDK_DIR=/srv/android-sdk
 docker compose -f compose.yaml -f compose.agent.yaml -f compose.appium.yaml up -d --build agent
 ```
 
-Use the Compose files and environment files for the target installation. The optional overlay preserves the agent's existing key and control volumes. It sets a 2 GiB agent memory limit and allows two simultaneous Appium workers. Set RDF_APPIUM_MAX_WORKERS to 1–8 and adjust the container limit after measuring the intended workload. Emulator limits remain separate.
+Use the Compose files and environment files for the target installation. The optional overlay preserves the agent's existing key and control volumes. It sets a 2 GiB agent memory limit and allows two simultaneous Appium workers. Set RDF_APPIUM_MAX_WORKERS to 1–8 and adjust the container limit after measuring the intended workload. Emulator limits remain separate. A dedicated 384 MiB executable tmpfs holds worker files and downloaded ChromeDriver binaries; the agent’s general temporary directory retains its existing mount protection. The worker directory is removed on release.
 
 For an existing SDK-equipped agent installation, RDF_APPIUM_ENTRY may point to an absolute Appium index.js from a project containing both pinned dependencies. The worker process discovers its driver from that project.
 

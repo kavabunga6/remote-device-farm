@@ -4,12 +4,13 @@ ARG AGENT_IMAGE=remote-device-farm-agent:local
 FROM ${AGENT_IMAGE}
 USER root
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends openjdk-17-jdk-headless git unzip \
+    && apt-get install -y --no-install-recommends openjdk-17-jdk-headless unzip \
     && rm -rf /var/lib/apt/lists/*
 RUN ln -s "$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")" /opt/rdf-java
 WORKDIR /opt/rdf-appium
-COPY package*.json ./
-RUN npm ci --include=dev --no-audit --no-fund \
+COPY package*.json build-driver.mjs ./
+RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund \
+    && npm run build:driver \
     && node node_modules/appium/index.js driver list --installed \
     && chmod -R a+rX /opt/rdf-appium
 # Supply an operator-managed SDK directory containing platform-tools and build-tools.

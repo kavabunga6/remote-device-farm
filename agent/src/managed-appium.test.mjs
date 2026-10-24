@@ -51,7 +51,9 @@ test('loopback workers bind one driver, redact upstream errors and terminate wit
   await mkdir(directory, { recursive: true });
   const entry = path.join(directory, 'index.cjs');
   await writeFile(entry, "const http=require('node:http');const p=process.argv[process.argv.indexOf('--port')+1];http.createServer(async(req,res)=>{for await(const c of req){}res.setHeader('content-type','application/json');if(req.url==='/status')return res.end(JSON.stringify({value:{ready:true}}));if(req.url==='/session')return res.end(JSON.stringify({value:{sessionId:'driver-owned',capabilities:{}}}));if(req.url.endsWith('/source'))return res.end(JSON.stringify({value:'<hierarchy/>'}));if(req.url.endsWith('/element')){res.statusCode=404;return res.end(JSON.stringify({value:{error:'no such element',message:'private host path',stacktrace:'private stack'}}));}res.end(JSON.stringify({value:null}));}).listen(p,'127.0.0.1');");
-  const manager = new ManagedAppium({ entry, startTimeoutMs: 10_000 });
+  const workerRoot = path.join(root, 'workers');
+  await mkdir(workerRoot);
+  const manager = new ManagedAppium({ entry, startTimeoutMs: 10_000, temporaryRoot: workerRoot });
   const signal = new AbortController();
   try {
     const creating = manager.request('owned', 'device-1', { method: 'POST', path: '/session', body: { capabilities: { alwaysMatch: {} } } }, { signal: signal.signal });
@@ -59,6 +61,7 @@ test('loopback workers bind one driver, redact upstream errors and terminate wit
     const created = await creating;
     assert.equal(created.body.value.sessionId, 'driver-owned');
     const worker = manager.workers.get('owned'), temporary = worker.directory;
+    assert.equal(path.dirname(temporary), workerRoot);
     await assert.rejects(manager.request('owned', 'device-1', { method: 'POST', path: '/session', body: { capabilities: { alwaysMatch: {} } } }));
     await assert.rejects(manager.request('owned', 'device-1', { method: 'GET', path: '/session/driver-other/source' }));
     assert.equal(manager.workers.get('owned'), worker);

@@ -70,8 +70,10 @@ async function freePort() {
 // One loopback worker per owned device session. Only the brokered W3C subset is
 // reachable; clients cannot choose a device, host path, download URL or driver.
 export class ManagedAppium {
-  constructor({ entry = process.env.RDF_APPIUM_ENTRY, spawnImpl = spawn, fetchImpl = fetch, startTimeoutMs = 60_000, maxWorkers = Number(process.env.RDF_APPIUM_MAX_WORKERS ?? 2) } = {}) {
+  constructor({ entry = process.env.RDF_APPIUM_ENTRY, spawnImpl = spawn, fetchImpl = fetch, startTimeoutMs = 60_000, maxWorkers = Number(process.env.RDF_APPIUM_MAX_WORKERS ?? 2), temporaryRoot = process.env.RDF_APPIUM_TMPDIR || os.tmpdir() } = {}) {
     if (!Number.isInteger(maxWorkers) || maxWorkers < 1 || maxWorkers > 8) fail();
+    if (typeof temporaryRoot !== 'string' || !path.isAbsolute(temporaryRoot)) fail();
+    this.temporaryRoot = path.resolve(temporaryRoot);
     this.maxWorkers = maxWorkers;
     this.entry = entry; this.spawn = spawnImpl; this.fetch = fetchImpl;
     this.startTimeoutMs = startTimeoutMs; this.workers = new Map(); this.pending = new Set(); this.stopping = new Map(); this.ports = new Set();
@@ -131,7 +133,7 @@ export class ManagedAppium {
   }
   async start(sessionId, parentSignal) {
     await access(this.entry).catch(() => { throw new Error(agentMessage('agent.appium.unavailable')); });
-    const directory = await mkdtemp(path.join(os.tmpdir(), 'rdf-appium-'));
+    const directory = await mkdtemp(path.join(this.temporaryRoot, 'rdf-appium-'));
     const worker = { directory, life: new AbortController(), driverId: null, child: null, closed: null };
     worker.signal = parentSignal ? AbortSignal.any([worker.life.signal, parentSignal]) : worker.life.signal;
     this.workers.set(sessionId, worker);
@@ -208,7 +210,7 @@ export class ManagedAppium {
         await worker.closed;
       }
       const target = path.resolve(worker.directory);
-      if (path.dirname(target) !== path.resolve(os.tmpdir()) || !path.basename(target).startsWith('rdf-appium-')) fail();
+      if (path.dirname(target) !== this.temporaryRoot || !path.basename(target).startsWith('rdf-appium-')) fail();
       await rm(target, { recursive: true, force: true });
       for (const port of worker.reservedPorts ?? []) this.ports.delete(port);
       if (this.workers.get(sessionId) === worker) this.workers.delete(sessionId);

@@ -148,7 +148,8 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: examples/appium/package-lock.json
-      - run: npm ci
+      - run: npm ci --ignore-scripts
+      - run: npm run build:driver
       - name: Verify Appium and pinned driver can load
         run: |
           node node_modules/appium/index.js --version
