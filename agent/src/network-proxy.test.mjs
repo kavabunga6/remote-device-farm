@@ -29,3 +29,25 @@ test('the real HTTP proxy streams requests, omits credentials and tunnels CONNEC
   assert.equal(state.entries[1].method, 'CONNECT');
   assert.ok(!JSON.stringify(state).includes('secret'));
 });
+
+test('the internal inspector controller requires its private per-process credential', async()=>{
+  const source=fileURLToPath(new URL('./network-proxy.py',import.meta.url));
+  const script=[
+    'import importlib.util,http.client,http.server,threading',
+    'spec=importlib.util.spec_from_file_location("proxy",'+JSON.stringify(source)+');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)',
+    'server=http.server.HTTPServer(("127.0.0.1",0),m.Control);m.admin=server;t=threading.Thread(target=server.serve_forever,daemon=True);t.start()',
+    'def request(path,token=None):',
+    ' c=http.client.HTTPConnection("127.0.0.1",server.server_port);c.request("GET",path,headers={} if token is None else {"X-RDF-Control":token});r=c.getresponse();status=r.status;r.read();c.close();return status',
+    'assert request("/status")==403',
+    'assert request("/status",chr(233)*64)==403',
+    'assert request("/start?pcap=0&bodies=1","incorrect")==403',
+    'assert not m.capture.recording',
+    'assert request("/start?pcap=0&bodies=0",m.CONTROL_TOKEN)==200',
+    'assert request("/shutdown",m.CONTROL_TOKEN)==409',
+    'assert request("/stop",m.CONTROL_TOKEN)==200',
+    'assert request("/shutdown",m.CONTROL_TOKEN)==200',
+    't.join(2);assert not t.is_alive();server.server_close()',
+  ].join('\n');
+  const result=await runProcess(process.platform==='win32'?'py':'python3',[...(process.platform==='win32'?['-3','-X','utf8']:[]),'-c',script],{timeoutMs:15000});
+  assert.equal(result.exitCode,0,result.stderr);
+});

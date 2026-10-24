@@ -28,7 +28,7 @@ Detailed diagnostics require an updated agent and a new emulator session. The st
 
 The proxy runs inside the emulator's container network namespace and uses its existing egress policy. It does not route application requests through the server or the agent host network.
 
-The Docker control image includes the packet worker. It runs only in the selected emulator namespace, with NET_RAW for capture and SETGID for tcpdump startup; it has no host network, Docker socket, host directories or published ports. Raw packet bytes are not written to Docker logs. Device release removes the worker and its capture. Native control installations can set RDF_PACKET_CAPTURE_IMAGE to a locally built agent image from the same release. The UI disables PCAP when no compatible image is available.
+The Docker control image includes the packet worker. It runs only in the selected emulator namespace, with NET_RAW for capture and SETGID for tcpdump startup; it has no host network, Docker socket, host directories or published ports. Internal control commands require a separate per-process credential. Raw packet bytes are not written to Docker logs. Device release removes the worker and its capture. Native control installations can set RDF_PACKET_CAPTURE_IMAGE to a locally built agent image from the same release. The UI disables PCAP when no compatible image is available.
 
 An agent update preserves captured data and export; recovery stops recording. A new start replaces a stopped capture and upgrades an idle compatible inspector process. Legacy inspector processes require a new device session; the UI indicates this requirement.
 

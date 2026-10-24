@@ -1,5 +1,8 @@
 """Session-local HTTP inspector. HTTPS is tunneled without certificate changes."""
 import hashlib
+import hmac
+import secrets
+import tempfile
 import http.client
 import http.server
 import json
@@ -20,6 +23,8 @@ ROOT = "/rdf-network"
 RUNTIME_VERSION = hashlib.sha256(b"".join(open(os.path.join(ROOT, name), "rb").read() for name in ("proxy.py", "network_capture.py", "console.sh"))).hexdigest() if __name__ == "__main__" else "test"
 PROXY_PORT = 18888
 CONTROL_PORT = 18889
+TOKEN_FILE = ROOT + "/control.token"
+CONTROL_TOKEN = secrets.token_hex(32)
 MAX_STATUS_BYTES = 8 * 1024 * 1024
 capture = Capture()
 slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
@@ -267,6 +272,10 @@ class Control(http.server.BaseHTTPRequestHandler):
         self.connection.settimeout(3)
 
     def do_GET(self):
+        credential = self.headers.get("X-RDF-Control", "")
+        if len(credential) != 64 or any(c not in "0123456789abcdef" for c in credential) or not hmac.compare_digest(credential, CONTROL_TOKEN):
+            self.send_error(403)
+            return
         parsed = urllib.parse.urlsplit(self.path)
         op = parsed.path
         args = urllib.parse.parse_qs(parsed.query)
@@ -309,6 +318,9 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "serve":
         proxy = Threaded(("127.0.0.1", PROXY_PORT), Handler)
         admin = http.server.HTTPServer(("127.0.0.1", CONTROL_PORT), Control)
+        with tempfile.NamedTemporaryFile(mode="w", prefix=".control-", dir=ROOT, delete=False) as file:
+            file.write(CONTROL_TOKEN)
+        os.replace(file.name, TOKEN_FILE)
         threading.Thread(target=watchdog, daemon=True).start()
         threading.Thread(target=proxy.serve_forever, daemon=True).start()
         admin.serve_forever()
@@ -321,7 +333,13 @@ if __name__ == "__main__":
             query = "?" + urllib.parse.urlencode({"pcap": sys.argv[2], "bodies": sys.argv[3]})
         elif action == "stop" and len(sys.argv) > 2:
             query = "?" + urllib.parse.urlencode({"reason": sys.argv[2]})
-        with urllib.request.urlopen("http://127.0.0.1:%d/%s%s" % (CONTROL_PORT, action, query), timeout=5) as response:
+        with open(TOKEN_FILE) as file:
+            token = file.read(65)
+        if len(token) != 64:
+            raise ValueError("control_token")
+        request = urllib.request.Request("http://127.0.0.1:%d/%s%s" % (CONTROL_PORT, action, query), headers={"X-RDF-Control": token})
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(request, timeout=5) as response:
             data = response.read(MAX_STATUS_BYTES + 1)
             if len(data) > MAX_STATUS_BYTES:
                 raise ValueError("status_size")
