@@ -1,6 +1,7 @@
 # Local tool and editor settings.
 .claude/
 .codex/
+.codex-remote-attachments/
 .agents/
 .idea/
 .vscode/
