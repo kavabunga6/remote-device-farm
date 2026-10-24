@@ -97,7 +97,7 @@ Selectors accept text, resourceId and description; supplied fields use AND match
 
 The tree is limited to 2000 nodes and 2 MiB of device XML. Password text and descriptions are omitted. Secure screens, games, WebViews and other custom rendering may not expose usable nodes; screenshots and coordinate input remain available. Tree reads and taps use the existing owner/administrator access rules. Operations are bounded and cancelled when the device session stops.
 
-Automated SDK/HTTP checks cover the tools and revoked control permissions. Live semantic lookup and tapping on Android and behavior in external AI clients are **Not tested**.
+Automated SDK/HTTP checks cover the tools and revoked control permissions. A live Android 16 SDK/stdio check covered UI-tree reading, exact lookup, tapping, waiting for changed text and PNG capture. External AI clients, cold-start reliability and long unattended runs remain **Not tested**.
 
 ## Data handling and limits
 
@@ -111,6 +111,6 @@ Automated SDK/HTTP checks cover the tools and revoked control permissions. Live 
 
 Run `npm test --prefix integrations/mcp` for MCP protocol, stdio, lease/idempotency, cleanup state, credential redirects, access errors and APK path checks. The server integration suite exercises MCP against production HTTP routes and a temporary database; Android RPC is modeled.
 
-A live stdio SDK workflow has also been checked on an Android 16 Google APIs emulator: catalog reads, idempotent allocation, readiness, lease renewal, PNG capture, device input, device information, Logcat, opening Android Settings and confirmed release. The temporary account and token were revoked, and its emulator container, networks and slot were verified released. This live check used the local API; external HTTPS client setup and live APK upload/installation through MCP remain **Not tested**.
+A live stdio SDK workflow has also been checked on an Android 16 Google APIs emulator: catalog reads, idempotent allocation, readiness, lease renewal, PNG capture, device input, device information, Logcat, opening Android Settings, semantic UI interaction and confirmed release. The temporary account and token were revoked, and its emulator container, networks and slot were verified released. This live check used the local API; external HTTPS client setup and live APK upload/installation through MCP remain **Not tested**.
 
 Installation and behavior in each external AI client require separate verification. Model-driven judgments, long unattended runs, remote MCP HTTP transport and external catalog publication are **Not tested** or not provided by this stdio package. See [verification limits](../verification.md) and the [API guide](../api/README.md).

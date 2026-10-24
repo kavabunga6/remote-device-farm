@@ -6,6 +6,8 @@ The existing [client-side Appium example](appium.md) remains available.
 
 For hybrid apps, use the W3C context APIs to switch between NATIVE_APP and an available WEBVIEW context. JavaScript execution is accepted only after the worker confirms a web context; mobile shell execution remains disabled. browserName can be Chrome or Chromium, and appium:autoWebview is supported. The browser's WebView panel provides page discovery, HTML and JavaScript inspection without an Appium worker.
 
+**Build status:** the pinned UiAutomator2 source currently fails its unit-test TypeScript compilation during a clean Linux dependency install. The optional image needs a build fix before use. A local `/status` response does not validate Android automation.
+
 ## Agent setup
 
 The optional image uses the Appium and UiAutomator2 versions pinned in examples/appium/package-lock.json. It supports native and debuggable WebView/Chrome automation on Android 8 (API 26) and newer; the device version must be confirmed by the agent. Compatible ChromeDriver versions are downloaded by the pinned UiAutomator2 driver into each worker's temporary directory. This requires outbound access to the upstream ChromeDriver download services; the directory is removed with the worker. Client-supplied executable paths, download URLs, arbitrary mobile scripts and Appium plugins are not provided.

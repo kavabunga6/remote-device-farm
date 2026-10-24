@@ -12,12 +12,12 @@ Run Android emulators on your own Linux/KVM servers and use them from a browser,
 | **Browser device control** | Android screen, tap/swipe/text input, APK installation, screenshots, recording and device settings. [Sessions](docs/guides/sessions.md) |
 | **ADB and session sharing** | Connect local development tools using personal ADB keys; share a session for viewing or control with expiration and revocation. [Access guide](docs/guides/sessions.md) |
 | **CI integrations and Gradle** | Reusable packages for seven CI platforms, a Gradle plugin, and Maestro/Appium examples. [Setup and validation](docs/ci/README.md) |
-| **Managed Appium** | An optional native Android WebDriver endpoint for each session, with API authentication. [Setup and limits](docs/ci/managed-appium.md) |
+| **Managed Appium (experimental)** | A session-scoped WebDriver API; the optional Linux image currently fails during driver installation. [Status and limits](docs/ci/managed-appium.md) |
 | **Virtual camera** | Upload an image to a compatible emulator's virtual scene for camera tests. [Requirements and verification](docs/guides/virtual-camera.md) |
 | **Device pool and automation API** | Multiple worker nodes, resource limits, queues, explicit leases, team profile access and per-member quotas. [API](docs/api/README.md) |
 | **GPU acceleration** | Software rendering or GPU modes using NVIDIA/CUDA and DRI, according to node capabilities. [Agent and GPU](docs/deployment/agent.md) |
 | **Own image registry** | Build emulator images from the SDK catalog; manage versions, node caches, retention policies and cleanup from the UI. [Images](docs/guides/image-management.md) |
-| **Application library and diagnostics** | Store APKs and APK sets, select compatible .apks parts, inspect Logcat and WebViews, capture HTTP/HTTPS connection metadata, export HAR/PCAP and retain startup/stop diagnostics. [Guides](docs/README.md) |
+| **Application library and diagnostics** | Store APKs and APK sets, select compatible .apks parts, inspect Logcat and WebViews, capture HTTP/HTTPS connection metadata, export HAR and retain startup/stop diagnostics. [Guides](docs/README.md) |
 | **Access administration** | Custom roles and permissions, users, personal API tokens and configurable authentication providers. [Security](SECURITY.md) |
 | **Self-hosted deployment** | Docker Compose for a single host or separate server and Linux/KVM agents, with HTTPS and backup/restore tooling. [Deployment](docs/deployment/server.md) |
 
@@ -66,6 +66,9 @@ HTTP and registry ports bind to loopback. Remote access and additional nodes req
 | Two-account access isolation, screen sharing, revocation and expiration | Tested |
 | Team profile access, per-member quotas, queue assignment and explicit leases | Tested |
 | Bounded image builder: small image, export/import and cleanup | Tested; full SDK builds incomplete |
+| UI-tree MCP, WebView inspection, signed APK sets and virtual-camera QR | Tested on one Android 16 Google APIs phone image |
+| HTTP/CONNECT metadata, HAR, proxy restoration and agent recovery | Tested on the same image |
+| Clean Linux Appium image and PCAP packet capture | **Not ready** — [known limits](docs/verification.md#ограничения) |
 | Additional deployment scenarios | **Not tested** — [verification matrix](docs/verification.md#not-tested) |
 
 [Verification details and limitations](docs/verification.md). Physical-device rental requires a validated full reset/reprovisioning procedure for each model. Boot snapshots and privileged emulator containers are not available.

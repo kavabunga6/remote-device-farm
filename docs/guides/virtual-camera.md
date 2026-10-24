@@ -36,4 +36,4 @@ imageSet is true after a confirmed update, false after a reset, and null when an
 
 PNG validation, console/IPC allowlists, container ownership and HTTP permissions have automated coverage. Browser upload, state changes, reset and control alignment are checked in Russian/English, light/dark themes and enlarged text.
 
-Actual camera preview, macro positioning and QR recognition on a running Android image are **Not tested**.
+A live Android 16 Google APIs phone check covered PNG upload, macro positioning, application preview frames, QR decoding from an actual camera frame and image reset. Other images, camera APIs and concurrent sessions remain **Not tested**.
