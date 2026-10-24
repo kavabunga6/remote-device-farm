@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import { randomUUID } from 'node:crypto';
 import { agentMessage } from './messages.mjs';
 const errors = {
@@ -85,13 +86,21 @@ export class UiHierarchy {
     this.pending.add(serial);
     const file = '/data/local/tmp/rdf-ui-' + randomUUID() + '.xml';
     try {
-      const dump = await this.adb.run(serial, ['shell', 'uiautomator', 'dump', '--compressed', file], { timeoutMs: 10_000, maxOutputBytes: 8192, signal });
-      if (dump.exitCode !== 0) fail('unavailable');
-      const result = await this.adb.run(serial, ['exec-out', 'cat', file], { timeoutMs: 3000, maxOutputBytes: 2 * 1024 * 1024, signal });
+      const deadline = Date.now() + 17_000;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const dump = await this.adb.run(serial, ['shell', 'uiautomator', 'dump', '--compressed', file], {timeoutMs:Math.min(8000,Math.max(1,deadline-Date.now())),maxOutputBytes:8192,signal});
+        if (dump.exitCode !== 0) fail('unavailable');
+        // Some Android builds return success while no XML was created yet.
+        // Retrying a read is safe; the eventual input command is never replayed.
+        if (!/null root node|could not get idle state/i.test(String(dump.stdout)+'\n'+String(dump.stderr))) break;
+        if (attempt || deadline-Date.now()<1000) fail('unavailable');
+        await delay(250,undefined,{signal});
+      }
+      const result = await this.adb.run(serial, ['exec-out', 'cat', file], { timeoutMs: Math.min(2000,Math.max(1,deadline-Date.now())), maxOutputBytes: 2 * 1024 * 1024, signal });
       if (result.exitCode !== 0) fail('unavailable');
       return parseHierarchy(String(result.stdout));
     } finally {
-      await this.adb.run(serial, ['shell', 'rm', '-f', file], { timeoutMs: 3000, maxOutputBytes: 1024 }).catch(() => {});
+      await this.adb.run(serial, ['shell', 'rm', '-f', file], { timeoutMs: 1000, maxOutputBytes: 1024 }).catch(() => {});
       this.pending.delete(serial);
     }
   }

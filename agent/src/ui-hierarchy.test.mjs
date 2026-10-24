@@ -39,7 +39,18 @@ test('UI reads reject concurrent dumps and remove temporary data after failure',
   const first = ui.read('device');
   await assert.rejects(ui.read('device'), /already running/);
   finish({ exitCode: 1, stdout: '' });
-  await assert.rejects(first, /unavailable/);
+  await assert.rejects(first, /Could not read/);
   assert.equal(ui.pending.size, 0);
   assert.equal(calls.at(-1)[1], 'rm');
+});
+
+test('a successful exit with a null root retries only the read and never replays a tap', async () => {
+  let dumps=0,taps=0;
+  const ui=new UiHierarchy({run:async(_serial,argv)=>{
+    if(argv[1]==='uiautomator'){dumps++;return {exitCode:0,stdout:'',stderr:dumps===1?'ERROR: null root node returned by UiTestAutomationBridge.':''};}
+    if(argv[0]==='exec-out')return {exitCode:0,stdout:xml(node('Tap once'))};
+    if(argv.includes('tap'))taps++;
+    return {exitCode:0,stdout:''};
+  }});
+  const result=await ui.tap('device',{text:'Tap once'});assert.equal(result.tapped,true);assert.equal(dumps,2);assert.equal(taps,1);assert.equal(ui.pending.size,0);
 });

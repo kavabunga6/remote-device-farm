@@ -12700,8 +12700,8 @@
     "en": "Choose an element by text, resource ID or description."
   },
   "agent.ui.unavailable": {
-    "ru": "Дерево интерфейса недоступно на этом экране.",
-    "en": "The UI hierarchy is unavailable on this screen."
+    "ru": "Не удалось прочитать структуру экрана. Включите экран, дождитесь загрузки интерфейса и повторите попытку.",
+    "en": "Could not read the screen hierarchy. Wake the screen, wait for the interface to load, and try again."
   },
   "agent.ui.selector": {
     "ru": "Некорректный селектор элемента интерфейса.",
