@@ -323,6 +323,10 @@
     "en": "Capture changed during download. Download the file again.",
     "ru": "Запись изменилась во время скачивания. Скачайте файл заново."
   },
+  "networkInspector.connectionsOpen": {
+    "en": "Existing proxy connections prevent the traffic inspector update. Close the apps using them and start a new capture, or create a new session. The previous capture can still be exported.",
+    "ru": "Открытые соединения через прокси мешают обновить инспектор трафика. Закройте использующие их приложения и начните новую запись или создайте новую сессию. Предыдущая запись доступна для выгрузки."
+  },
   "networkInspector.failed": {
     "en": "Could not update traffic capture. Refresh its state and try again.",
     "ru": "Не удалось изменить запись трафика. Обновите состояние и повторите попытку."

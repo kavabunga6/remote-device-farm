@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { apiFixture, credentials, memberCredentials } from './support/api-fixture.js';
+import { uiMessage } from '../src/messages.js';
 import { trafficHar } from '../src/routes/device-debug-routes.js';
 test('debug routes enforce ownership, environment and file permissions before agent access', async () => {
-  const f = await apiFixture(); let calls = 0;
+  const f = await apiFixture(); let calls = 0; let upstreamError: Error | undefined;
   f.hub.command = async (_host: string, _session: string, action: string) => {
-    calls++;
+    calls++; if (upstreamError) throw upstreamError;
     if (action === 'network-inspector') return { available: true, recording: false, entries: [] };
     if (action === 'webviews') return { pages: [] };
     return {};
@@ -33,6 +34,16 @@ test('debug routes enforce ownership, environment and file permissions before ag
     assert.equal((await request('POST', root + '/network-inspector', member, { op: 'pcap', offset: 0, captureId: 'invalid' })).status, 400);
     assert.equal((await request('POST', root + '/network-inspector', member, { op: 'start', pcap: 'false' })).status, 400);
     assert.equal((await request('POST', root + '/webviews', member, { op: 'shell' })).status, 400);
+    for (const language of ['ru', 'en'] as const) {
+      upstreamError = new Error(uiMessage('networkInspector.connectionsOpen', {}, language));
+      const blocked = await request('POST', root + '/network-inspector', member, { op: 'start', pcap: true });
+      assert.equal(blocked.status, 409);
+      assert.equal(blocked.body.error.code, 'network_inspector_connections_open');
+    }
+    upstreamError = new Error('private fixture credential');
+    const hidden = await request('GET', root + '/network-inspector', member);
+    assert.equal(hidden.status, 502);assert.ok(!JSON.stringify(hidden.body).includes('private fixture'));
+    upstreamError = undefined;
     const other = (await request('POST', '/api/sessions', admin, { hostId: 'contract-node', profileId: 'contract-profile' })).body.session.id;
     assert.equal((await request('GET', '/api/sessions/' + other + '/webviews', member)).status, 404);
     const role = (await f.pool.query('SELECT access_role_id AS id FROM users WHERE username=$1', [memberCredentials.username])).rows[0].id;

@@ -157,7 +157,7 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
     {(!running || state?.available === false || error) && <div className={error ? 'traffic-error' : 'traffic-note'} role={error ? 'alert' : undefined}>
       {error || t(!running ? 'debug.stopped' : 'networkInspector.unavailable')}
     </div>}
-    {state?.available && (state.protocolVersion !== 3 || state.runtimeCompatible === false) && <p className="traffic-note">{t('networkInspector.restartRequired')}</p>}
+    {state?.available && (state.protocolVersion !== 3 || state.runtimeCompatible === false) && <p className="traffic-note">{t(state.protocolVersion !== 3 ? 'networkInspector.restartRequired' : 'networkInspector.runtimeUpdated')}</p>}
     {recording && state?.proxyActive === false && <p className="traffic-note traffic-warning" role="status">{t('networkInspector.proxyDisconnectedHelp')}</p>}
     {Boolean(state?.rejectedConnections) && <p className="traffic-note traffic-warning" role="status">{t('networkInspector.overloaded', { p0: state!.rejectedConnections })}</p>}
     {state?.pcapState === 'error' && <p className="traffic-note traffic-warning" role="status">{t('networkInspector.pcapStopHelp')}</p>}

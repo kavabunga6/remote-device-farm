@@ -99,6 +99,7 @@ test('active and legacy proxy revisions are preserved across controller upgrades
   for (const state of [
     {protocolVersion:3,runtimeVersion:'old',recording:true,proxyActive:true},
     {protocolVersion:2,recording:false,proxyActive:true,pcapBytes:100},
+    {protocolVersion:3,runtimeVersion:'old',recording:false,proxyActive:true,activeConnections:2},
   ]) {
     const commands = new Map(); let count = 0, writes = 0;
     const docker = {

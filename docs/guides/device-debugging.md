@@ -30,7 +30,7 @@ The proxy runs inside the emulator's container network namespace and uses its ex
 
 The Docker control image includes the packet worker. It runs only in the selected emulator namespace, with NET_RAW for capture and SETGID for tcpdump startup; it has no host network, Docker socket, host directories or published ports. Internal control commands require a separate per-process credential. Raw packet bytes are not written to Docker logs. Device release removes the worker and its capture. Native control installations can set RDF_PACKET_CAPTURE_IMAGE to a locally built agent image from the same release. The UI disables PCAP when no compatible image is available.
 
-An agent update preserves captured data and export; recovery stops recording. A new start replaces a stopped capture and upgrades an idle compatible inspector process. Legacy inspector processes require a new device session; the UI indicates this requirement.
+An agent update preserves captured data and export; recovery stops recording. A new start replaces a stopped capture and upgrades an idle compatible inspector process. Open proxy connections prevent replacing the inspector process; close their applications before starting a new capture or create a new device session. Legacy inspector processes require a new device session. The API reports these conflicts without discarding the previous export.
 
 ## API
 

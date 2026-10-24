@@ -7,6 +7,23 @@ import { uiMessage } from '../messages.js';
 export { trafficHar } from '../../../shared/traffic-har.mjs';
 import { trafficHar } from '../../../shared/traffic-har.mjs';
 
+export function debugCommandError(error: unknown, feature: 'webviews' | 'network-inspector'): ApiError {
+  const known = [
+    ['debug.busy', 'debug_busy', 409],
+    ['networkInspector.unavailable', 'network_inspector_unavailable', 503],
+    ['networkInspector.restartRequired', 'network_inspector_restart_required', 409],
+    ['networkInspector.connectionsOpen', 'network_inspector_connections_open', 409],
+    ['networkInspector.alreadyStarted', 'network_inspector_recording', 409],
+    ['networkInspector.proxyConflict', 'network_inspector_proxy_conflict', 409],
+    ['networkInspector.stopBeforeExport', 'network_inspector_recording', 409],
+    ['networkInspector.captureChanged', 'network_inspector_capture_changed', 409],
+  ] as const;
+  for (const [key, code, status] of known)
+    if (error instanceof Error && (['ru', 'en'] as const).some(language => error.message === uiMessage(key, {}, language)))
+      return new ApiError(status, code, uiMessage(key));
+  return new ApiError(502, 'device_debug_unavailable', uiMessage(feature === 'webviews' ? 'webviews.failed' : 'networkInspector.failed'));
+}
+
 export function registerDeviceDebugRoutes(app: Express, context: ServerContext): void {
   const { requireAuth, current, ownedSession, hub, pool, activity } = context;
   const pending = new Map<string, number>(); let active = 0;
@@ -40,6 +57,7 @@ export function registerDeviceDebugRoutes(app: Express, context: ServerContext):
     pending.set(user.id, (pending.get(user.id) ?? 0) + 1); active++;
     let result: Record<string, unknown>;
     try { result = await hub.command(session.hostId, session.id, feature, params, 60_000); }
+    catch (error) { throw debugCommandError(error, feature); }
     finally { active--; const left = (pending.get(user.id) ?? 1) - 1; if (left) pending.set(user.id, left); else pending.delete(user.id); }
     if (req.method !== 'GET' && params.op !== 'pcap' && params.op !== 'document') {
       await pool.query(

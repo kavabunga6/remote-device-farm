@@ -72,7 +72,8 @@ export async function inspectNetwork(docker, containerId, sessionId, agentId, pa
     if (state && (state.protocolVersion !== 3 || state.runtimeVersion !== RUNTIME_VERSION)) {
       // Do not overwrite code used by a running daemon or discard its export.
       // A new start intentionally replaces the previous stopped capture.
-      if (state.protocolVersion !== 3 || state.activeConnections) throw new Error(agentMessage('networkInspector.restartRequired'));
+      if (state.protocolVersion !== 3) throw new Error(agentMessage('networkInspector.restartRequired'));
+      if (state.activeConnections) throw new Error(agentMessage('networkInspector.connectionsOpen'));
       await call('shutdown');
       let stopped = false;
       for (let attempt = 0; attempt < 10; attempt++) {

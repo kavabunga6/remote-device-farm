@@ -13694,5 +13694,13 @@
   "agent.ui.inputFailed": {
     "ru": "Не удалось подтвердить нажатие. Проверьте экран устройства перед повторной попыткой.",
     "en": "The tap could not be confirmed. Check the device screen before trying again."
+  },
+  "networkInspector.connectionsOpen": {
+    "en": "Existing proxy connections prevent the traffic inspector update. Close the apps using them and start a new capture, or create a new session. The previous capture can still be exported.",
+    "ru": "Открытые соединения через прокси мешают обновить инспектор трафика. Закройте использующие их приложения и начните новую запись или создайте новую сессию. Предыдущая запись доступна для выгрузки."
+  },
+  "networkInspector.runtimeUpdated": {
+    "en": "Start a new capture to update this inspector. Existing proxy connections may require closing their apps or creating a new session.",
+    "ru": "Для обновления инспектора начните новую запись. Открытые соединения могут потребовать закрыть приложения или создать новую сессию."
   }
 }
