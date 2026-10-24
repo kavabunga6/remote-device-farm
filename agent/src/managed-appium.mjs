@@ -1,8 +1,9 @@
+import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import path from 'node:path';
 import os from 'node:os';
-import { mkdtemp, rm, access, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, access, mkdir, writeFile, readFile, symlink } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { agentMessage } from './messages.mjs';
 
@@ -148,6 +149,22 @@ export class ManagedAppium {
         }
         if (!worker[key]) fail();
       }
+      // Appium writes its package hash/extension cache below the npm project.
+      // Keep that cache private and writable without modifying installed packages.
+      worker.project = path.join(directory, 'project');
+      await mkdir(path.join(worker.project, 'node_modules'), {recursive:true,mode:0o700});
+      const packages = {
+        appium:path.dirname(this.entry),
+        'appium-uiautomator2-driver':path.dirname(createRequire(this.entry).resolve('appium-uiautomator2-driver/package.json')),
+      };
+      const dependencies = {};
+      for (const [name, target] of Object.entries(packages)) {
+        const manifest = JSON.parse(await readFile(path.join(target, 'package.json'), 'utf8'));
+        if (manifest.name !== name || !/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$/.test(manifest.version??'')) fail();
+        dependencies[name] = manifest.version;
+        await symlink(target, path.join(worker.project,'node_modules',name), process.platform==='win32'?'junction':'dir');
+      }
+      await writeFile(path.join(worker.project,'package.json'),JSON.stringify({private:true,dependencies}),{mode:0o600});
       worker.chromeDirectory = path.join(directory, 'chromedrivers');
       worker.chromeMapping = path.join(directory, 'chrome-mapping.json');
       await mkdir(worker.chromeDirectory, { mode: 0o700 });
@@ -159,7 +176,7 @@ export class ManagedAppium {
       worker.child = this.spawn(process.execPath, ['--max-old-space-size=256', this.entry, '--address', '127.0.0.1', '--port', String(worker.port),
         '--use-drivers', 'uiautomator2', '--tmp', directory, '--log-level', 'error',
         '--allow-insecure', 'uiautomator2:chromedriver_autodownload', '--deny-insecure', '*:adb_shell'], {
-        cwd: path.resolve(path.dirname(this.entry), '../..'), env,
+        cwd: worker.project, env,
         detached: process.platform !== 'win32', windowsHide: true, stdio: 'ignore',
       });
       worker.closed = new Promise(resolve => { worker.child.once('close', resolve); worker.child.once('error', resolve); });

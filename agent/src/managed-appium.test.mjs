@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, writeFile, rm, access } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile, rm, access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { ManagedAppium, sessionCapabilities, validateAppiumRequest, assertAppiumAndroid } from './managed-appium.mjs';
@@ -49,6 +49,9 @@ test('loopback workers bind one driver, redact upstream errors and terminate wit
   const root = await mkdtemp(path.join(os.tmpdir(), 'rdf-appium-test-'));
   const directory = path.join(root, 'node_modules', 'appium');
   await mkdir(directory, { recursive: true });
+  await writeFile(path.join(directory,'package.json'),JSON.stringify({name:'appium',version:'3.8.0'}));
+  const driver = path.join(root,'node_modules','appium-uiautomator2-driver');await mkdir(driver);
+  await writeFile(path.join(driver,'package.json'),JSON.stringify({name:'appium-uiautomator2-driver',version:'8.7.0'}));
   const entry = path.join(directory, 'index.cjs');
   await writeFile(entry, "const http=require('node:http');const p=process.argv[process.argv.indexOf('--port')+1];http.createServer(async(req,res)=>{for await(const c of req){}res.setHeader('content-type','application/json');if(req.url==='/status')return res.end(JSON.stringify({value:{ready:true}}));if(req.url==='/session')return res.end(JSON.stringify({value:{sessionId:'driver-owned',capabilities:{}}}));if(req.url.endsWith('/source'))return res.end(JSON.stringify({value:'<hierarchy/>'}));if(req.url.endsWith('/element')){res.statusCode=404;return res.end(JSON.stringify({value:{error:'no such element',message:'private host path',stacktrace:'private stack'}}));}res.end(JSON.stringify({value:null}));}).listen(p,'127.0.0.1');");
   const workerRoot = path.join(root, 'workers');
@@ -62,6 +65,7 @@ test('loopback workers bind one driver, redact upstream errors and terminate wit
     assert.equal(created.body.value.sessionId, 'driver-owned');
     const worker = manager.workers.get('owned'), temporary = worker.directory;
     assert.equal(path.dirname(temporary), workerRoot);
+    assert.equal(JSON.parse(await readFile(path.join(worker.project,'package.json'))).dependencies['appium-uiautomator2-driver'],'8.7.0');
     await assert.rejects(manager.request('owned', 'device-1', { method: 'POST', path: '/session', body: { capabilities: { alwaysMatch: {} } } }));
     await assert.rejects(manager.request('owned', 'device-1', { method: 'GET', path: '/session/driver-other/source' }));
     assert.equal(manager.workers.get('owned'), worker);

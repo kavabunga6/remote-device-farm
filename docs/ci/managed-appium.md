@@ -22,7 +22,7 @@ export RDF_ANDROID_SDK_DIR=/srv/android-sdk
 docker compose -f compose.yaml -f compose.agent.yaml -f compose.appium.yaml up -d --build agent
 ```
 
-Use the Compose files and environment files for the target installation. The optional overlay preserves the agent's existing key and control volumes. It sets a 2 GiB agent memory limit and allows two simultaneous Appium workers. Set RDF_APPIUM_MAX_WORKERS to 1–8 and adjust the container limit after measuring the intended workload. Emulator limits remain separate. A dedicated 384 MiB executable tmpfs holds worker files and downloaded ChromeDriver binaries; the agent’s general temporary directory retains its existing mount protection. The worker directory is removed on release.
+Use the Compose files and environment files for the target installation. The optional overlay preserves the agent's existing key and control volumes. It sets a 2 GiB agent memory limit and allows two simultaneous Appium workers. Set RDF_APPIUM_MAX_WORKERS to 1–8 and adjust the container limit after measuring the intended workload. Emulator limits remain separate. A dedicated 384 MiB executable tmpfs holds worker files and downloaded ChromeDriver binaries; the agent’s general temporary directory retains its existing mount protection. Each worker creates a private npm project for Appium’s writable package cache and links to the installed, read-only driver packages. The worker directory is removed on release.
 
 For an existing SDK-equipped agent installation, RDF_APPIUM_ENTRY may point to an absolute Appium index.js from a project containing both pinned dependencies. The worker process discovers its driver from that project.
 
