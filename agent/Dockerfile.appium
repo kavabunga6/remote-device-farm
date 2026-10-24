@@ -4,7 +4,7 @@ ARG AGENT_IMAGE=remote-device-farm-agent:local
 FROM ${AGENT_IMAGE}
 USER root
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends openjdk-17-jdk-headless unzip \
+    && apt-get install -y --no-install-recommends openjdk-17-jdk-headless unzip libglib2.0-0 libnss3 libnspr4 libxcb1 \
     && rm -rf /var/lib/apt/lists/*
 RUN ln -s "$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")" /opt/rdf-java
 WORKDIR /opt/rdf-appium
