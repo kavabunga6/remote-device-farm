@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { crc32, deflateSync } from 'node:zlib';
-import { cameraPng, imageArchive, applyCameraImage } from './camera-image.mjs';
+import { cameraPng, applyCameraImage } from './camera-image.mjs';
 import { validateControlRequest } from './control-ipc.mjs';
 import { validateEmuConsoleArgs } from './emu-console.mjs';
 function png(extra = []) {
@@ -22,9 +22,6 @@ test('camera PNG decoder bounds dimensions and output and strips metadata', () =
   const corrupt = png(); corrupt[20] = 255;
   assert.throws(() => cameraPng(corrupt.toString('base64')));
   assert.throws(() => cameraPng('a'.repeat(400000)));
-  const archive = imageArchive(clean);
-  assert.equal(archive.toString('ascii', 0, 14).replace(/\0/g, ''), 'rdf-camera.png');
-  assert.deepEqual(archive.subarray(512, 512 + clean.length), clean);
 });
 test('camera console and IPC accept only fixed session-local image paths and macro', () => {
   assert.ok(validateEmuConsoleArgs(['virtualscene-image', 'wall', '/android-home/rdf-camera.png']));

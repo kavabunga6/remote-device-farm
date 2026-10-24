@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { tarArchive } from './tar-archive.mjs';
+import { writeContainerFiles } from './container-files.mjs';
 import { runKeyed } from './keyed-queue.mjs';
 import { CONSOLE_SCRIPT, execInContainer, runEmuConsole } from './emu-console.mjs';
 import { agentMessage } from './messages.mjs';
@@ -54,11 +54,10 @@ export async function inspectNetwork(docker, containerId, sessionId, agentId, pa
     if (state?.finalizing || state?.pcapState === 'error') throw new Error(agentMessage('debug.busy'));
     if (state?.recording) throw new Error(agentMessage('networkInspector.alreadyStarted'));
     if (state && state.protocolVersion !== 2) throw new Error(agentMessage('networkInspector.restartRequired'));
-    await docker.request('PUT', '/containers/' + encodeURIComponent(containerId) + '/archive?path=%2Frdf-network&noOverwriteDirNonDir=true',
-      undefined, { rawBody: tarArchive([
-        { name: 'proxy.py', mode: 0o600, data: SCRIPT }, { name: 'network_capture.py', mode: 0o600, data: CAPTURE },
-        { name: 'console.sh', mode: 0o600, data: Buffer.from(CONSOLE_SCRIPT) },
-      ]), contentType: 'application/x-tar', timeoutMs: budget(10000) });
+    await writeContainerFiles(docker, containerId, DIR, [
+      { name: 'proxy.py', mode: 0o600, data: SCRIPT }, { name: 'network_capture.py', mode: 0o600, data: CAPTURE },
+      { name: 'console.sh', mode: 0o600, data: Buffer.from(CONSOLE_SCRIPT) },
+    ], { timeoutMs: budget(15000) });
     await run(['rm', '-f', '/rdf-network/capture.pcap']);
     if (!state?.proxyActive) {
       await run(['sh', '-c', 'umask 077; python3 /rdf-network/proxy.py serve </dev/null >/dev/null 2>&1 &']);

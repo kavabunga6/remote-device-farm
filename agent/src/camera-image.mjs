@@ -1,3 +1,4 @@
+import { writeContainerFiles } from './container-files.mjs';
 import { inflateSync } from 'node:zlib';
 import { execInContainer, runEmuConsole } from './emu-console.mjs';
 import { agentMessage } from './messages.mjs';
@@ -47,17 +48,6 @@ export function cameraPng(base64) {
   for (let i = 0; i < pixels.length; i += row) if (pixels[i] > 4) invalid();
   return Buffer.concat([signature, ...retained]);
 }
-export function imageArchive(bytes) {
-  const header = Buffer.alloc(512);
-  const field = (value, start, length) => header.write(value, start, length, 'ascii');
-  field('rdf-camera.png', 0, 100); field('0000644\0', 100, 8);
-  field('0000000\0', 108, 8); field('0000000\0', 116, 8);
-  field(bytes.length.toString(8).padStart(11, '0') + '\0', 124, 12);
-  field('00000000000\0', 136, 12); header.fill(32, 148, 156); header[156] = 48;
-  field('ustar\0', 257, 6); field('00', 263, 2);
-  field([...header].reduce((a, b) => a + b, 0).toString(8).padStart(6, '0') + '\0 ', 148, 8);
-  return Buffer.concat([header, bytes, Buffer.alloc((512 - bytes.length % 512) % 512 + 1024)]);
-}
 const CHECK = 'test -r /android-home/avd/rdf.avd/config.ini && grep -q "^hw.camera.back=virtualscene$" /android-home/avd/rdf.avd/config.ini || exit 69; if test -f /android-home/rdf-camera-applied; then printf set; elif test -f /android-home/rdf-camera.png; then printf pending; fi';
 export async function applyCameraImage(docker, containerId, sessionId, agentId, params) {
   if (!params || !['status', 'set', 'reset', 'show'].includes(params.op) ||
@@ -76,8 +66,8 @@ export async function applyCameraImage(docker, containerId, sessionId, agentId, 
   if (image) {
     const cleared = await execInContainer(docker, containerId, ['rm', '-f', '/android-home/rdf-camera-applied'], [], 5000);
     if (cleared.exitCode !== 0) throw new Error(agentMessage('agent.camera.failed'));
-    await docker.request('PUT', '/containers/' + encodeURIComponent(containerId) + '/archive?path=%2Fandroid-home&noOverwriteDirNonDir=true',
-      undefined, { rawBody: imageArchive(image), contentType: 'application/x-tar', timeoutMs: 15_000 });
+    await writeContainerFiles(docker, containerId, '/android-home',
+      [{ name: 'rdf-camera.png', mode: 0o644, data: image }]);
   }
   const args = params.op === 'show' ? ['automation', 'play', '/opt/android/emulator/resources/macros/Walk_to_image_room'] :
     ['virtualscene-image', 'wall', ...(params.op === 'set' ? ['/android-home/rdf-camera.png'] : [])];
