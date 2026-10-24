@@ -208,14 +208,17 @@ export class AgentControl {
     const self = await this.docker.inspect(this.config.selfContainerId);
     const labels = self.Config?.Labels || {};
     const project = labels['com.docker.compose.project'];
-    if (labels['com.docker.compose.service'] !== 'agent-control' || !project) {
+    if (labels['com.docker.compose.service'] !== 'agent-control' || !project || !/^[1-9]\d*$/.test(labels['com.docker.compose.container-number']??'')) {
       throw new Error('Cannot identify the agent I/O container from Compose labels');
     }
     const filters = encodeURIComponent(JSON.stringify({ label: [
       'com.docker.compose.project=' + project,
       'com.docker.compose.service=agent',
     ] }));
-    const matches = await this.docker.request('GET', '/containers/json?filters=' + filters);
+    // Compose puts project/service labels on images too. Only actual service
+    // containers receive a replica number; build and maintenance containers do not.
+    const candidates = await this.docker.request('GET', '/containers/json?filters=' + filters);
+    const matches = candidates.filter(c => /^[1-9]\d*$/.test(c.Labels?.['com.docker.compose.container-number']??''));
     if (matches.length !== 1 || matches[0].State !== 'running') throw new Error('Expected one running agent I/O container');
     return matches[0].Id;
   }
