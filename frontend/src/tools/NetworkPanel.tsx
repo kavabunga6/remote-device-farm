@@ -142,8 +142,8 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
         </TrafficPopover>}
         <TrafficPopover label={t('networkInspector.optionsShort')} icon="sliders" open={popover === 'settings'} onOpenChange={open => setPopover(current => open ? 'settings' : current === 'settings' ? null : current)}>
           {(recording || finalizing) && <p className="traffic-settings-hint" role="status">{t(recording ? 'networkInspector.settingsLocked' : 'networkInspector.settingsFinalizing')}</p>}
-          <label className="traffic-setting"><input type="checkbox" checked={pcap} disabled={!canAct || recording} onChange={event => setPcap(event.target.checked)} data-autofocus/>
-            <span><strong>{t('networkInspector.pcap')}</strong><small>{t('networkInspector.pcapWarningShort')}</small></span></label>
+          <label className="traffic-setting"><input type="checkbox" checked={pcap} disabled={!canAct || recording || state?.pcapAvailable === false} onChange={event => setPcap(event.target.checked)} data-autofocus/>
+            <span><strong>{t('networkInspector.pcap')}</strong><small>{t(state?.pcapAvailable === false ? 'networkInspector.pcapUnavailable' : 'networkInspector.pcapWarningShort')}</small></span></label>
           <label className="traffic-setting"><input type="checkbox" checked={bodies} disabled={!canAct || recording} onChange={event => setBodies(event.target.checked)}/>
             <span><strong>{t('networkInspector.captureBodies')}</strong><small>{t('networkInspector.bodyWarning')}</small></span></label>
           <div className="traffic-capture-info"><p>{t('networkInspector.visibleScope')}</p><p>{t('networkInspector.hint')}</p>
@@ -157,7 +157,7 @@ export function NetworkPanel({ sessionId, active, running, canExport, onExpand }
     {(!running || state?.available === false || error) && <div className={error ? 'traffic-error' : 'traffic-note'} role={error ? 'alert' : undefined}>
       {error || t(!running ? 'debug.stopped' : 'networkInspector.unavailable')}
     </div>}
-    {state?.available && state.protocolVersion !== 2 && <p className="traffic-note">{t('networkInspector.restartRequired')}</p>}
+    {state?.available && (state.protocolVersion !== 3 || state.runtimeCompatible === false) && <p className="traffic-note">{t('networkInspector.restartRequired')}</p>}
     {recording && state?.proxyActive === false && <p className="traffic-note traffic-warning" role="status">{t('networkInspector.proxyDisconnectedHelp')}</p>}
     {Boolean(state?.rejectedConnections) && <p className="traffic-note traffic-warning" role="status">{t('networkInspector.overloaded', { p0: state!.rejectedConnections })}</p>}
     {state?.pcapState === 'error' && <p className="traffic-note traffic-warning" role="status">{t('networkInspector.pcapStopHelp')}</p>}

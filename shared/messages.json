@@ -13686,5 +13686,9 @@
   "networkInspector.failedShort": {
     "en": "Failed",
     "ru": "Сбой"
+  },
+  "networkInspector.pcapUnavailable": {
+    "ru": "Захват пакетов недоступен на этом узле. Запись HTTP и экспорт HAR доступны отдельно.",
+    "en": "Packet capture is unavailable on this node. HTTP recording and HAR export remain available."
   }
 }

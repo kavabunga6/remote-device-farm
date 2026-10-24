@@ -18,17 +18,21 @@ The inspector temporarily sets Android's HTTP proxy. Disable an existing custom 
 - HTTP text body previews are off by default. Enabling them retains up to 4 KiB per direction and can expose credentials and application data in the UI and HAR. Previews are truncated explicitly; binary or compressed content is not decoded. HTTPS content is never decrypted.
 - HTTPS remains encrypted. CONNECT records describe connections, not individual encrypted HTTP requests.
 - Apps that ignore Android's proxy are absent from the request table.
-- Optional raw PCAP captures packets at the emulator network layer, including traffic that ignores the proxy. It is not redacted and can contain application data and credentials. Stop capture before downloading it.
-- Capture stops after ten minutes or approximately 30 MiB of PCAP. The UI reports the reason, PCAP finalization and failed stop confirmation. Existing traffic continues after recording stops; captured entries are frozen with an incomplete-capture outcome. The capture directory has a separate 40 MiB tmpfs ceiling inside the session's memory limit.
+- Optional raw PCAP captures packets inside the emulator container’s network namespace, including traffic that ignores the proxy. Addresses can reflect emulator NAT. ADB, emulator-console and internal control ports are excluded. It is not redacted and can contain application data and credentials. Stop capture before downloading it.
+- Capture stops after ten minutes or approximately 30 MiB of PCAP. The UI reports the reason, PCAP finalization and failed stop confirmation. Existing traffic continues after recording stops; captured entries are frozen with an incomplete-capture outcome. A separate packet worker has a 40 MiB tmpfs ceiling, a 128 MiB memory limit and a 0.25 CPU limit. It stops recording independently of the I/O agent and keeps the file available until device release.
 - The proxy supports up to 64 simultaneous connections. Further connections receive HTTP 503 and increment a visible refusal counter. Established CONNECT tunnels have no idle cutoff; individual network operations retain bounded timeouts. An idle proxy can remain until the session is destroyed and is not exposed on the host.
 - HTTP timings measure connection establishment (including DNS), request sending, response wait and response receipt. HTTP byte counters exclude headers; CONNECT counters describe encrypted bytes in both directions. HAR preserves partial outcomes, unknown timing availability and tunnel metadata through extension fields; encrypted tunnel lifetime is not represented as HTTP response time.
-- Files and capture state are removed with the emulator container. Agent recovery stops capture and restores the inspector's proxy setting.
+- Device release removes the emulator, packet worker and capture state. Agent recovery stops capture and restores the inspector's proxy setting.
 
 Detailed diagnostics require an updated agent and a new emulator session. The standard emulator image requires rebuilding to include Python 3. Older or third-party images can report that inspection is unavailable. USB devices do not offer this inspector.
 
 The proxy runs inside the emulator's container network namespace and uses its existing egress policy. It does not route application requests through the server or the agent host network.
 
-### API
+The Docker control image includes the packet worker. It runs only in the selected emulator namespace, with NET_RAW for capture and SETGID for tcpdump startup; it has no host network, Docker socket, host directories or published ports. Raw packet bytes are not written to Docker logs. Device release removes the worker and its capture. Native control installations can set RDF_PACKET_CAPTURE_IMAGE to a locally built agent image from the same release. The UI disables PCAP when no compatible image is available.
+
+An agent update preserves captured data and export; recovery stops recording. A new start replaces a stopped capture and upgrades an idle compatible inspector process. Legacy inspector processes require a new device session; the UI indicates this requirement.
+
+## API
 
 All endpoints require session ownership or authorized administration. Shared screen access does not grant debug access.
 

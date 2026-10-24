@@ -23,7 +23,7 @@ test('capture refuses a custom proxy and restores only its own proxy', async () 
 test('a failed capture start is rolled back', async () => {
   let stops = 0;
   const inspector = new NetworkInspector({ run: async () => ({ exitCode: 0, stdout: ':0' }) },
-    { networkInspector: async (_id, p) => { if (p.op === 'start') throw new Error('start failed'); stops++; return {}; } });
+    { networkInspector: async (_id, p) => { if (p.op === 'start') throw new Error('start failed'); if(p.op==='stop')stops++; return {}; } });
   await assert.rejects(inspector.command('session', 'device', { op: 'start', pcap: true }), /start failed/);
   assert.equal(stops, 1); assert.equal(inspector.timers.size, 0);
 });
@@ -49,7 +49,7 @@ test('ADB failures during capture setup roll back capture, proxy and timers', as
       return { recording: params.op === 'start' };
     } });
     await assert.rejects(inspector.command('session', 'device', { op: 'start', pcap: true }));
-    assert.deepEqual(calls, [{ op: 'start', pcap: true }, { op: 'stop', reason: 'start_failed' }]);
+    assert.deepEqual(calls, [{op:'status',summary:true}, { op: 'start', pcap: true }, { op: 'stop', reason: 'start_failed' }]);
     assert.equal(setting, ':0', failure);
     assert.equal(inspector.timers.size, 0);
     assert.equal(inspector.pcapTimers.size, 0);
@@ -90,4 +90,40 @@ test('an unsuccessful stop still releases only the inspector proxy', async () =>
   await assert.rejects(inspector.command('session', 'device', { op: 'stop' }));
   assert.equal(setting, ':0');
   assert.equal(inspector.timers.size, 0);
+});
+
+// Exercise the actual container control boundary: stale in-memory code must not
+// cause a source upload or lose the previous capture.
+test('active and legacy proxy revisions are preserved across controller upgrades', async () => {
+  const {inspectNetwork} = await import('./network-inspector.mjs');
+  for (const state of [
+    {protocolVersion:3,runtimeVersion:'old',recording:true,proxyActive:true},
+    {protocolVersion:2,recording:false,proxyActive:true,pcapBytes:100},
+  ]) {
+    const commands = new Map(); let count = 0, writes = 0;
+    const docker = {
+      inspect: async () => ({Config:{Labels:{'remote-device-farm.managed':'true','remote-device-farm.agent':'agent','remote-device-farm.session':'session'}},State:{Running:true}}),
+      request: async (method, resource, body) => {
+        if (method === 'POST') { const id = (++count).toString(16).padStart(16,'0'); commands.set(id,body.Cmd); if (body.Cmd.join(' ').includes('RDF_WRITE')) writes++; return {Id:id}; }
+        return {Running:false,ExitCode:0};
+      },
+      requestRaw: async (_method, resource) => {
+        const command = commands.get(resource.split('/')[2]);
+        const data = Buffer.from(command[0] === 'python3' ? JSON.stringify(state) : '');
+        const header=Buffer.alloc(8);header[0]=1;header.writeUInt32BE(data.length,4);return Buffer.concat([header,data]);
+      },
+    };
+    const status = await inspectNetwork(docker,'container','session','agent',{op:'status'});
+    assert.equal(status.runtimeCompatible,false);
+    await assert.rejects(inspectNetwork(docker,'container','session','agent',{op:'start',pcap:false}));
+    assert.equal(writes,0);
+    assert.ok(![...commands.values()].some(cmd=>cmd.includes('shutdown')));
+  }
+});
+
+test('a repeated start cannot stop an existing capture or disconnect its proxy', async()=>{
+  const calls=[];
+  const inspector=new NetworkInspector({run:async()=>({exitCode:0,stdout:'10.0.2.2:18888'})},{networkInspector:async(_id,p)=>{calls.push(p);return {recording:true};}});
+  await assert.rejects(inspector.command('session','device',{op:'start',pcap:true}),/already/);
+  assert.deepEqual(calls,[{op:'status',summary:true}]);
 });

@@ -2,7 +2,7 @@ ARG NODE_IMAGE=node:24-bookworm-slim
 FROM ${NODE_IMAGE}
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends adb ca-certificates curl unzip openjdk-17-jre-headless \
+    && apt-get install -y --no-install-recommends adb ca-certificates curl unzip tcpdump openjdk-17-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 ARG BUNDLETOOL_VERSION=1.18.3
@@ -26,6 +26,8 @@ RUN groupadd --gid 10001 rdf \
     && chown -R 10001:10001 /home/agent/.android \
     && chown 0:10001 /run/agent-control \
     && chmod 0770 /run/agent-control
+
+LABEL remote-device-farm.packet-capture="1"
 
 WORKDIR /app
 COPY package*.json ./

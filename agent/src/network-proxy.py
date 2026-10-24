@@ -1,5 +1,5 @@
 """Session-local HTTP inspector. HTTPS is tunneled without certificate changes."""
-import base64
+import hashlib
 import http.client
 import http.server
 import json
@@ -7,7 +7,6 @@ import os
 import select
 import socket
 import socketserver
-import subprocess
 import sys
 import threading
 import time
@@ -18,8 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from network_capture import BodyPreview, Capture, MAX_CONNECTIONS
 
 ROOT = "/rdf-network"
-# The emulator confines bare console filenames to this AVD-owned directory.
-PCAP_PATH = "/android-home/avd/rdf.avd/console_out/rdf-capture.pcap"
+RUNTIME_VERSION = hashlib.sha256(b"".join(open(os.path.join(ROOT, name), "rb").read() for name in ("proxy.py", "network_capture.py", "console.sh"))).hexdigest() if __name__ == "__main__" else "test"
 PROXY_PORT = 18888
 CONTROL_PORT = 18889
 MAX_STATUS_BYTES = 8 * 1024 * 1024
@@ -29,8 +27,7 @@ proxy = None
 
 
 def status(summary=False):
-    size = os.path.getsize(PCAP_PATH) if os.path.isfile(PCAP_PATH) else 0
-    return capture.snapshot(size, include_entries=not summary)
+    return dict(capture.snapshot(0, include_entries=not summary), runtimeVersion=RUNTIME_VERSION)
 
 
 class Threaded(socketserver.ThreadingMixIn, http.server.HTTPServer):
@@ -244,12 +241,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 def stop_pcap():
-    env = dict(os.environ, EMU_CMD="network capture stop", EMU_CONSOLE_PORTS="5556 5554", EMU_TIMEOUT_SECONDS="8")
-    try:
-        result = subprocess.run(["sh", ROOT + "/console.sh"], env=env, timeout=10, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        capture.pcap_result("stopped" if result.returncode == 0 else "error")
-    except (OSError, subprocess.TimeoutExpired):
-        capture.pcap_result("error")
+    # The controller's isolated packet worker enforces its own size/time limits.
+    capture.pcap_result("stopped")
 
 
 def watchdog():
@@ -295,6 +288,10 @@ class Control(http.server.BaseHTTPRequestHandler):
                 if capture.recording or capture.finalizing:
                     raise ValueError("busy")
                 capture.clear()
+            elif op == "/shutdown":
+                if capture.recording or capture.finalizing or capture.pcap_state == "error" or capture.active:
+                    raise ValueError("busy")
+                threading.Thread(target=admin.shutdown, daemon=True).start()
             elif op not in ('/status', '/summary'):
                 self.send_error(404)
                 return
@@ -315,18 +312,9 @@ if __name__ == "__main__":
         threading.Thread(target=watchdog, daemon=True).start()
         threading.Thread(target=proxy.serve_forever, daemon=True).start()
         admin.serve_forever()
-    elif len(sys.argv) > 1 and sys.argv[1] == "pcap":
-        offset = int(sys.argv[2])
-        if offset < 0 or offset > 40 * 1024 * 1024:
-            raise ValueError("offset")
-        with open(PCAP_PATH, "rb") as file:
-            size = os.fstat(file.fileno()).st_size
-            file.seek(offset)
-            data = file.read(256 * 1024)
-        print(json.dumps({"contentBase64": base64.b64encode(data).decode(), "offset": offset, "size": size, "captureId": capture.capture_id}))
     else:
         action = sys.argv[1] if len(sys.argv) > 1 else "status"
-        if action not in ("status", "summary", "start", "stop", "clear", "pcap-recording", "pcap-stopped", "pcap-error"):
+        if action not in ("status", "summary", "start", "stop", "clear", "pcap-recording", "pcap-stopped", "pcap-error", "shutdown"):
             raise ValueError("action")
         query = ""
         if action == "start":

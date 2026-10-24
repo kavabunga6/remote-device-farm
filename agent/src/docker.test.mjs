@@ -310,6 +310,7 @@ for (const failure of ['removal of container owned-id is already in progress', '
     const calls = [];
     let polls = 0;
     docker.request = async (method, path, body, options) => {
+      if (path.startsWith('/containers/json?')) return [];
       calls.push({ method, path, options });
       if (method === 'DELETE') throw new Error(failure);
       if (++polls === 1) return removalContainer();
@@ -326,7 +327,8 @@ for (const failure of ['removal of container owned-id is already in progress', '
 test('unconfirmed or foreign container removal cannot report successful cleanup', async () => {
   const docker = new DockerClient('/unused');
   docker.inspect = async () => removalContainer();
-  docker.request = async method => {
+  docker.request = async (method, path) => {
+    if (path.startsWith('/containers/json?')) return [];
     if (method === 'DELETE') throw new Error('removal is already in progress');
     return removalContainer();
   };

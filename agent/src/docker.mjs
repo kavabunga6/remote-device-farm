@@ -1,3 +1,4 @@
+import { removePacketCaptures } from './packet-capture.mjs';
 import { diagnosticReporter, diagnosticSecrets, diagnosticSeverity, dockerLogLines } from './session-diagnostics.mjs';
 import { DEFAULT_NVIDIA_CAPABILITIES, FARM_FLAGS, gpuKind } from './docker-options.mjs';
 
@@ -456,6 +457,7 @@ export class DockerClient {
   cameraImage(containerId, sessionId, agentId, params) { return applyCameraImage(this, containerId, sessionId, agentId, params); }
 
   async removeSessionNetworks(sessionId, agentId, selfContainerId) {
+    await removePacketCaptures(this,sessionId,agentId);
     const names = sessionNetworks(sessionId);
     for (const [purpose, name] of [['egress', names.egress], ['management', names.management]]) {
       let network;
@@ -527,6 +529,7 @@ export class DockerClient {
         labels['remote-device-farm.session'] !== sessionId) {
       throw new Error('Refusing to remove a container not owned by this session');
     }
+    await removePacketCaptures(this,sessionId,agentId);
     // Removal of a large writable layer can outlive the ordinary API timeout.
     // Pin retries to the inspected ID so reusing a name cannot remove another container.
     const id = encodeURIComponent(current.Id || containerId);

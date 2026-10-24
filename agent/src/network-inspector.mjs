@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { writeContainerFiles } from './container-files.mjs';
 import { runKeyed } from './keyed-queue.mjs';
@@ -5,9 +6,10 @@ import { CONSOLE_SCRIPT, execInContainer, runEmuConsole } from './emu-console.mj
 import { agentMessage } from './messages.mjs';
 const SCRIPT = readFileSync(new URL('./network-proxy.py', import.meta.url));
 const CAPTURE = readFileSync(new URL('./network_capture.py', import.meta.url));
+const RUNTIME_VERSION = createHash('sha256').update(Buffer.concat([SCRIPT, CAPTURE, Buffer.from(CONSOLE_SCRIPT)])).digest('hex');
 const fail = () => { throw new Error(agentMessage('networkInspector.failed')); };
 const DIR = '/rdf-network';
-const PCAP_PATH = '/android-home/avd/rdf.avd/console_out/rdf-capture.pcap';
+const LEGACY_PCAP_PATH = '/android-home/avd/rdf.avd/console_out/rdf-capture.pcap';
 const STOP_REASONS = ['manual', 'time_limit', 'size_limit', 'recovery', 'start_failed'];
 
 export function validateNetworkInspectorParams(params) {
@@ -22,7 +24,7 @@ export function validateNetworkInspectorParams(params) {
   return params;
 }
 
-export async function inspectNetwork(docker, containerId, sessionId, agentId, params) {
+export async function inspectNetwork(docker, containerId, sessionId, agentId, params, packets) {
   validateNetworkInspectorParams(params);
   const deadline = Date.now() + 45000;
   const budget = max => { const left = deadline - Date.now(); if (left < 100) fail(); return Math.min(max, left); };
@@ -30,8 +32,8 @@ export async function inspectNetwork(docker, containerId, sessionId, agentId, pa
   const detail = await docker.inspect(containerId), labels = detail.Config?.Labels || {};
   if (labels['remote-device-farm.managed'] !== 'true' || labels['remote-device-farm.agent'] !== agentId ||
       labels['remote-device-farm.session'] !== sessionId || detail.State?.Running !== true) fail();
-  const run = async (args, max = 8 * 1024 * 1024) => {
-    const result = await execInContainer(docker, containerId, args, [], budget(10000), max);
+  const run = async (args, max = 8 * 1024 * 1024, timeout = 10000) => {
+    const result = await execInContainer(docker, containerId, args, [], budget(timeout), max);
     if (result.exitCode || result.truncated) fail();
     return result.stdout;
   };
@@ -40,26 +42,51 @@ export async function inspectNetwork(docker, containerId, sessionId, agentId, pa
     if (params.op === 'status') return { available: false, recording: false, entries: [] };
     throw new Error(agentMessage('networkInspector.unavailable'));
   }
-  const call = (op, ...args) => run(['python3', DIR + '/proxy.py', op, ...args]);
+  const call = (op, ...args) => run(['python3', DIR + '/proxy.py', op, ...args], 8 * 1024 * 1024, ['start', 'stop'].includes(op) ? 30000 : 10000);
   let state;
   try { state = JSON.parse(await call(params.summary ? 'summary' : 'status')); } catch { state = null; }
-  const empty = () => ({ available: true, protocolVersion: 2, recording: false, proxyActive: false, entries: [], pcapBytes: 0, pcapState: 'none' });
-  if (params.op === 'status') return state ?? empty();
+  const empty = () => ({ available: true, protocolVersion: 3, runtimeCompatible: true, recording: false, proxyActive: false, entries: [], pcapBytes: 0, pcapState: 'none' });
+  const current = () => state ? { ...state, runtimeCompatible: state.protocolVersion === 3 && state.runtimeVersion === RUNTIME_VERSION } : empty();
+  const packetStatus = async () => {
+    if (state?.protocolVersion === 3 && state.pcapRequested) {
+      const result = await packets.status(sessionId, state.captureId);
+      if (state.recording && ['stopped', 'error'].includes(result.pcapState)) state = JSON.parse(await call('stop', result.stopReason === 'size_limit' ? 'size_limit' : result.stopReason === 'time_limit' ? 'time_limit' : 'recovery'));
+      Object.assign(state, {pcapState:result.pcapState,pcapBytes:result.pcapBytes,packetCount:result.packetCount});
+    }
+  };
+  if (params.op === 'status') { await packetStatus();return {...current(),pcapAvailable:packets ? await packets.available() : false}; }
   const stopPcap = async () => {
+    if (state?.protocolVersion === 3) {
+      if (state.pcapRequested) { const result = await packets.stop(sessionId,state.captureId);state=JSON.parse(await call(result.pcapState === 'stopped' ? 'pcap-stopped' : 'pcap-error'));Object.assign(state,{pcapBytes:result.pcapBytes,pcapState:result.pcapState,packetCount:result.packetCount}); }
+      return;
+    }
     if (!state?.pcapRequested && !state?.pcapBytes) return;
     const stopped = await capture(['network', 'capture', 'stop']);
     if (state.protocolVersion === 2) state = JSON.parse(await call(stopped.exitCode ? 'pcap-error' : 'pcap-stopped'));
     else if (stopped.exitCode) fail();
   };
   if (params.op === 'start') {
-    if (state?.finalizing || state?.pcapState === 'error') throw new Error(agentMessage('debug.busy'));
+    if (state?.finalizing) throw new Error(agentMessage('debug.busy'));
     if (state?.recording) throw new Error(agentMessage('networkInspector.alreadyStarted'));
-    if (state && state.protocolVersion !== 2) throw new Error(agentMessage('networkInspector.restartRequired'));
+    if (state?.protocolVersion === 3 && state.pcapRequested) { await stopPcap();if (state.pcapState !== 'stopped') throw new Error(agentMessage('debug.busy')); }
+    if (state && (state.protocolVersion !== 3 || state.runtimeVersion !== RUNTIME_VERSION)) {
+      // Do not overwrite code used by a running daemon or discard its export.
+      // A new start intentionally replaces the previous stopped capture.
+      if (state.protocolVersion !== 3 || state.activeConnections) throw new Error(agentMessage('networkInspector.restartRequired'));
+      await call('shutdown');
+      let stopped = false;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        try { await call('summary'); } catch { stopped = true; break; }
+      }
+      if (!stopped) throw new Error(agentMessage('debug.busy'));
+      state = null;
+    }
     await writeContainerFiles(docker, containerId, DIR, [
       { name: 'proxy.py', mode: 0o600, data: SCRIPT }, { name: 'network_capture.py', mode: 0o600, data: CAPTURE },
       { name: 'console.sh', mode: 0o600, data: Buffer.from(CONSOLE_SCRIPT) },
     ], { timeoutMs: budget(15000) });
-    await run(['rm', '-f', PCAP_PATH]);
+    await run(['rm', '-f', LEGACY_PCAP_PATH]);
     if (!state?.proxyActive) {
       await run(['sh', '-c', 'umask 077; python3 /rdf-network/proxy.py serve </dev/null >/dev/null 2>&1 &']);
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -69,16 +96,15 @@ export async function inspectNetwork(docker, containerId, sessionId, agentId, pa
     if (!state?.proxyActive) fail();
     state = JSON.parse(await call('start', params.pcap ? '1' : '0', params.captureBodies ? '1' : '0'));
     if (params.pcap) {
-      const result = await capture(['network', 'capture', 'start', 'rdf-capture.pcap']);
-      if (result.exitCode) fail();
-      state = JSON.parse(await call('pcap-recording'));
+      const result = await packets.start(detail.Id,sessionId,state.captureId);
+      state=JSON.parse(await call('pcap-recording'));Object.assign(state,{pcapState:result.pcapState,pcapBytes:result.pcapBytes});
     }
-    return state;
+    return current();
   }
   if (params.op === 'stop') {
-    if (state) state = JSON.parse(await call('stop', ...(state.protocolVersion === 2 ? [params.reason ?? 'manual'] : [])));
+    if (state) state = JSON.parse(await call('stop', ...([2, 3].includes(state.protocolVersion) ? [params.reason ?? 'manual'] : [])));
     await stopPcap();
-    return state ?? empty();
+    return current();
   }
   if (params.op === 'clear') {
     if (state?.recording || state?.finalizing) fail();
@@ -88,7 +114,7 @@ export async function inspectNetwork(docker, containerId, sessionId, agentId, pa
   if (params.captureId && params.captureId !== state?.captureId) throw new Error(agentMessage('networkInspector.captureChanged'));
   await stopPcap();
   if (state?.pcapState === 'error') fail();
-  const result = JSON.parse(await run(['python3', DIR + '/proxy.py', 'pcap', String(params.offset)]));
+  const result = state?.protocolVersion === 3 ? await packets.read(sessionId,state.captureId,params.offset) : JSON.parse(await run(['python3', DIR + '/proxy.py', 'pcap', String(params.offset)]));
   return { ...result, captureId: state?.captureId };
 }
 
@@ -121,6 +147,9 @@ export class NetworkInspector {
     if (params?.op === 'start') {
       const current = await this.proxy(serial);
       if (!['', 'null', ':0', '10.0.2.2:18888'].includes(current)) throw new Error(agentMessage('networkInspector.proxyConflict'));
+      const previous = await this.control.networkInspector(sessionId, {op:'status',summary:true});
+      if (previous.recording || previous.finalizing) throw new Error(agentMessage('networkInspector.alreadyStarted'));
+      if (params.pcap && previous.pcapAvailable === false) throw new Error(agentMessage('networkInspector.unavailable'));
     }
     try {
       const result = await this.control.networkInspector(sessionId, params);

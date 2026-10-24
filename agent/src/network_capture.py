@@ -216,7 +216,7 @@ class Capture:
                 row["timings"] = {key: round(value, 3) for key, value in row["timings"].items()}
                 row["elapsedMs"] = item["durationMs"] if item["durationMs"] is not None else round((now - item["_start"]) * 1000, 3)
                 rows.append(row)
-            return {"available": True, "protocolVersion": 2, "recording": self.recording, "finalizing": self.finalizing,
+            return {"available": True, "protocolVersion": 3, "recording": self.recording, "finalizing": self.finalizing,
                     "proxyActive": True, "captureId": self.capture_id, "startedAt": self.started, "stoppedAt": self.stopped,
                     "stopReason": self.stop_reason, "captureBodies": self.bodies,
                     "pcapRequested": self.pcap_requested, "pcapState": self.pcap_state, "pcapBytes": pcap_bytes,

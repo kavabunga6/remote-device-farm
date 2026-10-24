@@ -11,10 +11,10 @@ export type TrafficEntry = {
   requestBody?: TrafficBody; responseBody?: TrafficBody;
 };
 export type TrafficState = {
-  available: boolean; recording: boolean; proxyActive?: boolean; entries: TrafficEntry[]; protocolVersion?: number;
+  available: boolean; recording: boolean; proxyActive?: boolean; entries: TrafficEntry[]; protocolVersion?: number; runtimeCompatible?: boolean;
   captureId?: string | null; startedAt?: number | null; stoppedAt?: number | null;
   stopReason?: 'manual' | 'time_limit' | 'size_limit' | 'recovery' | 'start_failed' | null;
-  finalizing?: boolean; captureBodies?: boolean; pcapRequested?: boolean;
+  finalizing?: boolean; captureBodies?: boolean; pcapRequested?: boolean; pcapAvailable?: boolean; packetCount?: number;
   pcapState?: 'none' | 'starting' | 'recording' | 'finalizing' | 'stopped' | 'error'; pcapBytes?: number;
   limit?: number; totalCaptured?: number; evicted?: number; rejectedConnections?: number; activeConnections?: number; connectionLimit?: number;
 };
