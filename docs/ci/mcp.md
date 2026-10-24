@@ -114,3 +114,9 @@ Run `npm test --prefix integrations/mcp` for MCP protocol, stdio, lease/idempote
 A live stdio SDK workflow has also been checked on an Android 16 Google APIs emulator: catalog reads, idempotent allocation, readiness, lease renewal, PNG capture, device input, device information, Logcat, opening Android Settings, semantic UI interaction and confirmed release. The temporary account and token were revoked, and its emulator container, networks and slot were verified released. This live check used the local API; external HTTPS client setup and live APK upload/installation through MCP remain **Not tested**.
 
 Installation and behavior in each external AI client require separate verification. Model-driven judgments, long unattended runs, remote MCP HTTP transport and external catalog publication are **Not tested** or not provided by this stdio package. See [verification limits](../verification.md) and the [API guide](../api/README.md).
+
+### UI availability and input confirmation
+
+UI hierarchy reads have a finite Android-side deadline and may retry a transient empty hierarchy once. `wait_ui` also waits through temporary UI availability errors; it does not treat an unavailable hierarchy as a missing element. Turn on the screen and wait for the application to finish opening when inspection is unavailable.
+
+An unconfirmed tap returns `device_ui_input_unconfirmed`. Inspect the screen before sending another tap. Input actions are never replayed automatically.

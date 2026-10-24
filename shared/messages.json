@@ -13690,5 +13690,9 @@
   "networkInspector.pcapUnavailable": {
     "ru": "Захват пакетов недоступен на этом узле. Запись HTTP и экспорт HAR доступны отдельно.",
     "en": "Packet capture is unavailable on this node. HTTP recording and HAR export remain available."
+  },
+  "agent.ui.inputFailed": {
+    "ru": "Не удалось подтвердить нажатие. Проверьте экран устройства перед повторной попыткой.",
+    "en": "The tap could not be confirmed. Check the device screen before trying again."
   }
 }

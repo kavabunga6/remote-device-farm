@@ -107,7 +107,7 @@ export function createMcpServer(config, api = new FarmApi(config)) {
     description: selectorText.optional(), exact: z.boolean().default(true),
     index: z.number().int().min(0).max(1999).optional() }).strict()
     .refine(value => ['text', 'resourceId', 'description'].some(key => value[key] !== undefined));
-  const readUi = (sessionId, signal) => api.request('GET', '/api/sessions/' + sessionId + '/ui', { signal, timeoutMs: 20_000 });
+  const readUi = (sessionId, signal) => api.request('GET', '/api/sessions/' + sessionId + '/ui', { signal, timeoutMs: 35_000 });
   function findUi(data, selected) {
     if (!Array.isArray(data.nodes) || data.nodes.length > 2000) throw new FarmError('invalid_response');
     const matches = data.nodes.filter(node => node && ['text', 'resourceId', 'description'].every(key =>
@@ -121,7 +121,7 @@ export function createMcpServer(config, api = new FarmApi(config)) {
     return json({ count: matches.length, elements: matches.slice(0, 100), truncated: matches.length > 100 });
   }, { readOnly: true });
   tool('tap_ui', { ...session, selector }, async ({ sessionId, selector: selected }, signal) =>
-    json(await api.request('POST', '/api/sessions/' + sessionId + '/ui/tap', { body: { selector: selected }, signal, timeoutMs: 20_000 })));
+    json(await api.request('POST', '/api/sessions/' + sessionId + '/ui/tap', { body: { selector: selected }, signal, timeoutMs: 35_000 })));
   tool('wait_ui', { ...session, selector, gone: z.boolean().default(false),
     timeoutMs: z.number().int().min(1000).max(30_000).default(15_000) }, async ({ sessionId, selector: selected, gone, timeoutMs }, signal) => {
     const deadline = AbortSignal.timeout(timeoutMs);
@@ -129,7 +129,13 @@ export function createMcpServer(config, api = new FarmApi(config)) {
     try {
       while (true) {
         combined.throwIfAborted();
-        const matches = findUi(await readUi(sessionId, combined), selected);
+        let tree;
+        try { tree=await readUi(sessionId,combined); }
+        catch(error) {
+          if(error instanceof FarmError && ((error.status===503&&error.code==='device_ui_unavailable')||(error.status===409&&error.code==='device_ui_busy'))) { await delay(750,undefined,{signal:combined});continue; }
+          throw error;
+        }
+        const matches = findUi(tree, selected);
         if (gone ? matches.length === 0 : matches.length > 0) return json({ matched: true, elements: matches.slice(0, 100) });
         await delay(750, undefined, { signal: combined });
       }

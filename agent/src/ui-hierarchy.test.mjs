@@ -33,7 +33,7 @@ test('UI reads reject concurrent dumps and remove temporary data after failure',
   const calls = [];
   const ui = new UiHierarchy({ run: async (_serial, argv) => {
     calls.push(argv);
-    if (argv[1] === 'uiautomator') return new Promise(resolve => { finish = resolve; });
+    if (argv.includes('uiautomator')) return new Promise(resolve => { finish = resolve; });
     return { exitCode: 1, stdout: '' };
   } });
   const first = ui.read('device');
@@ -47,10 +47,17 @@ test('UI reads reject concurrent dumps and remove temporary data after failure',
 test('a successful exit with a null root retries only the read and never replays a tap', async () => {
   let dumps=0,taps=0;
   const ui=new UiHierarchy({run:async(_serial,argv)=>{
-    if(argv[1]==='uiautomator'){dumps++;return {exitCode:0,stdout:'',stderr:dumps===1?'ERROR: null root node returned by UiTestAutomationBridge.':''};}
+    if(argv.includes('uiautomator')){dumps++;return {exitCode:0,stdout:'',stderr:dumps===1?'ERROR: null root node returned by UiTestAutomationBridge.':''};}
     if(argv[0]==='exec-out')return {exitCode:0,stdout:xml(node('Tap once'))};
     if(argv.includes('tap'))taps++;
     return {exitCode:0,stdout:''};
   }});
   const result=await ui.tap('device',{text:'Tap once'});assert.equal(result.tapped,true);assert.equal(dumps,2);assert.equal(taps,1);assert.equal(ui.pending.size,0);
+});
+
+test('an uncertain input is reported without replay and the Android dump has its own deadline',async()=>{
+ let taps=0;const calls=[];
+ const ui=new UiHierarchy({run:async(_serial,argv)=>{calls.push(argv);if(argv[0]==='exec-out')return {exitCode:0,stdout:xml(node('Tap'))};if(argv.includes('tap')){taps++;throw Error('transport lost');}return {exitCode:0,stdout:''};}});
+ await assert.rejects(ui.tap('device',{text:'Tap'}),/could not be confirmed/);assert.equal(taps,1);
+ assert.ok(calls.some(argv=>argv[1]==='/system/bin/timeout'&&argv.includes('9')));
 });

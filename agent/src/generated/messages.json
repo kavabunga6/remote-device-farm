@@ -263,6 +263,10 @@
     "ru": "Дерево интерфейса уже запрашивается.",
     "en": "A UI hierarchy request is already running."
   },
+  "agent.ui.inputFailed": {
+    "ru": "Не удалось подтвердить нажатие. Проверьте экран устройства перед повторной попыткой.",
+    "en": "The tap could not be confirmed. Check the device screen before trying again."
+  },
   "agent.ui.notActionable": {
     "ru": "Элемент отключён или находится за пределами экрана.",
     "en": "The element is disabled or outside the visible screen."

@@ -7,6 +7,7 @@ const errors = {
   busy: () => agentMessage('agent.ui.busy'),
   notFound: () => agentMessage('agent.ui.notFound'),
   ambiguous: () => agentMessage('agent.ui.ambiguous'),
+  inputFailed: () => agentMessage('agent.ui.inputFailed'),
   notActionable: () => agentMessage('agent.ui.notActionable')
 };
 const fail = key => { throw new Error(errors[key]()); };
@@ -86,20 +87,20 @@ export class UiHierarchy {
     this.pending.add(serial);
     const file = '/data/local/tmp/rdf-ui-' + randomUUID() + '.xml';
     try {
-      const deadline = Date.now() + 17_000;
+      const deadline = Date.now() + 23_000;
       for (let attempt = 0; attempt < 2; attempt++) {
-        const dump = await this.adb.run(serial, ['shell', 'uiautomator', 'dump', '--compressed', file], {timeoutMs:Math.min(8000,Math.max(1,deadline-Date.now())),maxOutputBytes:8192,signal});
-        if (dump.exitCode !== 0) fail('unavailable');
+        const dump = await this.adb.run(serial, ['shell', '/system/bin/timeout', '-s', 'KILL', '9', 'uiautomator', 'dump', '--compressed', file], {timeoutMs:Math.min(10000,Math.max(1,deadline-Date.now())),maxOutputBytes:8192,signal});
+        if (dump.exitCode !== 0 && ![124,137].includes(dump.exitCode)) fail('unavailable');
         // Some Android builds return success while no XML was created yet.
         // Retrying a read is safe; the eventual input command is never replayed.
-        if (!/null root node|could not get idle state/i.test(String(dump.stdout)+'\n'+String(dump.stderr))) break;
+        if (dump.exitCode === 0 && !/null root node|could not get idle state/i.test(String(dump.stdout)+'\n'+String(dump.stderr))) break;
         if (attempt || deadline-Date.now()<1000) fail('unavailable');
         await delay(250,undefined,{signal});
       }
       const result = await this.adb.run(serial, ['exec-out', 'cat', file], { timeoutMs: Math.min(2000,Math.max(1,deadline-Date.now())), maxOutputBytes: 2 * 1024 * 1024, signal });
       if (result.exitCode !== 0) fail('unavailable');
       return parseHierarchy(String(result.stdout));
-    } finally {
+    } catch { signal?.throwIfAborted();fail('unavailable'); } finally {
       await this.adb.run(serial, ['shell', 'rm', '-f', file], { timeoutMs: 1000, maxOutputBytes: 1024 }).catch(() => {});
       this.pending.delete(serial);
     }
@@ -113,8 +114,10 @@ export class UiHierarchy {
     const node = matches[0], b = node.bounds;
     if (!node.enabled || !b || b.some(v => v < 0 || v > 8192) || b[2] <= b[0] || b[3] <= b[1]) fail('notActionable');
     const x = Math.floor((b[0] + b[2]) / 2), y = Math.floor((b[1] + b[3]) / 2);
-    const result = await this.adb.run(serial, ['shell', 'input', 'tap', String(x), String(y)], { timeoutMs: 3000, maxOutputBytes: 4096, signal });
-    if (result.exitCode !== 0) fail('unavailable');
+    try {
+      const result = await this.adb.run(serial, ['shell', 'input', 'tap', String(x), String(y)], { timeoutMs: 3000, maxOutputBytes: 4096, signal });
+      if (result.exitCode !== 0) fail('inputFailed');
+    } catch { fail('inputFailed'); }
     return { tapped: true, element: node };
   }
 }
