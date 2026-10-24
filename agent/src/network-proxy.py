@@ -18,6 +18,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from network_capture import BodyPreview, Capture, MAX_CONNECTIONS
 
 ROOT = "/rdf-network"
+# The emulator confines bare console filenames to this AVD-owned directory.
+PCAP_PATH = "/android-home/avd/rdf.avd/console_out/rdf-capture.pcap"
 PROXY_PORT = 18888
 CONTROL_PORT = 18889
 MAX_STATUS_BYTES = 8 * 1024 * 1024
@@ -27,7 +29,7 @@ proxy = None
 
 
 def status(summary=False):
-    size = os.path.getsize(ROOT + "/capture.pcap") if os.path.isfile(ROOT + "/capture.pcap") else 0
+    size = os.path.getsize(PCAP_PATH) if os.path.isfile(PCAP_PATH) else 0
     return capture.snapshot(size, include_entries=not summary)
 
 
@@ -317,7 +319,7 @@ if __name__ == "__main__":
         offset = int(sys.argv[2])
         if offset < 0 or offset > 40 * 1024 * 1024:
             raise ValueError("offset")
-        with open(ROOT + "/capture.pcap", "rb") as file:
+        with open(PCAP_PATH, "rb") as file:
             size = os.fstat(file.fileno()).st_size
             file.seek(offset)
             data = file.read(256 * 1024)

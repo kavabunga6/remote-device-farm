@@ -7,6 +7,7 @@ const SCRIPT = readFileSync(new URL('./network-proxy.py', import.meta.url));
 const CAPTURE = readFileSync(new URL('./network_capture.py', import.meta.url));
 const fail = () => { throw new Error(agentMessage('networkInspector.failed')); };
 const DIR = '/rdf-network';
+const PCAP_PATH = '/android-home/avd/rdf.avd/console_out/rdf-capture.pcap';
 const STOP_REASONS = ['manual', 'time_limit', 'size_limit', 'recovery', 'start_failed'];
 
 export function validateNetworkInspectorParams(params) {
@@ -58,7 +59,7 @@ export async function inspectNetwork(docker, containerId, sessionId, agentId, pa
       { name: 'proxy.py', mode: 0o600, data: SCRIPT }, { name: 'network_capture.py', mode: 0o600, data: CAPTURE },
       { name: 'console.sh', mode: 0o600, data: Buffer.from(CONSOLE_SCRIPT) },
     ], { timeoutMs: budget(15000) });
-    await run(['rm', '-f', '/rdf-network/capture.pcap']);
+    await run(['rm', '-f', PCAP_PATH]);
     if (!state?.proxyActive) {
       await run(['sh', '-c', 'umask 077; python3 /rdf-network/proxy.py serve </dev/null >/dev/null 2>&1 &']);
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -68,7 +69,7 @@ export async function inspectNetwork(docker, containerId, sessionId, agentId, pa
     if (!state?.proxyActive) fail();
     state = JSON.parse(await call('start', params.pcap ? '1' : '0', params.captureBodies ? '1' : '0'));
     if (params.pcap) {
-      const result = await capture(['network', 'capture', 'start', DIR + '/capture.pcap']);
+      const result = await capture(['network', 'capture', 'start', 'rdf-capture.pcap']);
       if (result.exitCode) fail();
       state = JSON.parse(await call('pcap-recording'));
     }

@@ -30,7 +30,7 @@ export function validateEmuConsoleArgs(args) {
   const exact = (n) => { if (args.length !== n) bad('Invalid emulator console command'); };
   if (a === 'network') {
     if (b === 'status') exact(2);
-    else if (b === 'capture' && c === 'start' && d === '/rdf-network/capture.pcap') exact(4);
+    else if (b === 'capture' && c === 'start' && d === 'rdf-capture.pcap') exact(4);
     else if (b === 'capture' && c === 'stop') exact(3);
     else if (b === 'speed' && NETWORK_SPEEDS.includes(c)) exact(3);
     else if (b === 'delay' && NETWORK_DELAYS.includes(c)) exact(3);
