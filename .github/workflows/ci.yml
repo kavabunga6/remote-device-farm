@@ -226,6 +226,7 @@ jobs:
             listing="$(tar -tzf "$1")"
             printf "%s\n" "$listing" | grep -q "^./compose.agent.yaml$"
             printf "%s\n" "$listing" | grep -q "^./INSTALL.txt$"
+            printf "%s\n" "$listing" | grep -Fxq "./.dockerignore"
             printf "%s\n" "$listing" | grep -q "^./licenses/Apache-2.0.txt$"
             printf "%s\n" "$listing" | grep -q "^./licenses/scrcpy.txt$"
             printf "%s\n" "$listing" | grep -q "^./emulator-image/Dockerfile$"
