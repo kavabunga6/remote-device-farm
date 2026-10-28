@@ -358,7 +358,9 @@ function fetchOnce(url: URL, destination: string, options: Pick<AppStoreConfig, 
       const status = response.statusCode || 0;
       if ([301, 302, 303, 307, 308].includes(status)) {
         const location = response.headers.location;
-        response.resume();
+        // No body from an intermediate response belongs to the download.
+        response.destroy();
+        request.destroy();
         if (!location) finish(new DownloadError('download_failed', 'Redirect without location'));
         else finish(null, { size: 0, redirect: location });
         return;
