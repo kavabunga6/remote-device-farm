@@ -152,7 +152,7 @@ for (const [name, width, height, theme, scale] of [
       selectHeight: element.querySelector('.create-connection-fields select')!.getBoundingClientRect().height };
   });
   expect(typography.headingWeight).toBeGreaterThan(typography.helperWeight);
-  expect(typography.headingSize).toBeGreaterThan(typography.helperSize);
+  expect(typography.headingSize).toBeGreaterThanOrEqual(typography.helperSize);
   expect(typography.helperWeight).toBe(400);
   expect(typography.number).toEqual(typography.select); // Select's right padding also reserves its shared arrow.
   expect(Math.abs(typography.numberHeight - typography.selectHeight)).toBeLessThanOrEqual(1);

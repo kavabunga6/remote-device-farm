@@ -1,5 +1,5 @@
 .profile-picker{min-width:0}
-.modal.create-session-modal .create-device-field{display:grid;gap:8px;min-width:0;font-size:.875rem;color:var(--ui-text)}
+.modal.create-session-modal .create-device-field{display:grid;gap:8px;min-width:0;font-size:1rem;color:var(--ui-text)}
 :root .modal.create-session-modal .create-device-field select{box-sizing:border-box;width:100%;min-width:0;min-height:48px;padding:12px 40px 12px 12px;margin:0;border:1px solid var(--stitch-border-strong,var(--ui-border));border-radius:8px;background-color:var(--ui-inset);color:var(--ui-text);font:inherit;font-weight:500;line-height:1.5}
 .profile-picker-empty{display:grid;justify-items:center;gap:10px;padding:24px 16px;text-align:center;color:var(--ui-muted);font-size:.8125rem}
 .profile-picker-empty strong{color:var(--ui-text)}

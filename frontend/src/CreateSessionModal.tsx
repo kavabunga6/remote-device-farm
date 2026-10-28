@@ -79,7 +79,7 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
   const gpuHint = !selectedProfile ? t('ui.8dbe6ca9590c')
     : gpuReadiness.state === 'blocked' ? gpuReadiness.issues[0]?.message ?? t('ui.713b6272c135')
     : gpuReadiness.state === 'busy' ? t('ui.87142ea4a68e')
-    : gpuMode === 'nvidia' ? (gpuBackend === 'gpu' ? t('ui.7a7c22f5d44f') : t('ui.4834adecc3bf'))
+    : gpuMode === 'nvidia' ? (gpuBackend === 'gpu' ? t('ui.95a47a2e8021') : t('ui.dcc000ca42a8'))
     : t('images.disabled');
   const gpuSwitchDisabled = busy || !selectedProfile || (gpuMode !== 'nvidia' && gpuReadiness.state === 'blocked');
   const chooseProfile = (id: string) => {
@@ -161,19 +161,16 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
           <aside className="create-launch-panel" aria-label={t('ui.4e701eb36c6c')}>
             <div className="create-selected-profile">
               {environment && <>
-                <div className="create-profile-meta">{profileFacts(environment).map(([label, value]) => <span key={label} title={label}><bdi dir={label === t('ui.c062341615dc') ? 'ltr' : 'auto'}>{value}</bdi></span>)}</div>
                 <dl className="create-summary-resources" hidden={settingsOpen || Boolean(keyError)}>
-                  <div><dt>{t('ui.6ee4b2429634')}</dt><dd>{[isUnset(environment.cores) ? '' : t('copy.CreateSessionModal.c301bee9', { p0: environment.cores }), isUnset(environment.memory) ? '' : environment.memory].filter(Boolean).map((value, index) => <span key={index}>{index > 0 && ' · '}<bdi>{value}</bdi></span>)}{isUnset(environment.cores) && isUnset(environment.memory) && t('ui.95807be9fda9')}</dd></div>
-                  <div><dt>{t('ui.d7638391d8f0')}</dt><dd><bdi dir="ltr"><TranslatedText message="copy.CreateSessionModal.c640bd31" values={{ p0: effectiveProfile?.cpu ?? '—', p1: <bdi>{memoryLabel(effectiveProfile?.memoryMb)}</bdi> }} /></bdi></dd></div>
+                  <div><dt><Icon name="phone" size={18}/>{t('ui.6ee4b2429634')}</dt><dd>{[isUnset(environment.cores) ? '' : t('copy.CreateSessionModal.c301bee9', { p0: environment.cores }), isUnset(environment.memory) ? '' : environment.memory].filter(Boolean).map((value, index) => <span key={index}>{index > 0 && ' · '}<bdi>{value}</bdi></span>)}{isUnset(environment.cores) && isUnset(environment.memory) && t('ui.95807be9fda9')}</dd></div>
+                  <div><dt><Icon name="server" size={18}/>{t('ui.d7638391d8f0')}</dt><dd><bdi dir="ltr"><TranslatedText message="copy.CreateSessionModal.c640bd31" values={{ p0: effectiveProfile?.cpu ?? '—', p1: <bdi>{memoryLabel(effectiveProfile?.memoryMb)}</bdi> }} /></bdi></dd></div>
                 </dl>
               </>}
             </div>
             {!canEditLaunch && <p className="create-field-hint create-launch-policy">{t('ui.31b16dcfbeeb')}</p>}
             <div className="create-launch-scroll">
-              <div className="create-gpu-setting create-gpu-launch-setting" data-enabled={gpuMode === 'nvidia'}><label className="create-gpu-switch"><span><strong>{t('ui.e63574b998c7')}</strong><small id="create-gpu-help">{gpuHint}</small></span><input type="checkbox" role="switch" aria-label={t('ui.e63574b998c7')} aria-describedby="create-gpu-help" checked={gpuMode === 'nvidia'} disabled={gpuSwitchDisabled} onChange={event => { revealReadiness.current = true; setGpuMode(event.target.checked ? 'nvidia' : 'software'); setError(''); }}/></label></div>
+              <div className="create-gpu-setting create-gpu-launch-setting" data-enabled={gpuMode === 'nvidia'}><label className="create-gpu-switch"><input type="checkbox" role="switch" aria-label={t('ui.e63574b998c7')} aria-describedby="create-gpu-help" checked={gpuMode === 'nvidia'} disabled={gpuSwitchDisabled} onChange={event => { revealReadiness.current = true; setGpuMode(event.target.checked ? 'nvidia' : 'software'); setError(''); }}/><span><strong>{t('ui.e63574b998c7')}</strong><small id="create-gpu-help">{gpuHint}</small></span></label></div>
               <LaunchReadiness readiness={readiness} admin={canConfigureContainer} alternative={hasAlternativeHost} onAutoHost={() => { setHostId(''); setError(''); }}/>
-              {selectedProfile && environment && <details className="create-container-details"><summary>{t('ui.d726d18c5ba9')}<Icon name="arrowDown" size={14}/></summary><dl className="create-image-facts"><div><dt>{t('ui.157705d4fc52')}</dt><dd><code dir="ltr">{selectedProfile.image || t('ui.0d836c1579f1')}</code></dd></div><div><dt>{t('ui.948a734972a9')}</dt><dd><code dir="ltr">{selectedProfile.emulatorParams?.trim() || t('ui.465370e8594b')}</code></dd></div></dl></details>}
-
             </div>
           </aside>
           <details className="create-settings" open={settingsOpen || Boolean(keyError)} onToggle={event => setSettingsOpen((event.currentTarget as HTMLDetailsElement).open)}><summary>{canEditLaunch ? t('ui.b21e29568c60') : t('ui.4fc4baff4497')}<Icon name="arrowDown" size={14}/></summary>
@@ -206,6 +203,7 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
               {keyError && <div className="inline-warning" role="alert">{localizeText(keyError)}<button type="button" className="text-button" onClick={() => setKeyLoadAttempt(value => value + 1)}>{t('ui.5189135a6110')}</button></div>}
               </div>
             </details>
+            {selectedProfile && environment && <details className="create-container-details"><summary>{t('ui.d726d18c5ba9')}<Icon name="arrowDown" size={14}/></summary><div className="create-profile-meta">{profileFacts(environment).map(([label, value]) => <span key={label} title={label}><bdi dir={label === t('ui.c062341615dc') ? 'ltr' : 'auto'}>{value}</bdi></span>)}</div><dl className="create-image-facts"><div><dt>{t('ui.157705d4fc52')}</dt><dd><code dir="ltr">{selectedProfile.image || t('ui.0d836c1579f1')}</code></dd></div><div><dt>{t('ui.948a734972a9')}</dt><dd><code dir="ltr">{selectedProfile.emulatorParams?.trim() || t('ui.465370e8594b')}</code></dd></div></dl></details>}
             {canEditLaunch && <details className="create-advanced-settings">
               <summary>{t('ui.0b6042b8b114')}<Icon name="arrowDown" size={15}/></summary>
               <div className="create-advanced-body">

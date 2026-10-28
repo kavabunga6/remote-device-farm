@@ -49,8 +49,8 @@ test('GPU toggle keeps one image and resource limit and sends the chosen mode', 
   const launch = modal.getByRole('button', { name: 'Запустить', exact: true });
   await expect(gpu).toBeEnabled();
   await expect(gpu).not.toBeChecked();
-  await modal.locator('.create-container-details summary').click();
   await modal.locator('.create-settings > summary').click();
+  await modal.locator('.create-container-details summary').click();
   await openLaunchSection(modal, 'connection');
   for (const [checked, mode] of [[true, 'nvidia'], [false, 'software']] as const) {
     await gpu.setChecked(checked);
@@ -114,7 +114,7 @@ for (const support of ['cuda', 'gpu'] as const) {
       { id: support + '-host', name: 'Узел с GPU', gpuHost: false, gpuCapabilities: [support] },
     ] });
     await modal.getByRole('switch', { name: 'Ускорение GPU' }).check();
-    await expect(modal.locator('#create-gpu-help')).toContainText(support === 'cuda' ? 'NVIDIA / CUDA' : 'GPU готов');
+    await expect(modal.locator('#create-gpu-help')).toContainText(support === 'cuda' ? 'NVIDIA / CUDA' : 'GPU · включено');
     await modal.getByRole('button', { name: 'Запустить', exact: true }).click();
     await expect.poll(() => requests.length).toBe(1);
     expect(requests[0]).toMatchObject({ hostId: support + '-host', gpuMode: 'nvidia' });
