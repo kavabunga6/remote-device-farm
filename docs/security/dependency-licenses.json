@@ -4,7 +4,7 @@
   "components": [
     {
       "component": "server",
-      "lockSha256": "a55464e65260abe880333aa8f893775b81cbd518a96c6a24629f807efa350faf",
+      "lockSha256": "cba1ce2b7b19175da74d7cd60e96cde603ddf794a8be5b50190dce7ae1bd1dd0",
       "packages": [
         {
           "name": "accepts",

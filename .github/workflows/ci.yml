@@ -190,6 +190,9 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ matrix.component }}/package-lock.json
       - run: npm ci
+      - name: Audit server dependencies
+        if: matrix.component == 'server'
+        run: npm audit --audit-level=moderate
       - name: Install MCP contract test dependency
         if: matrix.component == 'server'
         run: npm ci --prefix ../integrations/mcp --ignore-scripts
