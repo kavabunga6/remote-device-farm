@@ -4,13 +4,19 @@ This archive contains the agent source, Dockerfile and a standalone Compose file
 It contains no enrollment token, TLS certificate, ADB private key or Docker socket.
 
 Requirements: Linux x86-64 with /dev/kvm, Docker Engine 28+ and Compose 2.30+.
-1. Create .env.agent beside compose.agent.yaml with AGENT_ID, AGENT_TOKEN,
-   AGENT_BROKER_URL and other site-specific settings. Get the one-time
-   AGENT_TOKEN from the administrator; do not share it in this archive.
-2. Set AGENT_HOST_IP to the node address visible to users when applicable.
-3. Review resource settings and run:
+1. Ask an administrator to issue a token in Nodes > Connect node.
+   Create .env.agent beside compose.agent.yaml with these values:
+   AGENT_SERVER_URL=https://farm.example.com
+   AGENT_TOKEN=replace-with-the-issued-token
+   AGENT_SLOTS=1
+   The node ID is derived automatically from a newly issued token. Do not share
+   the token or .env.agent with the archive; the token is shown only when issued.
+2. Start the agent:
    docker compose --env-file .env.agent -p rdf-agent -f compose.agent.yaml up --build -d
-4. Confirm the node appears online in the UI before starting emulators.
+3. Confirm the node appears online in the UI before starting emulators.
+   AGENT_NAME and AGENT_HOST_IP are optional local settings. Existing manually
+   assigned or bootstrap credentials still need their matching AGENT_ID;
+   AGENT_BROKER_URL remains supported instead of AGENT_SERVER_URL.
    Dynamic slots use Docker daemon CPU/RAM because emulators are siblings of the
    I/O agent container. For Docker-in-Docker or Kubernetes with a quota-bound
    daemon, set AGENT_DOCKER_CAPACITY_SCOPE=bounded plus

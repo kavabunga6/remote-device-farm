@@ -3,11 +3,11 @@ import { assertPermission, assertStoredPermission, hasPermission, roleForUser, a
 import { registerRoleRoutes } from './role-routes.js';
 import { uiMessage } from '../messages.js';
 import { removeUser } from '../user-removal.js';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
+import { agentIdForToken } from '../../../shared/agent-identity.mjs';
+import { registerAgentBundleRoutes } from './agent-bundle-routes.js';
 import { exportManifest, parseManifest, checkManifestProfile, type ManifestIssue } from '../profile-manifest.js';
 import { getSecretBox, sealEnv } from '../secrets.js';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import type { Express, Response } from 'express';
 import { hashPassword, newToken, tokenHash } from '../auth.js';
 import { profileField } from '../user-profile.js';
@@ -451,41 +451,15 @@ export function registerAdminRoutes(app: Express, context: ServerContext): void 
     if (!result.rowCount) throw new ApiError(404, 'not_found', uiMessage('ui.4441b4b45947', {}, 'en'));
     res.json({ ok: true });
   }));
-  async function agentBundle(): Promise<{ bytes: Buffer; filename: string; version: string; sha256: string }> {
-    const directory = path.resolve(process.cwd(), 'agent-bundle');
-    try {
-      const version = (await readFile(path.join(directory, 'version.txt'), 'utf8')).trim();
-      const sha256 = (await readFile(path.join(directory, 'sha256.txt'), 'utf8')).trim();
-      if (!/^[A-Za-z0-9._-]{1,80}$/.test(version) || !/^[a-f0-9]{64}$/.test(sha256)) {
-        throw new Error(diagnostic('admin-routes.88e000ed66'));
-      }
-      const filename = `rdf-linux-agent-${version}.tar.gz`;
-      const bytes = await readFile(path.join(directory, filename));
-      if (createHash('sha256').update(bytes).digest('hex') !== sha256) throw new Error(diagnostic('admin-routes.e062fdc92b'));
-      return { bytes, filename, version, sha256 };
-    } catch {
-      throw new ApiError(503, 'agent_bundle_unavailable', uiMessage('ui.4099726074e3', {}, 'en'));
-    }
-  }
-  app.get('/api/admin/agent-bundle/info', requireAuth, requireAdmin, route(async (_req, res) => {
-    const bundle = await agentBundle();
-    res.json({ version: bundle.version, filename: bundle.filename,
-      sha256: bundle.sha256, sizeBytes: bundle.bytes.length });
-  }));
-  app.get('/api/admin/agent-bundle', requireAuth, requireAdmin, route(async (_req, res) => {
-    const bundle = await agentBundle();
-    res.set('Content-Disposition', `attachment; filename="${bundle.filename}"`);
-    res.set('Cache-Control', 'no-store');
-    res.set('X-Content-Type-Options', 'nosniff');
-    res.type('application/gzip').send(bundle.bytes);
-  }));
+  registerAgentBundleRoutes(app, context);
   app.get('/api/admin/agents', requireAuth, requireAdmin, route(async (_req, res) => {
     res.json({ agents: await listAgentInventory(pool, config.bootstrapAgentId) });
   }));
   app.post('/api/admin/agents', requireAuth, requireAdmin, route(async (req, res) => {
-    const hostId = boundedString(req.body?.hostId, 100);
-    if (!/^[A-Za-z0-9._-]{1,100}$/.test(hostId)) throw new ApiError(400, 'invalid_agent', uiMessage('ui.d9cca14d5ca8', {}, 'en'));
+    if (req.body && (typeof req.body !== 'object' || Array.isArray(req.body))) throw new ApiError(400, 'invalid_agent', uiMessage('ui.d9cca14d5ca8', {}, 'en'));
     const raw = `rdfagent_${newToken()}`;
+    const hostId = req.body?.hostId === undefined ? agentIdForToken(raw) : boundedString(req.body.hostId, 100);
+    if (!/^[A-Za-z0-9._-]{1,100}$/.test(hostId)) throw new ApiError(400, 'invalid_agent', uiMessage('ui.d9cca14d5ca8', {}, 'en'));
     const agent = await transaction(pool, async client => {
       await assertAgentCredentialChangeAllowed(client, hostId);
       const { rows } = await client.query(

@@ -3684,5 +3684,13 @@
   "copy.EnvPanel.052eb957": "Netzwerk: {p0}",
   "copy.EnvPanel.aa4b088a": "Proxy eingerichtet: {p0}:{p1}",
   "copy.EnvPanel.40f5eaff": "Zeitzone: {p0}",
-  "session.openIdentified": "Sitzung „{p0}“, #{p1} öffnen"
+  "session.openIdentified": "Sitzung „{p0}“, #{p1} öffnen",
+  "agentSetup.intro": "Laden Sie den Agenten herunter und starten Sie ihn auf einem Linux-Knoten mit der Serveradresse und dem Token.",
+  "agentSetup.publicPackage": "Das Archiv kann ohne Anmeldung heruntergeladen werden. Es enthält keine Token oder Einstellungen dieser Farm.",
+  "agentSetup.copyLink": "Downloadlink kopieren",
+  "agentSetup.linkCopied": "Downloadlink kopiert.",
+  "agentSetup.accessTitle": "Token erstellen",
+  "agentSetup.accessHint": "Jeder Token ist für einen einzelnen Knoten bestimmt. Der Knoten erscheint nach dem Verbindungsaufbau in der Liste; seine ID und IP-Adresse müssen hier nicht eingegeben werden.",
+  "agentSetup.serverAddress": "Serveradresse für den Agenten",
+  "agentSetup.configHint": "Laden Sie .env.agent herunter und legen Sie die Datei neben compose.agent.yaml ab. Diese Einstellungen werden auf dem Linux-Knoten angewendet."
 }

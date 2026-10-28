@@ -56,6 +56,8 @@ Initial image downloads and builds take several minutes. Later sessions use cach
 
 HTTP and registry ports bind to loopback. Remote access and additional nodes require a reachable HTTPS address and trusted certificates. ADB access uses the authenticated server proxy. Backups must include PostgreSQL, `app_store` and `registry_data`; store `SECRETS_KEY` separately.
 
+Additional Linux nodes can [download the agent archive directly](docs/deployment/agent.md#вариант-2-установка-из-архива) without signing in. Issue a separate token in **Nodes → Connect a node**, then set the server address and token on that node.
+
 ## Verification
 
 | Scope | Status |

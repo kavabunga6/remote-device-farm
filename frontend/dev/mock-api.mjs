@@ -1,3 +1,6 @@
+import { gzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
+import { agentIdForToken } from '../../shared/agent-identity.mjs';
 import { readFileSync } from 'node:fs';
 const messages = JSON.parse(readFileSync(new URL('../../shared/messages.json', import.meta.url), 'utf8'));
 import { pageLogcat, parseLogcat, validateLogcatParams } from '../../agent/src/logcat.mjs';
@@ -7,6 +10,7 @@ import { setMockRole } from './mocks/roles.mjs';
 
 // Dev-only mock of the backend API so the UI can be developed without the server stack.
 // Enable with: npm run dev:mock
+const demoAgentBundle = gzipSync('Demo agent package for UI development only.');
 const registration = { enabled: false, roleId: '00000000-0000-4000-8000-000000000002', available: true };
 const now = Date.now();
 const iso = (minAgo) => new Date(now - minAgo * 60000).toISOString();
@@ -210,8 +214,18 @@ export default function mockApi() {
           return;
         }
         if (path === '/admin/logs') return send(res, 200, { events: [{ id: 'l1', occurredAt: iso(9), service: 'agent', severity: 'warning', code: 'dns_timeout', hostId: 'h1', sessionId: null }], nextCursor: null });
+        if (path === '/admin/agents' && m === 'POST') {
+          let body = ''; req.on('data', chunk => body += chunk); req.on('end', () => {
+            const token = 'rdfagent_demo-connection-token-for-layout-only';
+            send(res, 201, { token, agent: { hostId: JSON.parse(body).hostId || agentIdForToken(token), createdAt: new Date().toISOString() } });
+          }); return;
+        }
         if (path === '/admin/agents') return send(res, 200, { agents: [{ hostId: 'h1', createdAt: iso(60 * 24 * 30), name: 'worker-01', status: 'active', source: 'environment', canRevoke: false, lastSeenAt: iso(1) }] });
-        if (path === '/admin/agent-bundle/info') return send(res, 200, { version: '0.4.2', filename: 'agent.tar.gz', sha256: 'ab12cd34ef56', sizeBytes: 18200000 });
+        if (path === '/downloads/agent') {
+          res.statusCode = 200; res.setHeader('Content-Type', 'application/gzip');
+          res.setHeader('Content-Disposition', 'attachment; filename="rdf-linux-agent-demo.tar.gz"'); res.end(demoAgentBundle); return;
+        }
+        if (path === '/admin/agent-bundle/info' || path === '/downloads/agent/info') return send(res, 200, { version: 'demo', filename: 'rdf-linux-agent-demo.tar.gz', sha256: createHash('sha256').update(demoAgentBundle).digest('hex'), sizeBytes: demoAgentBundle.length });
         if (path === '/admin/users' && m === 'GET') return send(res, 200, { users: adminUsers });
         if (path === '/admin/users' && m === 'POST') {
           let raw = '';

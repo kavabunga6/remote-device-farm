@@ -3684,5 +3684,13 @@
   "copy.EnvPanel.052eb957": "Jaringan: {p0}",
   "copy.EnvPanel.aa4b088a": "Proksi diatur: {p0}:{p1}",
   "copy.EnvPanel.40f5eaff": "Zona waktu: {p0}",
-  "session.openIdentified": "Buka sesi “{p0}”, #{p1}"
+  "session.openIdentified": "Buka sesi “{p0}”, #{p1}",
+  "agentSetup.intro": "Unduh agen dan jalankan di node Linux menggunakan alamat server dan token.",
+  "agentSetup.publicPackage": "Arsip dapat diunduh tanpa masuk. Arsip ini tidak berisi token atau pengaturan dari farm ini.",
+  "agentSetup.copyLink": "Salin tautan unduhan",
+  "agentSetup.linkCopied": "Tautan unduhan disalin.",
+  "agentSetup.accessTitle": "Dapatkan token",
+  "agentSetup.accessHint": "Setiap token digunakan untuk satu node. Node akan muncul dalam daftar setelah terhubung; Anda tidak perlu memasukkan ID atau alamat IP-nya di sini.",
+  "agentSetup.serverAddress": "Alamat server untuk agen",
+  "agentSetup.configHint": "Unduh .env.agent dan letakkan di samping compose.agent.yaml. Pengaturan ini diterapkan pada node Linux."
 }

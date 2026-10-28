@@ -1,42 +1,42 @@
 {
   "zh-Hans": {
-    "sourceDigest": "c973a7337c14184c9865cb4392621ab8f4d4db29bc62bac8250818234e8f0d2a",
-    "translationDigest": "30767c2eedde6164844b1837096e6f2c38d0c6c3a40fc3b80c22724dec3ba5b0"
+    "sourceDigest": "9bf8848def04ac0f2de3ec4a7a2bb070ded854b60185cb429a99097f7e98bd95",
+    "translationDigest": "3dd841f996a9fd2b827dc2ab2f25071871bcbe31786f040f9fe38b13b8d924f7"
   },
   "hi": {
-    "sourceDigest": "c973a7337c14184c9865cb4392621ab8f4d4db29bc62bac8250818234e8f0d2a",
-    "translationDigest": "7a31e8d1bbaf2b4d8933b45aa74f72077093636da6bce553dfd3f73f4c7aef33"
+    "sourceDigest": "9bf8848def04ac0f2de3ec4a7a2bb070ded854b60185cb429a99097f7e98bd95",
+    "translationDigest": "44e9645ddd6783f4152b4e11dc3b0c50f589f7e91b99577a82477b7b15a457a0"
   },
   "es": {
-    "sourceDigest": "c973a7337c14184c9865cb4392621ab8f4d4db29bc62bac8250818234e8f0d2a",
-    "translationDigest": "5123a9b249ca8e53974a92a0e976742445ed741bcb99d7ccdc981b16ba21e47e"
+    "sourceDigest": "9bf8848def04ac0f2de3ec4a7a2bb070ded854b60185cb429a99097f7e98bd95",
+    "translationDigest": "426dc445a2e086e851638d1e7772e902ea3e927dfb9dd6224ef6f534a1890193"
   },
   "ar": {
-    "sourceDigest": "c973a7337c14184c9865cb4392621ab8f4d4db29bc62bac8250818234e8f0d2a",
-    "translationDigest": "2040a11e67c8e0e28e6db1f5f9fd12e3f2559f4ed21134035c07ffca12eb82ce"
+    "sourceDigest": "9bf8848def04ac0f2de3ec4a7a2bb070ded854b60185cb429a99097f7e98bd95",
+    "translationDigest": "5581741d1d78ffb56de392aec51bd25bc3209976e4258956d6c26ac6912ba7cf"
   },
   "fr": {
-    "sourceDigest": "c973a7337c14184c9865cb4392621ab8f4d4db29bc62bac8250818234e8f0d2a",
-    "translationDigest": "1cb6ba2bd4c93efe2d9fa7fb477fc390f231021020356f8a244fdb0bae278694"
+    "sourceDigest": "9bf8848def04ac0f2de3ec4a7a2bb070ded854b60185cb429a99097f7e98bd95",
+    "translationDigest": "c0993bb8b56649f409b460b1d89abe897294a4146b06d49101bbb582843db8c9"
   },
   "bn": {
-    "sourceDigest": "c973a7337c14184c9865cb4392621ab8f4d4db29bc62bac8250818234e8f0d2a",
-    "translationDigest": "86212e822dc7c8d88f6755d5b325ef64ccab808b966ecf7ff4585f7c99d48458"
+    "sourceDigest": "9bf8848def04ac0f2de3ec4a7a2bb070ded854b60185cb429a99097f7e98bd95",
+    "translationDigest": "94b3eeec8bd5e48cba083e9708c394c1034aa9fe79e779dc99b35740defcde8c"
   },
   "pt-BR": {
-    "sourceDigest": "c973a7337c14184c9865cb4392621ab8f4d4db29bc62bac8250818234e8f0d2a",
-    "translationDigest": "a66d2b17d61f255390614826198f59b07ecb80c1ed70d4035c69c9e3adaed894"
+    "sourceDigest": "9bf8848def04ac0f2de3ec4a7a2bb070ded854b60185cb429a99097f7e98bd95",
+    "translationDigest": "be309c49a223c11c3419dde5f5a805fe40e54ff94ee717b62a53be6a3bb058cf"
   },
   "ur": {
-    "sourceDigest": "c973a7337c14184c9865cb4392621ab8f4d4db29bc62bac8250818234e8f0d2a",
-    "translationDigest": "31c7f4193b2cd728a0ef0127f328806fcaeb89603d788e9a1eb3e12a27d14ec3"
+    "sourceDigest": "9bf8848def04ac0f2de3ec4a7a2bb070ded854b60185cb429a99097f7e98bd95",
+    "translationDigest": "9610047d928ab8d8f51d9be4e4dcc60a38ea6c39e3e43ef11f5294d1b30ebd6a"
   },
   "id": {
-    "sourceDigest": "c973a7337c14184c9865cb4392621ab8f4d4db29bc62bac8250818234e8f0d2a",
-    "translationDigest": "5ab656e135d6495c2fd70f05ad3c18d3e67056bd5264845945d78c3dadeb62dc"
+    "sourceDigest": "9bf8848def04ac0f2de3ec4a7a2bb070ded854b60185cb429a99097f7e98bd95",
+    "translationDigest": "bff39f5c55d12e9bfacf7049862c1e3dff6cdd6ff0936481c53ed4e501975d1b"
   },
   "de": {
-    "sourceDigest": "c973a7337c14184c9865cb4392621ab8f4d4db29bc62bac8250818234e8f0d2a",
-    "translationDigest": "72de9034f38e963757870dfd3252bd5ffd1ccb0ceff6a3e437120f2563d968aa"
+    "sourceDigest": "9bf8848def04ac0f2de3ec4a7a2bb070ded854b60185cb429a99097f7e98bd95",
+    "translationDigest": "6e63720ce3bd7142ad2ae2cbca14a05c307eec440210ba57a816a440940cc73c"
   }
 }

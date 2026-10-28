@@ -3684,5 +3684,13 @@
   "copy.EnvPanel.052eb957": "الشبكة: {p0}",
   "copy.EnvPanel.aa4b088a": "تم ضبط الوكيل: {p0}:{p1}",
   "copy.EnvPanel.40f5eaff": "المنطقة الزمنية: {p0}",
-  "session.openIdentified": "فتح الجلسة «{p0}»، #{p1}"
+  "session.openIdentified": "فتح الجلسة «{p0}»، #{p1}",
+  "agentSetup.intro": "نزّل الوكيل وشغّله على عقدة Linux باستخدام عنوان الخادم ورمز الوصول.",
+  "agentSetup.publicPackage": "يمكن تنزيل الأرشيف دون تسجيل الدخول. لا يحتوي على رموز وصول أو إعدادات خاصة بهذه المزرعة.",
+  "agentSetup.copyLink": "نسخ رابط التنزيل",
+  "agentSetup.linkCopied": "تم نسخ رابط التنزيل.",
+  "agentSetup.accessTitle": "الحصول على رمز وصول",
+  "agentSetup.accessHint": "كل رمز وصول مخصص لعقدة واحدة. ستظهر العقدة في القائمة عند اتصالها؛ لا حاجة إلى إدخال معرّفها أو عنوان IP الخاص بها هنا.",
+  "agentSetup.serverAddress": "عنوان الخادم الذي يتصل به الوكيل",
+  "agentSetup.configHint": "نزّل .env.agent وضعه بجانب compose.agent.yaml. تُطبّق هذه الإعدادات على عقدة Linux."
 }

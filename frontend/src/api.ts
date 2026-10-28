@@ -611,13 +611,13 @@ export const api = {
     return result.occupants;
   },
   async agentBundleInfo(): Promise<AgentBundleInfo> {
-    return request<AgentBundleInfo>('/admin/agent-bundle/info');
+    return request<AgentBundleInfo>('/downloads/agent/info');
   },
   async agents(): Promise<AgentCredential[]> {
     const result = await request<{ agents: AgentCredential[] }>('/admin/agents');
     return result.agents;
   },
-  createAgent: (hostId: string) => request<{ token: string; agent: AgentCredential }>('/admin/agents', { method: 'POST', body: json({ hostId }) }),
+  createAgent: (hostId?: string) => request<{ token: string; agent: AgentCredential }>('/admin/agents', { method: 'POST', body: json(hostId === undefined ? {} : { hostId }) }),
   revokeAgent: (hostId: string) => request<void>(`/admin/agents/${encodeURIComponent(hostId)}`, { method: 'DELETE' }),
   async users(): Promise<AdminUser[]> {
     const result = await request<{ users: AdminUser[] }>('/admin/users');

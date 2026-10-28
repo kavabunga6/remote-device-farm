@@ -3684,5 +3684,13 @@
   "copy.EnvPanel.052eb957": "নেটওয়ার্ক: {p0}",
   "copy.EnvPanel.aa4b088a": "প্রক্সি সেট হয়েছে: {p0}:{p1}",
   "copy.EnvPanel.40f5eaff": "সময় অঞ্চল: {p0}",
-  "session.openIdentified": "“{p0}” সেশন খুলুন, #{p1}"
+  "session.openIdentified": "“{p0}” সেশন খুলুন, #{p1}",
+  "agentSetup.intro": "এজেন্ট ডাউনলোড করে সার্ভারের ঠিকানা ও টোকেন দিয়ে Linux নোডে চালান।",
+  "agentSetup.publicPackage": "সাইন ইন না করেই আর্কাইভ ডাউনলোড করা যায়। এতে এই ফার্মের টোকেন বা সেটিংস নেই।",
+  "agentSetup.copyLink": "ডাউনলোড লিংক কপি করুন",
+  "agentSetup.linkCopied": "ডাউনলোড লিংক কপি হয়েছে।",
+  "agentSetup.accessTitle": "টোকেন নিন",
+  "agentSetup.accessHint": "প্রতিটি টোকেন একটি নোডের জন্য। সংযুক্ত হলেই নোডটি তালিকায় দেখা যাবে; এখানে তার ID বা IP ঠিকানা দেওয়ার দরকার নেই।",
+  "agentSetup.serverAddress": "এজেন্টের জন্য সার্ভারের ঠিকানা",
+  "agentSetup.configHint": ".env.agent ডাউনলোড করে compose.agent.yaml-এর পাশে রাখুন। এই সেটিংস Linux নোডে প্রযোজ্য হবে।"
 }

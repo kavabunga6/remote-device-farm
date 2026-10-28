@@ -14742,5 +14742,37 @@
   "session.openIdentified": {
     "ru": "Открыть сессию «{p0}», #{p1}",
     "en": "Open session “{p0}”, #{p1}"
+  },
+  "agentSetup.intro": {
+    "ru": "Скачайте агент и запустите его на Linux-узле с адресом сервера и токеном.",
+    "en": "Download the agent and run it on a Linux node with the server address and token."
+  },
+  "agentSetup.publicPackage": {
+    "ru": "Архив доступен без входа. В нём нет токенов и настроек этой фермы.",
+    "en": "The archive can be downloaded without signing in. It contains no tokens or settings from this farm."
+  },
+  "agentSetup.copyLink": {
+    "ru": "Копировать ссылку",
+    "en": "Copy download link"
+  },
+  "agentSetup.linkCopied": {
+    "ru": "Ссылка на скачивание скопирована.",
+    "en": "Download link copied."
+  },
+  "agentSetup.accessTitle": {
+    "ru": "Получите токен",
+    "en": "Get a token"
+  },
+  "agentSetup.accessHint": {
+    "ru": "Токен предназначен для одного узла. Узел появится в списке после подключения; вручную указывать ID и IP не нужно.",
+    "en": "Each token is for one node. The node appears in the list when it connects; you do not need to enter its ID or IP address here."
+  },
+  "agentSetup.serverAddress": {
+    "ru": "Адрес сервера для агента",
+    "en": "Server address for the agent"
+  },
+  "agentSetup.configHint": {
+    "ru": "Скачайте .env.agent и положите рядом с compose.agent.yaml. Настройки применяются на Linux-узле.",
+    "en": "Download .env.agent and place it next to compose.agent.yaml. These settings are applied on the Linux node."
   }
 }

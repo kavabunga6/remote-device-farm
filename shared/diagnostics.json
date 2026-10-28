@@ -586,5 +586,6 @@
   "webrtc.2fcc2653b9": "Input failed",
   "emulator.51d8cb245f": "Could not initialize {p0} for {p1}: {p2}",
   "physical.0ae08a9bf1": "Cleaning {p0} crashed: {p1}",
-  "wipe.a93f85be0e": "adb {p0} failed: {p1}"
+  "wipe.a93f85be0e": "adb {p0} failed: {p1}",
+  "connection.serverUrlInvalid": "AGENT_SERVER_URL must be an http:// or https:// server address without credentials, path, query or fragment, and must agree with AGENT_BROKER_URL when both are set"
 }

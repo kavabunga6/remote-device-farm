@@ -43,6 +43,7 @@ jobs:
         run: |
           for tool in bash curl jq timeout; do command -v "$tool"; done
           node scripts/check-integrations.mjs
+          node scripts/sync-agent-identity.mjs --check
           node scripts/sync-apk-set-guard.mjs --check
           node scripts/sync-ramdisk.mjs --check
           node scripts/license-inventory.mjs --check

@@ -3070,6 +3070,45 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
       x-permission: tokens.system
+  /api/downloads/agent/info:
+    get:
+      operationId: getPublicAgentbundleInfo
+      tags: [ Service ]
+      summary: Read agent installation archive metadata
+      responses:
+        "200":
+          description: Successful response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/getAdminAgentbundleInfoResponse"
+        default:
+          description: Request rejected. The error code is stable; the message is intended for display.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security: []
+  /api/downloads/agent:
+    get:
+      operationId: getPublicAgentbundle
+      tags: [ Service ]
+      summary: Download agent installation archive
+      responses:
+        "200":
+          description: Agent installation archive.
+          content:
+            application/gzip:
+              schema:
+                type: string
+                format: binary
+        default:
+          description: Request rejected. The error code is stable; the message is intended for display.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      security: []
   /api/admin/agent-bundle/info:
     get:
       operationId: getAdminAgentbundleInfo
@@ -3131,7 +3170,7 @@ paths:
     post:
       operationId: postAdminAgents
       tags: [ Administration ]
-      summary: Register an agent
+      summary: Issue a node token; assign an ID automatically when hostId is omitted
       requestBody:
         required: true
         content:
@@ -5525,7 +5564,7 @@ components:
       properties:
         hostId:
           type: string
-      required: [ hostId ]
+          description: Optional explicit ID for existing or manually configured agents. Omit for automatic node identity.
     getAppsResponseAppsItem:
       type: object
       properties:

@@ -3684,5 +3684,13 @@
   "copy.EnvPanel.052eb957": "Red: {p0}",
   "copy.EnvPanel.aa4b088a": "Proxy configurado: {p0}:{p1}",
   "copy.EnvPanel.40f5eaff": "Zona horaria: {p0}",
-  "session.openIdentified": "Abrir sesión «{p0}», #{p1}"
+  "session.openIdentified": "Abrir sesión «{p0}», #{p1}",
+  "agentSetup.intro": "Descarga el agente y ejecútalo en un nodo Linux con la dirección del servidor y el token.",
+  "agentSetup.publicPackage": "El archivo se puede descargar sin iniciar sesión. No contiene tokens ni ajustes de esta granja.",
+  "agentSetup.copyLink": "Copiar enlace de descarga",
+  "agentSetup.linkCopied": "Enlace de descarga copiado.",
+  "agentSetup.accessTitle": "Obtener un token",
+  "agentSetup.accessHint": "Cada token corresponde a un solo nodo. El nodo aparecerá en la lista al conectarse; no hace falta indicar aquí su ID ni su dirección IP.",
+  "agentSetup.serverAddress": "Dirección del servidor para el agente",
+  "agentSetup.configHint": "Descarga .env.agent y colócalo junto a compose.agent.yaml. Estos ajustes se aplican en el nodo Linux."
 }

@@ -1,3 +1,4 @@
+import { agentIdentity, agentBrokerUrl } from './connection-config.mjs';
 import { diagnostic } from './diagnostics.mjs';
 import os from 'node:os';
 import { GPU_BACKENDS, validateDockerOptions } from './docker-options.mjs';
@@ -132,9 +133,9 @@ export function validateNvidiaXorgModuleDir(value) {
 }
 
 export function loadConfig(env = process.env) {
-  const brokerUrl = env.AGENT_BROKER_URL;
+  const brokerUrl = agentBrokerUrl(env);
   const token = env.AGENT_TOKEN;
-  const agentId = env.AGENT_ID;
+  const agentId = agentIdentity(env);
   if (!brokerUrl || !/^wss?:\/\//.test(brokerUrl)) throw new Error(diagnostic('config.03668fdbb8'));
   if (!token || token.length < 32) throw new Error(diagnostic('config.6644247c0c'));
   if (!agentId || !identifierPattern.test(agentId)) throw new Error(diagnostic('config.fee2f7bc20'));

@@ -114,6 +114,7 @@
   "config.fb11cd1562": "Invalid AGENT_SELF_CONTAINER_ID",
   "config.fee2f7bc20": "AGENT_ID must be 1–64 safe characters",
   "config.ff46e8ed87": "AGENT_USB_ENABLED requires AGENT_USB_ALLOWLIST: only enrolled phones are managed (and wiped)",
+  "connection.serverUrlInvalid": "AGENT_SERVER_URL must be an http:// or https:// server address without credentials, path, query or fragment, and must agree with AGENT_BROKER_URL when both are set",
   "container-env.0e8e743aff": "Too many container environment variables",
   "container-env.26d41cf114": "Invalid container environment",
   "container-env.b565387247": "Invalid container environment variable name",

@@ -3684,5 +3684,13 @@
   "copy.EnvPanel.052eb957": "नेटवर्क: {p0}",
   "copy.EnvPanel.aa4b088a": "प्रॉक्सी सेट: {p0}:{p1}",
   "copy.EnvPanel.40f5eaff": "समय क्षेत्र: {p0}",
-  "session.openIdentified": "सेशन “{p0}”, #{p1} खोलें"
+  "session.openIdentified": "सेशन “{p0}”, #{p1} खोलें",
+  "agentSetup.intro": "एजेंट डाउनलोड करें और सर्वर के पते व टोकन के साथ Linux नोड पर चलाएँ।",
+  "agentSetup.publicPackage": "बिना साइन इन किए आर्काइव डाउनलोड किया जा सकता है। इसमें इस फ़ार्म के टोकन या सेटिंग्स नहीं हैं।",
+  "agentSetup.copyLink": "डाउनलोड लिंक कॉपी करें",
+  "agentSetup.linkCopied": "डाउनलोड लिंक कॉपी हो गया।",
+  "agentSetup.accessTitle": "टोकन पाएँ",
+  "agentSetup.accessHint": "हर टोकन एक नोड के लिए है। कनेक्ट होते ही नोड सूची में दिखने लगेगा; यहाँ उसका ID या IP पता भरने की ज़रूरत नहीं है।",
+  "agentSetup.serverAddress": "एजेंट के लिए सर्वर का पता",
+  "agentSetup.configHint": ".env.agent डाउनलोड करके compose.agent.yaml के साथ रखें। ये सेटिंग्स Linux नोड पर लागू होती हैं।"
 }

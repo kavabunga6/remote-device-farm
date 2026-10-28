@@ -3684,5 +3684,13 @@
   "copy.EnvPanel.052eb957": "نیٹ ورک: {p0}",
   "copy.EnvPanel.aa4b088a": "پراکسی مقرر ہو گئی: {p0}:{p1}",
   "copy.EnvPanel.40f5eaff": "ٹائم زون: {p0}",
-  "session.openIdentified": "سیشن ”{p0}“، #{p1} کھولیں"
+  "session.openIdentified": "سیشن ”{p0}“، #{p1} کھولیں",
+  "agentSetup.intro": "ایجنٹ ڈاؤن لوڈ کریں اور سرور کے پتے اور ٹوکن کے ساتھ Linux نوڈ پر چلائیں۔",
+  "agentSetup.publicPackage": "سائن ان کیے بغیر آرکائیو ڈاؤن لوڈ کیا جا سکتا ہے۔ اس میں اس فارم کے ٹوکن یا ترتیبات شامل نہیں ہیں۔",
+  "agentSetup.copyLink": "ڈاؤن لوڈ لنک کاپی کریں",
+  "agentSetup.linkCopied": "ڈاؤن لوڈ لنک کاپی ہو گیا۔",
+  "agentSetup.accessTitle": "ٹوکن حاصل کریں",
+  "agentSetup.accessHint": "ہر ٹوکن ایک نوڈ کے لیے ہے۔ جڑتے ہی نوڈ فہرست میں نظر آئے گا؛ یہاں اس کی ID یا IP پتہ درج کرنے کی ضرورت نہیں ہے۔",
+  "agentSetup.serverAddress": "ایجنٹ کے لیے سرور کا پتہ",
+  "agentSetup.configHint": ".env.agent ڈاؤن لوڈ کر کے compose.agent.yaml کے ساتھ رکھیں۔ یہ ترتیبات Linux نوڈ پر لاگو ہوتی ہیں۔"
 }

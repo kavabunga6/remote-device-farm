@@ -3684,5 +3684,13 @@
   "copy.EnvPanel.052eb957": "网络：{p0}",
   "copy.EnvPanel.aa4b088a": "代理已设置：{p0}:{p1}",
   "copy.EnvPanel.40f5eaff": "时区：{p0}",
-  "session.openIdentified": "打开会话“{p0}”，#{p1}"
+  "session.openIdentified": "打开会话“{p0}”，#{p1}",
+  "agentSetup.intro": "下载代理，并在 Linux 节点上使用服务器地址和令牌运行它。",
+  "agentSetup.publicPackage": "无需登录即可下载压缩包，其中不包含本服务的令牌或配置。",
+  "agentSetup.copyLink": "复制下载链接",
+  "agentSetup.linkCopied": "下载链接已复制。",
+  "agentSetup.accessTitle": "获取令牌",
+  "agentSetup.accessHint": "每个令牌仅供一个节点使用。节点连接后会自动出现在列表中，无需在此填写节点 ID 或 IP 地址。",
+  "agentSetup.serverAddress": "代理连接的服务器地址",
+  "agentSetup.configHint": "下载 .env.agent 并将其放在 compose.agent.yaml 旁边。这些配置在 Linux 节点上生效。"
 }

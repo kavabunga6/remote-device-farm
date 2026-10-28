@@ -3684,5 +3684,13 @@
   "copy.EnvPanel.052eb957": "Réseau : {p0}",
   "copy.EnvPanel.aa4b088a": "Proxy configuré : {p0}:{p1}",
   "copy.EnvPanel.40f5eaff": "Fuseau horaire : {p0}",
-  "session.openIdentified": "Ouvrir la session « {p0} », nº {p1}"
+  "session.openIdentified": "Ouvrir la session « {p0} », nº {p1}",
+  "agentSetup.intro": "Téléchargez l’agent et lancez-le sur un nœud Linux avec l’adresse du serveur et le jeton.",
+  "agentSetup.publicPackage": "L’archive peut être téléchargée sans se connecter à un compte. Elle ne contient aucun jeton ni paramètre de cette ferme.",
+  "agentSetup.copyLink": "Copier le lien de téléchargement",
+  "agentSetup.linkCopied": "Lien de téléchargement copié.",
+  "agentSetup.accessTitle": "Obtenir un jeton",
+  "agentSetup.accessHint": "Chaque jeton est destiné à un seul nœud. Le nœud apparaît dans la liste dès sa connexion ; inutile de saisir son ID ou son adresse IP ici.",
+  "agentSetup.serverAddress": "Adresse du serveur pour l’agent",
+  "agentSetup.configHint": "Téléchargez .env.agent et placez-le à côté de compose.agent.yaml. Ces paramètres s’appliquent sur le nœud Linux."
 }

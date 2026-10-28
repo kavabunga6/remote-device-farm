@@ -3684,5 +3684,13 @@
   "copy.EnvPanel.052eb957": "Rede: {p0}",
   "copy.EnvPanel.aa4b088a": "Proxy configurado: {p0}:{p1}",
   "copy.EnvPanel.40f5eaff": "Fuso horário: {p0}",
-  "session.openIdentified": "Abrir sessão “{p0}”, #{p1}"
+  "session.openIdentified": "Abrir sessão “{p0}”, #{p1}",
+  "agentSetup.intro": "Baixe o agente e execute-o em um nó Linux com o endereço do servidor e o token.",
+  "agentSetup.publicPackage": "O arquivo pode ser baixado sem fazer login. Ele não contém tokens nem configurações desta farm.",
+  "agentSetup.copyLink": "Copiar link de download",
+  "agentSetup.linkCopied": "Link de download copiado.",
+  "agentSetup.accessTitle": "Obter um token",
+  "agentSetup.accessHint": "Cada token é destinado a um único nó. O nó aparece na lista ao se conectar; não é preciso informar o ID nem o endereço IP dele aqui.",
+  "agentSetup.serverAddress": "Endereço do servidor para o agente",
+  "agentSetup.configHint": "Baixe .env.agent e coloque-o ao lado de compose.agent.yaml. Essas configurações são aplicadas no nó Linux."
 }

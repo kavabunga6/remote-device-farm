@@ -1,3 +1,4 @@
+import { agentIdentity, agentBrokerUrl } from './connection-config.mjs';
 import { diagnostic } from './diagnostics.mjs';
 import { PacketCapture } from './packet-capture.mjs';
 import { inspectNetwork } from './network-inspector.mjs';
@@ -24,7 +25,7 @@ const validId = (value) => typeof value === 'string' && /^[a-zA-Z0-9-]{8,64}$/.t
 const isMissing = (error) => /No such container|not found|404/i.test(String(error?.message));
 
 export function loadControlConfig(env = process.env) {
-  const agentId = env.AGENT_ID;
+  const agentId = agentIdentity(env);
   if (typeof agentId !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(agentId)) throw new Error(diagnostic('agent-control.9e88221d7b'));
   const slots = Number(env.AGENT_SLOTS ?? Math.max(1, Math.floor(os.cpus().length / 2)));
   if (!Number.isInteger(slots) || slots < 1 || slots > 128) throw new Error(diagnostic('agent-control.746bdb70c0'));
@@ -40,7 +41,7 @@ export function loadControlConfig(env = process.env) {
     imageBuildStateDir: env.AGENT_IMAGE_BUILD_STATE_DIR || '/var/lib/rdf-image-builds',
     imageBuildDiskPath: env.AGENT_IMAGE_BUILD_DISK_PATH || '/',
     allowedPrefixes: (env.AGENT_ALLOWED_IMAGE_PREFIXES || '').split(',').map((x) => x.trim()).filter(Boolean),
-    trustedPrefixes: [farmRegistryPrefix(env.AGENT_BROKER_URL)].filter(Boolean),
+    trustedPrefixes: [farmRegistryPrefix(agentBrokerUrl(env))].filter(Boolean),
     nvidiaXorgModuleDir: validateNvidiaXorgModuleDir(env.AGENT_NVIDIA_XORG_MODULE_DIR),
     driDevice: validateDriDevice(env.AGENT_DRI_DEVICE),
   };
