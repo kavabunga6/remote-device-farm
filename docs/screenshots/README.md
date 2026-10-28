@@ -28,13 +28,13 @@ Slot allocation, resource capacity and agent status.
 
 ## Device profiles
 
-Android and container resource limits, display settings and image references.
+Searchable profile inventory with node and Android resource limits, status and expandable configuration.
 
 ![Device profiles, light theme](profiles-light.png)
 
 ## Images
 
-Registry versions, linked profiles and cleanup actions.
+Compact image inventory with filters, linked profiles, bulk selection and cleanup actions.
 
 ![Image management, dark theme](images-dark.png)
 
@@ -52,7 +52,7 @@ Account sign-in and language selection.
 
 ## Capture
 
-Install frontend dependencies with `npm --prefix frontend ci` and Chrome. Start the mock server in one terminal:
+Install frontend dependencies with `npm --prefix frontend ci` and Chrome or Edge. Start the mock server in one terminal:
 
 ```bash
 MOCK_PORT=5198 npm --prefix frontend run dev:mock
@@ -63,5 +63,7 @@ Run the capture script from the repository root in another terminal:
 ```bash
 MOCK_PORT=5198 node scripts/capture-screenshots.mjs
 ```
+
+For Edge, set `PLAYWRIGHT_CHANNEL=msedge` when running the capture script.
 
 The script accepts only a loopback mock server, disables write requests, checks browser errors and horizontal overflow, and writes [capture metadata](manifest.json). Profile, node and role pages use full-page captures.

@@ -17,12 +17,46 @@ const earlier = minutes => new Date(stamp.getTime() - minutes * 60000).toISOStri
 const sid = 'cbd55091-aaaa-bbbb-cccc-000000000001';
 const repo = 'registry.example.test/rdf-emulator';
 const digest = letter => 'sha256:' + letter.repeat(64);
-const profiles = [
-  { id: 'a11-gpu', name: 'Android 16 · Google APIs', androidVersion: '16', apiLevel: 36, abi: 'x86_64', image: repo + ':36-google_apis-x86_64@' + digest('a'), imageContract: 'emulator-v1', systemImageTag: 'google_apis', deviceType: 'phone', cpu: 4, memoryMb: 6144, guestMemoryMb: 4096, guestCores: 4, diskGb: 8, enabled: true, deviceModel: 'Pixel 6', resolution: '1080x2400' },
-  { id: 'a13', name: 'Tablet · Android 16 · Google APIs', androidVersion: '16', apiLevel: 36, abi: 'x86_64', image: repo + ':36-google_apis-x86_64@' + digest('a'), imageContract: 'emulator-v1', systemImageTag: 'google_apis', deviceType: 'tablet', cpu: 6, memoryMb: 6144, guestMemoryMb: 4096, guestCores: 6, diskGb: 8, enabled: true, deviceModel: 'Tablet', resolution: '2560x1600' },
+const imageDigest = index => digest('abcdef01'[index]);
+const versions = [
+  { api: '37', android: '17' }, { api: '36.1', android: '16' },
+  { api: '35', android: '15' }, { api: '34', android: '14' },
 ];
-const sessions = profiles.map((profile, index) => ({ id: index ? '00000000-0000-4000-8000-000000000002' : sid, ownerId: 'u1', ownerName: 'admin', hostId: 'h1', hostName: 'worker-01', profileId: profile.id, profileName: profile.name, state: index ? 'starting' : 'running', gpuMode: index ? 'off' : 'nvidia', orientation: 'portrait', audioEnabled: false, networkEnabled: true, createdAt: earlier(index ? 1 : 12), lastActivityAt: earlier(0), idleExpiresAt: new Date(stamp.getTime() + 45 * 60000).toISOString(), expiresAt: new Date(stamp.getTime() + 6 * 3600000).toISOString(), label: null }));
-const images = ['a', 'b', 'c'].map((letter, index) => ({ digest: digest(letter), tags: index ? [] : ['36-google_apis-x86_64'], package: 'system-images;android-36;google_apis;x86_64', sizeBytes: 2.4 * 1024 ** 3, createdAt: earlier((index + 1) * 1440), children: [], known: true, uses: index ? [] : profiles.map(p => ({ kind: 'profile', id: p.id, name: p.name, image: p.image })), blockers: [] }));
+const profiles = versions.flatMap(({ api, android }, index) => ['mobile', 'tablet'].map((deviceType, variant) => ({
+  id: index === 0 ? variant ? 'a13' : 'a11-gpu' : 'android-' + api + '-' + deviceType,
+  name: (variant ? 'Tablet · ' : '') + 'Android ' + android + ' · Google APIs',
+  androidVersion: android, apiLevel: Number(api), abi: 'x86_64', deviceType, imageFlavor: 'google_apis',
+  image: repo + ':' + api + '-google_apis-x86_64@' + imageDigest(index * 2),
+  imageContract: 'emulator-v1', cpu: variant ? 8 : 6, memoryMb: variant ? 8192 : 6144,
+  guestMemoryMb: 4096, guestCores: variant ? 6 : 4, diskGb: variant ? 16 : 8,
+  enabled: index !== 3, recommended: index === 0 && !variant,
+  deviceModel: variant ? 'Tablet' : 'Pixel 6', resolution: variant ? '2560x1600' : '1080x2400',
+})));
+const sessions = profiles.slice(0, 2).map((profile, index) => ({
+  id: index ? '00000000-0000-4000-8000-000000000002' : sid,
+  deviceKind: 'emulator', platform: 'android', sdkLevel: profile.apiLevel, osVersion: profile.androidVersion,
+  ownerId: 'u1', ownerName: 'admin', hostId: 'h1', hostName: 'worker-01',
+  profileId: profile.id, profileName: profile.name, state: index ? 'starting' : 'running',
+  gpuMode: index ? 'off' : 'nvidia', orientation: 'portrait', audioEnabled: false, networkEnabled: true,
+  createdAt: earlier(index ? 1 : 12), lastActivityAt: earlier(0),
+  idleExpiresAt: new Date(stamp.getTime() + 45 * 60000).toISOString(),
+  expiresAt: new Date(stamp.getTime() + 6 * 3600000).toISOString(), label: null,
+}));
+const images = versions.flatMap(({ api }, index) => [0, 1].map(older => ({
+  digest: imageDigest(index * 2 + older),
+  tags: older ? [] : [api + '-google_apis-x86_64'],
+  package: 'system-images;android-' + api + ';google_apis;x86_64',
+  sizeBytes: (2.5 - index * .2) * 1024 ** 3,
+  createdAt: earlier((index + older + 1) * 1440), children: [], known: true,
+  uses: older ? [] : [
+    { kind: 'catalog', id: 'catalog-' + api, name: 'Google APIs', image: profiles[index * 2].image },
+    ...profiles.slice(index * 2, index * 2 + 2).map(profile => ({
+      kind: 'profile', id: profile.id, name: profile.name, image: profile.image,
+    })),
+  ],
+  blockers: [],
+})));
+
 const permissionCatalog = JSON.parse(readFileSync(resolve(root, 'shared/permissions.json'), 'utf8'));
 const qaPermissions = [...new Set([...permissionCatalog.user, 'profiles.view', 'images.view', 'logs.view'])];
 const screens = [
@@ -30,8 +64,8 @@ const screens = [
   { id: 'device-dark', route: 'session/' + sid, theme: 'dark', selector: '.device-screen' },
   { id: 'logcat-light', route: 'session/' + sid, theme: 'light', selector: '[role=tablist]', tab: 'Logcat' },
   { id: 'nodes-light', route: 'admin/nodes', theme: 'light', selector: '.host-card', fullPage: true },
-  { id: 'profiles-light', route: 'admin/profiles', theme: 'light', selector: '#adm-profiles', fullPage: true },
-  { id: 'images-dark', route: 'admin/images', theme: 'dark', selector: '.image-table' },
+  { id: 'profiles-light', route: 'admin/profiles', theme: 'light', selector: '.admin-profile-row', fullPage: true },
+  { id: 'images-dark', route: 'admin/images', theme: 'dark', selector: '.image-inventory-table tbody tr' },
   { id: 'roles-light', route: 'admin/roles', theme: 'light', selector: 'h1', fullPage: true },
   { id: 'login-dark', route: 'overview', theme: 'dark', login: true, selector: '.login-card' },
 ];
@@ -47,6 +81,21 @@ try {
     await page.route('**/api/**', async route => {
       const request = route.request(), path = new URL(request.url()).pathname;
       if (request.method() !== 'GET') return route.abort();
+      if (path === '/api/me/preferences') return route.fulfill({ json: { preferences: { theme: screen.theme, fontFamily: 'system', fontScale: 1, defaultAdbKeyId: null } } });
+      if (path === '/api/hosts') {
+        const payload = await (await route.fetch()).json();
+        return route.fulfill({ json: { hosts: payload.hosts.map(host => ({ ...host, usedSlots: sessions.length, slotCpu: 8, slotMemoryMb: 8192 })) } });
+      }
+      if (path === '/api/queue') return route.fulfill({ json: { entries: [{
+        id: 'demo-queue', profileId: profiles[2].id, profileName: profiles[2].name,
+        hostId: null, hostName: null, label: null, position: 1, createdAt: earlier(4),
+        expiresAt: new Date(stamp.getTime() + 26 * 60000).toISOString(),
+      }], maxEntries: 3 } });
+      if (path === '/api/shares/mine') return route.fulfill({ json: { shares: [{
+        sessionId: '00000000-0000-4000-8000-000000000003', ownerName: 'Alex Chen',
+        profileName: profiles[2].name, label: 'Compatibility checks', mode: 'view',
+        expiresAt: new Date(stamp.getTime() + 42 * 60000).toISOString(),
+      }] } });
       if (path === '/api/me/notifications') return route.fulfill({ json: { notifications: [] } });
       if (path === '/api/admin/roles') return route.fulfill({ json: { roles: [
         { id: 'r-admin', name: 'Administrator', builtin: 'admin', permissions: permissionCatalog.groups.flatMap(g => g.actions.map(a => a.id)), userCount: 1 },
@@ -58,7 +107,7 @@ try {
       if (path === '/api/sessions') return route.fulfill({ json: { sessions } });
       if (path === '/api/sessions/' + sid) return route.fulfill({ json: { session: sessions[0] } });
       if (path === '/api/admin/image-management/registry') return route.fulfill({ json: { supported: true, repository: repo, items: images, maintenance: false } });
-      if (path === '/api/navigation-counts') return route.fulfill({ json: { counts: { sessions: 2, allSessions: 2, nodes: 1, profiles: 2, users: 2, tokens: 2 } } });
+      if (path === '/api/navigation-counts') return route.fulfill({ json: { counts: { sessions: 2, allSessions: 2, nodes: 1, profiles: profiles.length, users: 2, tokens: 2 } } });
       return route.continue();
     });
     await page.goto(base + '/#/' + screen.route);
