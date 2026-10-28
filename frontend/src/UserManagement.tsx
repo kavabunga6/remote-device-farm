@@ -11,6 +11,7 @@ import { useAdminDialog } from './useAdminDialog';
 import { useNotifications } from './notifications';
 import { PasswordTools } from './PasswordTools';
 import './UserManagement.css';
+import { RegistrationSettings } from './RegistrationSettings';
 
 function errorText(error: unknown): string { return error instanceof Error ? error.message : t('ui.8f9c4884b8f9'); }
 
@@ -129,6 +130,7 @@ export function UserManagement({ allowLocalUsers, onChanged }: { allowLocalUsers
     <div className="section-heading"><div><h2>{t('ui.845595d6e899')}</h2><p>{t('ui.19b9c9ecca8b')}</p></div>
       <HeadingSlot slot="actions"><div className="admin-heading-actions">{allowLocalUsers && can('users.manage') && <button className="button primary small" type="button" onClick={() => start(null)}><Icon name="plus" size={16} />{t('ui.75ffea39abea')}</button>}</div></HeadingSlot>
     </div>
+    {can('roles.view') && roles.length > 0 && <RegistrationSettings roles={roles}/>}
     {users.length > 0 && <div className="admin-filter-bar">
       <label className="admin-search"><Icon name="search" size={18} /><input aria-label={t('ui.b8bcabd66839')} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('ui.477c5ac57267')} /></label>
       {companies.length > 0 && <select aria-label={t('ui.64d92044a1ff')} value={companyFilter} onChange={event => setCompanyFilter(event.target.value)}><option value="">{t('ui.a3cc5e58235f')}</option>{companies.map(value => <option key={value} value={value}>{value}</option>)}</select>}

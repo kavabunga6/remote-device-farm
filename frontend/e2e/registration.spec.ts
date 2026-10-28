@@ -66,7 +66,7 @@ test('administrator chooses a registration role; failed save preserves the draft
     settings = { ...settings, ...route.request().postDataJSON() };
     return route.fulfill({ json: { settings } });
   });
-  await page.goto('/#/admin/roles');
+  await page.goto('/#/admin/users');
   const card = page.locator('.registration-settings'); await card.locator('summary').click();
   await card.getByRole('combobox').selectOption('observer-role');
   await expect(card.locator('option[value="admin-role"]')).toHaveCount(0);

@@ -86,6 +86,7 @@ for(const [width,theme,scale,language] of [[1366,'light',1,'ru'],[1440,'dark',1,
   await expect(page.locator('.role-editor')).toBeVisible();await page.evaluate(()=>document.fonts.ready);
   await page.locator('#page-heading-actions button').click();
   await expect(page.locator('.role-management .section-heading')).toHaveCount(0);
+  await expect(page.locator('.role-management .registration-settings')).toHaveCount(0);
   const metrics=await page.locator('.permission-groups').evaluate(element=>{
    const groups=Array.from(element.querySelectorAll('fieldset')).map(group=>Array.from(group.querySelectorAll('input')).map(input=>input.getBoundingClientRect().left));
    return {width:document.documentElement.scrollWidth,viewport:window.innerWidth,groups,visible:element.querySelectorAll('input').length};
@@ -94,8 +95,6 @@ for(const [width,theme,scale,language] of [[1366,'light',1,'ru'],[1440,'dark',1,
   expect(metrics.visible).toBe(all.length);
   for(const group of metrics.groups) expect(Math.max(...group)-Math.min(...group)).toBeLessThanOrEqual(1);
   const field=page.locator('.role-name input');expect((await field.boundingBox())!.height).toBeGreaterThanOrEqual(40);
-  await page.locator('.registration-settings>summary').click();
-  await expect(page.locator('.registration-settings select')).toBeVisible();
   await page.screenshot({path:`../.tmp-ui/roles/${width}-${theme}-${scale}-${language}.png`,animations:'disabled'});
  });
 }

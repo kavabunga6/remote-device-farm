@@ -6,7 +6,6 @@ import { Icon } from './icons';
 import { useAdminDialog } from './useAdminDialog';
 import { useNotifications } from './notifications';
 import './RoleManagement.css';
-import { RegistrationSettings } from './RegistrationSettings';
 import { HeadingSlot } from './HeadingSlot';
 
 export function RoleManagement({ onChanged }: { onChanged: () => void }) {
@@ -60,7 +59,6 @@ export function RoleManagement({ onChanged }: { onChanged: () => void }) {
  };
  return <section className="role-management">
   <HeadingSlot slot="actions">{can('roles.manage') && <button className="button primary small" type="button" disabled={busy || loading || !roles.length} onClick={() => choose(null)}><Icon name="plus" size={16}/>{t('roles.create')}</button>}</HeadingSlot>
-  {!loading && roles.length > 0 && <RegistrationSettings roles={roles} />}
   {loading ? <p role="status">{t('ui.85a915216eba')}</p> : error && !roles.length ? <div className="inline-error" role="alert"><p>{localizeText(error)}</p><button type="button" className="button outline" onClick={() => { setLoading(true); void load().then(items => { if (items.length) choose(items[0]); }); }}>{t('ui.163a016f3df7')}</button></div> : <div className="role-workspace">
    <nav className="role-list" aria-label={t('roles.title')}>{roles.map(role => <button key={role.id} type="button" className={selected === role.id ? 'selected' : ''} aria-pressed={selected === role.id} disabled={busy} onClick={() => choose(role)}><span><strong>{roleLabel(role)}</strong>{role.builtin && <small>{t('roles.builtin')}</small>}</span><small>{t('roles.members', { p0: role.userCount })}</small></button>)}</nav>
    <form className="role-editor" onSubmit={save}>
