@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   secrets:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -33,7 +33,7 @@ jobs:
         run: node scripts/check-secret-scanner.mjs "$RUNNER_TEMP/gitleaks"
 
   docs-and-scripts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -90,7 +90,7 @@ jobs:
         run: npx --yes @apidevtools/swagger-cli@4.0.4 validate docs/api/openapi.yaml
 
   ci-packages:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -144,7 +144,7 @@ jobs:
             integrations/bitbucket-pipe/build/remote-device-farm-pipe-context.tar.gz
 
   appium-dependencies:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: examples/appium
@@ -167,7 +167,7 @@ jobs:
         run: npm audit --audit-level=high
 
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -268,7 +268,7 @@ jobs:
           '
 
   media-transports:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       PLAYWRIGHT_CHANNEL: chrome
