@@ -84,7 +84,8 @@ for(const [width,theme,scale,language] of [[1366,'light',1,'ru'],[1440,'dark',1,
  test(`roles controls stay aligned on desktop ${width} ${theme} ${scale} ${language}`,async({page})=>{
   await page.setViewportSize({width,height:950});await fixture(page,{theme,scale,language});await page.goto('/#/admin/roles');
   await expect(page.locator('.role-editor')).toBeVisible();await page.evaluate(()=>document.fonts.ready);
-  await page.locator('.role-management .section-heading button').click();
+  await page.locator('#page-heading-actions button').click();
+  await expect(page.locator('.role-management .section-heading')).toHaveCount(0);
   const metrics=await page.locator('.permission-groups').evaluate(element=>{
    const groups=Array.from(element.querySelectorAll('fieldset')).map(group=>Array.from(group.querySelectorAll('input')).map(input=>input.getBoundingClientRect().left));
    return {width:document.documentElement.scrollWidth,viewport:window.innerWidth,groups,visible:element.querySelectorAll('input').length};
