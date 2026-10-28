@@ -1,8 +1,10 @@
+import { useSessionAdb } from './useSessionAdb';
+import { useSessionWorkspace } from './useSessionWorkspace';
 import { downloadFile as downloadKeyFile } from './browser-files';
 import { can } from './permissions';
 import { localizeText, getLocale, t } from './i18n';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { api, ApiError, KNOWN_ERRORS, type AdbPortAccess, type AdbUserKey, type NewAdbUserKey, type DeviceSession, type User } from './api';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { api, ApiError, KNOWN_ERRORS, type DeviceSession, type User } from './api';
 import { Icon } from './icons';
 import { useNotifications } from './notifications';
 import { lastLaunch } from './CreateSessionModal';
@@ -35,22 +37,6 @@ function toolTabs(): ReadonlyArray<readonly [ToolTabId, string, Capability]> { r
 import { useSessionCapture } from './useSessionCapture';
 
 
-
-const CONSOLE_WIDTH_KEY = 'rdf-console-width';
-const CONSOLE_HEIGHT_KEY = 'rdf-console-height';
-
-function readDimension(key: string, fallback: number, min: number, max: number): number {
-  try {
-    const value = Number(window.localStorage.getItem(key));
-    return Number.isFinite(value) && value >= min && value <= max ? value : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveDimension(key: string, value: number): void {
-  try { window.localStorage.setItem(key, String(value)); } catch { /* Storage may be unavailable. */ }
-}
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : t('ui.b9f61453dd3f');
@@ -121,60 +107,18 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragDepthRef = useRef(0);
   const categoryStripRef = useRef<HTMLDivElement>(null);
-  const [workspaceMode, setWorkspaceMode] = useState<'split' | 'screen' | 'tools'>('split');
-  const [compactWorkspace, setCompactWorkspace] = useState(() => window.matchMedia('(max-width: 1200px)').matches);
-  const activeWorkspaceMode = compactWorkspace && workspaceMode === 'split' ? 'screen' : workspaceMode;
-  useEffect(() => {
-    const media = window.matchMedia('(max-width: 1200px)');
-    const update = () => setCompactWorkspace(media.matches);
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
-  const changeWorkspaceMode = (mode: 'split' | 'screen' | 'tools') => setWorkspaceMode(mode);
-  const [adbPortAccess, setAdbPortAccess] = useState<AdbPortAccess | null>(null);
-  const [adbPublicKey, setAdbPublicKey] = useState('');
-  const [adbUserKey, setAdbUserKey] = useState<AdbUserKey | null>(null);
-  const [adbKeyLoaded, setAdbKeyLoaded] = useState(false);
-  const [newAdbKey, setNewAdbKey] = useState<NewAdbUserKey | null>(null);
-  const [privateKeyDownloaded, setPrivateKeyDownloaded] = useState(false);
-  const [publicKeyDownloaded, setPublicKeyDownloaded] = useState(false);
-  const [showCustomAdbKey, setShowCustomAdbKey] = useState(false);
-  const [confirmKeyRotation, setConfirmKeyRotation] = useState(false);
-  const [adbPortChecked, setAdbPortChecked] = useState(false);
-  const autoPortAttemptRef = useRef('');
-  const [adbBusy, setAdbBusy] = useState(false);
-  const [adbError, setAdbError] = useState('');
-  const [adbMenuOpen, setAdbMenuOpen] = useState(false);
+  const { adbPortAccess, adbPublicKey, setAdbPublicKey, adbUserKey, adbKeyLoaded, newAdbKey, setNewAdbKey, privateKeyDownloaded, setPrivateKeyDownloaded, publicKeyDownloaded, setPublicKeyDownloaded, showCustomAdbKey, setShowCustomAdbKey, confirmKeyRotation, setConfirmKeyRotation, adbBusy, adbError, setAdbError, adbMenuOpen, setAdbMenuOpen, adbCopied, adbMenuRef, closeAdbMenu, loadAdbPublicKey, requestAdbPortAccess, createAdbUserKey, revokeAdbPortAccess, copyAdbCommand } = useSessionAdb(sessionId, session, user);
   const [sessionActionsOpen, setSessionActionsOpen] = useState(false);
-  const [adbCopied, setAdbCopied] = useState(false);
-  const adbMenuRef = useRef<HTMLDivElement>(null);
   const sessionMetadataRef = useRef<HTMLDetailsElement>(null);
-  const [consoleWidth, setConsoleWidth] = useState(() => {
-    const viewport = window.innerWidth;
-    const fallback = viewport >= 1800 ? 600 : viewport >= 1200 ? 460 : 470;
-    return readDimension(CONSOLE_WIDTH_KEY, fallback, 320, 5000);
-  });
-  const [consoleResized, setConsoleResized] = useState(() => {
-    try { return window.localStorage.getItem(CONSOLE_WIDTH_KEY) !== null; } catch { return false; }
-  });
-  const [consoleHeight, setConsoleHeight] = useState(() => readDimension(CONSOLE_HEIGHT_KEY, 620, 180, 1000));
-  const [consoleHeightResized, setConsoleHeightResized] = useState(() => {
-    try { return window.localStorage.getItem(CONSOLE_HEIGHT_KEY) !== null; } catch { return false; }
-  });
-  const [visibleConsoleSize, setVisibleConsoleSize] = useState({ width: 0, height: 0 });
-  const workspaceRef = useRef<HTMLDivElement>(null);
-  const widthResizeRef = useRef<{ pointerId: number; x: number; start: number; value: number } | null>(null);
-  const heightResizeRef = useRef<{ pointerId: number; y: number; start: number; value: number } | null>(null);
   const [textInput, setTextInput] = useState('');
-  const [stageSize, setStageSize] = useState({ width: 900, height: 650 });
-  const [stageHorizontalPadding, setStageHorizontalPadding] = useState(0);
-  const screenRef = useRef<HTMLDivElement>(null);
   const pointerStartRef = useRef<{ x: number; y: number; time: number; pointerId: number; live: boolean; lastMoveAt: number; lastX: number; lastY: number } | null>(null);
   const audioEnabled = session?.audioEnabled ?? false;
   const networkEnabled = session?.networkEnabled !== false;
   const [imageFrameReady, setImageFrameReady] = useState(false);
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>('websocket');
   const stream = useSessionStream(sessionId, audioEnabled, connectionMode);
+  const [toolTab, setToolTab] = useState<ToolTabId>('console');
+  const { activeWorkspaceMode, compactWorkspace, changeWorkspaceMode, consoleWidth, consoleResized, consoleHeight, consoleHeightResized, visibleConsoleSize, workspaceRef, screenRef, viewerWidth, displayScale, minConsoleWidth, maxConsoleWidth, maxConsoleHeight, resetConsoleSize, resizeConsoleWithKeyboard, startWidthResize, moveWidthResize, endWidthResize, startHeightResize, moveHeightResize, endHeightResize } = useSessionWorkspace({ size: stream.size, toolTab, isPreparing, terminalOutputRef });
   const touchIndicator = useTouchIndicator(sessionId, canReadEnvironment && !stream.nativeTouches);
   useEffect(() => {
     pointerStartRef.current = null; touchIndicator.clear();
@@ -352,45 +296,6 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   };
 
   useEffect(() => {
-    if (!can(user, 'sessions.adb')) return;
-    let active = true;
-    const load = async () => {
-      try {
-        const result = await api.adbPortAccess(sessionId);
-        if (active) { setAdbPortAccess(result.access); setAdbPortChecked(true); setAdbError(''); }
-      } catch (error) {
-        if (active) setAdbError(errorText(error));
-      }
-    };
-    void load();
-    const timer = window.setInterval(() => void load(), 60_000);
-    return () => { active = false; window.clearInterval(timer); };
-  }, [sessionId, user.permissions]);
-
-  useEffect(() => {
-    if (!can(user, 'sessions.adb')) return;
-    let active = true;
-    void api.adbUserKey().then(result => {
-      if (active) { setAdbUserKey(result.key); setAdbKeyLoaded(true); }
-    }).catch(error => {
-      if (active) { setAdbError(errorText(error)); setAdbKeyLoaded(true); }
-    });
-    return () => { active = false; };
-  }, []);
-
-  useEffect(() => {
-    if (!can(user, 'sessions.adb') || !adbKeyLoaded || !adbPortChecked || !adbUserKey || adbPortAccess || session?.status !== 'running' || session.ownerId !== user.id) return;
-    const attempt = sessionId + ':' + adbUserKey.fingerprint;
-    if (autoPortAttemptRef.current === attempt) return;
-    autoPortAttemptRef.current = attempt;
-    let active = true;
-    void api.createAdbPortAccess(sessionId).then(access => {
-      if (active) { setAdbPortAccess(access); setAdbError(''); }
-    }).catch(error => { if (active) setAdbError(errorText(error)); });
-    return () => { active = false; };
-  }, [adbKeyLoaded, adbPortChecked, adbUserKey, adbPortAccess, session?.status, session?.ownerId, sessionId, user.id]);
-
-  useEffect(() => {
     if (sessionMetadataRef.current) sessionMetadataRef.current.open = false;
     const closeOnOutside = (event: PointerEvent) => {
       const details = sessionMetadataRef.current;
@@ -411,182 +316,6 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
       document.removeEventListener('keydown', closeOnEscape, true);
     };
   }, [sessionId]);
-
-  const closeAdbMenu = () => {
-    if (newAdbKey && (!privateKeyDownloaded || !publicKeyDownloaded)) {
-      setAdbError(t('ui.491d9de5b6e4'));
-      return;
-    }
-    setAdbMenuOpen(false);
-    setNewAdbKey(null);
-    setConfirmKeyRotation(false);
-    setAdbError('');
-  };
-
-  useEffect(() => {
-    if (!adbMenuOpen) return;
-    const closeOnOutside = (event: PointerEvent) => {
-      if (!adbMenuRef.current?.contains(event.target as Node)) closeAdbMenu();
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeAdbMenu();
-    };
-    document.addEventListener('pointerdown', closeOnOutside);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutside);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [adbMenuOpen, newAdbKey, privateKeyDownloaded, publicKeyDownloaded]);
-
-  useEffect(() => {
-    if (!adbCopied) return;
-    const timer = window.setTimeout(() => setAdbCopied(false), 2000);
-    return () => window.clearTimeout(timer);
-  }, [adbCopied]);
-
-  const loadAdbPublicKey = async (file: File | undefined) => {
-    if (!file) return;
-    if (file.size > 4096) { setAdbError(t('ui.a48c715e5538')); return; }
-    try { setAdbPublicKey((await file.text()).trim()); setAdbError(''); }
-    catch (error) { setAdbError(errorText(error)); }
-  };
-
-  const requestAdbPortAccess = async () => {
-    if (showCustomAdbKey && !adbPublicKey.trim()) { setAdbError(t('ui.45097536e11d')); return; }
-    if (!showCustomAdbKey && !adbUserKey) { setAdbError(t('ui.8abe8c4b8b33')); return; }
-    setAdbBusy(true); setAdbError('');
-    try {
-      setAdbPortAccess(await api.createAdbPortAccess(sessionId, showCustomAdbKey ? adbPublicKey.trim() : undefined));
-      if (!newAdbKey) setAdbMenuOpen(false);
-    } catch (error) { setAdbError(errorText(error)); }
-    finally { setAdbBusy(false); }
-  };
-
-  const createAdbUserKey = async (rotate: boolean) => {
-    setAdbBusy(true); setAdbError('');
-    try {
-      const result = rotate ? await api.rotateAdbUserKey() : await api.createAdbUserKey();
-      autoPortAttemptRef.current = sessionId + ':' + result.fingerprint;
-      setAdbUserKey({ fingerprint: result.fingerprint, createdAt: result.createdAt });
-      setNewAdbKey(result);
-      setPrivateKeyDownloaded(false); setPublicKeyDownloaded(false);
-      setShowCustomAdbKey(false); setAdbPublicKey('');
-      setConfirmKeyRotation(false);
-      if (rotate) setAdbPortAccess(null);
-      if (session?.status === 'running' && session.ownerId === user.id) {
-        try { setAdbPortAccess(await api.createAdbPortAccess(sessionId)); }
-        catch (error) { setAdbError(t('ui.e2eb4e7f22a4') + errorText(error)); }
-      }
-    } catch (error) { setAdbError(errorText(error)); }
-    finally { setAdbBusy(false); }
-  };
-
-  const revokeAdbPortAccess = async () => {
-    setAdbBusy(true); setAdbError('');
-    try { await api.revokeAdbPortAccess(sessionId); setAdbPortAccess(null); setAdbMenuOpen(false); }
-    catch (error) { setAdbError(errorText(error)); }
-    finally { setAdbBusy(false); }
-  };
-
-  const copyAdbCommand = async () => {
-    if (!adbPortAccess) return;
-    try {
-      await navigator.clipboard.writeText('adb connect ' + adbPortAccess.host + ':' + adbPortAccess.port);
-      setAdbCopied(true);
-      setAdbError('');
-    } catch (error) {
-      setAdbError(t('ui.55bacb6557e6') + errorText(error));
-      setAdbMenuOpen(true);
-    }
-  };
-
-  const workspaceGap = () => workspaceRef.current ? Number.parseFloat(getComputedStyle(workspaceRef.current).columnGap) || 0 : 24;
-  const maxConsoleWidth = () => Math.max(320, Math.floor((workspaceRef.current?.clientWidth ?? 1400) - 320 - workspaceGap()));
-  const minConsoleWidth = () => {
-    const workspace = workspaceRef.current;
-    const viewer = Number.parseFloat(workspace?.style.getPropertyValue('--viewer-width') || '') || 320;
-    return Math.min(maxConsoleWidth(), Math.max(320, Math.round((workspace?.clientWidth ?? 1400) - viewer - workspaceGap())));
-  };
-  const clampConsoleWidth = (value: number) => Math.max(minConsoleWidth(), Math.min(maxConsoleWidth(), Math.round(value)));
-  const maxConsoleHeight = () => {
-    const viewport = window.innerHeight;
-    if (window.innerWidth <= 1200) return Math.max(180, Math.min(420, Math.floor(viewport * 0.44)));
-    const fitted = Number.parseFloat(workspaceRef.current?.style.getPropertyValue('--session-console-output-fit') || '');
-    if (Number.isFinite(fitted)) return Math.max(180, Math.min(1000, fitted));
-    return Math.min(1000, window.innerHeight <= 800 ? Math.max(180, viewport - 430) : Math.max(200, viewport - 400));
-  };
-  const clampConsoleHeight = (value: number) => Math.max(180, Math.min(maxConsoleHeight(), Math.round(value)));
-
-  const resetConsoleSize = () => {
-    setConsoleResized(false);
-    setConsoleHeightResized(false);
-    setConsoleHeight(620);
-    try {
-      window.localStorage.removeItem(CONSOLE_WIDTH_KEY);
-      window.localStorage.removeItem(CONSOLE_HEIGHT_KEY);
-    } catch { /* Storage may be unavailable. */ }
-  };
-
-  const resizeConsoleWithKeyboard = (event: React.KeyboardEvent<HTMLDivElement>, dimension: 'width' | 'height') => {
-    const increase = dimension === 'width' ? 'ArrowLeft' : 'ArrowDown';
-    const decrease = dimension === 'width' ? 'ArrowRight' : 'ArrowUp';
-    if (!['Home', 'End', increase, decrease].includes(event.key)) return;
-    event.preventDefault();
-    const current = dimension === 'width'
-      ? workspaceRef.current?.querySelector<HTMLElement>('.terminal-panel')?.getBoundingClientRect().width ?? consoleWidth
-      : terminalOutputRef.current?.getBoundingClientRect().height ?? consoleHeight;
-    const minimum = dimension === 'width' ? minConsoleWidth() : 180;
-    const maximum = dimension === 'width' ? maxConsoleWidth() : maxConsoleHeight();
-    const next = Math.max(minimum, Math.min(maximum, Math.round(event.key === 'Home' ? minimum : event.key === 'End' ? maximum : current + (event.key === increase ? 24 : -24))));
-    if (dimension === 'width') { setConsoleResized(true); setConsoleWidth(next); }
-    else { setConsoleHeightResized(true); setConsoleHeight(next); }
-    saveDimension(dimension === 'width' ? CONSOLE_WIDTH_KEY : CONSOLE_HEIGHT_KEY, next);
-  };
-
-  const startWidthResize = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    event.currentTarget.focus();
-    const visibleWidth = clampConsoleWidth(workspaceRef.current?.querySelector<HTMLElement>('.terminal-panel')?.getBoundingClientRect().width ?? consoleWidth);
-    setConsoleResized(true); setConsoleWidth(visibleWidth);
-    widthResizeRef.current = { pointerId: event.pointerId, x: event.clientX, start: visibleWidth, value: visibleWidth };
-  };
-  const moveWidthResize = (event: React.PointerEvent<HTMLDivElement>) => {
-    const drag = widthResizeRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    drag.value = clampConsoleWidth(drag.start + drag.x - event.clientX);
-    setConsoleWidth(drag.value);
-  };
-  const endWidthResize = (event: React.PointerEvent<HTMLDivElement>) => {
-    const drag = widthResizeRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    saveDimension(CONSOLE_WIDTH_KEY, drag.value);
-    widthResizeRef.current = null;
-  };
-  const startHeightResize = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    event.currentTarget.focus();
-    const visibleHeight = terminalOutputRef.current?.getBoundingClientRect().height ?? Math.min(consoleHeight, maxConsoleHeight());
-    setConsoleHeightResized(true);
-    setConsoleHeight(visibleHeight);
-    heightResizeRef.current = { pointerId: event.pointerId, y: event.clientY, start: visibleHeight, value: visibleHeight };
-  };
-  const moveHeightResize = (event: React.PointerEvent<HTMLDivElement>) => {
-    const drag = heightResizeRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    drag.value = clampConsoleHeight(drag.start + event.clientY - drag.y);
-    setConsoleHeight(drag.value);
-  };
-  const endHeightResize = (event: React.PointerEvent<HTMLDivElement>) => {
-    const drag = heightResizeRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    saveDimension(CONSOLE_HEIGHT_KEY, drag.value);
-    heightResizeRef.current = null;
-  };
 
   const isFileDrag = (event: React.DragEvent) =>
     Array.from(event.dataTransfer.types).includes('Files') || event.dataTransfer.files.length > 0;
@@ -621,19 +350,6 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     if (sendInput({ kind: 'text', text: textInput })) setTextInput('');
   };
 
-  useEffect(() => {
-    const stage = screenRef.current;
-    if (!stage) return;
-    const observer = new ResizeObserver(entries => {
-      const { width, height } = entries[0].contentRect;
-      setStageSize({ width, height });
-      const style = getComputedStyle(stage);
-      setStageHorizontalPadding(parseFloat(style.paddingLeft) + parseFloat(style.paddingRight));
-    });
-    observer.observe(stage);
-    return () => observer.disconnect();
-  }, [isPreparing]);
-
   const chooseDeviceFiles = (apkOnly = false) => {
     const input = fileInputRef.current;
     if (!input) return;
@@ -641,82 +357,11 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     input.click();
   };
 
-  const [toolTab, setToolTab] = useState<ToolTabId>('console');
   const availableToolTabs = toolTabs().filter(([id, , capability]) => hasCapability(session, capability) && toolAllowed(id));
   useEffect(() => {
     const allowed = toolTabs().filter(([id, , capability]) => hasCapability(session, capability) && toolAllowed(id)).map(([id]) => id);
     if (allowed.length && !allowed.includes(toolTab)) setToolTab(allowed[0]!);
   }, [session, toolTab, user.permissions]);
-  useLayoutEffect(() => {
-    const workspace = workspaceRef.current;
-    if (!workspace) return;
-    const layout = workspace.closest<HTMLElement>('.session-layout');
-    let frame = 0;
-    const setPx = (name: string, value: number) => {
-      const pixels = Math.floor(value) + 'px';
-      if (workspace.style.getPropertyValue(name) !== pixels) workspace.style.setProperty(name, pixels);
-    };
-    const measure = () => {
-      // The title, expiry warnings and shared-access banner may all change the workspace's top edge.
-      const top = workspace.getBoundingClientRect().top + window.scrollY;
-      // DOM rectangles include the user's CSS zoom. Values written back into style properties
-      // must use layout pixels, otherwise a 125% interface enlarges the fitted height twice.
-      const scale = Number.parseFloat(getComputedStyle(document.getElementById('root') ?? workspace).zoom) || 1;
-      const page = workspace.closest<HTMLElement>('.session-main');
-      const bottomPadding = page ? Number.parseFloat(getComputedStyle(page).paddingBottom) : 16;
-      const available = Math.max(300, ((window.visualViewport?.height ?? window.innerHeight) - top) / scale - bottomPadding);
-      const stage = screenRef.current;
-      const viewer = workspace.querySelector<HTMLElement>('.viewer-panel');
-      if (stage && viewer) {
-        // Sum the rows around the stage instead of subtracting heights: the panel can be stretched to the
-        // console's height, which would otherwise be counted as chrome and shrink the device.
-        let chrome = 2;
-        for (const child of Array.from(viewer.children)) {
-          if (child === stage) continue;
-          const box = child.getBoundingClientRect();
-          // The vertical control bar overlays the stage; the single-row bar takes its own row.
-          if (child.classList.contains('device-controls') && box.height >= box.width) continue;
-          chrome += box.height / scale;
-        }
-        setPx('--session-viewer-chrome', chrome);
-
-      }
-      setPx('--session-fit-height', available);
-      const output = terminalOutputRef.current;
-      const terminal = workspace.querySelector<HTMLElement>('.terminal-panel');
-      if (terminal && terminal.getBoundingClientRect().width > 0) {
-        const terminalBox = terminal.getBoundingClientRect();
-        const outputBox = output?.getBoundingClientRect();
-        const width = Math.round(terminalBox.width / scale);
-        const height = outputBox?.height ? Math.round(outputBox.height / scale) : null;
-        if (outputBox?.height) {
-          const chrome = (terminalBox.height - outputBox.height) / scale;
-          setPx('--session-console-output-fit', Math.max(180, available - chrome));
-        }
-        setVisibleConsoleSize(previous => previous.width === width && (height === null || previous.height === height)
-          ? previous : { width, height: height ?? previous.height });
-      }
-    };
-    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(measure); };
-    const observer = new ResizeObserver(schedule);
-    if (layout) observer.observe(layout);
-    const heading = layout?.querySelector('.session-heading');
-    if (heading) observer.observe(heading);
-    const viewer = workspace.querySelector<HTMLElement>('.viewer-panel');
-    if (viewer) observer.observe(viewer);
-    const terminal = workspace.querySelector<HTMLElement>('.terminal-panel');
-    if (terminal) observer.observe(terminal);
-    if (terminalOutputRef.current) observer.observe(terminalOutputRef.current);
-    window.addEventListener('resize', schedule);
-    window.visualViewport?.addEventListener('resize', schedule);
-    schedule();
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-      window.removeEventListener('resize', schedule);
-      window.visualViewport?.removeEventListener('resize', schedule);
-    };
-  }, [toolTab, activeWorkspaceMode, workspaceMode, isPreparing]);
   const [renaming, setRenaming] = useState(false);
   const [labelDraft, setLabelDraft] = useState('');
   const [clock, setClock] = useState(() => Date.now());
@@ -739,11 +384,6 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
       <Icon name="alert" size={17} /><span title={t('ui.e1a23d943344')}>{t('ui.23411ebbf4b5')}{Math.max(1, Math.ceil(idleLeftMs / 60_000))} {t('ui.09c856218d5a')}</span>
       <button type="button" className="button primary small" onClick={() => void extendSession()}>{t('ui.659ad690ef24')}</button>
     </div>;
-  const frameWidth = Math.max(1, stream.size.width);
-  const frameHeight = Math.max(1, stream.size.height);
-  const viewerWidth = Math.max(320, Math.ceil(stageSize.height * frameWidth / frameHeight + stageHorizontalPadding + 2));
-  const displayScale = Math.min(Math.max(0, stageSize.width) / frameWidth, Math.max(0, stageSize.height) / frameHeight);
-
   return <div className="session-layout" data-shared={shared ? access : undefined} data-workspace-mode={activeWorkspaceMode}>
     <div className="session-heading">
       <div className="session-title-row">
