@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { SessionLaunchOptions } from '../src/api';
+import { openLaunchSection } from './launch-controls';
 
 const profile = {
   id: 'resource-launch-qa', name: 'Android 11 · Google APIs', androidVersion: '11', apiLevel: 30,
@@ -46,7 +47,8 @@ async function fixture(page: Page, options: { role?: 'user'; busy?: boolean; the
 async function open(page: Page, busy = false) {
   await page.getByRole('button', { name: busy ? 'Встать в очередь' : 'Новая сессия', exact: true }).first().click();
   const modal = page.getByRole('dialog', { name: 'Новая сессия', exact: true });
-  await modal.locator('.create-settings > summary').click();
+  await openLaunchSection(modal, 'connection');
+  await openLaunchSection(modal, 'storage');
   await expect(modal.getByRole('combobox', { name: 'Ключ ADB', exact: true })).toBeEnabled();
   return modal;
 }

@@ -1,3 +1,4 @@
+import { openLaunchSection } from './launch-controls';
 import { expect, test, type Page } from '@playwright/test';
 
 const profile = {
@@ -50,6 +51,7 @@ test('GPU toggle keeps one image and resource limit and sends the chosen mode', 
   await expect(gpu).not.toBeChecked();
   await modal.locator('.create-container-details summary').click();
   await modal.locator('.create-settings > summary').click();
+  await openLaunchSection(modal, 'connection');
   for (const [checked, mode] of [[true, 'nvidia'], [false, 'software']] as const) {
     await gpu.setChecked(checked);
     await expect(modal.locator('.create-container-details')).toContainText(profile.image);

@@ -1,3 +1,4 @@
+import { openLaunchSection } from './launch-controls';
 import { test, expect, type Page } from '@playwright/test';
 const profile = { id: 'launch-qa', name: 'Android 11 · Google APIs', androidVersion: '11', apiLevel: 30,
   abi: 'x86_64', deviceType: 'mobile', imageFlavor: 'google_apis', image: 'us-docker.pkg.dev/android-emulator-268719/images/30-google-x64-no-metrics:30.1.2',
@@ -19,6 +20,8 @@ async function fixture(page: Page, occupied = false) {
   const modal = page.getByRole('dialog');
   const settings = modal.locator('.create-settings');
   if (!await settings.evaluate(element => (element as HTMLDetailsElement).open)) await settings.locator(':scope > summary').click();
+  await openLaunchSection(modal, 'connection');
+  await openLaunchSection(modal, 'storage');
   await expect(modal.getByRole('combobox', { name: 'Ключ ADB', exact: true })).toBeEnabled();
   return state;
 }

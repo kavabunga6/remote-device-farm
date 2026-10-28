@@ -10,7 +10,7 @@ export function LaunchReadiness({ readiness, admin, alternative, onAutoHost }: {
   const canOpen = (href: string) => can(href.startsWith('#/admin/nodes') ? 'nodes.manage' : 'profiles.manage');
   if (readiness.state === 'ready') return null;
   const actions = [...new Map(readiness.issues.filter(issue => issue.href && canOpen(issue.href)).map(issue => [issue.href, issue])).values()];
-  return <section className="launch-readiness" aria-label={t('ui.4288155a592c')} aria-live="polite">
+  return <section className="launch-readiness" data-state={readiness.state} aria-label={t('ui.4288155a592c')} aria-live="polite">
     <div className="launch-readiness-heading"><Icon name="info" size={16}/><strong>{readiness.state === 'busy' ? t('ui.9052544a2279') : t('ui.9613e0f712c0')}</strong></div>
     <ul>{readiness.issues.map(issue => <li key={issue.code}>
       <strong>{issue.message}</strong><p>{issue.remedy}</p>

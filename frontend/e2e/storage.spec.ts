@@ -1,3 +1,4 @@
+import { openLaunchSection } from './launch-controls';
 import { expect, test } from '@playwright/test';
 
 test('user picks data partition and SD card within profile limits', async ({ page }) => {
@@ -9,6 +10,7 @@ test('user picks data partition and SD card within profile limits', async ({ pag
   const gpu = page.getByRole('switch', { name: 'Ускорение GPU' });
   await gpu.uncheck();
   await expect(gpu).not.toBeChecked();
+  await openLaunchSection(page.getByRole('dialog'), 'storage');
   const disk = page.getByLabel('Раздел данных, ГБ');
   const sd = page.getByLabel('SD-карта, ГБ');
   await expect(disk).toHaveValue('16');

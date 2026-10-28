@@ -355,11 +355,11 @@ test.describe('launch profile compatibility', () => {
       await page.getByRole('button', { name: 'Новая сессия' }).click();
       const dialog = page.getByRole('dialog', { name: 'Новая сессия' });
       await expect(dialog).toBeVisible();
-      await expect(dialog.locator('.create-selected-profile h3')).toContainText('Android 13 · Software');
+      await expect(dialog.getByRole('combobox', { name: 'Устройство', exact: true })).toHaveAttribute('title', /Android 13 · Software/);
       const launch = dialog.getByRole('button', { name: 'Запустить' });
       await expect(launch).toBeEnabled();
       await expect(launch).toBeInViewport();
-      const longName = dialog.locator('.create-selected-profile h3');
+      const longName = dialog.getByRole('combobox', { name: 'Устройство', exact: true });
       const widthOverflow = await longName.evaluate(node => node.scrollWidth - node.clientWidth);
       expect(widthOverflow).toBeLessThanOrEqual(1);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
