@@ -65,7 +65,7 @@ spec:
       fi
       mkdir -p "$RDF_ARTIFACT_DIR/tools"
       tool_dir="$(cd "$RDF_ARTIFACT_DIR/tools" && pwd)"
-      source_url='https://raw.githubusercontent.com/kavabunga6/remote-device-farm/a682dc9a793a6f4b9daa5ac7452e0e08b2047471'
+      source_url='https://raw.githubusercontent.com/kavabunga6/remote-device-farm/2e1466f3d084a442d7c10dab7f263a223854366e'
       curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 "$source_url/scripts/rdf.sh" -o "$tool_dir/rdf.sh"
       curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 60 "$source_url/integrations/common/run-tests.sh" -o "$tool_dir/run-tests.sh"
       (
