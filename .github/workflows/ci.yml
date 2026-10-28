@@ -197,19 +197,9 @@ jobs:
       - name: Install full Chrome with H264 for UI tests
         if: matrix.component == 'frontend'
         run: npx playwright install --with-deps chrome
-      - name: Run browser UI tests
-        env:
-          PLAYWRIGHT_CHANNEL: chrome
-        if: matrix.component == 'frontend'
-        run: npm run e2e
       - name: Install server dependencies for API integration tests
         if: matrix.component == 'frontend'
         run: npm --prefix ../server ci
-      - name: Run UI against production HTTP routes and temporary database
-        if: matrix.component == 'frontend'
-        env:
-          PLAYWRIGHT_CHANNEL: chrome
-        run: npm run e2e:api
       - run: npm test
       - run: npm run typecheck
         if: matrix.component == 'frontend'
@@ -266,6 +256,17 @@ jobs:
               wget -qO /dev/null "http://127.0.0.1$route"
             done
           '
+
+      - name: Run UI against production HTTP routes and temporary database
+        if: matrix.component == 'frontend'
+        env:
+          PLAYWRIGHT_CHANNEL: chrome
+        run: npm run e2e:api
+      - name: Run browser UI tests
+        env:
+          PLAYWRIGHT_CHANNEL: chrome
+        if: matrix.component == 'frontend'
+        run: npm run e2e
 
   media-transports:
     runs-on: ubuntu-24.04
