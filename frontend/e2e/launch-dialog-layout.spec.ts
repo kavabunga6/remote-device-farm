@@ -77,9 +77,28 @@ for (const [name, theme, width, height, scale, language] of [
       });
       const footer = element.querySelector('.create-session-footer')!.getBoundingClientRect();
       const launch = element.querySelector('.create-session-footer .primary')!.getBoundingClientRect();
-      return { arrows, launchWidth: launch.width, footerWidth: footer.width };
+      const rows = [...element.querySelectorAll('.create-launch-settings > .create-disclosure')].map(section => {
+        const heading = section.querySelector(':scope > summary')!, style = getComputedStyle(heading);
+        return { top: section.getBoundingClientRect().top, height: heading.getBoundingClientRect().height, rowHeight: section.getBoundingClientRect().height,
+          paddingTop: style.paddingTop, paddingBottom: style.paddingBottom };
+      });
+      const buttons = [...element.querySelectorAll('.create-session-footer .button')].map(button => button.getBoundingClientRect().height);
+      return { arrows, rows, buttons, launchWidth: launch.width, footerWidth: footer.width };
     });
     for (const gap of controls.arrows) expect(Math.abs(gap)).toBeLessThanOrEqual(1);
+    expect(controls.buttons).toHaveLength(3);
+    for (const height of controls.buttons) expect(Math.abs(height - controls.buttons[0])).toBeLessThanOrEqual(1);
+    expect(controls.rows).toHaveLength(4);
+    for (const row of controls.rows) {
+      expect(Math.abs(row.height - controls.rows[0].height)).toBeLessThanOrEqual(1);
+      expect(Math.abs(row.rowHeight - controls.rows[0].rowHeight)).toBeLessThanOrEqual(1);
+      expect(row.paddingTop).toBe(controls.rows[0].paddingTop);
+      expect(row.paddingBottom).toBe(controls.rows[0].paddingBottom);
+    }
+    controls.rows.slice(1).forEach((row, index) => {
+      const previous = controls.rows[index];
+      expect(Math.abs(row.top - previous.top - previous.rowHeight)).toBeLessThanOrEqual(1);
+    });
     if (width >= 1000) expect(controls.launchWidth).toBeLessThan(controls.footerWidth / 2);
     const geometry = await dialog.evaluate(element => {
       const box = element.getBoundingClientRect();
@@ -100,7 +119,7 @@ for (const [name, theme, width, height, scale, language] of [
     expect(geometry.footerBottom).toBeLessThanOrEqual(height);
     for (const delta of geometry.differences) expect(delta).toBeLessThanOrEqual(1);
     await page.screenshot({ path: testInfo.outputPath('launch-options-' + name + '.png'), fullPage: false, animations: 'disabled' });
-    await dialog.locator('.create-reset').scrollIntoViewIfNeeded();
+    await dialog.locator('.create-advanced-settings > summary').scrollIntoViewIfNeeded();
     await dialog.screenshot({ path: testInfo.outputPath('launch-controls-' + name + '.png'), animations: 'disabled' });
   });
 }

@@ -12,21 +12,22 @@
 .create-settings:not([open])>.create-launch-settings{display:none}
 .create-setting-group:not([open])>.create-settings-section{display:none}
 .create-setting-group>.create-settings-section{padding:4px 0 16px}
-.create-setting-group>summary>svg{margin-inline-start:auto}
-.create-setting-group>summary{display:flex;align-items:center;gap:12px;min-height:52px;padding:12px 0;box-sizing:border-box;list-style:none;cursor:pointer}
 .create-setting-group{min-width:0;border-top:1px solid var(--ui-border)}
 .modal.create-session-modal label{color:var(--ui-subtle);font-size:1rem;font-weight:600;line-height:1.5;align-content:start}
 
 /* Section labels share one hierarchy; state color belongs to controls and feedback. */
 .modal.create-session-modal :is(.create-device-field>span,.create-summary-resources dt,.create-gpu-switch strong,.create-settings>summary,.create-setting-group>summary,.create-container-details>summary,.create-settings-section h4,.create-resource-fields h5,.create-advanced-settings>summary){font-size:1rem;font-weight:600;line-height:1.5;color:var(--ui-text);opacity:1}
 
+/* Every disclosure row uses the same spacing in closed and open states. */
+.create-session-modal .create-disclosure>summary{display:flex;align-items:center;gap:12px;min-height:52px;padding:12px 0;box-sizing:border-box;cursor:pointer;list-style:none}
+.create-session-modal .create-disclosure>summary>svg{margin-inline-start:auto}
+.create-launch-settings>.create-disclosure:last-child{border-bottom:1px solid var(--ui-border)}
+
 /* Optional settings remain separate from device selection. */
 .create-settings{min-width:0}
-.create-settings>summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:0;box-sizing:border-box;cursor:pointer;list-style:none}
-.create-settings>summary>svg{margin-inline-start:auto}
 .create-session-modal summary::-webkit-details-marker{display:none}
 .create-session-modal summary>svg{flex:none}
-.create-settings[open]>summary{display:flex;padding-bottom:12px;border-bottom:1px solid var(--ui-border);margin-bottom:16px}
+.create-settings[open]>summary{border-bottom:1px solid var(--ui-border);margin-bottom:16px}
 .create-session-modal details[open]>summary>svg{transform:rotate(180deg)}
 .create-session-modal summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 
@@ -58,16 +59,16 @@
 .create-gpu-switch input:disabled{cursor:not-allowed;opacity:.55}
 .create-gpu-setting>.create-field-hint{margin-top:8px}
 .create-container-details{min-width:0;border-top:1px solid var(--ui-border);font-size:1rem;color:var(--ui-muted)}
-.create-container-details summary{display:flex;align-items:center;gap:8px;min-height:40px;cursor:pointer;list-style:none}
-.create-container-details summary>svg{margin-inline-start:auto}
 .create-image-facts{display:grid;gap:14px;margin:6px 0 0}
 .create-image-facts dt{margin-bottom:4px;line-height:1.5;color:var(--ui-muted)}
 .create-image-facts dd{margin:0;color:var(--ui-text);overflow-wrap:anywhere;line-height:1.6}
 .create-image-facts code{font-family:var(--font-mono);font-size:inherit}
 
 /* Each pair shares label, control and helper tracks, including wrapped labels. */
-.create-settings>.create-launch-settings{padding:0 0 16px}
-.create-launch-settings{display:grid;gap:20px;min-width:0}
+.create-settings>.create-launch-settings{padding:0}
+.create-launch-settings{display:grid;gap:0;min-width:0}
+.create-launch-settings>.create-settings-section{margin-bottom:20px}
+.create-container-details[open]{padding-bottom:16px}
 .create-settings-section{display:grid;gap:12px;min-width:0}
 .create-launch-settings>.create-settings-section+.create-settings-section{border-top:1px solid var(--ui-border);padding-top:20px}
 .create-settings-section h4{margin:0}
@@ -86,9 +87,8 @@
 .modal.create-session-modal .create-field>.create-field-hint,.create-count .create-field-hint{font-size:1rem;font-weight:400;line-height:1.5;color:var(--ui-muted)}
 .modal.create-session-modal .create-count{display:grid;gap:6px;color:var(--ui-text);line-height:1.5}
 .create-count-control{display:grid;grid-template-columns:minmax(5rem,6rem) minmax(0,1fr);align-items:center;gap:16px}
-.create-advanced-settings{min-width:0;border-top:1px solid var(--ui-border);border-bottom:1px solid var(--ui-border)}
-.create-advanced-settings>summary{display:flex;align-items:center;gap:12px;min-height:48px;padding:10px 0;cursor:pointer;list-style:none}
-.create-advanced-settings>summary>svg,.create-argument-help>summary>svg{margin-inline-start:auto}
+.create-advanced-settings{min-width:0;border-top:1px solid var(--ui-border)}
+.create-argument-help>summary>svg{margin-inline-start:auto}
 .create-advanced-body{display:grid;gap:20px;padding:8px 0 16px;min-width:0}
 .create-advanced-body>.create-settings-section+.create-settings-section{border-top:1px solid var(--ui-border);padding-top:20px}
 :root .modal.create-session-modal .create-launch-settings .create-params-field textarea{min-height:112px;resize:vertical;font-family:var(--font-mono);font-size:.9375rem;font-weight:400;line-height:1.6}
@@ -100,8 +100,6 @@
 .create-container-access>div{display:grid;gap:4px;min-width:0}
 .create-container-access dt{color:var(--ui-muted)}
 .create-container-access dd{margin:0;color:var(--ui-text);overflow-wrap:anywhere}
-.create-settings-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}
-.create-settings-actions .create-reset{min-height:44px;padding:10px 16px;font-size:1rem;line-height:1.5}
 .modal.create-session-modal .inline-warning,.modal.create-session-modal .inline-error{margin:0;font-size:.9375rem;line-height:1.5}
 
 /* Readiness belongs beside the selected profile and never expands the footer. */
@@ -147,9 +145,7 @@
   .modal.create-session-modal h2{font-size:1.25rem}
   .modal.create-session-modal .modal-description{font-size:.9375rem}
   .create-session-body{padding:16px;gap:16px}
-  .create-settings>summary>svg{margin-inline-start:auto}
   .create-launch-panel{gap:16px}
-  .create-settings>.create-launch-settings{padding:0 0 12px}
   .create-resource-fields{column-gap:12px}
   .create-storage-fields,.create-connection-fields,.create-container-access{grid-template-columns:minmax(0,1fr)}
   .create-count-control{grid-template-columns:5rem minmax(0,1fr);gap:12px}

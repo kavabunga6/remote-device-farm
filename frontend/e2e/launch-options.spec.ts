@@ -59,6 +59,8 @@ test('reset is a button enabled only for changed resources, storage or arguments
   const cpu = modal.getByLabel('Лимит CPU на узле', { exact: true });
   const disk = modal.getByLabel('Раздел данных, ГБ', { exact: true });
   await expect(reset).toHaveClass(/button outline/);
+  await expect(modal.locator('.create-session-footer .create-reset')).toBeVisible();
+  await expect(modal.locator('.create-session-body .create-reset')).toHaveCount(0);
   await expect(reset).toBeDisabled();
   await cpu.fill('2');
   await expect(reset).toBeEnabled();
