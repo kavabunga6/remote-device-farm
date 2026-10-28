@@ -3,3 +3,9 @@ dist
 coverage
 *.log
 .env*
+*.tar.gz
+*.pem
+*.crt
+*.key
+adbkey
+adbkey.pub

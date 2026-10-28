@@ -23,6 +23,13 @@ Requirements: Linux x86-64 with /dev/kvm, Docker Engine 28+ and Compose 2.30+.
    AGENT_NODE_CPU_LIMIT and AGENT_NODE_MEMORY_MB in .env.agent. Without both
    explicit limits, dynamic mode advertises zero slots.
 
+For HTTPS signed by a private CA, obtain the CA certificate from the server
+administrator. Mount it read-only in the agent service and set
+NODE_EXTRA_CA_CERTS to its container path; see the agent deployment guide.
+Use the issuing root CA and any required intermediates, rather than just the
+server certificate. Keep TLS verification enabled. Docker registry trust is
+configured separately on the Docker host.
+
 The I/O agent has no Docker socket. Only agent-control has Docker access.
 
 Docker images

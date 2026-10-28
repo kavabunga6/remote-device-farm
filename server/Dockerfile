@@ -11,7 +11,7 @@ RUN npm run build
 FROM ${NODE_IMAGE} AS agent-bundle
 ARG AGENT_BUNDLE_VERSION=0.1.0
 WORKDIR /bundle
-COPY --from=rdf_agent_sources /package.json /package-lock.json /Dockerfile /compose.bundle.yaml /INSTALL.txt ./
+COPY --from=rdf_agent_sources /package.json /package-lock.json /Dockerfile /.dockerignore /compose.bundle.yaml /INSTALL.txt ./
 COPY --from=rdf_agent_sources /src ./src
 COPY --from=rdf_agent_sources /scripts ./scripts
 COPY --from=rdf_agent_sources /licenses ./licenses
