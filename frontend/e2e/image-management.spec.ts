@@ -91,7 +91,7 @@ for (const [language, theme, width, scale] of [['ru', 'dark', 1920, 1], ['en', '
     await expect(rows.first().getByRole('button', { name: /^(Удалить образ|Delete image) / })).toBeDisabled();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const bounds = await page.locator('.image-controls').evaluate(group => Array.from(group.querySelectorAll('input,select')).map(control => { const r = control.getBoundingClientRect(); return { top: r.top, height: r.height }; }));
-    for (const b of bounds) expect(b.height).toBeCloseTo(40 * scale, 0);
+    for (const b of bounds) expect(b.height).toBeCloseTo(36 * scale, 0);
     if (width > 1200) expect(bounds[0].top).toBe(bounds[1].top);
     await page.getByRole('button', { name: language === 'ru' ? 'Политики хранения' : 'Retention policies', exact: true }).click();
     const save = page.locator('.image-policy-save button'); await expect(save).toBeDisabled();
@@ -140,12 +140,13 @@ for (const language of ['ru', 'en'] as const) test('inventory summary, version f
   await expect(page.locator('.image-hidden-selection')).toHaveText(ru ? 'Вне фильтра: 1' : 'Outside this filter: 1');
   await expect(rows.first()).toContainText('API 36.1');
   await expect(rows.nth(1).getByRole('checkbox')).toBeDisabled();
-  await page.locator('.image-selection input').check();
+  await page.locator('.image-select-all input').check();
   await expect(page.locator('.image-selected-size')).toHaveText(ru ? 'Размер слоёв: 5 ГБ' : 'Layer size: 5 GB');
   await expect(page.locator('.image-selection').getByRole('button', { name: ru ? 'Удалить выбранные (2)' : 'Delete selected (2)', exact: true })).toBeEnabled();
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await rows.nth(1).getByRole('button', { name: ru ? 'Копировать идентификатор' : 'Copy identifier', exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(C);
+  await page.locator('.image-repository > summary').click();
   await page.getByRole('button', { name: ru ? 'Скопировать адрес registry' : 'Copy registry address', exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('registry.example.test/rdf-emulator');
   // Refresh protection even for a selected image hidden by the version filter.
@@ -171,7 +172,9 @@ test('registry maintenance reports work and prevents deletion until inventory re
   await expect(page.locator('.image-process')).toBeVisible();
   await expect(page.locator('.image-select-cell input')).toBeDisabled();
   await expect(page.locator('.image-action-cell button')).toBeDisabled();
+  await page.locator('.image-cleanup-menu > summary').click();
   await expect(page.getByRole('button', { name: 'Освободить место', exact: true })).toBeDisabled();
+  await page.keyboard.press('Escape');
   await expect(page.locator('.image-identifier-copy')).toBeEnabled();
   maintenance = false;
   await page.locator('.image-refresh').click();
