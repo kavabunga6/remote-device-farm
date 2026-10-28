@@ -12,6 +12,8 @@ import { settingsApi, type RentalRecord, type UserPreferences, type UserProfile 
 import { PasswordTools } from './PasswordTools';
 import { loadUserPreferences, saveUserPreferences } from './preferences-autosave';
 import './UserSettingsPage.css';
+import { FormSaveActions } from './FormSaveActions';
+import { useNotifications } from './notifications';
 
 type SettingsSection = 'profile' | 'appearance' | 'security' | 'keys' | 'notifications' | 'history';
 function settingsSections(): ReadonlyArray<readonly [SettingsSection, string]> { return [['profile', t('ui.359497aff53e')], ['appearance', t('ui.1731619efa3a')], ['security', t('ui.64e2a7500e34')], ['keys', t('ui.cc48c41eb523')], ['notifications', t('ui.d4baf8f6b173')], ['history', t('ui.d9603f333a4a')]]; }
@@ -55,6 +57,7 @@ function Segmented<T extends string | number>({ legend, value, options, onChange
 
 export function UserSettingsPage({ user }: { user: User }) {
   useInterfaceLanguage();
+  const { notifyError } = useNotifications();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -144,15 +147,18 @@ export function UserSettingsPage({ user }: { user: User }) {
     return () => { active = false; };
   }, [user.id, rentalsRetry]);
 
+  const profileDirty = Boolean(profile && (firstName !== (profile.firstName || '') || lastName !== (profile.lastName || '') || company !== (profile.company || '') || jobTitle !== (profile.jobTitle || '')));
   const saveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!profile || profileLoading || savingProfile || profile.managedByProvider) return;
+    if (!profile || profileLoading || savingProfile || profile.managedByProvider || !profileDirty) return;
     setSavingProfile(true); setError(''); setNotice('');
     try {
       const result = await settingsApi.updateProfile({ firstName, lastName, jobTitle, company });
       setProfile(result);
+      setFirstName(result.firstName || ''); setLastName(result.lastName || '');
+      setCompany(result.company || ''); setJobTitle(result.jobTitle || '');
       setNotice(t('ui.07d1bcc0fb74'));
-    } catch (cause) { setError(errorText(cause)); }
+    } catch (cause) { setError(errorText(cause)); notifyError(t('ui.8f9c4884b8f9'), cause); }
     finally { setSavingProfile(false); }
   };
 
@@ -285,7 +291,7 @@ export function UserSettingsPage({ user }: { user: User }) {
         <div className="settings-card-title"><h2>{t('ui.265bd5fc9cb2')}</h2><p>{profile?.managedByProvider ? t('ui.63b39f64a1f9') : t('ui.02f14dd10eda')}</p></div>
         {profileFeedback}
         {profileLoading ? <p className="settings-muted">{t('ui.22a5d9112486')}</p> :
-          <form onSubmit={event => void saveProfile(event)} className="settings-form">
+          <form id="account-profile-form" onSubmit={event => void saveProfile(event)} className="settings-form">
             <div className="settings-form-two">
               <label>{t('ui.1da7e9372e2f')}<input value={firstName} onChange={event => setFirstName(event.target.value)} maxLength={100} disabled={!profile || savingProfile || profile.managedByProvider} autoComplete="given-name" /></label>
               <label>{t('ui.353eafa3bb36')}<input value={lastName} onChange={event => setLastName(event.target.value)} maxLength={100} disabled={!profile || savingProfile || profile.managedByProvider} autoComplete="family-name" /></label>
@@ -293,7 +299,7 @@ export function UserSettingsPage({ user }: { user: User }) {
             <div className="settings-form-two"><label>{t('ui.64d92044a1ff')}<input value={company} onChange={event => setCompany(event.target.value)} maxLength={150} disabled={!profile || savingProfile || profile.managedByProvider} autoComplete="organization" /></label>
             <label>{t('ui.65e47aff6622')}<input value={jobTitle} onChange={event => setJobTitle(event.target.value)} maxLength={150} disabled={!profile || savingProfile || profile.managedByProvider} autoComplete="organization-title" /></label></div>
             {profile?.managedByProvider ? <p className="settings-hint">{t('ui.48311ccc29ec')}</p> :
-              <button type="submit" className="button primary" disabled={!profile || savingProfile}>{savingProfile ? t('ui.9c27c381dd8b') : t('ui.c134971e8f29')}</button>}
+              <FormSaveActions formId="account-profile-form" dirty={profileDirty} busy={savingProfile} disabled={!profile} context={t('ui.265bd5fc9cb2')} label={t('ui.c134971e8f29')}/>}
           </form>}
       </section>
     </div>

@@ -18,3 +18,6 @@
 
 /* Keep explicit dialog feedback above the footer so retries remain clickable. */
 .notification-stack.notification-stack-in-modal{bottom:max(6rem,env(safe-area-inset-bottom));max-height:calc(100dvh - 8rem)}
+
+/* Pending form actions keep their own space below page notifications. */
+.notification-stack:not(.notification-stack-in-modal){bottom:calc(max(16px,env(safe-area-inset-bottom)) + var(--form-save-offset,0px));max-height:calc(100dvh - 32px - var(--form-save-offset,0px))}

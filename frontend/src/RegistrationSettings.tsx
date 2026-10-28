@@ -4,6 +4,7 @@ import { roleLabel, useAccess, type AccessRole } from './permissions';
 import { registrationApi, type RegistrationSettings as Settings } from './registration-api';
 import { ActivityIndicator } from './ActivityIndicator';
 import './RegistrationSettings.css';
+import { FormSaveActions } from './FormSaveActions';
 
 export function RegistrationSettings({ roles }: { roles: AccessRole[] }) {
   const can = useAccess();
@@ -30,7 +31,7 @@ export function RegistrationSettings({ roles }: { roles: AccessRole[] }) {
   };
   return <details className="registration-settings">
     <summary>{t('registration.title')}</summary>
-    <form onSubmit={event => void save(event)} aria-busy={busy}>
+    <form id="registration-settings-form" onSubmit={event => void save(event)} aria-busy={busy}>
       <p>{t('registration.description')}</p>
       {!draft && !error && <p role="status"><ActivityIndicator />{t('ui.22a5d9112486')}</p>}
       {draft && <>
@@ -39,7 +40,7 @@ export function RegistrationSettings({ roles }: { roles: AccessRole[] }) {
         <label className="registration-role"><span id="registration-role-label">{t('registration.defaultRole')}</span><select aria-labelledby="registration-role-label" value={draft.roleId} disabled={!editable} aria-describedby="registration-role-hint" onChange={event => { setDraft({ ...draft, roleId: event.target.value }); setSaved(false); }}>
           {roles.filter(role => role.builtin !== 'admin').map(role => <option key={role.id} value={role.id}>{roleLabel(role)}</option>)}
         </select><small id="registration-role-hint">{t('registration.roleHint')}</small></label>
-        {can('roles.manage') && <button className="button primary small" type="submit" disabled={!editable || !dirty}>{busy ? t('ui.9c27c381dd8b') : t('ui.b4d30cae5289')}</button>}
+        {can('roles.manage') && <FormSaveActions formId="registration-settings-form" dirty={Boolean(dirty)} busy={busy} disabled={!editable} context={t('registration.title')} buttonClassName="button primary small"/>}
       </>}
       {error && <div className="inline-error" role="alert">{localizeText(error)}{!draft && <button type="button" className="button outline small" onClick={() => setAttempt(value => value + 1)}>{t('ui.5189135a6110')}</button>}</div>}
       {saved && <p className="registration-settings-saved" role="status">{t('registration.saved')}</p>}

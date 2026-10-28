@@ -11,7 +11,8 @@
 .registration-role{display:grid;gap:.5rem;font-size:.875rem;font-weight:600;color:var(--ui-text)}
 .registration-role select{box-sizing:border-box;width:100%;min-height:2.75rem;padding:.625rem 2.5rem .625rem .75rem;border:1px solid var(--ui-border);border-radius:8px;background-color:var(--ui-inset);color:var(--ui-text);font:inherit;font-weight:500;line-height:1.5}
 .registration-role small{color:var(--ui-subtle);font-weight:400;line-height:1.5}
-.registration-settings form>.button{justify-self:start;min-height:2.75rem}
+.registration-settings .form-save-actions{justify-content:flex-start}
+.registration-settings .form-save-actions .button{min-height:2.75rem}
 .registration-settings .registration-settings-saved{color:var(--accent)}
 
 .registration-settings :is(input,select,button,summary):focus-visible{outline:2px solid var(--accent);outline-offset:2px}

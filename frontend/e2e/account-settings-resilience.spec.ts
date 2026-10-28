@@ -66,6 +66,8 @@ test('a failed profile cannot submit empty fields while other account sections s
   failProfile = false;
   await panel.getByRole('button', { name: 'Повторить' }).click();
   await expect(panel.getByRole('textbox', { name: 'Имя', exact: true })).toHaveValue(initialProfile.firstName);
+  await expect(panel.getByRole('button', { name: 'Сохранить данные' })).toBeDisabled();
+  await panel.getByRole('textbox', { name: 'Имя', exact: true }).fill('Александр');
   await expect(panel.getByRole('button', { name: 'Сохранить данные' })).toBeEnabled();
 });
 

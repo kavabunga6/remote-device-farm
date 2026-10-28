@@ -93,3 +93,5 @@
 @media(max-width:860px){.user-settings-page .settings-side .settings-identity{justify-items:start}}
 .choice-group-options button{white-space:nowrap;flex:none}
 .user-settings-page .choice-group small{display:block;width:100%;margin-top:.5rem}
+
+.settings-form>.form-save-actions{justify-content:flex-start}

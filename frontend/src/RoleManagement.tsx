@@ -7,9 +7,10 @@ import { useAdminDialog } from './useAdminDialog';
 import { useNotifications } from './notifications';
 import './RoleManagement.css';
 import { HeadingSlot } from './HeadingSlot';
+import { FormSaveActions } from './FormSaveActions';
 
 export function RoleManagement({ onChanged }: { onChanged: () => void }) {
- const can = useAccess(), { notify } = useNotifications();
+ const can = useAccess(), { notify, notifyError } = useNotifications();
  const [roles, setRoles] = useState<AccessRole[]>([]);
  const [loading, setLoading] = useState(true), [error, setError] = useState('');
  const [selected, setSelected] = useState<string | null>(null);
@@ -33,14 +34,15 @@ export function RoleManagement({ onChanged }: { onChanged: () => void }) {
    .finally(() => { if (!controller.signal.aborted) setLoading(false); });
   return () => controller.abort();
  }, []);
+ const dirty = name.trim() !== (current?.name ?? '') || permissions.length !== (current?.permissions.length ?? 0) || permissions.some(permission => !current?.permissions.includes(permission));
  const save = async (event: React.FormEvent) => {
-  event.preventDefault(); if (busy || locked) return; setBusy(true); setError('');
+  event.preventDefault(); if (busy || locked || !dirty) return; setBusy(true); setError('');
   try {
    const data = { name: name.trim(), permissions };
    if (selected) await roleApi.update(selected, data); else await roleApi.create(data);
    const updated = await load(); choose(updated.find(role => role.id === selected || role.name === data.name) ?? null);
    notify({ kind: 'success', title: t('roles.saved') }); onChanged();
-  } catch (cause) { setError(cause instanceof Error ? cause.message : t('ui.8f9c4884b8f9')); }
+  } catch (cause) { setError(cause instanceof Error ? cause.message : t('ui.8f9c4884b8f9')); notifyError(t('ui.8f9c4884b8f9'), cause); }
   finally { setBusy(false); }
  };
  const permissionHint = (id: string) => {
@@ -61,7 +63,7 @@ export function RoleManagement({ onChanged }: { onChanged: () => void }) {
   <HeadingSlot slot="actions">{can('roles.manage') && <button className="button primary small" type="button" disabled={busy || loading || !roles.length} onClick={() => choose(null)}><Icon name="plus" size={16}/>{t('roles.create')}</button>}</HeadingSlot>
   {loading ? <p role="status">{t('ui.85a915216eba')}</p> : error && !roles.length ? <div className="inline-error" role="alert"><p>{localizeText(error)}</p><button type="button" className="button outline" onClick={() => { setLoading(true); void load().then(items => { if (items.length) choose(items[0]); }); }}>{t('ui.163a016f3df7')}</button></div> : <div className="role-workspace">
    <nav className="role-list" aria-label={t('roles.title')}>{roles.map(role => <button key={role.id} type="button" className={selected === role.id ? 'selected' : ''} aria-pressed={selected === role.id} disabled={busy} onClick={() => choose(role)}><span><strong>{roleLabel(role)}</strong>{role.builtin && <small>{t('roles.builtin')}</small>}</span><small>{t('roles.members', { p0: role.userCount })}</small></button>)}</nav>
-   <form className="role-editor" onSubmit={save}>
+   <form id="role-editor-form" className="role-editor" onSubmit={save}>
     <header className="role-editor-heading"><h3>{selected ? roleLabel(current ?? {}) : t('roles.create')}</h3>{current && !current.builtin && can('roles.manage') && <button className="icon-button danger-icon" type="button" title={t('roles.delete')} aria-label={t('roles.delete')} disabled={busy} onClick={() => { setDeleteError(''); setRemoving(current); }}><Icon name="trash" size={18}/></button>}</header>
     <label className="role-name">{t('roles.name')}<input value={current?.builtin ? roleLabel(current) : name} maxLength={80} required disabled={busy || locked || Boolean(current?.builtin)} onChange={event => setName(event.target.value)}/></label>
     {current?.builtin === 'admin' && <p className="role-notice">{t('roles.adminLocked')}</p>}
@@ -73,7 +75,7 @@ export function RoleManagement({ onChanged }: { onChanged: () => void }) {
       {hint && <p id={hintId} className="role-notice permission-hint">{hint}</p>}</Fragment>;
     })}</fieldset>)}</div>
     {error && <p className="inline-error" role="alert">{localizeText(error)}</p>}
-    {!locked && <footer className="role-editor-actions"><button type="submit" className="button primary" disabled={busy || !name.trim()}>{busy ? t('ui.9c27c381dd8b') : t('ui.b4d30cae5289')}</button></footer>}
+    {!locked && <FormSaveActions className="role-editor-actions" formId="role-editor-form" dirty={dirty} busy={busy} disabled={!name.trim()} context={selected ? roleLabel(current ?? {}) : name.trim() || t('roles.create')}/>}
    </form>
   </div>}
   {loading && error && <p className="inline-error" role="alert">{localizeText(error)}</p>}

@@ -1,0 +1,9 @@
+.form-save-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px}
+#form-save-dock{position:fixed;z-index:15;inset-inline-end:max(24px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:stretch;gap:10px;width:min(34rem,calc(var(--form-save-available-width,100vw) - 32px));max-height:calc(100dvh - 32px);overflow-y:auto;box-sizing:border-box;pointer-events:none}
+#form-save-dock:empty{display:none}
+.floating-form-save{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px;background:var(--ui-surface);color:var(--ui-text);border:1px solid var(--ui-border);border-radius:12px;box-shadow:0 8px 24px #0002;pointer-events:auto}
+.floating-form-save-copy{display:grid;gap:2px;min-width:0}
+.floating-form-save-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:1rem;font-weight:600;line-height:1.5}
+.floating-form-save-copy>span{color:var(--ui-muted);font-size:.875rem;line-height:1.5}
+.floating-form-save .button{flex:none;min-height:44px;max-width:100%;gap:8px}
+@media(max-width:540px){#form-save-dock{inset-inline:12px;bottom:max(12px,env(safe-area-inset-bottom));width:auto;max-height:calc(100dvh - 24px)}.floating-form-save{padding:12px;gap:12px;flex-wrap:wrap}.floating-form-save-copy{flex:1 1 120px}.floating-form-save .button{margin-inline-start:auto}}

@@ -13,6 +13,7 @@ import { useAdminDialog } from './useAdminDialog';
 import { useNotifications } from './notifications';
 import { imageManagementApi as api, type ManagedImage, type CleanupPolicy, type CleanupPlan, type CleanupJob } from './image-management-api';
 import './ImageManagement.css';
+import { FormSaveActions } from './FormSaveActions';
 const msg = (key: string) => t(key as Parameters<typeof t>[0]);
 const bytes = (value: number) => new Intl.NumberFormat(getLocale(), { style: 'unit', unit: 'gigabyte', maximumFractionDigits: 1 }).format(value / 1024 ** 3);
 const date = (value?: string | null) => value ? new Intl.DateTimeFormat(getLocale(), { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : '—';
@@ -24,7 +25,7 @@ function ImageDate({ value }: { value?: string | null }) {
   return <time dateTime={value} title={date(value)}>{new Intl.DateTimeFormat(getLocale(), { dateStyle: 'short' }).format(parsed)}<small>{new Intl.DateTimeFormat(getLocale(), { timeStyle: 'short' }).format(parsed)}</small></time>;
 }
 export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged: () => void }) {
-  const can = useAccess(), { notify } = useNotifications();
+  const can = useAccess(), { notify, notifyError } = useNotifications();
   const cleanupMenu = useDisclosureDismiss(), repositoryMenu = useDisclosureDismiss();
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [tab, setTab] = useState<'registry' | 'cache' | 'policy' | 'history'>('registry');
@@ -91,9 +92,9 @@ export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged
     } finally { setBusy(false); }
   };
   const save = async (event: React.FormEvent) => {
-    event.preventDefault(); if (!policy || busy) return; setBusy(true);
+    event.preventDefault(); if (!policy || busy) return; setBusy(true); setError('');
     try { const clean = { ...policy }; delete (clean as CleanupPolicy & { lastRunAt?: unknown }).lastRunAt; const result = await api.save(clean); setPolicy(result.policy); setSavedPolicy(result.policy); notify({ kind: 'success', title: t('images.policySaved') }); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : t('images.error.unavailable')); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : t('images.error.unavailable')); notifyError(t('ui.8f9c4884b8f9'), cause); }
     finally { setBusy(false); }
   };
   const items = tab === 'cache' ? cache : registry?.items ?? [];
@@ -194,7 +195,7 @@ export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged
           <p className="image-note image-size-note"><Icon name="info" size={14} />{t('images.sizeNote')}</p>
         </>}
       </div>}
-      {tab === 'policy' && policy && <form className="image-policies" onSubmit={save}>
+      {tab === 'policy' && policy && <form id="image-policy-form" className="image-policies" onSubmit={save}>
         <div className="image-section-heading"><div><h2>{t('images.tab.policy')}</h2><p>{t('images.policyDescription')}</p></div></div>
         <div className="image-policy-sections">
           <section className="image-policy-card" aria-labelledby="registry-policy-title">
@@ -216,7 +217,7 @@ export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged
         </div>
         <div className="image-policy-footer">
           <div className="image-policy-grid image-schedule">{field('intervalHours', 1, 720)}</div>
-          <div className="image-policy-save"><span className="image-note" role="status">{dirty ? t('images.unsaved') : t('images.saved')}</span>{can('images.settings') && <button type="submit" className="button primary" disabled={busy || !dirty}>{busy ? <><ActivityIndicator />{t('images.saving')}</> : t('images.save')}</button>}</div>
+          <div className="image-policy-save"><span className="image-note" role="status">{dirty ? t('images.unsaved') : t('images.saved')}</span>{can('images.settings') && <FormSaveActions formId="image-policy-form" dirty={dirty} busy={busy} context={t('images.tab.policy')} label={t('images.save')}/>}</div>
         </div>
       </form>}
       {tab === 'history' && <div className="image-history">

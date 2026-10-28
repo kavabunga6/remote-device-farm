@@ -29,3 +29,9 @@
 .role-assign-content select { width:100%; min-width:0; }
 
 .permission-hint { margin:.35rem 0 1rem 1.75rem; }
+
+/* The editor needs room for permission labels, including enlarged and RTL text. */
+.role-management { container-type:inline-size; }
+.role-name,.role-name input { min-width:0; }
+.role-permissions-heading { flex-wrap:wrap; }
+@container (max-width:52rem) { .role-workspace { grid-template-columns:1fr; } .permission-groups { columns:1; } }

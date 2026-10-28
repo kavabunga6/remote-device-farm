@@ -45,7 +45,7 @@ test('administrator creates, edits, assigns and deletes roles; required view gra
  await page.getByRole('checkbox',{name:messages['permissions.nodes.view'].en,exact:true}).uncheck();
  await expect(page.getByRole('checkbox',{name:'Configure, sanitize devices and remove nodes',exact:true})).not.toBeChecked();
  await page.getByRole('checkbox',{name:messages['permissions.nodes.view'].en,exact:true}).check();
- await page.locator('.role-editor-actions').getByRole('button',{name:'Save',exact:true}).click();
+ await page.getByRole('button',{name:'Save',exact:true}).click();
  await expect(page.locator('.role-list').getByRole('button',{name:/^Observer/})).toBeVisible();
  await page.goto('/#/admin/users');
  await page.getByRole('button',{name:'Assign role · reader',exact:true}).click();
