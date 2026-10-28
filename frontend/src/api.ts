@@ -419,7 +419,9 @@ const API_BASE = '/api';
 // Server messages are English; people see these instead for the cases they can act on.
 export const KNOWN_ERRORS: Record<string, string> = knownErrorMessages();
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+type RequestOptions = RequestInit & { timeoutMs?: number };
+async function request<T>(path: string, input: RequestOptions = {}): Promise<T> {
+  const { timeoutMs, ...options } = input;
   try {
     return await withRequestDeadline(async signal => {
       const response = await fetch(`${API_BASE}${path}`, {
@@ -454,7 +456,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       }
 
       return body as T;
-    }, { signal: options.signal });
+    }, { signal: options.signal, timeoutMs });
   } catch (cause) {
     if (cause instanceof RequestTimeoutError) throw new ApiError(t('error.timeout'), 408);
     throw cause;
@@ -462,7 +464,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 // Feature modules (queue, sharing, apps...) call the API through these instead of editing this file.
-export const apiRequest = <T,>(path: string, options: RequestInit = {}): Promise<T> => request<T>(path, options);
+export const apiRequest = <T,>(path: string, options: RequestOptions = {}): Promise<T> => request<T>(path, options);
 export const jsonBody = (value: unknown): string => JSON.stringify(value);
 
 function json(value: unknown): string {
@@ -493,8 +495,8 @@ export const api = {
     return result.user;
   },
   logout: () => request<void>('/logout', { method: 'POST' }),
-  async hosts(): Promise<Host[]> {
-    const result = await request<{ hosts: HostPayload[] }>('/hosts');
+  async hosts(signal?: AbortSignal): Promise<Host[]> {
+    const result = await request<{ hosts: HostPayload[] }>('/hosts', { signal });
     return result.hosts.map(hostFromPayload);
   },
   async profiles(): Promise<Profile[]> {

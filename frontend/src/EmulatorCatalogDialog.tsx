@@ -8,6 +8,7 @@ import { useAdminDialog } from './useAdminDialog';
 import { imagesApi, type BuildJob, type CatalogImage, type ImageCatalog, type ImagePrewarmJob, type RegistrySettings } from './images-api';
 import { useNotifications } from './notifications';
 import './EmulatorCatalogDialog.css';
+import { CatalogLoading, CatalogLoadFailure } from './CatalogLoading';
 
 const DEVICES: Record<CatalogImage['device'], string> = { get phone() { return t('ui.e5179e680c13'); }, get tv() { return t('ui.8794f1ba68df'); }, get automotive() { return t('ui.8dca2f783130'); }, get wear() { return t('ui.7e6da98020ac'); }, get desktop() { return t('device.desktop'); } };
 const FLAVORS: Record<CatalogImage['flavor'], string> = { aosp: 'AOSP', google_apis: 'Google APIs', google_play: 'Google Play' };
@@ -63,10 +64,12 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
   const [filters, setFilters] = useState({ android: '', device: '', flavor: '', state: '' });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [draft, setDraft] = useState<Partial<RegistrySettings> & { externalPassword?: string }>({});
-  const dialogRef = useAdminDialog(true, busy, onClose);
+  const dialogRef = useAdminDialog(true, busy && !loading, onClose);
   const doneJobs = useRef<Set<string> | null>(null);
   const loadInFlight = useRef<Promise<void> | null>(null);
   const loadGeneration = useRef(0);
+  const loadAbort = useRef<AbortController | null>(null);
+  const mounted = useRef(true);
   const loadQueued = useRef(false);
   const refreshQueued = useRef(false);
   const changed = useRef(onChanged);
@@ -85,11 +88,14 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
     refresh = refresh || refreshQueued.current;
     refreshQueued.current = false;
     setError('');
-    const request = (async () => {
+    const controller = new AbortController();
+    loadAbort.current = controller;
+    let request!: Promise<void>;
+    request = (async () => {
       try {
-        const [next, nodes, prewarm] = await Promise.all([imagesApi.catalog(refresh), api.hosts(), imagesApi.prewarmJobs()]);
+        const [next, nodes, prewarm] = await Promise.all([imagesApi.catalog(refresh, controller.signal), api.hosts(controller.signal), imagesApi.prewarmJobs(controller.signal)]);
         // A GET sent before an accepted mutation must not erase the jobs returned by its POST.
-        if (generation !== loadGeneration.current) return;
+        if (generation !== loadGeneration.current || !mounted.current) return;
         setPrewarmJobs(prewarm.items);
         const done = new Set(next.jobs.filter(job => job.state === 'done').map(job => job.id));
         if (doneJobs.current && [...done].some(id => !doneJobs.current!.has(id))) changed.current();
@@ -98,18 +104,24 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
         setHosts(nodes);
         if (!next.builder || !(next.registry.mode === 'external' ? next.registry.externalAddress : next.registry.builtinAddress)) setSettingsOpen(true);
       } catch (cause) {
-        if (generation === loadGeneration.current) setError(cause instanceof Error ? cause.message : t('ui.2998ba4c2a5c'));
+        controller.abort();
+        if (generation === loadGeneration.current && mounted.current) setError(cause instanceof Error ? cause.message : t('ui.2998ba4c2a5c'));
       } finally {
-        if (generation === loadGeneration.current) setLoading(false);
-        loadInFlight.current = null;
-        if (loadQueued.current) void loadCatalog();
+        if (generation === loadGeneration.current && mounted.current) setLoading(false);
+        if (loadInFlight.current === request) {
+          loadInFlight.current = null;
+          if (loadQueued.current && mounted.current) void loadCatalog();
+        }
       }
     })();
     loadInFlight.current = request;
     return request;
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    mounted.current = true; void load();
+    return () => { mounted.current = false; loadGeneration.current++; loadAbort.current?.abort(); loadInFlight.current = null; };
+  }, [load]);
   const building = Boolean(catalog?.jobs.some(job => ACTIVE.includes(job.state)));
   const downloading = prewarmJobs.some(job => job.state === 'queued' || job.state === 'pulling');
   useEffect(() => {
@@ -224,13 +236,14 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
   const builderId = builderChoice ?? catalog?.builder?.id ?? '';
   const mode = draft.mode ?? registry?.mode ?? 'builtin';
 
-  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose(); }}>
+  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && (!busy || loading)) onClose(); }}>
     <div className="modal emulator-catalog" ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="emulator-catalog-heading">
       <div className="modal-top"><div><h2 id="emulator-catalog-heading">{t('ui.fc2f4f308632')}</h2>
-        <p className="modal-description">{t('ui.582601d6fa53')}</p></div>
-        <button type="button" className="icon-button" aria-label={t('ui.a7a4033657e8')} onClick={onClose} disabled={busy}><Icon name="close" size={19}/></button></div>
+        <p className="modal-description">{t('catalog.description')}</p></div>
+        <button type="button" className="icon-button" aria-label={t('ui.a7a4033657e8')} onClick={onClose} disabled={busy && !loading}><Icon name="close" size={19}/></button></div>
 
-      <div className="emulator-catalog-body">
+      <div className="emulator-catalog-body" aria-busy={loading}>
+        {loading ? <CatalogLoading /> : !catalog && error ? <CatalogLoadFailure error={error} onRetry={() => { setLoading(true); void load(); }} /> : <>
         <details className="emulator-catalog-settings" open={settingsOpen} onToggle={event => setSettingsOpen((event.currentTarget as HTMLDetailsElement).open)}>
           <summary>
             <strong>{t('ui.8d88e2cb8ebe')}</strong>
@@ -293,17 +306,16 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
           </li>)}</ul>
         </details>}
 
-        <div className="emulator-catalog-filters">
+        <fieldset className="emulator-catalog-filters" disabled={!catalog?.builder || !catalog.images.length}><legend className="sr-only">{t('ui.0627b8d2c490')}</legend>
           <label><span>{t('ui.7b1487ed07ac')}</span><select value={filters.android} onChange={event => setFilters(value => ({ ...value, android: event.target.value }))}><option value="">{t('ui.9796f335ca5b')}</option>{versions.map(version => <option key={version} value={version}>{t('ui.da01b8c0bb42')}{version}</option>)}</select></label>
           <label><span>{t('ui.47ea712ddb7d')}</span><select value={filters.device} onChange={event => setFilters(value => ({ ...value, device: event.target.value }))}><option value="">{t('ui.19161353d3bf')}</option>{Object.entries(DEVICES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label><span>{t('ui.c47552ab0170')}</span><select value={filters.flavor} onChange={event => setFilters(value => ({ ...value, flavor: event.target.value }))}><option value="">{t('ui.08865f4d341f')}</option>{Object.entries(FLAVORS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label><span>{t('ui.ca285db3dd75')}</span><select value={filters.state} onChange={event => setFilters(value => ({ ...value, state: event.target.value }))}><option value="">{t('ui.215816bf4210')}</option><option value="active">{t('ui.59a28f1b11df')}</option><option value="failed">{t('ui.bb095483d8f2')}</option><option value="cancelled">{t('ui.ed3a2d2e787b')}</option><option value="built">{t('ui.26a902cfe456')}</option><option value="missing">{t('ui.56ccc969331d')}</option></select></label>
           <button type="button" className="button outline small" disabled={busy || loading || !catalog?.builder} onClick={() => { setLoading(true); void load(true); }}><Icon name="refresh" size={15}/>{t('ui.163a016f3df7')}</button>
-        </div>
+        </fieldset>
 
         {error && <div className="inline-error" role="alert">{localizeText(error)}</div>}
-        {loading ? <div className="emulator-catalog-empty" role="status"><span className="loading-ring" aria-hidden="true"/>{t('ui.58cafd3693a5')}</div>
-          : !catalog?.builder ? <div className="emulator-catalog-empty">{t('ui.4d25ee11800a')}</div>
+        {!catalog?.builder ? <div className="emulator-catalog-empty">{t('ui.4d25ee11800a')}</div>
           : !visible.length ? <div className="emulator-catalog-empty">{t('ui.1a1e4991c2e8')}</div>
           : <ul className="emulator-catalog-list" aria-label={t('ui.0627b8d2c490')}>{visible.map(image => {
             const job = jobsByPackage.get(image.package);
@@ -335,13 +347,14 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
               </div>
             </li>;
           })}</ul>}
+        </>}
       </div>
 
       <div className="emulator-catalog-footer">
-        <span role="status" aria-live="polite">{buildSending ? t('ui.c792aacee413') : selected.size ? t('ui.a767eb85b546') + selected.size : building ? t('ui.a559dbfa4ef0') : t('ui.25cb2b3deb7d')}</span>
+        <span role="status" aria-live="polite">{loading ? t('catalog.loading') : !catalog && error ? t('catalog.failed') : buildSending ? t('ui.c792aacee413') : selected.size ? t('ui.a767eb85b546') + selected.size : building ? t('ui.a559dbfa4ef0') : t('ui.25cb2b3deb7d')}</span>
         <div className="modal-actions">
-          <button type="button" className="button outline" onClick={onClose} disabled={busy}>{t('ui.a7a4033657e8')}</button>
-          <button type="button" className="button primary emulator-catalog-build" disabled={!can('images.build') || busy || !ready || !selected.size} aria-busy={buildSending} onClick={() => void build()}>{buildSending ? <><span className="mini-spinner" aria-hidden="true"/>{t('ui.b9516a6281a2')}</> : <>{t('ui.c26ebde0601b')}{selected.size ? ' (' + selected.size + ')' : ''}</>}</button>
+          <button type="button" className="button outline" onClick={onClose} disabled={busy && !loading}>{t('ui.a7a4033657e8')}</button>
+          {!loading && catalog && <button type="button" className="button primary emulator-catalog-build" disabled={!can('images.build') || busy || !ready || !selected.size} aria-busy={buildSending} onClick={() => void build()}>{buildSending ? <><span className="mini-spinner" aria-hidden="true"/>{t('ui.b9516a6281a2')}</> : <>{t('ui.c26ebde0601b')}{selected.size ? ' (' + selected.size + ')' : ''}</>}</button>}
         </div>
       </div>
     </div>

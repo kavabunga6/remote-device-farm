@@ -1,7 +1,7 @@
 // Image operations do not change reported slots, devices or node policy. Their
 // reply must not wait for Android reconciliation and host telemetry collection;
 // the ordinary periodic heartbeat continues to refresh that information.
-const IMAGE_NODE_ACTIONS = new Set(['emulator-catalog', 'emulator-build', 'emulator-cancel', 'emulator-jobs', 'image-prewarm', 'image-cache','image-cache-remove']);
+const IMAGE_NODE_ACTIONS = new Set(['emulator-catalog-status', 'emulator-catalog', 'emulator-build', 'emulator-cancel', 'emulator-jobs', 'image-prewarm', 'image-cache','image-cache-remove']);
 
 export async function dispatchNodeAction(action, params, { registry, announce }) {
   const result = await registry.nodeAction(action, params);

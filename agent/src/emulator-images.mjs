@@ -1,3 +1,4 @@
+import { agentMessage } from './messages.mjs';
 import { tarArchive } from './tar-archive.mjs';
 import { BoundedImageBuilder } from './bounded-image-builder.mjs';
 export { tarArchive } from './tar-archive.mjs';
@@ -37,6 +38,8 @@ export class EmulatorImages {
   constructor({ docker, verify = async () => { throw new Error('Image runtime validation is not configured'); }, abi = hostAbi(), contextDir = new URL('../emulator-image/', import.meta.url), now = Date.now, stateDir, store = stateDir ? new ImageJobStore(stateDir) : null, builder = new BoundedImageBuilder({ docker, agentId: 'standalone', stateDir: stateDir ?? '/var/lib/rdf-image-builds' }) }) {
     Object.assign(this, { docker, verify, abi, contextDir, now, store, builder });
     this.cache = null;
+    this.catalogLoading = null;
+    this.catalogState = { phase: 'idle', startedAt: null, updatedAt: null, progress: null };
     this.jobs = store?.read() ?? [];
     this.running = null;
     this.runningController = null;
@@ -71,27 +74,32 @@ export class EmulatorImages {
   }
 
   /** The tools stage (Java + sdkmanager), rebuilt only when the bundled Dockerfile changes. */
-  async toolsImage() {
+  async toolsImage({ signal } = {}) {
+    this.catalogStage('checking_tools');
     const { hash } = await this.context();
     const tag = `rdf-emulator-tools:${hash}`;
     try { await this.docker.request('GET', `/images/${encodeURIComponent(tag)}/json`); return tag; }
     catch (error) { if (!/No such image|404/.test(String(error.message))) throw error; }
-    await this.build(tag, {}, { target: 'tools' });
+    this.catalogStage('preparing_tools');
+    await this.build(tag, {}, { target: 'tools', signal, onLine: line => {
+      this.catalogStage('preparing_tools', buildProgress(line, this.catalogState.progress ?? undefined));
+    } });
     return tag;
   }
 
   /** `sdkmanager --list` in a short-lived tools container; the network is only used to read Google's repository. */
-  async sdkList() {
-    const image = await this.toolsImage();
+  async sdkList({ signal } = {}) {
+    const image = await this.toolsImage({ signal });
+    this.catalogStage('fetching');
     const created = await this.docker.request('POST', '/containers/create', {
       Image: image, Cmd: ['sdkmanager', '--list', '--channel=0'], Tty: true,
       Labels: { 'remote-device-farm.managed': 'true', 'remote-device-farm.role': 'image-catalog' },
-      HostConfig: { AutoRemove: false, CapDrop: ['ALL'], SecurityOpt: ['no-new-privileges:true'], Memory: 1024 * 1024 * 1024 },
-    });
+      HostConfig: { AutoRemove: false, CapDrop: ['ALL'], SecurityOpt: ['no-new-privileges:true'], Memory: 1024 * 1024 * 1024, NanoCpus: 1000000000, PidsLimit: 128 },
+    }, { signal });
     try {
-      await this.docker.request('POST', `/containers/${created.Id}/start`);
-      const result = await this.docker.request('POST', `/containers/${created.Id}/wait`, undefined, { timeoutMs: 10 * 60_000 });
-      const output = await this.docker.request('GET', `/containers/${created.Id}/logs?stdout=1&stderr=1`, undefined, { raw: true, maxBytes: 4 * 1024 * 1024 });
+      await this.docker.request('POST', `/containers/${created.Id}/start`, undefined, { signal });
+      const result = await this.docker.request('POST', `/containers/${created.Id}/wait`, undefined, { timeoutMs: 10 * 60_000, signal });
+      const output = await this.docker.request('GET', `/containers/${created.Id}/logs?stdout=1&stderr=1`, undefined, { raw: true, maxBytes: 4 * 1024 * 1024, signal });
       const text = Buffer.isBuffer(output) ? output.toString('utf8') : String(output ?? '');
       if (result?.StatusCode !== 0) throw new Error('sdkmanager --list failed: ' + text.split('\n').slice(-5).join(' ').slice(0, 500));
       return text;
@@ -100,11 +108,34 @@ export class EmulatorImages {
     }
   }
 
+  catalogStage(phase, progress = null) {
+    this.catalogState = { ...this.catalogState, phase, progress, updatedAt: new Date(this.now()).toISOString() };
+  }
+
+  catalogStatus() { return { ...this.catalogState, progress: this.catalogState.progress ? { ...this.catalogState.progress } : null }; }
+
   async catalog({ refresh = false } = {}) {
-    if (refresh || !this.cache || this.now() - this.cache.at > CATALOG_TTL_MS) {
-      const entries = selectEntries(parseSdkList(await this.sdkList()), { abi: this.abi });
-      this.cache = { at: this.now(), entries };
-    }
+    if (this.catalogLoading) return this.catalogLoading;
+    if (!refresh && this.cache && this.now() - this.cache.at <= CATALOG_TTL_MS) return this.catalogSnapshot();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(new Error(agentMessage('agent.catalog.timeout'))), 14 * 60_000);
+    this.catalogState = { phase: 'checking_tools', startedAt: new Date(this.now()).toISOString(), updatedAt: new Date(this.now()).toISOString(), progress: null };
+    this.catalogLoading = (async () => {
+      try {
+        const list = await this.sdkList({ signal: controller.signal });
+        this.catalogStage('parsing');
+        const entries = selectEntries(parseSdkList(list), { abi: this.abi });
+        if (!entries.length) throw new Error(agentMessage('agent.catalog.empty'));
+        this.cache = { at: this.now(), entries };
+        this.catalogStage('ready');
+        return this.catalogSnapshot();
+      } catch (error) { this.catalogStage('failed'); throw error; }
+      finally { clearTimeout(timeout); this.catalogLoading = null; }
+    })();
+    return this.catalogLoading;
+  }
+
+  catalogSnapshot() {
     return {
       abi: this.abi, refreshedAt: new Date(this.cache.at).toISOString(),
       images: this.cache.entries.map((entry) => ({

@@ -144,6 +144,7 @@ export class AgentControl {
       case 'cameraImage': return this.withSessionLock(request.sessionId, () => this.cameraImage(request.sessionId, request.params));
       case 'emuConsole': return this.emuConsole(request.sessionId, request.args);
       case 'setPolicy': return this.serialPolicy(request.policy);
+      case 'emulatorCatalogStatus': return this.images.catalogStatus();
       case 'emulatorCatalog': return this.images.catalog({ refresh: request.refresh });
       case 'emulatorBuild':
         if (this.cacheCleanup) throw new Error('image_cache_busy');

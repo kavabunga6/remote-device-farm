@@ -104,6 +104,26 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /api/admin/emulator-images/catalog-status:
+    get:
+      operationId: getCatalogLoadStatus
+      tags: [Emulator images]
+      summary: Read the builder's current catalog-loading stage
+      x-permission: images.view
+      description: >
+        A short request while the catalogue request is in flight. Phases and timestamps originate at the
+        builder. An offline or unconfigured builder is reported explicitly. No logs or credentials are returned.
+      responses:
+        "200":
+          description: Current stage.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CatalogLoadStatus" }
+        default:
+          description: Request rejected.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /api/me:
     get:
       tags: [ Users ]
@@ -4707,6 +4727,30 @@ components:
       properties:
         enabled: { type: boolean }
         roleId: { type: string, format: uuid }
+    CatalogLoadStatus:
+      type: object
+      required: [builder, phase, startedAt, updatedAt, progress]
+      properties:
+        builder:
+          type: object
+          nullable: true
+          required: [id, name]
+          properties:
+            id: { type: string }
+            name: { type: string }
+        phase:
+          type: string
+          enum: [idle, checking_tools, preparing_tools, fetching, parsing, ready, failed, unconfigured, offline]
+        startedAt: { type: string, format: date-time, nullable: true }
+        updatedAt: { type: string, format: date-time, nullable: true }
+        progress:
+          type: object
+          nullable: true
+          required: [step, steps, percent]
+          properties:
+            step: { type: integer, minimum: 0 }
+            steps: { type: integer, minimum: 0 }
+            percent: { type: number, minimum: 0, maximum: 100, nullable: true }
     TrafficBodyPreview: {"type":"object","required":["text","mimeType","truncated","reason","capturedBytes","limit"],"properties":{"text":{"type":"string","nullable":true},"mimeType":{"type":"string"},"truncated":{"type":"boolean"},"reason":{"type":"string","enum":["disabled","encoded","binary"],"nullable":true},"capturedBytes":{"type":"integer","minimum":0,"maximum":4096},"limit":{"type":"integer","enum":[4096]}}}
     TrafficEntry: {"type":"object","required":["id","method","url","startedAt","status","durationMs","bytes","requestHeaders","responseHeaders"],"properties":{"id":{"type":"integer"},"captureId":{"type":"string"},"method":{"type":"string"},"url":{"type":"string"},"startedAt":{"type":"number"},"status":{"type":"integer","nullable":true},"statusSource":{"type":"string","enum":["proxy","upstream"],"nullable":true},"outcome":{"type":"string","enum":["pending","open","complete","error","stopped"]},"phase":{"type":"string","enum":["connect","send","wait","receive","tunnel","done"]},"errorKind":{"type":"string","nullable":true,"enum":["dns","timeout","refused","incomplete","reset","protocol","io"]},"errorPhase":{"type":"string","nullable":true},"durationMs":{"type":"number","nullable":true},"elapsedMs":{"type":"number","minimum":0},"bytes":{"type":"integer","minimum":0},"bytesSent":{"type":"integer","minimum":0},"bytesReceived":{"type":"integer","minimum":0},"timings":{"type":"object","properties":{"connect":{"type":"number","minimum":0},"send":{"type":"number","minimum":0},"wait":{"type":"number","minimum":0},"receive":{"type":"number","minimum":0}}},"requestHeaders":{"type":"array","items":{"type":"object","required":["name","value"],"properties":{"name":{"type":"string"},"value":{"type":"string"}}}},"responseHeaders":{"type":"array","items":{"type":"object","required":["name","value"],"properties":{"name":{"type":"string"},"value":{"type":"string"}}}},"requestBody":{"$ref":"#/components/schemas/TrafficBodyPreview"},"responseBody":{"$ref":"#/components/schemas/TrafficBodyPreview"}}}
     TrafficCapture: {"type":"object","required":["available","recording","entries"],"properties":{"available":{"type":"boolean"},"recording":{"type":"boolean"},"protocolVersion":{"type":"integer"},"runtimeVersion":{"type":"string"},"runtimeCompatible":{"type":"boolean"},"captureId":{"type":"string","nullable":true},"startedAt":{"type":"number","nullable":true},"stoppedAt":{"type":"number","nullable":true},"stopReason":{"type":"string","enum":["manual","time_limit","size_limit","recovery","start_failed"],"nullable":true},"proxyActive":{"type":"boolean"},"finalizing":{"type":"boolean"},"captureBodies":{"type":"boolean"},"pcapRequested":{"type":"boolean"},"pcapAvailable":{"type":"boolean"},"packetCount":{"type":"integer","minimum":0},"pcapState":{"type":"string","enum":["none","starting","recording","finalizing","stopped","error"]},"entries":{"type":"array","maxItems":200,"items":{"$ref":"#/components/schemas/TrafficEntry"}},"pcapBytes":{"type":"integer","minimum":0},"limit":{"type":"integer","minimum":0},"totalCaptured":{"type":"integer","minimum":0},"evicted":{"type":"integer","minimum":0},"rejectedConnections":{"type":"integer","minimum":0},"activeConnections":{"type":"integer","minimum":0},"connectionLimit":{"type":"integer","minimum":0}}}

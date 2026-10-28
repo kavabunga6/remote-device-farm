@@ -175,6 +175,14 @@
     "en": "This emulator does not have a virtual scene camera. Use a compatible phone or tablet image.",
     "ru": "У этого эмулятора нет камеры виртуальной сцены. Выберите совместимый образ телефона или планшета."
   },
+  "agent.catalog.empty": {
+    "ru": "Каталог Google не содержит образов для архитектуры сборщика.",
+    "en": "The Google catalog contains no images for the builder architecture."
+  },
+  "agent.catalog.timeout": {
+    "ru": "Истекло время подготовки каталога Google.",
+    "en": "Google catalog preparation timed out."
+  },
   "agent.codecFailed": {
     "ru": "Ошибка аудиокодера scrcpy {p0}",
     "en": "scrcpy {p0} audio encoder failed"

@@ -117,3 +117,25 @@ test('cache IPC supports bounded protected references and larger inventories wit
   await assert.rejects(client.request('hostInfo',{extra:'x'.repeat(20000)}),/Control request exceeds limit/);
  }finally{await new Promise(resolve=>server.close(resolve));}
 });
+
+
+test('catalogue status uses an independent typed IPC request while preparation is pending', async () => {
+  const socketPath = process.platform === 'win32' ? '\\\\.\\pipe\\rdf-catalog-' + randomUUID()
+    : path.join(os.tmpdir(), 'rdf-catalog-' + randomUUID() + '.sock');
+  let finish, started;
+  const ready = new Promise(resolve => { started = resolve; });
+  const pending = new Promise(resolve => { finish = resolve; });
+  const status = { phase: 'preparing_tools', startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), progress: { step: 2, steps: 4, percent: null } };
+  const server = await createControlServer({ handle: async request => {
+    if (request.op === 'emulatorCatalog') { started(); await pending; return { images: [] }; }
+    return status;
+  } }, socketPath);
+  let catalog;
+  try {
+    const client = new ControlClient(socketPath);
+    catalog = client.emulatorCatalog(); await ready;
+    assert.deepEqual(await client.emulatorCatalogStatus(), status);
+    await assert.rejects(client.request('emulatorCatalogStatus', { containerId: 'other' }), /Unexpected/);
+    finish(); assert.deepEqual(await catalog, { images: [] });
+  } finally { finish(); await catalog; await new Promise(resolve => server.close(resolve)); }
+});

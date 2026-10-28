@@ -13842,5 +13842,141 @@
   "audit.auth.registration_settings_updated": {
     "ru": "Изменение настроек регистрации",
     "en": "Registration settings changed"
+  },
+  "catalog.description": {
+    "ru": "Выберите образы Android. Сборщик создаст образы и профили устройств.",
+    "en": "Choose Android images. The builder will create the images and device profiles."
+  },
+  "catalog.connecting": {
+    "ru": "Подключаемся к серверу",
+    "en": "Connecting to the server"
+  },
+  "catalog.connectingHint": {
+    "ru": "Запрашиваем состояние каталога и сборщика.",
+    "en": "Requesting the catalog and builder status."
+  },
+  "catalog.idle": {
+    "ru": "Подключились к сборщику",
+    "en": "Connected to the builder"
+  },
+  "catalog.idleHint": {
+    "ru": "Ожидаем начала загрузки каталога.",
+    "en": "Waiting for the catalog request to start."
+  },
+  "catalog.checking_tools": {
+    "ru": "Проверяем инструменты Google",
+    "en": "Checking Google tools"
+  },
+  "catalog.checking_toolsHint": {
+    "ru": "Сборщик проверяет, готов ли SDK Manager.",
+    "en": "The builder is checking whether SDK Manager is ready."
+  },
+  "catalog.preparing_tools": {
+    "ru": "Готовим инструменты Google",
+    "en": "Preparing Google tools"
+  },
+  "catalog.preparing_toolsHint": {
+    "ru": "При первом запуске сборщик собирает контейнер с SDK Manager. Это может занять несколько минут.",
+    "en": "On the first run, the builder prepares a container with SDK Manager. This can take a few minutes."
+  },
+  "catalog.fetching": {
+    "ru": "Получаем каталог Google",
+    "en": "Fetching the Google catalog"
+  },
+  "catalog.fetchingHint": {
+    "ru": "SDK Manager запрашивает список доступных образов.",
+    "en": "SDK Manager is requesting the list of available images."
+  },
+  "catalog.parsing": {
+    "ru": "Обрабатываем список образов",
+    "en": "Processing the image list"
+  },
+  "catalog.parsingHint": {
+    "ru": "Выбираем образы для архитектуры сборщика.",
+    "en": "Selecting images for the builder’s architecture."
+  },
+  "catalog.ready": {
+    "ru": "Каталог получен",
+    "en": "Catalog received"
+  },
+  "catalog.readyHint": {
+    "ru": "Загружаем сведения о сборках и профилях.",
+    "en": "Loading build and profile information."
+  },
+  "catalog.failed": {
+    "ru": "Не удалось загрузить каталог",
+    "en": "Could not load the catalog"
+  },
+  "catalog.failedHint": {
+    "ru": "Ошибка при подготовке инструментов или получении списка Google. Повторите загрузку.",
+    "en": "Preparing the tools or fetching the Google list failed. Try loading the catalog again."
+  },
+  "catalog.unconfigured": {
+    "ru": "Сборщик не выбран",
+    "en": "No builder selected"
+  },
+  "catalog.unconfiguredHint": {
+    "ru": "Открываем настройки сборщика.",
+    "en": "Opening the builder settings."
+  },
+  "catalog.offline": {
+    "ru": "Нет связи со сборщиком",
+    "en": "Builder is offline"
+  },
+  "catalog.offlineHint": {
+    "ru": "Проверьте состояние узла в разделе «Узлы» и повторите загрузку.",
+    "en": "Check the node status in Nodes and try again."
+  },
+  "catalog.connection_lost": {
+    "ru": "Не удаётся получить состояние загрузки",
+    "en": "Cannot retrieve the loading status"
+  },
+  "catalog.connection_lostHint": {
+    "ru": "Нет ответа от сервера или сборщика. Проверяем соединение; можно закрыть окно и повторить позже.",
+    "en": "The server or builder is not responding. Checking the connection; you can close this window and try later."
+  },
+  "catalog.elapsed": {
+    "ru": "Прошло: {p0}",
+    "en": "Elapsed: {p0}"
+  },
+  "catalog.lastContact": {
+    "ru": "Сборщик ответил {p0} с назад",
+    "en": "Builder responded {p0}s ago"
+  },
+  "catalog.lastProgress": {
+    "ru": "Этап обновлён {p0} с назад",
+    "en": "Stage updated {p0}s ago"
+  },
+  "catalog.step": {
+    "ru": "Шаг подготовки: {p0} из {p1}",
+    "en": "Preparation step: {p0} of {p1}"
+  },
+  "catalog.downloadPercent": {
+    "ru": "Загрузка: {p0}%",
+    "en": "Download: {p0}%"
+  },
+  "catalog.loading": {
+    "ru": "Загрузка каталога",
+    "en": "Loading catalog"
+  },
+  "catalog.retry": {
+    "ru": "Повторить загрузку",
+    "en": "Try again"
+  },
+  "catalog.loadFailureHint": {
+    "ru": "Настройки и фильтры появятся после загрузки каталога.",
+    "en": "Settings and filters will appear once the catalog loads."
+  },
+  "catalog.longWait": {
+    "ru": "Ответ от Google ещё не получен. Проверка связи со сборщиком продолжается.",
+    "en": "Google has not returned the catalog yet. The builder connection is still being checked."
+  },
+  "agent.catalog.timeout": {
+    "ru": "Истекло время подготовки каталога Google.",
+    "en": "Google catalog preparation timed out."
+  },
+  "agent.catalog.empty": {
+    "ru": "Каталог Google не содержит образов для архитектуры сборщика.",
+    "en": "The Google catalog contains no images for the builder architecture."
   }
 }

@@ -30,7 +30,7 @@ function validateBuildRequest(request) {
 
 export function validateControlRequest(request) {
   if (!request || typeof request !== 'object' || Array.isArray(request) ||
-      typeof request.op !== 'string' || !['hostInfo', 'recover', 'inventory', 'start', 'stop', 'diagnostics', 'setEgress', 'emuConsole', 'networkInspector', 'cameraImage', 'setPolicy', 'emulatorCatalog', 'emulatorBuild', 'emulatorCancel', 'emulatorJobs', 'prewarmImage', 'imageCache', 'imageCacheRemove'].includes(request.op)) {
+      typeof request.op !== 'string' || !['hostInfo', 'recover', 'inventory', 'start', 'stop', 'diagnostics', 'setEgress', 'emuConsole', 'networkInspector', 'cameraImage', 'setPolicy', 'emulatorCatalog', 'emulatorCatalogStatus', 'emulatorBuild', 'emulatorCancel', 'emulatorJobs', 'prewarmImage', 'imageCache', 'imageCacheRemove'].includes(request.op)) {
     throw new Error('Invalid control operation');
   }
   const fields = {
@@ -42,7 +42,7 @@ export function validateControlRequest(request) {
     cameraImage: ['op', 'sessionId', 'params'], networkInspector: ['op', 'sessionId', 'params'],
     setPolicy: ['op', 'policy'],
     prewarmImage: ['op', 'image', 'auth'],
-    emulatorCatalog: ['op', 'refresh'], emulatorBuild: ['op', 'packages', 'target'], emulatorJobs: ['op', 'acknowledged'], emulatorCancel: ['op', 'jobId'],
+    emulatorCatalogStatus: ['op'], emulatorCatalog: ['op', 'refresh'], emulatorBuild: ['op', 'packages', 'target'], emulatorJobs: ['op', 'acknowledged'], emulatorCancel: ['op', 'jobId'],
   }[request.op];
   if (Object.keys(request).some((key) => !fields.includes(key)) ||
       fields.some((key) => key !== 'acknowledged' && !Object.hasOwn(request, key))) {
@@ -157,6 +157,7 @@ export class ControlClient {
   emuConsole(sessionId, args) { return this.request('emuConsole', { sessionId, args }, 30_000); }
   setPolicy(policy) { return this.request('setPolicy', { policy }); }
   // The first catalog call builds the sdkmanager tools image, which takes a few minutes.
+  emulatorCatalogStatus() { return this.request('emulatorCatalogStatus', {}, 10_000); }
   emulatorCatalog(refresh = false) { return this.request('emulatorCatalog', { refresh }, 15 * 60_000); }
   emulatorBuild(packages, target) { return this.request('emulatorBuild', { packages, target }, 60_000); }
   prewarmImage(image, auth = null) { return this.request('prewarmImage', { image, auth }, 30 * 60_000); }

@@ -346,3 +346,49 @@ for (const theme of ['light', 'dark']) for (const width of [1366, 390]) {
     await page.screenshot({ path: capturePath(`catalog-cancellation-${theme}-${width}.png`) });
   });
 }
+
+
+for (const theme of ['dark', 'light']) test(`catalog loading blocks controls, reports builder activity and stays closable in ${theme}`, async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 950 });
+  await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: { theme, fontFamily: 'system', fontScale: 1, defaultAdbKeyId: null } } }));
+  let finish: (() => void) | undefined;
+  await page.route(catalogRoute, async route => { await new Promise<void>(resolve => { finish = resolve; }); await route.fulfill({ json: catalog }).catch(() => {}); });
+  let phase = 'preparing_tools';
+  await page.route('**/api/admin/emulator-images/catalog-status', route => route.fulfill({ json: { builder: catalog.builder, phase, startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), progress: { step: 3, steps: 8, percent: null } } }));
+  await page.goto('/#/admin/profiles'); await page.getByRole('button', { name: 'Каталог образов', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Каталог образов Google', exact: true });
+  await expect(dialog.locator('.catalog-loading')).toHaveAttribute('data-phase', 'preparing_tools');
+  await expect(dialog.locator('.catalog-loading')).toContainText('Шаг подготовки: 3 из 8');
+  await expect(dialog.locator('.catalog-loading')).toContainText('Сборщик ответил');
+  await expect(dialog.getByRole('combobox')).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Собрать', exact: true })).toHaveCount(0);
+  await page.screenshot({ path: capturePath(`catalog-loading-${theme}.png`), fullPage: true });
+  phase = 'fetching'; await expect(dialog.locator('.catalog-loading')).toHaveAttribute('data-phase', 'fetching');
+  finish!(); await expect(dialog.locator('.emulator-catalog-list')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Обновить список', exact: true }).click();
+  await expect(dialog.locator('.catalog-loading')).toBeVisible();
+  await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0); finish?.();
+});
+
+test('catalog failure shows retry without claiming that no builder is selected', async ({ page }) => {
+  let calls = 0;
+  await page.route(catalogRoute, route => { calls++; return calls === 1 ? route.fulfill({ status: 503, json: { error: { message: 'Builder is offline' } } }) : route.fulfill({ json: catalog }); });
+  await page.goto('/#/admin/profiles'); await page.getByRole('button', { name: 'Каталог образов', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Каталог образов Google', exact: true });
+  await expect(dialog.locator('.catalog-load-failure')).toBeVisible();
+  await expect(dialog).not.toContainText('Выберите узел-сборщик в настройках выше');
+  await expect(dialog.getByRole('combobox')).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Повторить загрузку', exact: true }).click();
+  await expect(dialog.locator('.emulator-catalog-list')).toBeVisible(); expect(calls).toBe(2);
+});
+
+test('missing catalog status response is shown separately from an active catalog request', async ({ page }) => {
+  let finish: (() => void) | undefined;
+  await page.route(catalogRoute, async route => { await new Promise<void>(resolve => { finish = resolve; }); await route.fulfill({ json: catalog }).catch(() => {}); });
+  await page.route('**/api/admin/emulator-images/catalog-status', route => route.abort('connectionfailed'));
+  await page.goto('/#/admin/profiles'); await page.getByRole('button', { name: 'Каталог образов', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Каталог образов Google', exact: true });
+  await expect(dialog.locator('.catalog-loading')).toHaveAttribute('data-phase', 'connection_lost');
+  await expect(dialog.locator('.catalog-loading')).toContainText('Нет ответа от сервера или сборщика');
+  await dialog.locator('.emulator-catalog-footer').getByRole('button', { name: 'Закрыть', exact: true }).click(); await expect(dialog).toHaveCount(0); finish?.();
+});

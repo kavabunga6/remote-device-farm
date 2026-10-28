@@ -344,3 +344,48 @@ test('a changed local tag cannot publish another artifact after validation',asyn
   assert.equal(images.jobList()[0].state,'failed');assert.match(images.jobList()[0].error,/tag changed/);
   assert.ok(!docker.calls.some(call=>call.path.includes('/push')));
 });
+
+
+test('concurrent catalogue loads share preparation and status follows real tools and fetch stages', async () => {
+  const docker = fakeDocker();
+  let finish;
+  const wait = new Promise(resolve => { finish = resolve; });
+  const request = docker.request.bind(docker);
+  docker.request = async (method, path, body, options) => {
+    if (path.endsWith('/wait')) { await wait; return { StatusCode: 0 }; }
+    return request(method, path, body, options);
+  };
+  const images = testedImages({ docker });
+  assert.equal(images.catalogStatus().phase, 'idle');
+  const first = images.catalog(), second = images.catalog({ refresh: true });
+  for (let i = 0; i < 100 && images.catalogStatus().phase !== 'fetching'; i++) await new Promise(resolve => setTimeout(resolve, 5));
+  assert.equal(images.catalogStatus().phase, 'fetching');
+  assert.ok(images.catalogStatus().startedAt); assert.ok(images.catalogStatus().updatedAt);
+  finish();
+  assert.deepEqual(await first, await second);
+  assert.equal(images.catalogStatus().phase, 'ready');
+  assert.equal(docker.calls.filter(call => call.path === '/containers/create').length, 1);
+  await images.catalog();
+  assert.equal(docker.calls.filter(call => call.path === '/containers/create').length, 1);
+});
+
+test('catalogue status reports tools preparation and failure, and a retry can recover', async () => {
+  let finish;
+  const wait = new Promise(resolve => { finish = resolve; });
+  let fail = true;
+  const images = testedImages({ docker: fakeDocker(), builder: { build: async (_tag, _args, options) => {
+    options.onLine('Step 2/7 : RUN sdkmanager');
+    await wait;
+    if (fail) throw new Error('Synthetic tools build failure');
+  } } });
+  const first = images.catalog();
+  for (let i = 0; i < 100 && images.catalogStatus().phase !== 'preparing_tools'; i++) await new Promise(resolve => setTimeout(resolve, 5));
+  assert.equal(images.catalogStatus().phase, 'preparing_tools');
+  assert.equal(images.catalogStatus().progress.step, 2);
+  finish();
+  await assert.rejects(first, /Synthetic tools build failure/);
+  assert.equal(images.catalogStatus().phase, 'failed');
+  assert.equal(images.catalogLoading, null);
+  fail = false; await images.catalog();
+  assert.equal(images.catalogStatus().phase, 'ready');
+});
