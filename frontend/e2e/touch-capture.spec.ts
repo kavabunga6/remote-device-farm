@@ -138,7 +138,15 @@ async function inspectCapture(page: Page, type: 'image/png' | 'video/webm', time
           inspect(metadata.mediaTime);
           callback = player.requestVideoFrameCallback(frame);
         };
-        player.onended = () => { clearTimeout(timer); player.cancelVideoFrameCallback(callback); resolve(); };
+        player.onended = () => {
+          player.cancelVideoFrameCallback(callback);
+          // Ended can precede the final compositor callback. Sample the actual
+          // decoded last frame as well, after its texture has been presented.
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            try { inspect(player.currentTime); clearTimeout(timer); resolve(); }
+            catch (error) { clearTimeout(timer); reject(error); }
+          }));
+        };
         player.onerror = () => { clearTimeout(timer); player.cancelVideoFrameCallback(callback); reject(new Error('WebM decode failed')); };
         callback = player.requestVideoFrameCallback(frame);
         void player.play().catch(reject);

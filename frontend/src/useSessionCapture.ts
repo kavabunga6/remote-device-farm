@@ -1,4 +1,5 @@
 import { t } from './i18n';
+import { scheduleCaptureStop } from './capture-finalization';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import type { TouchIndicatorSnapshot } from './useTouchIndicator';
 
@@ -20,7 +21,7 @@ type ActiveRecording = {
   drawTimer: number;
   clockTimer: number;
   drawFrame: () => void;
-  stopTimer: number | null;
+  cancelStop: (() => void) | null;
   stopping: boolean;
   chunks: Blob[];
   filename: string;
@@ -142,10 +143,8 @@ export function useSessionCapture({ sessionId, status, format, imageRef, canvasR
     if (mountedRef.current) { setRecording(false); setSaving(true); }
     try { active.drawFrame(); }
     catch { /* Finalize the recording even if its source became unreadable. */ }
-    // Canvas capture delivers the requested frame asynchronously. Let it reach
-    // the encoder before stop() flushes the remaining media data.
-    active.stopTimer = window.setTimeout(() => {
-      active.stopTimer = null;
+    // Capture the painted final frame before asking the encoder to flush it.
+    active.cancelStop = scheduleCaptureStop(() => {
       if (active.recorder.state !== 'inactive') active.recorder.stop();
     }, Math.ceil(3000 / RECORDING_FPS));
   }, []);
@@ -193,7 +192,7 @@ export function useSessionCapture({ sessionId, status, format, imageRef, canvasR
       const recorder = createRecorder(stream);
       const chunks: Blob[] = [];
       const active: ActiveRecording = {
-        recorder, stream, drawTimer: 0, clockTimer: 0, drawFrame: draw, stopTimer: null, stopping: false, chunks,
+        recorder, stream, drawTimer: 0, clockTimer: 0, drawFrame: draw, cancelStop: null, stopping: false, chunks,
         filename: filename(sessionId, 'webm'),
       };
       let recordedBytes = 0;
@@ -212,7 +211,8 @@ export function useSessionCapture({ sessionId, status, format, imageRef, canvasR
         stopRecording();
       };
       recorder.onstop = () => {
-        if (active.stopTimer !== null) window.clearTimeout(active.stopTimer);
+        active.cancelStop?.();
+        active.cancelStop = null;
         window.clearInterval(active.drawTimer);
         window.clearInterval(active.clockTimer);
         active.stream.getTracks().forEach(track => track.stop());
@@ -278,7 +278,8 @@ export function useSessionCapture({ sessionId, status, format, imageRef, canvasR
       const active = recordingRef.current;
       if (!active) return;
       recordingRef.current = null;
-      if (active.stopTimer !== null) window.clearTimeout(active.stopTimer);
+      active.cancelStop?.();
+      active.cancelStop = null;
       window.clearInterval(active.drawTimer);
       window.clearInterval(active.clockTimer);
       if (active.recorder.state !== 'inactive') active.recorder.stop();
