@@ -422,3 +422,19 @@ test('create refuses a profile id together with a device selector', t => {
   assert.match(result.stderr, /not both/);
   assert.equal(f.requests().length, 0);
 });
+
+test('GNU timeout detection drains version output before executing ADB', t => {
+  const f = fixture(t, [response('POST', '/api/sessions/' + session + '/adb-port-access', { host: '192.0.2.5', port: 15555 }, 201)], saved());
+  writeFileSync(join(f.bin, 'timeout'), `#!/usr/bin/env bash
+set -e
+if [ "$1" = --version ]; then
+  printf '%s\\n' 'timeout (GNU coreutils) test'
+  for ((i=0;i<4096;i++)); do printf '%080d\\n' 0; done
+  exit 0
+fi
+shift
+exec "$@"
+`, { mode: 0o755 });
+  succeeded(f.run('connect', '3'));
+  assert.equal(f.requests().filter(entry => entry.adb).length, 2);
+});
