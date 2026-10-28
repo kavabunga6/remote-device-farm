@@ -29,6 +29,8 @@ jobs:
           printf '%s  %s\n' "$GITLEAKS_SHA256" "$archive" | sha256sum --check --strict
           tar -xzf "$archive" -C "$RUNNER_TEMP" gitleaks
           "$RUNNER_TEMP/gitleaks" git --log-opts=--all --redact=100 --no-banner
+      - name: Check secret scanner boundaries
+        run: node scripts/check-secret-scanner.mjs "$RUNNER_TEMP/gitleaks"
 
   docs-and-scripts:
     runs-on: ubuntu-latest

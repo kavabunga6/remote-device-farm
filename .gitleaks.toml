@@ -1,0 +1,14 @@
+title = "Remote Device Farm secret detection"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Generated message identifiers in localization dictionaries"
+condition = "AND"
+regexTarget = "secret"
+regexes = ['''^(?:ui\.[0-9a-f]{12}|[a-z][a-z0-9-]*\.[0-9a-f]{10})$''']
+paths = ['''(?:^|[\\/])(?:shared[\\/](?:locales[\\/][^\\/]+|diagnostics)\.json|agent[\\/]src[\\/]generated[\\/]diagnostics\.json)$''']
