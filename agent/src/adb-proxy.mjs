@@ -79,8 +79,8 @@ export class AdbServerFilter {
       rewritten = `host:transport:${this.serial}`;
     } else if (service.startsWith('host-serial:')) {
       const remainder = service.slice('host-serial:'.length);
-      const colon = remainder.indexOf(':');
-      const action = colon >= 0 ? remainder.slice(colon + 1) : '';
+      const colon = remainder.lastIndexOf(':');
+      const action = colon > 0 ? remainder.slice(colon + 1) : '';
       if (!safeSerialServices.has(action) || rest.length) throw new Error('ADB host service is not allowed');
       this.state = 'single';
       rewritten = `host-serial:${this.serial}:${action}`;
