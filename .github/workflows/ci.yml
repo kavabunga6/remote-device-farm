@@ -204,7 +204,9 @@ jobs:
           echo "RDF_STOCK_ADB=$(command -v adb)" >> "$GITHUB_ENV"
       - name: Install full Chrome with H264 for UI tests
         if: matrix.component == 'frontend'
-        run: npx playwright install --with-deps chrome
+        run: |
+          npx playwright install --with-deps chrome
+          sudo apt-get install -y ffmpeg
       - name: Install server dependencies for API integration tests
         if: matrix.component == 'frontend'
         run: npm --prefix ../server ci
@@ -294,7 +296,10 @@ jobs:
       - run: npm ci --prefix frontend
       - name: Install full Chrome and media libraries
         working-directory: frontend
-        run: npx playwright install --with-deps chrome
+        run: |
+          npx playwright install --with-deps chrome
+          sudo apt-get install -y ffmpeg
+          for tool in ffmpeg ffprobe; do command -v "$tool"; done
       - name: Verify werift is installed
         working-directory: agent
         run: node --input-type=module -e "await import('werift')"

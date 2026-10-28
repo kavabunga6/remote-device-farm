@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { inspectCapture } from './support/capture-pixels';
 
 const sessionId = 'cbd55091-aaaa-bbbb-cccc-000000000001';
 const codec = { type: 'video-config', data: 'AAAAAWdCAAk=' };
@@ -26,13 +27,7 @@ async function fixture(page: Page, options: FixtureOptions = {}) {
   await page.addInitScript(({ landscape, native }) => {
     const target = window as any;
     const RealSocket = window.WebSocket;
-    target.__captures = [];
     target.__sentInputs = [];
-    const objectUrl = URL.createObjectURL.bind(URL);
-    URL.createObjectURL = value => {
-      if (value instanceof Blob) target.__captures.push(value);
-      return objectUrl(value);
-    };
     target.__sourceNative = native;
     const source = () => {
       const canvas = document.createElement('canvas');
@@ -95,83 +90,6 @@ async function fixture(page: Page, options: FixtureOptions = {}) {
 }
 async function send(page: Page, message: object) { await page.evaluate(value => (window as any).__sendTouchMessage(value), message); }
 
-// Decode the actual downloaded PNG/WebM bytes with the browser codecs, then inspect pixels.
-// Neither canvas captureStream nor MediaRecorder nor video decoding is mocked.
-async function inspectCapture(page: Page, type: 'image/png' | 'video/webm', times: number[] | 'timeline', landscape: boolean) {
-  return page.evaluate(async ({ type, times, landscape }) => {
-    const blob = [...(window as any).__captures as Blob[]].reverse().find(value => value.type.startsWith(type));
-    if (!blob) throw new Error('No real capture was downloaded');
-    const canvas = document.createElement('canvas');
-    let source: CanvasImageSource;
-    let video: HTMLVideoElement | null = null;
-    if (type === 'image/png') {
-      const bitmap = await createImageBitmap(blob);
-      canvas.width = bitmap.width; canvas.height = bitmap.height; source = bitmap;
-    } else {
-      video = document.createElement('video'); video.muted = true; video.preload = 'auto';
-      const ready = new Promise<void>((resolve, reject) => { video!.onloadeddata = () => resolve(); video!.onerror = () => reject(new Error('WebM decode failed')); });
-      video.src = URL.createObjectURL(blob); document.body.append(video); await ready;
-      canvas.width = video.videoWidth; canvas.height = video.videoHeight; source = video;
-    }
-    const context = canvas.getContext('2d', { willReadFrequently: true })!;
-    const frameWidth = type === 'video/webm' ? landscape ? 1280 : 720 : canvas.width;
-    const frameHeight = type === 'video/webm' ? landscape ? 720 : 1280 : canvas.height;
-    const left = (canvas.width - frameWidth) / 2, top = (canvas.height - frameHeight) / 2;
-    const samples: { time: number; count: number; green: number; x: number | null; y: number | null }[] = [];
-    const inspect = (time: number) => {
-      context.drawImage(source, 0, 0);
-      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-      let count = 0, green = 0, sumX = 0, sumY = 0;
-      for (let i = 0; i < pixels.length; i += 4) {
-        const r = pixels[i], g = pixels[i+1], b = pixels[i+2];
-        const isGreen = g-r > 30 && g-b > 10 && g > 80;
-        if (isGreen) green++;
-        if (isGreen || r > 160 && g > 160 && b > 160) {
-          count++; sumX += (i / 4) % canvas.width; sumY += Math.floor(i / 4 / canvas.width);
-        }
-      }
-      samples.push({ time, count, green, x: count ? (sumX / count - left) / frameWidth : null, y: count ? (sumY / count - top) / frameHeight : null });
-    };
-    if (times === 'timeline') {
-      if (!video) throw new Error('A video is required for timeline inspection');
-      // Inspect presented frames of the real file. A completed seek can still
-      // leave drawImage with the previous compositor frame on some platforms.
-      const player = video; player.playbackRate = .5;
-      await new Promise<void>((resolve, reject) => {
-        let callback = 0;
-        const timer = window.setTimeout(() => { player.cancelVideoFrameCallback(callback); player.pause(); reject(new Error('WebM playback timed out')); }, 15000);
-        const frame: VideoFrameRequestCallback = (_now, metadata) => {
-          inspect(metadata.mediaTime);
-          callback = player.requestVideoFrameCallback(frame);
-        };
-        player.onended = () => {
-          player.cancelVideoFrameCallback(callback);
-          // Ended can precede the final compositor callback. Sample the actual
-          // decoded last frame as well, after its texture has been presented.
-          requestAnimationFrame(() => requestAnimationFrame(() => {
-            try { inspect(player.currentTime); clearTimeout(timer); resolve(); }
-            catch (error) { clearTimeout(timer); reject(error); }
-          }));
-        };
-        player.onerror = () => { clearTimeout(timer); player.cancelVideoFrameCallback(callback); reject(new Error('WebM decode failed')); };
-        callback = player.requestVideoFrameCallback(frame);
-        void player.play().catch(reject);
-      });
-    } else {
-      for (const time of times) {
-        if (video) await new Promise<void>((resolve, reject) => {
-          const timer = window.setTimeout(() => reject(new Error('WebM seek timed out')), 3000);
-          video!.onseeked = () => { clearTimeout(timer); requestAnimationFrame(() => requestAnimationFrame(() => resolve())); };
-          video!.currentTime = time;
-        });
-        inspect(time);
-      }
-    }
-    video?.remove();
-    return { mime: blob.type, bytes: blob.size, width: canvas.width, height: canvas.height, samples };
-  }, { type, times, landscape });
-}
-
 for (const landscape of [false, true]) {
   test(`fallback tap and drag are encoded in real PNG and WebM with ${landscape ? 'landscape' : 'portrait'} letterboxing`, async ({ page }, testInfo) => {
     test.setTimeout(60_000); // Decode the complete short recording at full resolution.
@@ -204,7 +122,7 @@ for (const landscape of [false, true]) {
     await (await pngDownload).saveAs(testInfo.outputPath('tap.png'));
     const tap = await page.evaluate(() => (window as any).__tapCapture);
     expect(tap.visible).toBe(true);
-    const png = await inspectCapture(page, 'image/png', [0], landscape);
+    const png = await inspectCapture(testInfo.outputPath('tap.png'), 'image/png', [0], landscape);
     expect(png.samples[0].count).toBeGreaterThan(100);
     expect(png.samples[0].x).toBeCloseTo(.25, 2); expect(png.samples[0].y).toBeCloseTo(.3, 2);
     await page.waitForTimeout(220);
@@ -225,7 +143,7 @@ for (const landscape of [false, true]) {
     const webmDownload = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Остановить запись экрана', exact: true }).click();
     await (await webmDownload).saveAs(testInfo.outputPath('touches.webm'));
-    const webm = await inspectCapture(page, 'video/webm', 'timeline', landscape);
+    const webm = await inspectCapture(testInfo.outputPath('touches.webm'), 'video/webm', 'timeline', landscape);
     await testInfo.attach('decoded-pixel-results', { body: JSON.stringify({ png, webm }), contentType: 'application/json' });
     expect(webm.samples[0].count).toBe(0);
     const assertTouch = (index: number, x: number, y: number) => {
@@ -270,7 +188,7 @@ test('native capability changes on identical video config suppress doubled overl
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Остановить запись экрана', exact: true }).click();
   await (await download).saveAs(testInfo.outputPath('native-touch.webm'));
-  const result = await inspectCapture(page, 'video/webm', [.15, .3], false);
+  const result = await inspectCapture(testInfo.outputPath('native-touch.webm'), 'video/webm', [.15, .3], false);
   for (const sample of result.samples) {
     expect(sample.count).toBeGreaterThan(100); expect(sample.green).toBe(0);
     expect(sample.x).toBeCloseTo(.2, 2); expect(sample.y).toBeCloseTo(.3, 2);
