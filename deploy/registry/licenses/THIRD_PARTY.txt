@@ -8,6 +8,7 @@ Lockfiles pin JavaScript dependencies; inspect each installed package's
 | Component | License / source |
 | --- | --- |
 | React, Express, ws, multer, pg and most JS utilities | See installed package metadata and notices |
+| bundletool, downloaded with a pinned SHA256 | [Apache-2.0](https://github.com/google/bundletool/blob/master/LICENSE); preserve the bundled dependency notices |
 | scrcpy server, downloaded with a pinned SHA256 | [Apache-2.0](https://github.com/Genymobile/scrcpy/blob/master/LICENSE) |
 | HQarroum Docker Android adapter (legacy, optional) | [MIT, copyright Halim Qarroum](https://github.com/HQarroum/docker-android/blob/master/LICENSE) |
 | Onest and JetBrains Mono fonts | SIL Open Font License 1.1; license files in the Fontsource packages |
