@@ -1,3 +1,4 @@
+import { downloadFile } from './browser-files';
 import { getLocale, localizeText, t } from './i18n';
 import { useEffect, useRef, useState } from 'react';
 import { api, type AgentBundleInfo, type Host } from './api';
@@ -47,14 +48,7 @@ function validHostIp(value: string): boolean {
 }
 
 function downloadConfiguration(content: string): void {
-  const url = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = '.env.agent';
-  document.body.append(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadFile('.env.agent', content, { type: 'text/plain;charset=utf-8', revokeAfterMs: 1000 });
 }
 
 export function AgentOnboardingDialog({ existingHostId, onClose, onChanged }: { existingHostId?: string; onClose: () => void; onChanged: () => void }) {

@@ -1,3 +1,4 @@
+import { downloadFile as downloadKeyFile } from './browser-files';
 import { roleLabel } from './permissions';
 import { getLocale, localizeText, t } from './i18n';
 import { useEffect, useRef, useState } from 'react';
@@ -21,16 +22,6 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : t('ui.8f9c4884b8f9');
 }
 
-function downloadKeyFile(filename: string, content: string): void {
-  const url = URL.createObjectURL(new Blob([content], { type: 'application/octet-stream' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
-}
 
 export function AdbKeysPage({ user, embedded = false, defaultAdbKeyId = null, onDefaultKeyChanged, onKeysChanged }: { user: User; embedded?: boolean; defaultAdbKeyId?: string | null; onDefaultKeyChanged?: (id: string | null) => Promise<void>; onKeysChanged?: () => void }) {
   const [farmKey, setFarmKey] = useState<AdbUserKey | null>(null);

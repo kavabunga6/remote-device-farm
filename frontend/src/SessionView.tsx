@@ -1,3 +1,4 @@
+import { downloadFile as downloadKeyFile } from './browser-files';
 import { can } from './permissions';
 import { localizeText, getLocale, t } from './i18n';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
@@ -37,17 +38,6 @@ import { useSessionCapture } from './useSessionCapture';
 
 const CONSOLE_WIDTH_KEY = 'rdf-console-width';
 const CONSOLE_HEIGHT_KEY = 'rdf-console-height';
-
-function downloadKeyFile(filename: string, content: string): void {
-  const url = URL.createObjectURL(new Blob([content], { type: 'application/octet-stream' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
-}
 
 function readDimension(key: string, fallback: number, min: number, max: number): number {
   try {
