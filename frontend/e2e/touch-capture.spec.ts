@@ -3,6 +3,16 @@ import { expect, test, type Page } from '@playwright/test';
 const sessionId = 'cbd55091-aaaa-bbbb-cccc-000000000001';
 const codec = { type: 'video-config', data: 'AAAAAWdCAAk=' };
 
+// Extra trace screenshots compete with the renderer that supplies the real recording.
+// Keep DOM traces and the downloaded media as the visual evidence.
+test.use({ trace: { mode: 'retain-on-failure', screenshots: false } });
+
+async function nextPaint(page: Page) {
+  await page.evaluate(() => new Promise<void>(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  }));
+}
+
 type FixtureOptions = { landscape?: boolean; native?: boolean; failReads?: number };
 async function fixture(page: Page, options: FixtureOptions = {}) {
   let reads = 0;
@@ -161,6 +171,7 @@ for (const landscape of [false, true]) {
     };
     await page.getByRole('button', { name: 'Начать запись экрана без звука', exact: true }).click();
     await page.waitForTimeout(200);
+    await nextPaint(page);
     let point = await position(.25, .3);
     const pngDownload = page.waitForEvent('download');
     await page.evaluate(() => {
@@ -186,10 +197,13 @@ for (const landscape of [false, true]) {
     await expect(marker).toBeHidden();
     // Keep a clear interval in the real capture stream between gestures.
     await page.waitForTimeout(350);
+    await nextPaint(page);
     point = await position(.3, .4); await page.mouse.move(point.x, point.y); await page.mouse.down();
     await page.waitForTimeout(250);
+    await nextPaint(page);
     point = await position(.7, .6); await page.mouse.move(point.x, point.y, { steps: 5 });
     await page.waitForTimeout(250);
+    await nextPaint(page);
     await page.mouse.up();
     // Stop as soon as the marker clears: finalization must encode the new frame
     // without relying on an extra delay in the caller.
