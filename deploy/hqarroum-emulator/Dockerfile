@@ -25,7 +25,7 @@ ENV RDF_EMULATOR_BASE_IMAGE=${EMULATOR_BASE_IMAGE} \
     ANDROID_USER_HOME=/android-home/home/.android \
     ANDROID_EMULATOR_HOME=/android-home/home/.android \
     ANDROID_SDK_HOME=/android-home/home
-COPY launcher.py policy-api31.json policy-api31.cil.gz /usr/local/lib/rdf-hqarroum/
+COPY launcher.py ramdisk.py policy-api31.json policy-api31.cil.gz /usr/local/lib/rdf-hqarroum/
 RUN python3 /usr/local/lib/rdf-hqarroum/launcher.py --prepare-image \
     && mv /opt/android/platform-tools/adb /opt/android/platform-tools/adb.rdf-real
 COPY adb-guard.sh /opt/android/platform-tools/adb

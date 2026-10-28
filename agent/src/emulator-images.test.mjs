@@ -49,7 +49,7 @@ test('the build context is a valid tar of the bundled image files', async () => 
   const images = testedImages({ docker: fakeDocker() });
   const { tar, hash } = await images.context();
   const listing = execFileSync('tar', ['-tvf', '-'], { input: tar, encoding: 'utf8' });
-  for (const name of ['Dockerfile', 'rdf-emulator.sh', 'adb-auth-gate.sh', 'secure-ramdisk.py', 'xorg.conf']) assert.match(listing, new RegExp(name.replace('.', '\\.')));
+  for (const name of ['Dockerfile', 'rdf-emulator.sh', 'adb-auth-gate.sh', 'secure-ramdisk.py', 'ramdisk.py', 'xorg.conf']) assert.match(listing, new RegExp(name.replace('.', '\\.')));
   assert.match(listing, /-rwxr-xr-x .* rdf-emulator\.sh/);
   assert.match(listing, /-rwxr-xr-x .* adb-auth-gate\.sh/);
   assert.match(hash, /^[0-9a-f]{12}$/);

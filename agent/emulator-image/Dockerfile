@@ -45,9 +45,9 @@ RUN sdkmanager --channel="$SDK_CHANNEL" platform-tools \
 # and patching after SDK downloads so this change reuses their cached layers.
 RUN apt-get update && apt-get install -y --no-install-recommends python3 lz4 \
     && rm -rf /var/lib/apt/lists/*
-COPY secure-ramdisk.py /tmp/secure-ramdisk.py
+COPY secure-ramdisk.py ramdisk.py /tmp/
 RUN python3 /tmp/secure-ramdisk.py "$(find /opt/android/system-images -name ramdisk.img -print -quit)" \
-    && rm /tmp/secure-ramdisk.py
+    && rm /tmp/secure-ramdisk.py /tmp/ramdisk.py
 
 # ---- Stage 3: runtime. No Java or SDK manager; official emulator/platform-tools, system image and launcher ----
 FROM ${BASE_IMAGE}

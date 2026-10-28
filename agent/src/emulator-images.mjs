@@ -15,7 +15,7 @@ import { emulatorPushDigest } from './emulator-push-digest.mjs';
 export const CONTRACT_LABEL = 'remote-device-farm.contract';
 export const SYSTEM_IMAGE_LABEL = 'remote-device-farm.system-image';
 
-const CONTEXT_FILES = [['Dockerfile', 0o644], ['rdf-emulator.sh', 0o755], ['adb-auth-gate.sh', 0o755], ['secure-ramdisk.py', 0o644], ['xorg.conf', 0o644]];
+const CONTEXT_FILES = [['Dockerfile', 0o644], ['rdf-emulator.sh', 0o755], ['adb-auth-gate.sh', 0o755], ['secure-ramdisk.py', 0o644], ['ramdisk.py', 0o644], ['xorg.conf', 0o644]];
 const CATALOG_TTL_MS = 60 * 60_000;
 const BUILD_TIMEOUT_MS = 2 * 60 * 60_000;
 const MAX_JOBS = 50;
