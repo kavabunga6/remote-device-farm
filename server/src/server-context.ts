@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { assertPermission, hasPermission } from './permissions.js';
 import { requestPermission } from './request-permissions.js';
 import { uiMessage } from './messages.js';
@@ -75,7 +76,7 @@ export function createServerContext(pool: Pool, config: Config, auth: AuthServic
         shouldRecordAdminAccess(context.user.id, session.id)) {
       void recordAuditEvent(pool, {
         action: 'session.admin_access', actor: context.user, targetType: 'session', targetId: session.id,
-      }).catch(() => console.error('Audit event persistence failed'));
+      }).catch(() => console.error(diagnostic('server-context.57acf9a777')));
     }
     return session;
   }

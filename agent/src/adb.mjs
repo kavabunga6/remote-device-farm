@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import { agentMessage } from './messages.mjs';
 import { installApkSet } from './apk-sets.mjs';
 import { loadAdbTokenSigner } from './adb-device-auth.mjs';
@@ -15,14 +16,14 @@ const ALLOWED_ADB_COMMANDS = new Set(['shell', 'exec-out', 'logcat', 'uninstall'
 export function validateAdbArgv(argv) {
   if (!Array.isArray(argv) || argv.length < 1 || argv.length > 64 ||
       !argv.every((item) => typeof item === 'string' && item.length > 0 && item.length <= 4096 && !item.includes('\0'))) {
-    throw new Error('Invalid ADB command');
+    throw new Error(diagnostic('adb.80de84491b'));
   }
   if (!ALLOWED_ADB_COMMANDS.has(argv[0])) {
-    throw new Error('Use the session ADB tunnel for this command');
+    throw new Error(diagnostic('adb.faee4cda6f'));
   }
   // `reboot bootloader|recovery|sideload|fastboot` would take a physical phone out of reach of the farm.
   if (['devices', 'version', 'get-state', 'get-serialno', 'reboot'].includes(argv[0]) && argv.length !== 1) {
-    throw new Error('This ADB command accepts no extra arguments');
+    throw new Error(diagnostic('adb.e400e54644'));
   }
   return argv;
 }
@@ -58,7 +59,7 @@ export function runProcess(command, args, { timeoutMs = 30000, maxOutputBytes = 
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      if (signal) return reject(new Error(`Command stopped (${signal}) or exceeded limits`));
+      if (signal) return reject(new Error(diagnostic('adb.e1a0cb08dc', { p0: signal })));
       const out = Buffer.concat(stdout);
       const err = Buffer.concat(stderr);
       resolve({ stdout: encoding === null ? out : out.toString(encoding), stderr: encoding === null ? err : err.toString(encoding), exitCode: exitCode ?? 1 });
@@ -97,7 +98,7 @@ export class AdbClient {
       if (result?.exitCode === 0 && !/failed|unable|cannot/i.test(result.stdout)) return;
       await delay(1000, undefined, { signal });
     }
-    throw new Error('Emulator ADB is not ready');
+    throw new Error(diagnostic('adb.3b2aa8195d'));
   }
 
   async run(serial, argv, options) {
@@ -118,7 +119,7 @@ export class AdbClient {
 
   async devices(serial) {
     const result = await this.execute('adb', ['devices'], { timeoutMs: 5000, maxOutputBytes: 64 * 1024 });
-    if (result.exitCode !== 0) return { stdout: '', stderr: 'ADB device list is unavailable', exitCode: result.exitCode };
+    if (result.exitCode !== 0) return { stdout: '', stderr: diagnostic('adb.b9a2aff692'), exitCode: result.exitCode };
     const line = String(result.stdout).split(/\r?\n/).find((item) => item.startsWith(serial + '\t'));
     const state = line?.slice(serial.length + 1).trim();
     const visible = state && /^(device|offline|unauthorized|recovery|bootloader|sideload)$/.test(state)
@@ -128,11 +129,11 @@ export class AdbClient {
 
   async version() {
     const result = await this.execute('adb', ['version'], { timeoutMs: 5000, maxOutputBytes: 64 * 1024 });
-    if (result.exitCode !== 0) return { stdout: '', stderr: 'ADB version is unavailable', exitCode: result.exitCode };
+    if (result.exitCode !== 0) return { stdout: '', stderr: diagnostic('adb.b33bb64e82'), exitCode: result.exitCode };
     const lines = String(result.stdout).split(/\r?\n/);
     const protocol = lines.find((line) => /^Android Debug Bridge version [0-9.]+$/.test(line));
     const build = lines.find((line) => /^Version [0-9A-Za-z.+_-]+$/.test(line));
-    if (!protocol) return { stdout: '', stderr: 'ADB version is unavailable', exitCode: 1 };
+    if (!protocol) return { stdout: '', stderr: diagnostic('adb.b33bb64e82'), exitCode: 1 };
     return { stdout: protocol + '\n' + (build ? build + '\n' : ''), stderr: '', exitCode: 0 };
   }
 
@@ -143,7 +144,7 @@ export class AdbClient {
 
   async readLogcatApps(serial) {
     const result = await this.run(serial, ['shell', 'pm', 'list', 'packages', '-U', '--user', 'current'], { timeoutMs: 10000, maxOutputBytes: 2 * 1024 * 1024 });
-    if (result.exitCode !== 0) throw new Error('Не удалось получить приложения Android');
+    if (result.exitCode !== 0) throw new Error(agentMessage('agent.apps.listFailed', {}, 'ru'));
     return parseLogcatApps(result.stdout);
   }
 
@@ -155,7 +156,7 @@ export class AdbClient {
     if (options.packageName) {
       const apps = await this.readLogcatApps(serial);
       const selected = apps.find(item => item.packageName === options.packageName);
-      if (!selected) throw new Error('Приложение не установлено. Обновите список приложений.');
+      if (!selected) throw new Error(agentMessage('agent.apps.notInstalled', {}, 'ru'));
       options.uid = selected.uid;
       let uidName = '';
       if (selected.uid % 100000 < 10000) {
@@ -170,7 +171,7 @@ export class AdbClient {
       };
     }
     const result = await this.run(serial, logcatArgv(options), { timeoutMs: 20000, maxOutputBytes: 16 * 1024 * 1024 });
-    if (result.exitCode !== 0) throw new Error(result.stderr || 'Logcat is unavailable');
+    if (result.exitCode !== 0) throw new Error(result.stderr || diagnostic('adb.16a2f7f259'));
     const page = pageLogcat(app ? parseUidLogcat(result.stdout) : parseLogcat(result.stdout), options);
     if (app) page.entries = page.entries.filter(entry => uidTokens.has(entry.uid)).map(({ uid: _uid, ...entry }) => entry);
     return { ...page, ...(app ? { app } : {}) };
@@ -179,23 +180,23 @@ export class AdbClient {
   async clearLogcat(serial) {
     await this.connect(serial);
     const result = await this.run(serial, ['logcat', '-b', 'all', '-c'], { timeoutMs: 10000 });
-    if (result.exitCode !== 0) throw new Error(result.stderr || 'Logcat clear failed');
+    if (result.exitCode !== 0) throw new Error(result.stderr || diagnostic('adb.dfe71b6dd5'));
     return { cleared: true };
   }
 
   async deviceInfo(serial) {
     await this.connect(serial);
     const result = await this.run(serial, ['shell', DEVICE_INFO_SCRIPT], { timeoutMs: 30000, maxOutputBytes: 4 * 1024 * 1024 });
-    if (result.exitCode !== 0 && !String(result.stdout).includes('##props')) throw new Error(result.stderr || 'Device information is unavailable');
+    if (result.exitCode !== 0 && !String(result.stdout).includes('##props')) throw new Error(result.stderr || diagnostic('adb.8d97174a6f'));
     return parseDeviceInfo(result.stdout);
   }
 
   async screenshot(serial) {
     await this.connect(serial);
     const result = await this.run(serial, ['exec-out', 'screencap', '-p'], { timeoutMs: 30000, maxOutputBytes: 16 * 1024 * 1024, encoding: null });
-    if (result.exitCode !== 0) throw new Error(result.stderr.toString('utf8') || 'Screenshot failed');
+    if (result.exitCode !== 0) throw new Error(result.stderr.toString('utf8') || diagnostic('adb.4417364beb'));
     const png = result.stdout;
-    if (png.length < 24 || !png.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))) throw new Error('Invalid screenshot');
+    if (png.length < 24 || !png.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))) throw new Error(diagnostic('adb.277c4f6fe1'));
     return { type: 'frame', mime: 'image/png', data: png.toString('base64'), width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
   }
 
@@ -203,47 +204,47 @@ export class AdbClient {
     const kind = params?.kind;
     const coord = (value) => {
       const n = Number(value);
-      if (!Number.isInteger(n) || n < 0 || n > 8192) throw new Error('Invalid screen coordinate');
+      if (!Number.isInteger(n) || n < 0 || n > 8192) throw new Error(diagnostic('adb.be0a251d56'));
       return String(n);
     };
     let argv;
     if (kind === 'tap') argv = ['shell', 'input', 'tap', coord(params.x), coord(params.y)];
     else if (kind === 'swipe') {
       const duration = Number(params.durationMs ?? 300);
-      if (!Number.isInteger(duration) || duration < 50 || duration > 5000) throw new Error('Invalid swipe duration');
+      if (!Number.isInteger(duration) || duration < 50 || duration > 5000) throw new Error(diagnostic('adb.601d84d1f2'));
       argv = ['shell', 'input', 'swipe', coord(params.x1), coord(params.y1), coord(params.x2), coord(params.y2), String(duration)];
     } else if (kind === 'key') {
       const code = Number(params.keyCode);
-      if (!Number.isInteger(code) || code < 1 || code > 300) throw new Error('Invalid Android keycode');
+      if (!Number.isInteger(code) || code < 1 || code > 300) throw new Error(diagnostic('adb.690472e46a'));
       argv = ['shell', 'input', 'keyevent', String(code)];
     } else if (kind === 'text') {
-      if (typeof params.text !== 'string' || params.text.length > 1000 || /[\r\n\0]/.test(params.text)) throw new Error('Invalid input text');
+      if (typeof params.text !== 'string' || params.text.length > 1000 || /[\r\n\0]/.test(params.text)) throw new Error(diagnostic('adb.f4e60ac952'));
       argv = ['shell', 'input', 'text', params.text.replaceAll(' ', '%s')];
-    } else throw new Error('Unknown input kind');
+    } else throw new Error(diagnostic('adb.2b3d96e2c5'));
     await this.connect(serial);
     const result = await this.run(serial, argv, { timeoutMs: 10000 });
-    if (result.exitCode !== 0) throw new Error(result.stderr || 'Input injection failed');
+    if (result.exitCode !== 0) throw new Error(result.stderr || diagnostic('adb.9916c7162b'));
     return { ok: true };
   }
 
   async rotate(serial, orientation) {
-    if (!['portrait', 'landscape'].includes(orientation)) throw new Error('Invalid orientation');
+    if (!['portrait', 'landscape'].includes(orientation)) throw new Error(diagnostic('adb.558ee42f5d'));
     await this.connect(serial);
     const rotation = orientation === 'portrait' ? '0' : '1';
     const a = await this.run(serial, ['shell', 'settings', 'put', 'system', 'accelerometer_rotation', '0']);
     const b = await this.run(serial, ['shell', 'settings', 'put', 'system', 'user_rotation', rotation]);
-    if (a.exitCode !== 0 || b.exitCode !== 0) throw new Error(a.stderr || b.stderr || 'Rotation failed');
+    if (a.exitCode !== 0 || b.exitCode !== 0) throw new Error(a.stderr || b.stderr || diagnostic('adb.2d3e7bd0f1'));
     return { orientation };
   }
 
   async file(serial, { name, contentBase64, install = false }) {
     if (typeof name !== 'string' || !name || name === '.' || name === '..' ||
         Buffer.byteLength(name, 'utf8') > 240 || /[\\/\p{C}]/u.test(name)) {
-      throw new Error('Invalid upload name');
+      throw new Error(diagnostic('adb.39c988b77a'));
     }
-    if (typeof contentBase64 !== 'string' || contentBase64.length > 70_000_000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(contentBase64)) throw new Error('Invalid upload data');
+    if (typeof contentBase64 !== 'string' || contentBase64.length > 70_000_000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(contentBase64)) throw new Error(diagnostic('adb.844fd7de9e'));
     const data = Buffer.from(contentBase64, 'base64');
-    if (data.length === 0 || data.length > 50 * 1024 * 1024) throw new Error('Upload must be 1 byte–50 MiB');
+    if (data.length === 0 || data.length > 50 * 1024 * 1024) throw new Error(diagnostic('adb.88973c34b0'));
     if (install && !/\.(apk|apks|zip)$/i.test(name)) throw new Error(agentMessage('apps.invalidSet'));
     await this.connect(serial);
     const directory = await mkdtemp(path.join(os.tmpdir(), 'rdf-upload-'));
@@ -253,7 +254,7 @@ export class AdbClient {
       if (install && !/\.apk$/i.test(name)) return await installApkSet(this, serial, { name, local, directory }, this.execute);
       const remote = `/sdcard/Download/${name}`;
       const result = await this.run(serial, install ? ['install', '-r', local] : ['push', local, remote], { timeoutMs: 120000 });
-      if (result.exitCode !== 0) throw new Error(result.stderr || result.stdout || 'File transfer failed');
+      if (result.exitCode !== 0) throw new Error(result.stderr || result.stdout || diagnostic('adb.27f9d627f4'));
       return { path: install ? null : remote, installed: Boolean(install), output: result.stdout };
     } finally {
       await rm(directory, { recursive: true, force: true });

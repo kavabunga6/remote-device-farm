@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import { closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -17,7 +18,7 @@ export class ImageJobStore {
     if (data?.version !== 1 || !Array.isArray(data.jobs) || data.jobs.some(job =>
       !job || typeof job.id !== 'string' || typeof job.package !== 'string' || typeof job.image !== 'string' ||
       !['queued', 'building', 'validating', 'pushing', 'cancelling', 'cancelled', 'done', 'failed'].includes(job.state) || !Array.isArray(job.log) || !Array.isArray(job.profiles))) {
-      throw new Error('Invalid emulator build state; preserve jobs.json and restore it from backup');
+      throw new Error(diagnostic('emulator-image-job-store.d729871e50'));
     }
     return data.jobs;
   }

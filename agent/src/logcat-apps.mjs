@@ -1,7 +1,9 @@
+import { diagnostic } from './diagnostics.mjs';
+import { agentMessage } from './messages.mjs';
 // Only identifiers from Android's package manager reach fixed ADB arguments.
 export const PACKAGE_NAME = /^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z0-9_]+)+$/;
 export function validatePackageName(value) {
-  if (typeof value !== 'string' || value.length > 255 || !PACKAGE_NAME.test(value)) throw new Error('Invalid Android package name');
+  if (typeof value !== 'string' || value.length > 255 || !PACKAGE_NAME.test(value)) throw new Error(diagnostic('logcat-apps.c0e311d59d'));
   return value;
 }
 export function parseLogcatApps(text) {
@@ -36,7 +38,7 @@ export function parseUidLogcat(text) {
     if (!raw || raw.startsWith('--------- ')) continue;
     const match = linePattern.exec(raw);
     if (match) entries.push({ ts: match[1], uid: match[2], pid: Number(match[3]), tid: Number(match[4]), level: match[5] === 'A' ? 'F' : match[5], tag: match[6], message: match[7] });
-    else if (/^\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}\s+\d+\s+\d+\s+[VDIWEFA]\s/.test(raw)) throw new Error('Android не передал UID записей. Фильтр приложения недоступен на этом образе.');
+    else if (/^\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}\s+\d+\s+\d+\s+[VDIWEFA]\s/.test(raw)) throw new Error(agentMessage('agent.apps.uidUnavailable', {}, 'ru'));
     else if (entries.length) entries[entries.length - 1].message += '\n' + raw;
   }
   return entries;

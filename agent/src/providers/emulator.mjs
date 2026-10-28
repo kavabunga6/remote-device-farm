@@ -1,3 +1,4 @@
+import { diagnostic } from '../diagnostics.mjs';
 import { NetworkInspector } from '../network-inspector.mjs';
 import { agentMessage } from '../messages.mjs';
 import { probeAndroid, androidCapabilities } from './android-capabilities.mjs';
@@ -164,7 +165,7 @@ export class EmulatorProvider extends DeviceProvider {
               if (result.exitCode !== 0) throw new Error(agentMessage('agent.androidRejected', { p0: setting }));
             } catch (error) {
               signal?.throwIfAborted();
-              console.warn('Could not initialize ' + setting + ' for ' + sessionId + ': ' + error.message);
+              console.warn(diagnostic('emulator.51d8cb245f', { p0: setting, p1: sessionId, p2: error.message }));
             }
           }
           log('session.android_ready', agentMessage('agent.androidReady'));
@@ -203,7 +204,7 @@ export class EmulatorProvider extends DeviceProvider {
   onCleanupFailure(sessionId, entry, error) {
     if (entry.cleanupFailures !== CLEANUP_ALERT_AFTER) return;
     this.alert({ id: `cleanup:${sessionId}`, event: 'device.quarantined', kind: this.kind, deviceId: entry.containerId || sessionId,
-      reason: `emulator cleanup failed ${entry.cleanupFailures} times: ${error.message}` });
+      reason: diagnostic('emulator.926581fcd0', { p0: entry.cleanupFailures, p1: error.message }) });
   }
 
   async applyPolicy(input) {

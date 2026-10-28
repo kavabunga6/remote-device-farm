@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { assertPermission, hasPermission } from './permissions.js';
 import { uiMessage } from './messages.js';
 import type WebSocket from 'ws';
@@ -62,7 +63,7 @@ export async function accessibleSession(
   if (shouldRecordAdminAccess(auth.user.id, session.id, Date.now(), sharedAccessSeen)) {
     void recordAuditEvent(server.pool, {
       action: 'session.shared_access', actor: auth.user, targetType: 'session', targetId: session.id,
-    }).catch(() => console.error('Audit event persistence failed'));
+    }).catch(() => console.error(diagnostic('session-access.57acf9a777')));
   }
   return { session, hostId: privateSession.hostId, access, grantId: row.id, grantExpiresAt: new Date(String(row.expires_at)).getTime() };
 }

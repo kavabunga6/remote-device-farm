@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import os from 'node:os';
 import { GPU_BACKENDS, validateDockerOptions } from './docker-options.mjs';
 import { validateContainerEnv } from './container-env.mjs';
@@ -21,89 +22,89 @@ export function farmRegistryPrefix(brokerUrl) {
 export function validateRegistryAuth(value) {
   if (value === undefined || value === null) return null;
   if (typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some((key) => !['username', 'password', 'serveraddress'].includes(key))) {
-    throw new Error('Invalid registry credentials');
+    throw new Error(diagnostic('config.970966e516'));
   }
   const { username, password, serveraddress } = value;
   if (typeof username !== 'string' || !username || username.length > 200 || typeof password !== 'string' || !password || password.length > 1000 ||
       typeof serveraddress !== 'string' || !/^[a-z0-9.-]+(:[0-9]{1,5})?$/i.test(serveraddress) || /[\x00-\x1f\x7f]/.test(username + password)) {
-    throw new Error('Invalid registry credentials');
+    throw new Error(diagnostic('config.970966e516'));
   }
   return { username, password, serveraddress };
 }
 
 export function validateImage(image, allowedPrefixes = [], trustedPrefixes = []) {
   if (typeof image !== 'string' || image.length > 256 || !imagePattern.test(image) || image.includes('..')) {
-    throw new Error('Invalid Docker image reference');
+    throw new Error(diagnostic('config.938fe9259c'));
   }
   if (/(?:^|\/)rdf-sdk-emulator(?::|@)/.test(image)) {
-    throw new Error('SDK build placeholders are not supported; use a ready Docker image with an explicit tag or digest');
+    throw new Error(diagnostic('config.2f9ffc482f'));
   }
   if (trustedPrefixes.some((prefix) => prefix && (image.startsWith(prefix + ':') || image.startsWith(prefix + '@')))) return image;
   if (!allowedPrefixes.length && !googleImagePattern.test(image)) {
-    throw new Error('Only published Google Docker images are allowed by default; add a trusted ready Docker image to AGENT_ALLOWED_IMAGE_PREFIXES');
+    throw new Error(diagnostic('config.d15d0ef401'));
   }
   if (allowedPrefixes.length && !allowedPrefixes.some((prefix) =>
     image === prefix || (image.startsWith(prefix) &&
       (/[/:@]$/.test(prefix) || '/:@'.includes(image[prefix.length]))))) {
-    throw new Error('Docker image is outside AGENT_ALLOWED_IMAGE_PREFIXES');
+    throw new Error(diagnostic('config.5c7d02ad51'));
   }
   return image;
 }
 
 export function validateProfile(profile, allowedPrefixes = [], trustedPrefixes = []) {
-  if (!profile || typeof profile !== 'object') throw new Error('Missing emulator profile');
+  if (!profile || typeof profile !== 'object') throw new Error(diagnostic('config.0a398f25d2'));
   const image = validateImage(profile.image, allowedPrefixes, trustedPrefixes);
   const registryAuth = validateRegistryAuth(profile.registryAuth);
   const cpu = Number(profile.cpu);
   const memoryMb = Number(profile.memoryMb);
   const diskGb = Number(profile.diskGb ?? 8);
-  if (!Number.isInteger(cpu) || cpu < 1 || cpu > 16) throw new Error('Profile CPU must be 1–16');
-  if (!Number.isInteger(memoryMb) || memoryMb < 1024 || memoryMb > 65536) throw new Error('Profile memoryMb must be 1024–65536');
+  if (!Number.isInteger(cpu) || cpu < 1 || cpu > 16) throw new Error(diagnostic('config.9b877e25a4'));
+  if (!Number.isInteger(memoryMb) || memoryMb < 1024 || memoryMb > 65536) throw new Error(diagnostic('config.8a22287124'));
   const guestMemoryMb = profile.guestMemoryMb == null ? null : Number(profile.guestMemoryMb);
   const guestCores = profile.guestCores == null ? null : Number(profile.guestCores);
   if (guestMemoryMb !== null && (!Number.isInteger(guestMemoryMb) || guestMemoryMb < 1024 || guestMemoryMb > memoryMb - 1024)) {
-    throw new Error('Guest memory must leave at least 1024 MiB for emulator overhead');
+    throw new Error(diagnostic('config.c216b77f2c'));
   }
   if (guestCores !== null && (!Number.isInteger(guestCores) || guestCores < 1 || guestCores > cpu)) {
-    throw new Error('Guest cores must be within the container CPU limit');
+    throw new Error(diagnostic('config.6990284d25'));
   }
-  if (!Number.isInteger(diskGb) || diskGb < 2 || diskGb > 128) throw new Error('Profile diskGb must be 2–128');
+  if (!Number.isInteger(diskGb) || diskGb < 2 || diskGb > 128) throw new Error(diagnostic('config.a7477231cc'));
   const sdcardGb = profile.sdcardGb == null ? null : profile.sdcardGb;
   if (sdcardGb !== null && (!Number.isInteger(sdcardGb) || sdcardGb < 0 || sdcardGb > 32)) {
-    throw new Error('Profile sdcardGb must be 0–32');
+    throw new Error(diagnostic('config.1e1a76a4a9'));
   }
   const sdCardMb = profile.sdCardMb == null ? (sdcardGb === null ? null : sdcardGb * 1024) : profile.sdCardMb;
   if (sdCardMb !== null && (!Number.isInteger(sdCardMb) || (sdCardMb !== 0 && (sdCardMb < 128 || sdCardMb > 32768)))) {
-    throw new Error('Profile sdCardMb must be 0 or 128–32768');
+    throw new Error(diagnostic('config.28436bee10'));
   }
   if (profile.sdCardMb != null && sdcardGb !== null && profile.sdCardMb !== sdcardGb * 1024) {
-    throw new Error('Conflicting SD card sizes');
+    throw new Error(diagnostic('config.a35f42a187'));
   }
   const emulatorParams = profile.emulatorParams ?? '';
   if (typeof emulatorParams !== 'string' || emulatorParams.length > 2048 || /[\r\n\0]/.test(emulatorParams)) {
-    throw new Error('Invalid EMULATOR_PARAMS');
+    throw new Error(diagnostic('config.ccfc57c42c'));
   }
   const gpuMode = profile.gpuMode ?? 'software';
-  if (gpuMode !== 'software' && gpuMode !== 'nvidia') throw new Error('Invalid GPU mode');
+  if (gpuMode !== 'software' && gpuMode !== 'nvidia') throw new Error(diagnostic('config.48e19476eb'));
   const gpuBackend = profile.gpuBackend ?? null;
-  if (gpuBackend !== null && !GPU_BACKENDS.includes(gpuBackend)) throw new Error('Invalid GPU backend');
+  if (gpuBackend !== null && !GPU_BACKENDS.includes(gpuBackend)) throw new Error(diagnostic('config.4443b2186a'));
   if (/(?:^|\s)-{1,2}gpu(?:\s|=|$)/i.test(emulatorParams)) {
-    throw new Error('Select the GPU mode at session launch instead of EMULATOR_PARAMS');
+    throw new Error(diagnostic('config.7197b666f9'));
   }
   if (guestMemoryMb !== null && /(?:^|\s)-memory(?:\s|=|$)/i.test(emulatorParams)) {
-    throw new Error('Set guest RAM in one place');
+    throw new Error(diagnostic('config.52fdf8d919'));
   }
   if (guestCores !== null && /(?:^|\s)-cores(?:\s|=|$)/i.test(emulatorParams)) {
-    throw new Error('Set guest cores in one place');
+    throw new Error(diagnostic('config.2c2373aa56'));
   }
   const checkedParams = validateEmulatorParams(emulatorParams);
   const rawEnv = profile.containerEnv && typeof profile.containerEnv === 'object' ? Object.keys(profile.containerEnv) : [];
   const dockerOptions = validateDockerOptions(profile.dockerOptions, (name) => rawEnv.some((item) => item.toUpperCase() === name.toUpperCase()));
   const containerEnv = validateContainerEnv(profile.containerEnv, [dockerOptions.emulatorParamsEnv, dockerOptions.adbKeyEnv].filter(Boolean));
   const deviceType = profile.deviceType == null ? null : String(profile.deviceType);
-  if (deviceType !== null && !['mobile', 'tv', 'wear', 'automotive', 'desktop'].includes(deviceType)) throw new Error('Invalid device type');
+  if (deviceType !== null && !['mobile', 'tv', 'wear', 'automotive', 'desktop'].includes(deviceType)) throw new Error(diagnostic('config.7e13aba6db'));
   const resolution = profile.resolution == null ? null : String(profile.resolution);
-  if (resolution !== null && !/^[1-9][0-9]{1,4}x[1-9][0-9]{1,4}$/.test(resolution)) throw new Error('Invalid screen resolution');
+  if (resolution !== null && !/^[1-9][0-9]{1,4}x[1-9][0-9]{1,4}$/.test(resolution)) throw new Error(diagnostic('config.872c97e09f'));
   return { image, cpu, memoryMb, guestMemoryMb, guestCores, diskGb,
     ...(sdCardMb === null ? {} : { sdCardMb }), emulatorParams: checkedParams, containerEnv, dockerOptions, gpuMode,
     gpuBackend: gpuMode === 'nvidia' ? gpuBackend : null, deviceType, resolution, ...(registryAuth ? { registryAuth } : {}) };
@@ -113,7 +114,7 @@ export function validateProfile(profile, allowedPrefixes = [], trustedPrefixes =
 export function validateDriDevice(value) {
   if (value === undefined || value === null || value === '') return null;
   if (typeof value !== 'string' || !/^\/dev\/dri\/(?:renderD|card)[0-9]{1,3}$/.test(value)) {
-    throw new Error('AGENT_DRI_DEVICE must look like /dev/dri/renderD128');
+    throw new Error(diagnostic('config.872d999074'));
   }
   return value;
 }
@@ -125,7 +126,7 @@ export function validateNvidiaXorgModuleDir(value) {
       path.posix.normalize(value) !== value ||
       /[\x00-\x1f\x7f:\\]/.test(value) ||
       value.split('/').some((part) => part === '.' || part === '..')) {
-    throw new Error('AGENT_NVIDIA_XORG_MODULE_DIR must be a normalized absolute Linux directory');
+    throw new Error(diagnostic('config.3aa4af5d7d'));
   }
   return value;
 }
@@ -134,30 +135,30 @@ export function loadConfig(env = process.env) {
   const brokerUrl = env.AGENT_BROKER_URL;
   const token = env.AGENT_TOKEN;
   const agentId = env.AGENT_ID;
-  if (!brokerUrl || !/^wss?:\/\//.test(brokerUrl)) throw new Error('AGENT_BROKER_URL must be a ws:// or wss:// URL');
-  if (!token || token.length < 32) throw new Error('AGENT_TOKEN must contain at least 32 characters');
-  if (!agentId || !identifierPattern.test(agentId)) throw new Error('AGENT_ID must be 1–64 safe characters');
+  if (!brokerUrl || !/^wss?:\/\//.test(brokerUrl)) throw new Error(diagnostic('config.03668fdbb8'));
+  if (!token || token.length < 32) throw new Error(diagnostic('config.6644247c0c'));
+  if (!agentId || !identifierPattern.test(agentId)) throw new Error(diagnostic('config.fee2f7bc20'));
   const selfContainerId = env.AGENT_SELF_CONTAINER_ID || os.hostname();
-  if (!identifierPattern.test(selfContainerId)) throw new Error('Invalid AGENT_SELF_CONTAINER_ID');
+  if (!identifierPattern.test(selfContainerId)) throw new Error(diagnostic('config.fb11cd1562'));
   const slots = Number(env.AGENT_SLOTS ?? Math.max(1, Math.floor(os.cpus().length / 2)));
-  if (!Number.isInteger(slots) || slots < 1 || slots > 128) throw new Error('AGENT_SLOTS must be 1–128');
+  if (!Number.isInteger(slots) || slots < 1 || slots > 128) throw new Error(diagnostic('config.746bdb70c0'));
   const allowedPrefixes = (env.AGENT_ALLOWED_IMAGE_PREFIXES || '').split(',').map((x) => x.trim()).filter(Boolean);
   const nvidiaXorgModuleDir = validateNvidiaXorgModuleDir(env.AGENT_NVIDIA_XORG_MODULE_DIR);
   const driDevice = validateDriDevice(env.AGENT_DRI_DEVICE);
   const emuConsole = env.AGENT_EMU_CONSOLE || 'auto';
-  if (!['auto', 'control', 'adb'].includes(emuConsole)) throw new Error('AGENT_EMU_CONSOLE must be auto, control or adb');
+  if (!['auto', 'control', 'adb'].includes(emuConsole)) throw new Error(diagnostic('config.b554dbae59'));
   const list = (value) => value ? new Set(value.split(',').map((x) => x.trim()).filter(Boolean)) : null;
   const usbEnabled = env.AGENT_USB_ENABLED === '1';
   const wipe = env.AGENT_USB_WIPE || null;
   const wipeCmd = env.AGENT_USB_WIPE_CMD || null;
   if (usbEnabled) {
     // A phone must never be handed to a second person without a full cleanup, so none of this has a lenient default.
-    if (!list(env.AGENT_USB_ALLOWLIST)) throw new Error('AGENT_USB_ENABLED requires AGENT_USB_ALLOWLIST: only enrolled phones are managed (and wiped)');
+    if (!list(env.AGENT_USB_ALLOWLIST)) throw new Error(diagnostic('config.ff46e8ed87'));
     if (wipe !== 'command') {
-      throw new Error('AGENT_USB_WIPE must be command: partial cleanup cannot protect the next user');
+      throw new Error(diagnostic('config.cac238ed9f'));
     }
     if (typeof wipeCmd !== 'string' || !wipeCmd.startsWith('/') || /[\0\r\n]/.test(wipeCmd) || path.posix.normalize(wipeCmd) === '/opt/rdf/reset-android.sh') {
-      throw new Error('AGENT_USB_WIPE_CMD must explicitly name a trusted full reset/reprovision script; the legacy baseline reset is not sufficient');
+      throw new Error(diagnostic('config.298894e4d6'));
     }
   }
   return {

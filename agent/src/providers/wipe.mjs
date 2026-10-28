@@ -1,3 +1,4 @@
+import { diagnostic } from '../diagnostics.mjs';
 // Device sanitizing strategies. Contract: `wipe(id)` does the reset, `verify(id)` independently checks the
 // result; a strategy is successful only when both pass. Any throw means "NOT clean" and the caller quarantines.
 
@@ -9,7 +10,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function sh(adb, serial, argv, timeoutMs = 30000) {
   const result = await adb.run(serial, argv, { timeoutMs });
-  if (result.exitCode !== 0) throw new Error(`adb ${argv.slice(0, 3).join(' ')} failed: ${(result.stderr || result.stdout || '').trim().slice(0, 200)}`);
+  if (result.exitCode !== 0) throw new Error(diagnostic('wipe.a93f85be0e', { p0: argv.slice(0, 3).join(' '), p1: (result.stderr || result.stdout || '').trim().slice(0, 200) }));
   return String(result.stdout);
 }
 
@@ -19,9 +20,9 @@ const thirdParty = async (adb, serial) => (await sh(adb, serial, ['shell', 'pm',
 // Independent verification after a full reset; this is not a wipe strategy.
 export async function assertEmptyUserArea(adb, serial) {
   const apps = await thirdParty(adb, serial);
-  if (apps.length) throw new Error(`Wipe verification failed: ${apps.length} user app(s) remain`);
+  if (apps.length) throw new Error(diagnostic('wipe.c6ad90efe1', { p0: apps.length }));
   const files = (await sh(adb, serial, ['shell', 'ls -A /sdcard'])).split(/\r?\n/).map(x => x.trim()).filter(x => x && x !== 'Android');
-  if (files.length) throw new Error(`Wipe verification failed: ${files.length} item(s) remain in shared storage`);
+  if (files.length) throw new Error(diagnostic('wipe.f3129200af', { p0: files.length }));
 }
 
 // Full reset delegated to an admin-supplied script (golden-image flash over fastboot, Android Enterprise
@@ -43,7 +44,7 @@ export class CommandAndroidWipe {
     const nonce = randomBytes(16).toString('hex');
     await sh(this.adb, serial, ['shell', 'settings', 'put', 'global', CANARY_KEY, nonce]);
     await sh(this.adb, serial, ['shell', `echo ${nonce} > ${CANARY_FILES[0]} && echo ${nonce} > ${CANARY_FILES[1]}`]);
-    if ((await sh(this.adb, serial, ['shell', 'settings', 'get', 'global', CANARY_KEY])).trim() !== nonce) throw new Error('Could not plant the wipe canary');
+    if ((await sh(this.adb, serial, ['shell', 'settings', 'get', 'global', CANARY_KEY])).trim() !== nonce) throw new Error(diagnostic('wipe.d53fabbfff'));
     return nonce;
   }
 
@@ -51,15 +52,15 @@ export class CommandAndroidWipe {
     if (!ctx.canary) ctx.canary = await this.arm(serial); // enrollment / manual sanitize / unplugged during a session
     this.boot.set(serial, (await sh(this.adb, serial, ['shell', 'cat', '/proc/sys/kernel/random/boot_id'])).trim());
     const r = await this.execute(this.command, [serial], { timeoutMs: this.timeoutMs });
-    if (r.exitCode !== 0) throw new Error(`Wipe script failed (exit ${r.exitCode}): ${String(r.stderr).trim().slice(0, 200)}`);
+    if (r.exitCode !== 0) throw new Error(diagnostic('wipe.2775fdc153', { p0: r.exitCode, p1: String(r.stderr).trim().slice(0, 200) }));
   }
 
   cleanup(serial) { this.boot.delete(serial); }
 
   async verify(serial, ctx = {}) {
-    if (!ctx.canary) throw new Error('No wipe canary was recorded for this device');
+    if (!ctx.canary) throw new Error(diagnostic('wipe.e43cb9596b'));
     const before = this.boot.get(serial);
-    if (!before) throw new Error('Wipe was not started');
+    if (!before) throw new Error(diagnostic('wipe.e50d5ebe4a'));
     const deadline = Date.now() + this.readyMs;
     let boot = null;
     while (Date.now() < deadline) {
@@ -67,23 +68,23 @@ export class CommandAndroidWipe {
       if (result?.exitCode === 0) { boot = String(result.stdout).trim(); break; }
       await sleep(this.pollMs);
     }
-    if (!boot) throw new Error('Device is not ready (adb unavailable or unauthorized) after the wipe script');
-    if (boot === before) throw new Error('Wipe verification failed: device did not reboot');
+    if (!boot) throw new Error(diagnostic('wipe.43e349e18a'));
+    if (boot === before) throw new Error(diagnostic('wipe.d7e7196078'));
     const setup = (await sh(this.adb, serial, ['shell', 'settings', 'get', 'secure', 'user_setup_complete'])).trim();
-    if (setup !== '1') throw new Error('Device is still in the setup wizard after the wipe script');
+    if (setup !== '1') throw new Error(diagnostic('wipe.da173015ab'));
     this.boot.delete(serial);
     const left = (await sh(this.adb, serial, ['shell', 'settings', 'get', 'global', CANARY_KEY])).trim();
-    if (left !== 'null' && left !== '') throw new Error('Wipe verification failed: the data partition was not erased (canary setting survived)');
+    if (left !== 'null' && left !== '') throw new Error(diagnostic('wipe.acba4dfccc'));
     for (const file of CANARY_FILES) {
       const r = await this.adb.run(serial, ['shell', `[ -e ${file} ] && echo present || echo absent`], { timeoutMs: 10000 });
-      if (r.exitCode !== 0 || String(r.stdout).trim() !== 'absent') throw new Error('Wipe verification failed: the data partition was not erased (canary file survived)');
+      if (r.exitCode !== 0 || String(r.stdout).trim() !== 'absent') throw new Error(diagnostic('wipe.8723a88b9d'));
     }
     await assertEmptyUserArea(this.adb, serial);
   }
 }
 
 function assertAbsoluteCommand(command, name) {
-  if (typeof command !== 'string' || !command.startsWith('/') || /[\0\r\n]/.test(command)) throw new Error(`${name} must be an absolute path`);
+  if (typeof command !== 'string' || !command.startsWith('/') || /[\0\r\n]/.test(command)) throw new Error(diagnostic('wipe.d8b9061e2a', { p0: name }));
 }
 
 // Runs wipe then verify; resolves {ok:true} or {ok:false, reason}. Never throws, so callers can always continue

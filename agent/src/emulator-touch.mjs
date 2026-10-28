@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import http2 from 'node:http2';
 
 const SERVICE = '/android.emulation.control.EmulatorController/';
@@ -41,25 +42,25 @@ function readFields(bytes) {
       value |= BigInt(byte & 127) << shift;
       if (!(byte & 128)) return value;
     }
-    throw new Error('Invalid emulator touch protobuf varint');
+    throw new Error(diagnostic('emulator-touch.6f8e7a3f29'));
   };
   while (offset < bytes.length) {
     const tag = Number(varint());
     const id = tag >>> 3;
     const wire = tag & 7;
-    if (!id) throw new Error('Invalid emulator touch protobuf field');
+    if (!id) throw new Error(diagnostic('emulator-touch.ecd59900ec'));
     if (wire === 0) fields.push([id, varint()]);
     else if (wire === 2) {
       const size = Number(varint());
       if (!Number.isSafeInteger(size) || size > MAX_RESPONSE_BYTES || offset + size > bytes.length) {
-        throw new Error('Invalid emulator touch protobuf length');
+        throw new Error(diagnostic('emulator-touch.12cd71dc3f'));
       }
       fields.push([id, bytes.subarray(offset, offset + size)]);
       offset += size;
     } else if (wire === 1 || wire === 5) {
       offset += wire === 1 ? 8 : 4;
-      if (offset > bytes.length) throw new Error('Truncated emulator touch protobuf field');
-    } else throw new Error('Unsupported emulator touch protobuf field');
+      if (offset > bytes.length) throw new Error(diagnostic('emulator-touch.09dbe2a2ba'));
+    } else throw new Error(diagnostic('emulator-touch.9cbb1f1748'));
   }
   return fields;
 }
@@ -70,7 +71,7 @@ function dimension(value) {
 
 export function decodeEmulatorGeometry(bytes) {
   const hardware = readFields(bytes).find(([id, value]) => id === 5 && Buffer.isBuffer(value))?.[1];
-  if (!hardware) throw new Error('Emulator did not report display geometry');
+  if (!hardware) throw new Error(diagnostic('emulator-touch.9e5bd6be39'));
   const config = new Map();
   for (const [id, entry] of readFields(hardware)) {
     if (id !== 1 || !Buffer.isBuffer(entry)) continue;
@@ -81,13 +82,13 @@ export function decodeEmulatorGeometry(bytes) {
   }
   const width = Number(config.get('hw.lcd.width'));
   const height = Number(config.get('hw.lcd.height'));
-  if (!dimension(width) || !dimension(height)) throw new Error('Invalid emulator display geometry');
+  if (!dimension(width) || !dimension(height)) throw new Error(diagnostic('emulator-touch.d4c1d919e1'));
   return { width, height };
 }
 
 export function emulatorTouchHost(serial) {
   const match = /^rdf-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):5555$/.exec(serial);
-  if (!match) throw new Error('Invalid managed emulator serial for touch');
+  if (!match) throw new Error(diagnostic('emulator-touch.f6f53055a7'));
   return 'rdf-' + match[1];
 }
 
@@ -99,7 +100,7 @@ export function mapEmulatorTouch({ x, y, width, height }, geometry) {
       x < 0 || y < 0 || x >= width || y >= height || !dimension(geometry?.width) ||
       !dimension(geometry?.height) || !Number.isInteger(geometry?.rotation) ||
       geometry.rotation < 0 || geometry.rotation > 3) {
-    throw new Error('Invalid emulator touch coordinates or display orientation');
+    throw new Error(diagnostic('emulator-touch.20021b46f9'));
   }
   const u = width > 1 ? x / (width - 1) : 0;
   const v = height > 1 ? y / (height - 1) : 0;
@@ -108,7 +109,7 @@ export function mapEmulatorTouch({ x, y, width, height }, geometry) {
   const rect = geometry.physicalFrame || { left: 0, top: 0, right: orientedWidth, bottom: orientedHeight };
   if (![rect.left, rect.top, rect.right, rect.bottom].every(Number.isInteger) ||
       rect.left < 0 || rect.top < 0 || rect.right <= rect.left || rect.bottom <= rect.top ||
-      rect.right > orientedWidth || rect.bottom > orientedHeight) throw new Error('Invalid emulator display viewport');
+      rect.right > orientedWidth || rect.bottom > orientedHeight) throw new Error(diagnostic('emulator-touch.dd07c14b22'));
   const px = rect.left + u * (rect.right - rect.left - 1);
   const py = rect.top + v * (rect.bottom - rect.top - 1);
   const pu = orientedWidth > 1 ? px / (orientedWidth - 1) : 0;
@@ -120,7 +121,7 @@ export function mapEmulatorTouch({ x, y, width, height }, geometry) {
 export function encodeEmulatorTouch(touches) {
   for (const { x, y, pointerId, pressure } of touches) {
     if (![x, y, pointerId, pressure].every(Number.isInteger) || x < 0 || x > 16383 || y < 0 || y > 16383 ||
-        pointerId < 0 || pointerId > 0x7fffffff || pressure < 0 || pressure > 1024) throw new Error('Invalid native touch contact');
+        pointerId < 0 || pointerId > 0x7fffffff || pressure < 0 || pressure > 1024) throw new Error(diagnostic('emulator-touch.2e18a17913'));
   }
   return Buffer.concat(touches.map(({ x, y, pointerId, pressure }) => bytesField(1, Buffer.concat([
     field(1, x), field(2, y), field(3, pointerId), field(4, pressure),
@@ -148,20 +149,20 @@ export class EmulatorTouchController {
   }
 
   prepare() {
-    if (this.closing || this.closed) return Promise.reject(new Error('Emulator touch controller is closed'));
+    if (this.closing || this.closed) return Promise.reject(new Error(diagnostic('emulator-touch.7cec56d643')));
     if (this.preparation) return this.preparation;
     const host = emulatorTouchHost(this.serial);
     this.preparation = (async () => {
       this.client = this.connect('http://' + host + ':8554');
       this.client.on('error', error => this.fail(error));
       this.client.on('close', () => {
-        if (!this.closing && !this.closed) this.fail(new Error('Emulator touch connection closed'));
+        if (!this.closing && !this.closed) this.fail(new Error(diagnostic('emulator-touch.0069605585')));
       });
       const geometry = decodeEmulatorGeometry(await this.rpc('getStatus', Buffer.alloc(0)));
       // An empty TouchEvent carries no contacts. This verifies sendTouch support
       // before any gesture is routed here, including on older emulator versions.
       await this.rpc('sendTouch', Buffer.alloc(0));
-      if (this.closing || this.closed || this.failed) throw new Error('Emulator touch controller is unavailable');
+      if (this.closing || this.closed || this.failed) throw new Error(diagnostic('emulator-touch.9279f4b61e'));
       this.geometry = { ...this.geometry, ...geometry };
       this.ready = true;
       return this.getGeometry();
@@ -177,7 +178,7 @@ export class EmulatorTouchController {
   setGeometry(geometry) {
     const next = { ...this.geometry, ...geometry };
     if (!dimension(next.width) || !dimension(next.height) || !Number.isInteger(next.rotation) || next.rotation < 0 || next.rotation > 3) {
-      throw new Error('Invalid emulator display geometry or orientation');
+      throw new Error(diagnostic('emulator-touch.61b70e1b59'));
     }
     mapEmulatorTouch({ x: 0, y: 0, width: 2, height: 2 }, next);
     this.geometry = { ...next, ...(next.physicalFrame ? { physicalFrame: { ...next.physicalFrame } } : {}) };
@@ -194,14 +195,14 @@ export class EmulatorTouchController {
   sendTouch(params) {
     const { action, pointerId = 0 } = params;
     if (!['down', 'move', 'up', 'cancel'].includes(action) || !Number.isInteger(pointerId) || pointerId < 0 || pointerId > 0x7fffffff) {
-      throw new Error('Invalid emulator touch action or pointer');
+      throw new Error(diagnostic('emulator-touch.dcd392f5a7'));
     }
     if (action !== 'down' && this.ownedPointers.has(pointerId) && !this.isAvailable()) {
       if (action === 'up' || action === 'cancel') this.ownedPointers.delete(pointerId);
       return true;
     }
     if (!this.isAvailable()) return false;
-    if (action === 'down' && this.ownedPointers.has(pointerId)) throw new Error('Touch pointer is already down');
+    if (action === 'down' && this.ownedPointers.has(pointerId)) throw new Error(diagnostic('emulator-touch.67df11dd32'));
     if (action !== 'down' && !this.ownedPointers.has(pointerId)) return false;
     if (action === 'down' && (this.pointers.size >= MAX_POINTERS || this.queue.length >= MAX_QUEUE - MAX_POINTERS)) return false;
     const previous = this.pointers.get(pointerId);
@@ -242,7 +243,7 @@ export class EmulatorTouchController {
           // Never replay a delayed tap after a congested transport recovers.
           // Fail closed and release contacts whose delivery is already known
           // or uncertain; a later gesture may use the surviving scrcpy channel.
-          throw Object.assign(new Error('Native touch input expired'), { code: 'INPUT_EXPIRED' });
+          throw Object.assign(new Error(diagnostic('emulator-touch.3f260c8735')), { code: 'INPUT_EXPIRED' });
         }
         // A failed response does not prove the guest missed the contact. Keep
         // its last coordinates until an acknowledged release, for cleanup.
@@ -259,7 +260,7 @@ export class EmulatorTouchController {
 
   rpc(method, body) {
     return new Promise((resolve, reject) => {
-      if (!this.client || this.client.destroyed || this.client.closed) return reject(new Error('Emulator touch connection is unavailable'));
+      if (!this.client || this.client.destroyed || this.client.closed) return reject(new Error(diagnostic('emulator-touch.b31b8d95e1')));
       let request;
       let timer;
       let settled = false;
@@ -274,24 +275,24 @@ export class EmulatorTouchController {
       };
       try {
         request = this.client.request({ ':method': 'POST', ':path': SERVICE + method, 'content-type': 'application/grpc', te: 'trailers' });
-        timer = setTimeout(() => finish(new Error('Emulator touch gRPC timed out')), this.timeoutMs);
+        timer = setTimeout(() => finish(new Error(diagnostic('emulator-touch.fa7fecbf80'))), this.timeoutMs);
         request.on('response', headers => {
           if (headers[':status'] !== 200 || !String(headers['content-type'] || '').startsWith('application/grpc')) {
-            finish(new Error('Emulator touch gRPC endpoint rejected the request'));
+            finish(new Error(diagnostic('emulator-touch.1c32b18a69')));
           }
           if (headers['grpc-status'] !== undefined) status = String(headers['grpc-status']);
         });
         request.on('trailers', headers => { status = String(headers['grpc-status']); });
         request.on('data', chunk => {
-          if (bytes.length + chunk.length > MAX_RESPONSE_BYTES + 5) return finish(new Error('Emulator touch response exceeded limit'));
+          if (bytes.length + chunk.length > MAX_RESPONSE_BYTES + 5) return finish(new Error(diagnostic('emulator-touch.25b537dc8d')));
           bytes = Buffer.concat([bytes, chunk]);
         });
         request.on('error', error => finish(error));
-        request.on('close', () => finish(new Error('Emulator touch request closed')));
+        request.on('close', () => finish(new Error(diagnostic('emulator-touch.a6b0cb0a56'))));
         request.on('end', () => {
-          if (status !== '0') return finish(new Error('Emulator touch gRPC status ' + (status ?? 'unknown')));
+          if (status !== '0') return finish(new Error(diagnostic('emulator-touch.6629653367', { p0: (status ?? 'unknown') })));
           if (bytes.length < 5 || bytes[0] !== 0 || bytes.readUInt32BE(1) !== bytes.length - 5) {
-            return finish(new Error('Invalid emulator touch gRPC response'));
+            return finish(new Error(diagnostic('emulator-touch.7b66ca7c91')));
           }
           finish(null, bytes.subarray(5));
         });

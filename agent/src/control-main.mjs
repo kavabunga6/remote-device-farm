@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import { initializeControl } from './control-startup.mjs';
 import { AgentControl, loadControlConfig } from './agent-control.mjs';
 import { createControlServer } from './control-ipc.mjs';
@@ -6,7 +7,7 @@ const control = new AgentControl(loadControlConfig());
 try { await initializeControl(control); }
 catch { console.error(JSON.stringify({ event: 'control.startup_failed', code: 'dependency_unavailable' })); process.exit(1); }
 const server = await createControlServer(control);
-console.log('Agent control IPC is ready');
+console.log(diagnostic('control-main.3ed4ec8404'));
 
 function shutdown() {
   server.close(() => process.exit(0));

@@ -1,3 +1,4 @@
+import { diagnostic } from '../diagnostics.js';
 import { uiMessage } from '../messages.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir, open, readdir, rm } from 'node:fs/promises';
@@ -48,7 +49,7 @@ export function registerAppRoutes(app: Express, context: ServerContext): void {
   const tmpDir = path.join(store.dir, '_tmp');
   void readdir(tmpDir).then(names => Promise.all(names.map(name => rm(path.join(tmpDir, name), { force: true }))), () => undefined);
   const audit = (event: Parameters<typeof recordAuditEvent>[1]) =>
-    void recordAuditEvent(pool, event).catch(() => console.error('Audit event persistence failed'));
+    void recordAuditEvent(pool, event).catch(() => console.error(diagnostic('app-routes.57acf9a777')));
 
   async function usage(userId: string) {
     const { rows } = await pool.query('SELECT COUNT(*)::int AS count, COALESCE(SUM(size_bytes),0)::bigint AS used FROM stored_apps WHERE owner_user_id=$1', [userId]);
@@ -188,7 +189,7 @@ export function registerAppRoutes(app: Express, context: ServerContext): void {
           const buffer = Buffer.alloc(CHUNK_BYTES);
           for (let index = 0, offset = 0; offset < size; index++) {
             const { bytesRead } = await handle.read(buffer, 0, CHUNK_BYTES, offset);
-            if (bytesRead === 0) throw new Error('file ended early');
+            if (bytesRead === 0) throw new Error(diagnostic('app-routes.b64783de50'));
             await hub.command(session.hostId, session.id, 'app-chunk',
               { transferId, index, contentBase64: buffer.toString('base64', 0, bytesRead) }, 60_000);
             offset += bytesRead;
@@ -204,7 +205,7 @@ export function registerAppRoutes(app: Express, context: ServerContext): void {
       const message = error instanceof Error ? error.message : String(error);
       if (message === 'agent offline') throw new ApiError(503, 'agent_offline', uiMessage('ui.c5dec6d573c6', {}, 'en'));
       if (message === 'agent command timed out') throw new ApiError(504, 'install_timeout', uiMessage('ui.b7589c12394d', {}, 'en'));
-      throw new ApiError(502, 'install_failed', message.replace(/\s+/g, ' ').slice(0, 300) || 'Installation failed');
+      throw new ApiError(502, 'install_failed', message.replace(/\s+/g, ' ').slice(0, 300) || diagnostic('app-routes.d472ecf6a0'));
     }
   }
 

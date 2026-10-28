@@ -1,3 +1,4 @@
+import { diagnostic } from '../diagnostics.mjs';
 import { agentMessage } from '../messages.mjs';
 import { DeviceProvider } from './base.mjs';
 import { sanitize } from './wipe.mjs';
@@ -62,7 +63,7 @@ export class PhysicalDeviceProvider extends DeviceProvider {
 
   startCleaning(id, context) {
     if (this.locks.has(id)) return;
-    const job = this.cleanDevice(id, context).catch((error) => console.error(`Cleaning ${id} crashed: ${error.message}`))
+    const job = this.cleanDevice(id, context).catch((error) => console.error(diagnostic('physical.0ae08a9bf1', { p0: id, p1: error.message })))
       .finally(() => this.cleaning.delete(job));
     this.cleaning.add(job);
   }
@@ -79,7 +80,7 @@ export class PhysicalDeviceProvider extends DeviceProvider {
     const key = this.key(id);
     const done = (async () => {
       const ctx = { canary: this.store.canaryOf(key) };
-      const result = this.wiper ? await sanitize(this.wiper, id, ctx) : { ok: false, reason: 'no wipe strategy configured' };
+      const result = this.wiper ? await sanitize(this.wiper, id, ctx) : { ok: false, reason: diagnostic('physical.68e39a641f') };
       if (result.ok) { await this.store.markClean(key); return true; }
       const reason = `${context}: ${result.reason}`;
       await this.store.quarantine(key, reason);

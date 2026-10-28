@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { devicePlatform, normalizeProviderStatuses, normalizeDeviceMetadata, sessionCapabilities, type DevicePlatform, type DeviceCapabilityReasons } from './generated/device-contract.js';
 import { uiMessage } from './messages.js';
 import { normalizeProfileResources, mergeLaunchStorage, type LaunchOptions } from './launch-options.js';
@@ -163,7 +164,7 @@ export function parseProfile(input: Record<string, unknown>, options: { allowKee
   const diskMaxGb = optionalGb(input.diskMaxGb), sdcardGb = optionalGb(input.sdcardGb), sdcardMaxGb = optionalGb(input.sdcardMaxGb);
   const rawEnvNames = input.containerEnv && typeof input.containerEnv === 'object' && !Array.isArray(input.containerEnv) ? Object.keys(input.containerEnv) : [];
   const docker = validateDockerOptions(input.dockerOptions, name => rawEnvNames.some(item => item.toUpperCase() === name.toUpperCase()));
-  if ('error' in docker) throw new ApiError(400, 'invalid_profile', 'Invalid container options: ' + docker.error);
+  if ('error' in docker) throw new ApiError(400, 'invalid_profile', diagnostic('http-common.6d5d8edd3e', { p0: docker.error }));
   const dockerOptions = docker.value;
   const containerEnv = validateContainerEnv(input.containerEnv, { allowKeep: options.allowKeepEnv === true, extraReserved: [dockerOptions.emulatorParamsEnv, dockerOptions.adbKeyEnv].filter((item): item is string => Boolean(item)) });
   if (!containerEnv) throw new ApiError(400, 'invalid_profile', uiMessage('ui.9066d77faef6', {}, 'en'));

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { diagnostic } from './diagnostics.mjs';
 
 // Isolate the real connection functions: importing main also boots providers,
 // probes the host and connects to the configured broker.
@@ -18,6 +19,7 @@ function fixture() {
     close() { this.readyState = 3; this.emit('close'); }
   }
   const context = vm.createContext({
+    diagnostic,
     WebSocket: FakeWebSocket, config: { brokerUrl: 'ws://unused', token: 'unused', agentId: 'test' },
     console: { log() {}, warn() {} }, resendAlerts() {}, watchBrokerSocket() {},
     announce: () => new Promise(resolve => hellos.push(resolve)),
@@ -103,6 +105,7 @@ test('blocked cleanup cannot delay heartbeats or enqueue overlapping maintenance
   let release, reconciliations = 0, maintained = 0;
   const cleanup = new Promise(resolve => { release = resolve; });
   const context = vm.createContext({
+    diagnostic,
     config: { agentId: 'node-1', name: 'Node' }, emulator: { policy: { slots: 1, revision: 1 } },
     metrics: async () => ({ kvm: true }), send: event => { messages.push(event); return true; },
     registry: { activeSessions: () => [{ sessionId: 'stopping-session' }], describeProviders: async () => [], maintainAll: async () => { maintained++; } },
@@ -125,6 +128,7 @@ test('blocked cleanup cannot delay heartbeats or enqueue overlapping maintenance
 test('slow heartbeat probes coalesce and cannot publish to a replacement socket', async () => {
   const messages = []; let resolveProbe, probes = 0;
   const context = vm.createContext({
+    diagnostic,
     config: { agentId: 'node-1' }, emulator: { policy: { slots: 1 } },
     metrics: () => { probes++; return new Promise(resolve => { resolveProbe = resolve; }); },
     send: event => { messages.push(event); return true; },

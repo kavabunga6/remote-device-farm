@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { agentMessage } from './messages.mjs';
 // Catalog of Google emulator system images for the farm image (agent/emulator-image). The agent uses it for the
 // image catalog in the UI; deploy/emulator/build.sh uses the same CLI for manual and CI builds.
 //
@@ -80,7 +81,7 @@ export function selectEntries(catalog, { abi = 'x86_64', filter = null, extensio
     .filter(entry => !pattern || pattern.test(entry.package) || pattern.test(imageTag(entry)));
 }
 
-const DEVICE_NAMES = { phone: '', tablet: 'Планшет · ', tv: 'Android TV · ', automotive: 'Android Automotive · ', wear: 'Wear OS · ', desktop: 'Desktop · ' };
+const DEVICE_NAMES = { phone: '', tablet: agentMessage('agent.profile.tabletName', { p0: '' }, 'ru'), tv: 'Android TV · ', automotive: 'Android Automotive · ', wear: 'Wear OS · ', desktop: 'Desktop · ' };
 const FLAVOR_NAMES = { google_play: 'Google Play', google_apis: 'Google APIs', aosp: 'AOSP' };
 const SYSTEM_IMAGE_NAMES = {
   default: 'AOSP', aosp_atd: 'AOSP ATD', google_atd: 'Google APIs ATD',

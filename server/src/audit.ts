@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import type { Express, Request } from 'express';
 import type { Pool } from 'pg';
 import type { User } from './auth.js';
@@ -129,7 +130,7 @@ export function installAuditTrail(app: Express, pool: Pool): void {
           ? 'denied' : res.statusCode >= 400 ? 'failed' : 'success';
         void recordAuditEvent(pool, { ...target,
           targetId: res.locals.auditTargetId ?? (target.targetType === 'user' && !target.targetId ? actor.id : target.targetId),
-          actor, outcome }).catch(() => console.error('Audit event persistence failed'));
+          actor, outcome }).catch(() => console.error(diagnostic('audit.57acf9a777')));
       });
     }
     next();

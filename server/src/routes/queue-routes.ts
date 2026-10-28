@@ -1,3 +1,4 @@
+import { diagnostic } from '../diagnostics.js';
 import { uiMessage } from '../messages.js';
 import { assertUserActive } from '../user-removal.js';
 import { hostGpuBackend } from '../gpu-modes.js';
@@ -192,7 +193,7 @@ export function registerQueueRoutes(app: Express, context: ServerContext, option
     const entry = await readEntry(id, user.id);
     if (result.rowCount) await recordAuditEvent(pool, { action: 'queue.cancelled', actor: user, targetType: 'queue', targetId: id }).catch(() => {});
     if (entry.state === 'assigning' || entry.state === 'assigned') {
-      res.status(409).json({ error: { code: 'queue_already_assigned', message: 'Assignment has started; release the session identified by this queue entry' }, entry });
+      res.status(409).json({ error: { code: 'queue_already_assigned', message: diagnostic('queue-routes.4bb4628a68') }, entry });
       return;
     }
     res.json(entry);

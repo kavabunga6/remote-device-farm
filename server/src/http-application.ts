@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { operationalError } from './startup.js';
 import { uiMessage } from './messages.js';
 import express, { type NextFunction, type Request, type Response } from 'express';
@@ -103,7 +104,7 @@ export function createHttpApplication(
     if (res.headersSent) return;
     if (error instanceof SyntaxError && (error as { type?: string }).type === 'entity.parse.failed') {
       res.locals.applicationError = 'invalid_json';
-      res.status(400).json({ error: { code: 'invalid_json', message: 'Expected a JSON object or array' } });
+      res.status(400).json({ error: { code: 'invalid_json', message: diagnostic('http-application.e6ee3297db') } });
       return;
     }
     if (error instanceof multer.MulterError) {

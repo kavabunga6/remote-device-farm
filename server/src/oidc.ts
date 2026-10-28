@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { createHash, randomBytes } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
@@ -26,10 +27,10 @@ export class OidcService {
     if (this.discovery) return this.discovery;
     const issuer = this.config.oidc!.issuer;
     const response = await fetch(`${issuer}/.well-known/openid-configuration`, { signal: AbortSignal.timeout(5000) });
-    if (!response.ok) throw new Error('OIDC discovery failed');
+    if (!response.ok) throw new Error(diagnostic('oidc.40bf82e3b7'));
     const data = await response.json() as Discovery;
     if (data.issuer !== issuer || !data.authorization_endpoint?.startsWith('https://') || !data.token_endpoint?.startsWith('https://') || !data.jwks_uri?.startsWith('https://')) {
-      throw new Error('OIDC discovery metadata is invalid');
+      throw new Error(diagnostic('oidc.52c0c83ce5'));
     }
     this.discovery = data;
     return data;
@@ -65,12 +66,12 @@ export class OidcService {
     const code = String(req.query.code || '');
     const cookie = (req.headers.cookie || '').split(';').map(item => item.trim()).find(item => item.startsWith('rdf_oidc_state='))?.slice('rdf_oidc_state='.length);
     res.clearCookie('rdf_oidc_state', { path: '/api/oidc/callback', httpOnly: true, secure: this.config.secureCookies, sameSite: 'lax' });
-    if (!state || !code || !cookie || state !== cookie) throw new Error('OIDC state mismatch');
+    if (!state || !code || !cookie || state !== cookie) throw new Error(diagnostic('oidc.3e226577b6'));
     const flow = await this.pool.query(
       `DELETE FROM oidc_flows WHERE state_hash=$1 AND expires_at>now() RETURNING code_verifier,nonce`,
       [tokenHash(state)],
     );
-    if (!flow.rows[0]) throw new Error('OIDC login expired');
+    if (!flow.rows[0]) throw new Error(diagnostic('oidc.13f4537c6c'));
     const metadata = await this.metadata();
     const body = new URLSearchParams({
       grant_type: 'authorization_code', code, redirect_uri: `${this.config.publicUrl}/api/oidc/callback`,
@@ -81,14 +82,14 @@ export class OidcService {
       method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Authorization: `Basic ${credentials}` },
       body, signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) throw new Error('OIDC token exchange failed');
+    if (!response.ok) throw new Error(diagnostic('oidc.8681110a5b'));
     const tokenResponse = await response.json() as { id_token?: string };
-    if (!tokenResponse.id_token) throw new Error('OIDC identity token missing');
+    if (!tokenResponse.id_token) throw new Error(diagnostic('oidc.36889d15f7'));
     const jwks = createRemoteJWKSet(new URL(metadata.jwks_uri));
     const { payload } = await jwtVerify(tokenResponse.id_token, jwks, {
       issuer: metadata.issuer, audience: settings.clientId, algorithms: ['RS256', 'ES256', 'PS256'],
     });
-    if (payload.nonce !== flow.rows[0].nonce || !payload.sub) throw new Error('OIDC identity mismatch');
+    if (payload.nonce !== flow.rows[0].nonce || !payload.sub) throw new Error(diagnostic('oidc.70fbe58d2a'));
     return {
       subject: String(payload.sub),
       username: String(payload.preferred_username || payload.email || payload.sub),

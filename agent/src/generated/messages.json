@@ -107,6 +107,10 @@
     "ru": "Устройство очищается и пока недоступно",
     "en": "Device is being cleaned and is not available yet"
   },
+  "agent.access.viewOnly": {
+    "ru": "Доступ только для просмотра.",
+    "en": "View-only access."
+  },
   "agent.androidReady": {
     "ru": "ADB подключён; sys.boot_completed=1",
     "en": "ADB connected; sys.boot_completed=1"
@@ -138,6 +142,18 @@
   "agent.appium.unavailable": {
     "en": "Managed Appium is not installed on this node.",
     "ru": "Управляемый Appium не установлен на этом узле."
+  },
+  "agent.apps.listFailed": {
+    "ru": "Не удалось получить приложения Android",
+    "en": "Could not read the Android app list"
+  },
+  "agent.apps.notInstalled": {
+    "ru": "Приложение не установлено. Обновите список приложений.",
+    "en": "The app is not installed. Refresh the app list."
+  },
+  "agent.apps.uidUnavailable": {
+    "ru": "Android не передал UID записей. Фильтр приложения недоступен на этом образе.",
+    "en": "Android did not report app UIDs. App filtering is unavailable on this image."
   },
   "agent.b437662d8b65": {
     "ru": "Некорректный размер пакета scrcpy",
@@ -183,6 +199,18 @@
     "ru": "Истекло время подготовки каталога Google.",
     "en": "Google catalog preparation timed out."
   },
+  "agent.cleanup.completed": {
+    "ru": "Контейнер, тома и сети удалены",
+    "en": "Container, volumes and networks removed"
+  },
+  "agent.cleanup.container": {
+    "ru": "Удаление контейнера {p0} и его томов",
+    "en": "Removing container {p0} and its volumes"
+  },
+  "agent.cleanup.networks": {
+    "ru": "Удаление сетей сессии",
+    "en": "Removing session networks"
+  },
   "agent.codecFailed": {
     "ru": "Ошибка аудиокодера scrcpy {p0}",
     "en": "scrcpy {p0} audio encoder failed"
@@ -191,9 +219,29 @@
     "ru": "Неожиданный аудиокодек scrcpy: {p0}",
     "en": "Unexpected scrcpy audio codec {p0}"
   },
+  "agent.console.exitCode": {
+    "ru": "{p0} (код {p1})",
+    "en": "{p0} (exit code {p1})"
+  },
+  "agent.console.failed": {
+    "ru": "Не удалось выполнить команду консоли устройства",
+    "en": "Could not run the device console command"
+  },
+  "agent.console.unconfirmed": {
+    "ru": "Консоль устройства не подтвердила выполнение команды.",
+    "en": "The device console did not confirm that the command completed."
+  },
   "agent.containerStarted": {
     "ru": "Контейнер запущен: {p0}",
     "en": "Container started: {p0}"
+  },
+  "agent.diagnostics.failed": {
+    "ru": "Не удалось получить диагностику контейнера: {p0}",
+    "en": "Could not read container diagnostics: {p0}"
+  },
+  "agent.diagnostics.snapshot": {
+    "ru": "Снимок stdout/stderr контейнера: последние 2000 строк.",
+    "en": "Container stdout/stderr snapshot: last 2000 lines."
   },
   "agent.dummyByte": {
     "ru": "Некорректный байт подтверждения scrcpy: {p0}",
@@ -231,6 +279,10 @@
     "ru": "Не удалось установить соединение scrcpy: {p0}",
     "en": "scrcpy forward handshake failed: {p0}"
   },
+  "agent.kvm.available": {
+    "ru": "KVM доступен; GPU backend: {p0}",
+    "en": "KVM available; GPU backend: {p0}"
+  },
   "agent.noWiper": {
     "ru": "Стратегия очистки для {p0} не настроена. Выдача устройства запрещена.",
     "en": "No wipe strategy configured for {p0} devices; refusing to lease"
@@ -238,6 +290,14 @@
   "agent.operationTimeout": {
     "ru": "Истекло время ожидания: {p0}",
     "en": "{p0} timed out"
+  },
+  "agent.profile.checked": {
+    "ru": "Профиль и лимиты узла проверены",
+    "en": "Profile and node limits checked"
+  },
+  "agent.profile.tabletName": {
+    "ru": "Планшет · {p0}",
+    "en": "Tablet · {p0}"
   },
   "agent.providerFailure": {
     "ru": "Провайдер {p0}: ошибка {p1}: {p2}",
@@ -258,6 +318,18 @@
   "agent.quarantined": {
     "ru": "Устройство в карантине: {p0}",
     "en": "Device is quarantined: {p0}"
+  },
+  "agent.recovery.cleaned": {
+    "ru": "Очистка после восстановления завершена",
+    "en": "Cleanup after recovery completed"
+  },
+  "agent.recovery.started": {
+    "ru": "Восстановление агента: {p0}",
+    "en": "Agent recovery: {p0}"
+  },
+  "agent.settings.unconfirmed": {
+    "ru": "Android не подтвердил изменение {p0}. Обновите состояние и повторите.",
+    "en": "Android did not confirm the change to {p0}. Refresh the state and try again."
   },
   "agent.startCheck": {
     "ru": "Проверка ресурсов, KVM и GPU",
@@ -302,6 +374,14 @@
   "agent.usbAuthorize": {
     "ru": "USB-устройство в состоянии {p0}. Разрешите ADB-доступ на устройстве.",
     "en": "USB device is {p0}; authorize this host's ADB key on the phone"
+  },
+  "agent.webrtc.disabled": {
+    "ru": "WebRTC не включён на узле.",
+    "en": "WebRTC is not enabled on this node."
+  },
+  "agent.webrtc.waitForStream": {
+    "ru": "Видеопоток ещё не готов. Дождитесь подключения scrcpy.",
+    "en": "The video stream is not ready. Wait for scrcpy to connect."
   },
   "apps.bundletoolMissing": {
     "en": "This agent does not have bundletool. Update the agent to install .apks archives.",

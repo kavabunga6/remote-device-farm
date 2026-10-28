@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import WebSocket from 'ws';
 import { randomUUID } from 'node:crypto';
 import { INPUT_MAX_AGE_MS, readInputMetadata, StreamInputError, type InputMetadata } from './stream-input.js';
@@ -42,18 +43,18 @@ export class AgentStreams {
     const result = await this.transport.command(hostId, sessionId, 'input-open', { epoch: state.epoch }, 5000);
     if (!state.active || socket.readyState !== WebSocket.OPEN) {
       if (this.transport.hasAgent(hostId)) void this.transport.command(hostId, sessionId, 'input-release', { epoch: state.epoch }, 5000).catch(() => {});
-      throw new StreamInputError('input_closed', 'Input connection has closed');
+      throw new StreamInputError('input_closed', diagnostic('agent-streams.0456f05b87'));
     }
-    if (typeof result.agentTime !== 'number' || !Number.isFinite(result.agentTime)) throw new StreamInputError('input_unavailable', 'Agent does not support expiring input');
+    if (typeof result.agentTime !== 'number' || !Number.isFinite(result.agentTime)) throw new StreamInputError('input_unavailable', diagnostic('agent-streams.499c8a40be'));
     // Response transit time makes the deadline earlier, never extends its life.
     state.clockOffset = result.agentTime - Date.now();
     return { inputEpoch: state.epoch, serverTime: Date.now(), inputMaxAgeMs: INPUT_MAX_AGE_MS };
   }
 
   async input(sessionId: string, hostId: string, socket: WebSocket, message: Record<string, unknown>, params: Record<string, unknown>): Promise<Record<string, unknown>> {
-    if (socket.readyState !== WebSocket.OPEN) throw new StreamInputError('input_closed', 'Viewer connection is closed');
+    if (socket.readyState !== WebSocket.OPEN) throw new StreamInputError('input_closed', diagnostic('agent-streams.ad3a99f9fa'));
     const state = this.inputViewers.get(socket);
-    if (!state?.active) throw new StreamInputError('input_closed', 'Input connection has closed');
+    if (!state?.active) throw new StreamInputError('input_closed', diagnostic('agent-streams.0456f05b87'));
     try {
       const input = readInputMetadata(message, state.epoch, state.sequence);
       state.sequence = input.seq;

@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import type { Pool } from 'pg';
 import { ApiError } from './http-common.js';
 import { allowedProfileIds } from './teams.js';
@@ -88,6 +89,6 @@ export async function selectProfileId(pool: Pool, user: Actor, selector: Profile
   const { rows } = await pool.query<Record<string, unknown>>(`SELECT * FROM profiles WHERE enabled=true AND removed_at IS NULL AND id NOT LIKE 'device-%'`);
   const allowed = await allowedProfileIds(pool, user);
   const match = rankProfiles(rows.filter(row => (!allowed || allowed.includes(String(row.id))) && matchesSelector(row, selector)))[0];
-  if (!match) throw new ApiError(404, 'no_matching_profile', 'No enabled profile matches ' + JSON.stringify(selector));
+  if (!match) throw new ApiError(404, 'no_matching_profile', diagnostic('profile-selector.e4a2fc6a8d', { p0: JSON.stringify(selector) }));
   return String(match.id);
 }

@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { generateKeyPair, type KeyObject } from 'node:crypto';
 import { promisify } from 'node:util';
 import { parseAdbPublicKey } from './adb-wire.js';
@@ -14,7 +15,7 @@ function littleEndian(value: bigint, bytes: number): Buffer {
     result[index] = Number(value & 255n);
     value >>= 8n;
   }
-  if (value !== 0n) throw new Error('RSA integer exceeds ADB key field');
+  if (value !== 0n) throw new Error(diagnostic('adb-key.c24b440938'));
   return result;
 }
 
@@ -24,7 +25,7 @@ function publicKeyText(key: KeyObject): string {
   const exponentBytes = Buffer.from(jwk.e!, 'base64url');
   if (modulusBytes.length !== MODULUS_BYTES ||
       BigInt('0x' + exponentBytes.toString('hex')) !== 65537n) {
-    throw new Error('ADB requires RSA-2048 with public exponent 65537');
+    throw new Error(diagnostic('adb-key.4f03e73366'));
   }
   const modulus = BigInt('0x' + modulusBytes.toString('hex'));
   const lowWord = modulus & (WORD_MODULUS - 1n);

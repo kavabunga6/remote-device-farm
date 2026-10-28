@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 // Public runtime settings are useful diagnostics. All other environment values stay private.
 const PUBLIC_ENV_NAMES = new Set([
   'HOME', 'PATH', 'HOSTNAME', 'USER', 'LOGNAME', 'LANG', 'LANGUAGE', 'TZ', 'TERM',
@@ -56,10 +57,10 @@ export function dockerLogLines(buffer, tty = false) {
   let offset = 0;
   while (offset + 8 <= buffer.length) {
     const kind = buffer[offset], length = buffer.readUInt32BE(offset + 4);
-    if (![1, 2].includes(kind) || offset + 8 + length > buffer.length) throw new Error('Invalid Docker log stream');
+    if (![1, 2].includes(kind) || offset + 8 + length > buffer.length) throw new Error(diagnostic('session-diagnostics.9ffdeadba5'));
     chunks[kind === 2 ? 'stderr' : 'stdout'].push(buffer.subarray(offset + 8, offset + 8 + length));
     offset += 8 + length;
   }
-  if (offset !== buffer.length) throw new Error('Incomplete Docker log stream');
+  if (offset !== buffer.length) throw new Error(diagnostic('session-diagnostics.2c85885dad'));
   return Object.entries(chunks).map(([stream, parts]) => ({ stream, text: Buffer.concat(parts).toString('utf8') }));
 }

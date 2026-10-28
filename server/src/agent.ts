@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { AgentStreams } from './agent-streams.js';
 import { normalizeProviderStatuses } from './generated/device-contract.js';
 import { AgentRequests } from './agent-requests.js';
@@ -66,7 +67,7 @@ export class AgentHub {
     for (const timer of this.agentSockets.values()) clearTimeout(timer);
     this.agentSockets.clear();
     this.agents.clear();
-    this.pending.rejectWhere(() => true, new Error('server shutting down'));
+    this.pending.rejectWhere(() => true, new Error(diagnostic('agent.da4390b715')));
     this.streams.dispose();
     for (const tunnel of this.tunnels.values()) sockets.add(tunnel.socket);
     for (const tunnel of this.deviceTunnels.values()) tunnel.socket.destroy();
@@ -507,7 +508,7 @@ export class AgentHub {
   }
 
   async command(hostId: string, sessionId: string, action: string, params: Record<string, unknown>, timeoutMs = 30_000, input?: InputMetadata): Promise<Record<string, unknown>> {
-    if (this.stopped) throw new Error('server shutting down');
+    if (this.stopped) throw new Error(diagnostic('agent.da4390b715'));
     const agent = this.agents.get(hostId);
     if (!agent || agent.ws.readyState !== WebSocket.OPEN) throw new ApiError(503, 'agent_offline', uiMessage('api.agent_offline'));
     if (action === 'start') this.locallyStartedSessions.add(sessionId);
@@ -527,7 +528,7 @@ export class AgentHub {
     }).catch(error => {
       if (this.agents.get(hostId) === link) {
         this.policyRetryAfter.set(hostId, Date.now() + 10_000);
-        console.warn('Node policy ' + phase + ' failed:', error.message);
+        console.warn(diagnostic('agent.44f3937e7d', { p0: phase }), error.message);
       }
     }).finally(() => {
       if (this.policyRefreshInFlight.get(hostId) === link) this.policyRefreshInFlight.delete(hostId);
@@ -541,20 +542,20 @@ export class AgentHub {
   async applyHostPolicy(hostId: string): Promise<Record<string, unknown>> {
     const link = this.agents.get(hostId);
     if (!link || link.ws.readyState !== WebSocket.OPEN) throw new ApiError(503, 'agent_offline', uiMessage('api.agent_offline'));
-    if (!link.policyVersion) throw new Error('Agent upgrade is required for runtime node policy');
+    if (!link.policyVersion) throw new Error(diagnostic('agent.9739cc8dd5'));
     const result = await this.pool.query('SELECT * FROM hosts WHERE id=$1 AND removed_at IS NULL', [hostId]);
     const host = result.rows[0];
-    if (!host) throw new Error('Node is removed');
+    if (!host) throw new Error(diagnostic('agent.a86b3cc602'));
     const desired = desiredNodePolicy(host);
     const acknowledged = await this.command(hostId, hostId, 'set-policy', { policy: desired }, 30_000);
     if (acknowledged.revision !== desired.revision || acknowledged.slots !== desired.slots ||
         acknowledged.slotCpu !== desired.slotCpu || acknowledged.slotMemoryMb !== desired.slotMemoryMb) {
-      throw new Error('Agent policy acknowledgement mismatch');
+      throw new Error(diagnostic('agent.8dc2ec0e2d'));
     }
     await transaction(this.pool, async client => {
       const updated = await client.query('UPDATE hosts SET slots=$2,applied_policy_revision=$3 WHERE id=$1 AND policy_revision=$3 RETURNING id',
         [hostId, desired.slots, desired.revision]);
-      if (!updated.rowCount) throw new Error('Node policy changed during application');
+      if (!updated.rowCount) throw new Error(diagnostic('agent.0d0613dbd5'));
       await client.query('INSERT INTO host_slots(host_id,slot_index) SELECT $1, generate_series(0,$2-1) ON CONFLICT DO NOTHING',
         [hostId, desired.slots]);
     });
@@ -786,7 +787,7 @@ export class AgentHub {
     this.agents.delete(link.hostId);
     emitServiceLog(this.pool, { service: 'server', severity: 'warning', code: 'agent.disconnected', hostId: link.hostId });
     await this.pool.query(`UPDATE hosts SET status='offline' WHERE id=$1`, [link.hostId]).catch(() => {});
-    this.pending.rejectWhere(pending => pending.ws === link.ws && pending.action !== 'start', new Error('agent disconnected'));
+    this.pending.rejectWhere(pending => pending.ws === link.ws && pending.action !== 'start', new Error(diagnostic('agent.c74f3d49fe')));
     const result = await this.pool.query(`SELECT id FROM sessions WHERE host_id=$1 AND state IN ('starting','running','stopping')`, [link.hostId]).catch(() => ({ rows: [] }));
     for (const row of result.rows) {
       await sessionLog(this.pool, link.hostId, row.id, 'session.agent_disconnected', uiMessage('ui.9ad97d6ce64c'), 'warning');

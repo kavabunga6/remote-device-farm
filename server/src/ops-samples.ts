@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import type { Pool } from 'pg';
 
 type Queryable = Pick<Pool, 'query'>;
@@ -19,7 +20,7 @@ export function startSampler(pool: Queryable, seconds: number): () => Promise<vo
   let running: Promise<void> | null = null;
   const run = () => {
     if (running) return;
-    running = sampleOnce(pool).catch(() => console.error('Ops sample failed')).finally(() => { running = null; });
+    running = sampleOnce(pool).catch(() => console.error(diagnostic('ops-samples.b43bcdaab9'))).finally(() => { running = null; });
   };
   run();
   const timer = setInterval(run, seconds * 1000);

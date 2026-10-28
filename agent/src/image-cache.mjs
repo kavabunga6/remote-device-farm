@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import { mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 const ID = /^sha256:[a-f0-9]{64}$/;
@@ -9,10 +10,10 @@ export class ImageCache {
     try { this.usage = this.file ? JSON.parse(readFileSync(this.file, 'utf8')) : {}; }
     catch (error) {
       this.usage = {};
-      if (error.code !== 'ENOENT') { this.usageError = true; console.error('Image cache usage ledger is unreadable; cleanup is disabled until repaired'); }
+      if (error.code !== 'ENOENT') { this.usageError = true; console.error(diagnostic('image-cache.9d3b1e624f')); }
     }
     if (!this.usage || typeof this.usage !== 'object' || Array.isArray(this.usage) || Object.entries(this.usage).some(([id, value]) => !ID.test(id) || !value || !Number.isFinite(Date.parse(value.firstSeenAt)) || (value.lastUsedAt !== null && !Number.isFinite(Date.parse(value.lastUsedAt))))) {
-      this.usage = {}; this.usageError = true; console.error('Image cache usage ledger is invalid; cleanup is disabled until repaired');
+      this.usage = {}; this.usageError = true; console.error(diagnostic('image-cache.7f82aaf6ce'));
     }
   }
   persist() { if (!this.file) return; writeFileSync(this.file + '.tmp', JSON.stringify(this.usage), { mode: 0o600 }); renameSync(this.file + '.tmp', this.file); }
@@ -21,7 +22,7 @@ export class ImageCache {
     try {
       const image = await this.docker.request('GET', '/images/' + encodeURIComponent(reference) + '/json', undefined, { timeoutMs: 5000 });
       if (ID.test(image?.Id)) { this.usage[image.Id] = { firstSeenAt: this.usage[image.Id]?.firstSeenAt ?? new Date(this.now()).toISOString(), lastUsedAt: new Date(this.now()).toISOString() }; this.persist(); }
-    } catch { this.usageError = true; console.error('Image cache usage tracking failed; cleanup is disabled until restart'); }
+    } catch { this.usageError = true; console.error(diagnostic('image-cache.a38fac58e7')); }
   }
   async list(protectedRefs = [], signal) {
     signal?.throwIfAborted();
@@ -30,7 +31,7 @@ export class ImageCache {
     const containers = await this.docker.request('GET', '/containers/json?all=true', undefined, { signal, timeoutMs: 10000 });
     const items = [];
     for (const image of images.filter(owned)) {
-      if (!ID.test(image.Id)) throw new Error('Invalid Docker image ID');
+      if (!ID.test(image.Id)) throw new Error(diagnostic('image-cache.75ff22681a'));
       const tags = (image.RepoTags ?? []).filter(ref => ref !== '<none>:<none>');
       const digests = (image.RepoDigests ?? []).filter(ref => typeof ref === 'string');
       const used = containers.filter(container => container.ImageID === image.Id).map(container => container.Id);
@@ -53,9 +54,9 @@ export class ImageCache {
   }
   async remove(ids, protectedRefs, signal) {
     signal?.throwIfAborted();
-    if (!Array.isArray(ids) || !ids.length || ids.length > 100 || ids.some(id => !ID.test(id)) || new Set(ids).size !== ids.length) throw new Error('Invalid image deletion list');
+    if (!Array.isArray(ids) || !ids.length || ids.length > 100 || ids.some(id => !ID.test(id)) || new Set(ids).size !== ids.length) throw new Error(diagnostic('image-cache.0e64ed813d'));
     const before = await this.list(protectedRefs, signal);
-    if (ids.some(id => !before.items.some(item => item.id === id && !item.blockers.length))) throw new Error('Image cache changed or image is protected');
+    if (ids.some(id => !before.items.some(item => item.id === id && !item.blockers.length))) throw new Error(diagnostic('image-cache.5e6d239db2'));
     const removed = [], failed = [];
     for (const [index, id] of ids.entries()) {
       if (signal?.aborted) { failed.push(...ids.slice(index)); break; }

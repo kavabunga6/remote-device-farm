@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { assertPermission, hasPermission } from './permissions.js';
 import { registerAccessConnection } from './access-connections.js';
 import { recordServiceLog } from './service-log.js';
@@ -108,11 +109,11 @@ export function attachWebSocket(server: Server, context: ServerContext): () => P
           refreshed = await auth.authenticate(req);
         }
         if (!refreshed || refreshed.user.id !== authenticatedContext.user.id) {
-          throw new Error('authorization expired');
+          throw new Error(diagnostic('websocket.2cecba35ec'));
         }
         if (kind === 'stream') {
           const again = await accessibleSession(context_, sessionId, refreshed, 'view', true);
-          if ((hasPermission(refreshed.user, 'sessions.control') ? again.access : 'view') !== access || again.grantId !== grantId) throw new Error('authorization changed');
+          if ((hasPermission(refreshed.user, 'sessions.control') ? again.access : 'view') !== access || again.grantId !== grantId) throw new Error(diagnostic('websocket.dff0ecb0b9'));
         } else { assertPermission(refreshed.user, 'sessions.adb'); await ownedSession(sessionId, refreshed, true); }
       };
       const revalidateSocket = (ws: WebSocket) => {
@@ -207,7 +208,7 @@ export function attachWebSocket(server: Server, context: ServerContext): () => P
       }
     })().catch(() => {
       if (stopped || socket.destroyed) return;
-      console.error('WebSocket upgrade failed');
+      console.error(diagnostic('websocket.55fd4cc664'));
       void recordServiceLog(context.pool, {
         service: 'server', severity: 'error', code: 'websocket.upgrade_error',
       }).catch(() => {});

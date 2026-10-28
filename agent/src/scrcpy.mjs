@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import { RESET_VIDEO_CONTROL_MESSAGE, scrcpyServerArgs, SocketReader, parseMediaHeader, parseAudioCodecHeader, shouldRetryAac, encodeTouchEvent, encodeKeyPress, encodeTextInput, connectPort, within, connectVideoPortWithHandshake } from './scrcpy-protocol.mjs';
 export { scrcpyServerArgs, SocketReader, parseMediaHeader, parseAudioCodecHeader, shouldRetryAac, encodeTouchEvent, encodeKeyPress, encodeTextInput, connectPort, within, connectVideoPortWithHandshake } from './scrcpy-protocol.mjs';
 import { spawn } from 'node:child_process';
@@ -55,12 +56,12 @@ export class ScrcpyStream {
     this.scid = crypto.randomBytes(4).readUInt32BE(0) & 0x7fffffff;
     this.deviceServerPath = `/data/local/tmp/rdf-scrcpy-${this.scid.toString(16).padStart(8, '0')}.jar`;
     const pushed = await this.adb.run(this.serial, ['push', this.serverPath, this.deviceServerPath], { timeoutMs: 30000 });
-    if (pushed.exitCode !== 0) throw new Error(pushed.stderr || 'Could not push scrcpy server');
+    if (pushed.exitCode !== 0) throw new Error(pushed.stderr || diagnostic('scrcpy.8022712e6a'));
     const socketName = `localabstract:scrcpy_${this.scid.toString(16).padStart(8, '0')}`;
     const forwarded = await this.adb.run(this.serial, ['forward', 'tcp:0', socketName], { timeoutMs: 10000 });
-    if (forwarded.exitCode !== 0) throw new Error(forwarded.stderr || 'Could not forward scrcpy socket');
+    if (forwarded.exitCode !== 0) throw new Error(forwarded.stderr || diagnostic('scrcpy.ce97c9716d'));
     this.port = Number(forwarded.stdout.trim());
-    if (!Number.isInteger(this.port) || this.port < 1 || this.port > 65535) throw new Error('Invalid scrcpy forward port');
+    if (!Number.isInteger(this.port) || this.port < 1 || this.port > 65535) throw new Error(diagnostic('scrcpy.7ff723e956'));
     const args = scrcpyServerArgs(this.serial, this.deviceServerPath, this.scid, this.audioCodec);
     this.process = spawn('adb', args, { shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     this.process.stdout.on('data', data => this.observeDisplayOutput(data, 'stdout'));
@@ -70,7 +71,7 @@ export class ScrcpyStream {
     });
     this.process.on('error', (error) => { this.lastError = error; });
     this.process.on('close', (code) => {
-      if (!this.closed) this.lastError = new Error(`scrcpy exited ${code}: ${this.processLog.trim()}`);
+      if (!this.closed) this.lastError = new Error(diagnostic('scrcpy.2b80a82198', { p0: code, p1: this.processLog.trim() }));
       this.videoSocket?.destroy();
       this.audioSocket?.destroy();
       this.controlSocket?.destroy();
@@ -90,7 +91,7 @@ export class ScrcpyStream {
       });
       this.controlSocket.once('close', () => {
         if (this.closed) return;
-        const error = new Error('scrcpy control socket closed');
+        const error = new Error(diagnostic('scrcpy.385c12e8ca'));
         this.lastError = error;
         void this.close();
         this.onFailure?.(error);
@@ -98,7 +99,7 @@ export class ScrcpyStream {
       const videoReader = video.reader;
       const audioReader = new SocketReader(this.audioSocket);
       const videoCodec = (await within(videoReader.read(4), 10000, 'scrcpy video header')).toString('ascii');
-      if (videoCodec !== 'h264') throw new Error(`Unexpected scrcpy video codec ${videoCodec}`);
+      if (videoCodec !== 'h264') throw new Error(diagnostic('scrcpy.a5c4b439f4', { p0: videoCodec }));
       this.videoTask = this.readVideo(videoReader);
       this.videoTask.catch((error) => {
         if (!this.closed) {
@@ -125,18 +126,18 @@ export class ScrcpyStream {
           });
         } else {
           this.audioSocket.destroy();
-          console.warn(`scrcpy audio capture unavailable for ${this.sessionId}`);
+          console.warn(diagnostic('scrcpy.55a865acea', { p0: this.sessionId }));
         }
       } catch (error) {
         if (error.code === 'SCRCPY_AUDIO_CODEC_ERROR') throw error;
         this.audioSocket.destroy();
         this.audioAvailable = false;
-        console.warn(`scrcpy audio unavailable for ${this.sessionId}: ${error.message}`);
+        console.warn(diagnostic('scrcpy.e41ec2ac4e', { p0: this.sessionId, p1: error.message }));
       }
-      if (this.closed) throw this.lastError || new Error('scrcpy video stopped during startup');
+      if (this.closed) throw this.lastError || new Error(diagnostic('scrcpy.03bf10da46'));
     } catch (error) {
       const log = this.processLog.trim();
-      const failure = log ? new Error(`${error.message}; scrcpy server stderr: ${log}`) : this.lastError || error;
+      const failure = log ? new Error(diagnostic('scrcpy.0637a47544', { p0: error.message, p1: log })) : this.lastError || error;
       if (error.code) failure.code = error.code;
       await this.close();
       throw failure;
@@ -150,7 +151,7 @@ export class ScrcpyStream {
       if (flags.session) {
         const width = header.readUInt32BE(4);
         const height = header.readUInt32BE(8);
-        if (width < 1 || height < 1 || width > 8192 || height > 8192) throw new Error('Invalid video dimensions');
+        if (width < 1 || height < 1 || width > 8192 || height > 8192) throw new Error(diagnostic('scrcpy.224194b81a'));
         // Invalidate even when dimensions are identical: a 180-degree turn
         // starts a new codec session too. The display event often arrives first.
         if (this.nativeTouch) this.touchGeometry.invalidate();
@@ -201,7 +202,7 @@ export class ScrcpyStream {
     for (;;) {
       const header = await reader.read(12);
       const flags = parseMediaHeader(header);
-      if (flags.session) throw new Error('Unexpected audio session packet');
+      if (flags.session) throw new Error(diagnostic('scrcpy.eefd20cfce'));
       const packet = await reader.read(flags.packetSize);
       if (flags.config) {
         this.audioConfig = { ...this.audioConfig, data: packet.toString('base64') };
@@ -214,7 +215,7 @@ export class ScrcpyStream {
   }
 
   setAudio(enabled) {
-    if (enabled && !this.audioAvailable) throw new Error('Audio capture is unavailable on this emulator');
+    if (enabled && !this.audioAvailable) throw new Error(diagnostic('scrcpy.f7034c1bc1'));
     this.audioEnabled = Boolean(enabled);
     if (enabled && this.audioConfig) this.emit({ ...this.audioConfig, sessionId: this.sessionId });
   }
@@ -224,15 +225,15 @@ export class ScrcpyStream {
   }
 
   writeControl(message) {
-    if (!this.hasControl()) throw new Error('scrcpy control is unavailable');
-    if (this.controlSocket.writableLength > 64 * 1024) throw new Error('scrcpy control channel is congested');
+    if (!this.hasControl()) throw new Error(diagnostic('scrcpy.23c4ccb179'));
+    if (this.controlSocket.writableLength > 64 * 1024) throw new Error(diagnostic('scrcpy.9f978ba98b'));
     if (message.length) this.controlSocket.write(message);
     return { ok: true };
   }
 
   assertInputEpoch(epoch = this.inputEpoch) {
     if (this.closed || epoch !== this.inputEpoch || this.inputRelease) {
-      throw Object.assign(new Error('Input was reset or stream closed'), { code: 'INPUT_RESET' });
+      throw Object.assign(new Error(diagnostic('scrcpy.0dc02e6af8')), { code: 'INPUT_RESET' });
     }
   }
 
@@ -240,7 +241,7 @@ export class ScrcpyStream {
     this.assertInputEpoch(epoch);
     if (params?.kind === 'key') return this.writeControl(encodeKeyPress(params.keyCode));
     if (params?.kind === 'text') return this.writeControl(encodeTextInput(params.text));
-    throw new Error('Unsupported scrcpy input kind');
+    throw new Error(diagnostic('scrcpy.016a811270'));
   }
 
   observeDisplayOutput(data, channel) {
@@ -264,7 +265,7 @@ export class ScrcpyStream {
       this.nativeTouchReady = false;
       if (this.videoConfig) this.videoConfig.nativeTouches = false;
       this.resendConfig();
-      console.warn('Native emulator touch unavailable for ' + this.sessionId + ': ' + error.message);
+      console.warn(diagnostic('scrcpy.a56eaf2626', { p0: this.sessionId, p1: error.message }));
     } });
     this.nativeTouch = touch;
     try {
@@ -272,20 +273,20 @@ export class ScrcpyStream {
       const geometry = await this.touchGeometry.get();
       if (this.closed) { await touch.close(); return; }
       touch.setGeometry(geometry);
-      if (!touch.isAvailable()) throw new Error('Native touch closed during display probe');
+      if (!touch.isAvailable()) throw new Error(diagnostic('scrcpy.2bdd7d7849'));
       this.nativeTouchReady = true;
       if (this.videoConfig) this.videoConfig.nativeTouches = true;
       this.resendConfig();
     } catch (error) {
       await touch.close();
-      if (!this.closed) console.warn('Native emulator touch unavailable for ' + this.sessionId + ': ' + error.message);
+      if (!this.closed) console.warn(diagnostic('scrcpy.a56eaf2626', { p0: this.sessionId, p1: error.message }));
     }
   }
 
   nativeInput(params, width, height) {
     if (this.nativeInputPending >= 128) {
       if (params.action === 'move') return Promise.resolve({ ok: true });
-      if (params.action === 'down') throw new Error('Native touch channel is congested');
+      if (params.action === 'down') throw new Error(diagnostic('scrcpy.3116a65615'));
       // Always leave room for releases of already accepted contacts (at most 10).
     }
     const touch = this.nativeTouch;
@@ -296,16 +297,16 @@ export class ScrcpyStream {
     this.nativeInputPending++;
     const result = this.nativeInputTail.then(async () => {
       this.assertInputEpoch(epoch);
-      if (!this.nativeTouchReady || this.nativeTouch !== touch) throw new Error('Native touch is unavailable');
+      if (!this.nativeTouchReady || this.nativeTouch !== touch) throw new Error(diagnostic('scrcpy.d63d0fc4f4'));
       if (params.action === 'down') touch.setGeometry(await this.touchGeometry.get());
       this.assertInputEpoch(epoch);
       if (params.action !== 'up' && this.now() >= deadline) {
         if (params.action === 'move') return { ok: true };
         // Invalidate the entire queued gesture, keeping video and native transport.
         await this.releaseInput('expired');
-        throw Object.assign(new Error('Native touch input expired'), { code: 'INPUT_EXPIRED' });
+        throw Object.assign(new Error(diagnostic('scrcpy.3f260c8735')), { code: 'INPUT_EXPIRED' });
       }
-      if (!touch.sendTouch({ ...params, width, height })) throw new Error('Native touch was not accepted');
+      if (!touch.sendTouch({ ...params, width, height })) throw new Error(diagnostic('scrcpy.3273fda15f'));
       return { ok: true };
     });
     this.nativeInputTail = result.catch(async error => {
@@ -320,12 +321,12 @@ export class ScrcpyStream {
 
   touch(params) {
     this.assertInputEpoch();
-    if (!this.hasControl()) throw new Error('scrcpy control is unavailable');
+    if (!this.hasControl()) throw new Error(diagnostic('scrcpy.23c4ccb179'));
     const { width, height } = this.videoConfig || {};
     const message = encodeTouchEvent(params, width, height);
     const pointerId = params.pointerId ?? 0;
-    if (params.action === 'down' && this.activePointers.has(pointerId)) throw new Error('Touch pointer is already down');
-    if (params.action !== 'down' && !this.activePointers.has(pointerId)) throw new Error('Touch pointer is not down');
+    if (params.action === 'down' && this.activePointers.has(pointerId)) throw new Error(diagnostic('scrcpy.67df11dd32'));
+    if (params.action !== 'down' && !this.activePointers.has(pointerId)) throw new Error(diagnostic('scrcpy.63622be3f0'));
     const native = this.nativePointers.has(pointerId) ||
       (params.action === 'down' && this.nativeTouchReady && this.activePointers.size === this.nativePointers.size);
     const result = native ? this.nativeInput(params, width, height) : this.writeControl(message);
@@ -383,7 +384,7 @@ export class ScrcpyStream {
     this.closed = true;
     this.touchGeometry.close();
     this.displayLogBuffers.clear();
-    this.inputAbort.abort(new Error('Stream closed'));
+    this.inputAbort.abort(new Error(diagnostic('scrcpy.5eab189f21')));
     await released.catch(() => {});
     this.nativeTouchReady = false;
     this.nativePointers.clear();
@@ -443,7 +444,7 @@ export class StreamManager {
       if (fallback.closed || this.streams.get(sessionId) !== fallback) return;
       fallback.retrying = true;
       void this.tryScrcpy(sessionId, serial, fallback).catch(error => {
-        console.warn('scrcpy retry failed for ' + sessionId + ': ' + error.message);
+        console.warn(diagnostic('scrcpy.beae354028', { p0: sessionId, p1: error.message }));
       }).finally(() => {
         fallback.retrying = false;
         this.scheduleScrcpyRetry(sessionId, serial, fallback);
@@ -456,7 +457,7 @@ export class StreamManager {
     const owner = fallback || startup;
     const cancelled = () => {
       if (!owner || (!owner.closed && this.streams.get(sessionId) === owner)) return false;
-      if (startup) throw new Error('Stream startup cancelled');
+      if (startup) throw new Error(diagnostic('scrcpy.6431866ac8'));
       return true;
     };
     const makeStream = (audioCodec) => {
@@ -471,7 +472,7 @@ export class StreamManager {
         },
         audioEnabled: this.audio.get(sessionId) || false, onFailure: (error) => {
           if (this.streams.get(sessionId) !== scrcpy) return;
-          console.warn(`scrcpy stream failed for ${sessionId}, switching to screenshots: ${error.message}`);
+          console.warn(diagnostic('scrcpy.fadeeda20f', { p0: sessionId, p1: error.message }));
           const replacement = this.screenshotStream(sessionId, serial);
           this.streams.set(sessionId, replacement);
           this.scheduleScrcpyRetry(sessionId, serial, replacement);
@@ -488,7 +489,7 @@ export class StreamManager {
       if (startup) startup.candidate = scrcpy;
       try {
         await scrcpy.start();
-        if (scrcpy.closed) throw scrcpy.lastError || new Error('scrcpy video stopped during startup');
+        if (scrcpy.closed) throw scrcpy.lastError || new Error(diagnostic('scrcpy.03bf10da46'));
         if (cancelled()) {
           await scrcpy.close();
           return { mode: 'screenshots' };
@@ -496,9 +497,9 @@ export class StreamManager {
         if (fallback) fallback.close();
         this.streams.set(sessionId, scrcpy);
         if (fallback) {
-          console.log('scrcpy recovered for ' + sessionId + ' (video)');
+          console.log(diagnostic('scrcpy.f99b364423', { p0: sessionId }));
           scrcpy.resendConfig();
-        } else console.log('scrcpy started for ' + sessionId + ' (video)');
+        } else console.log(diagnostic('scrcpy.36db2f1033', { p0: sessionId }));
         if (scrcpy.audioAvailable) this.closeEmulatorAudio(sessionId);
         else if (this.audio.get(sessionId)) void this.restoreEmulatorAudio(sessionId, serial, scrcpy);
         return { mode: 'scrcpy', audioCodec: scrcpy.audioAvailable ? codec : null };
@@ -507,7 +508,7 @@ export class StreamManager {
         failure = error;
         if (cancelled()) return { mode: 'screenshots' };
         if (codec === 'opus' && shouldRetryAac(error)) {
-          console.warn(`scrcpy Opus encoder unavailable for ${sessionId}; retrying AAC`);
+          console.warn(diagnostic('scrcpy.ad803193a1', { p0: sessionId }));
           continue;
         }
         break;
@@ -520,8 +521,8 @@ export class StreamManager {
     if (this.audio.get(sessionId) && !this.emulatorAudio.has(sessionId)) {
       void this.restoreEmulatorAudio(sessionId, serial, activeFallback);
     }
-    console.warn(`scrcpy unavailable for ${sessionId}, using screenshots: ${failure?.message || 'unknown error'}`);
-    return { mode: 'screenshots', reason: failure?.message || 'unknown error' };
+    console.warn(diagnostic('scrcpy.fbb2bce1da', { p0: sessionId, p1: failure?.message || 'unknown error' }));
+    return { mode: 'screenshots', reason: failure?.message || diagnostic('scrcpy.3e4443e522') };
   }
 
   screenshotStream(sessionId, serial) {
@@ -534,7 +535,7 @@ export class StreamManager {
           const frame = await this.adb.screenshot(serial);
           if (!state.closed) this.emit({ ...frame, sessionId });
         }
-        catch (error) { if (!state.closed) console.warn(`Screenshot failed for ${sessionId}: ${error.message}`); }
+        catch (error) { if (!state.closed) console.warn(diagnostic('scrcpy.2d11539698', { p0: sessionId, p1: error.message })); }
         await new Promise((resolve) => setTimeout(resolve, this.screenshotIntervalMs));
       }
     };
@@ -549,7 +550,7 @@ export class StreamManager {
   }
 
   async startEmulatorAudio(sessionId, serial, stream) {
-    if (this.streams.get(sessionId) !== stream) throw new Error('Video stream changed during audio startup');
+    if (this.streams.get(sessionId) !== stream) throw new Error(diagnostic('scrcpy.cffa58ec97'));
     let audio = this.emulatorAudio.get(sessionId);
     if (!audio) {
       audio = this.createEmulatorAudioStream({
@@ -558,7 +559,7 @@ export class StreamManager {
           if (this.emulatorAudio.get(sessionId) !== audio) return;
           this.emulatorAudio.delete(sessionId);
           audio.close();
-          console.warn('Emulator audio failed for ' + sessionId + ': ' + error.message);
+          console.warn(diagnostic('scrcpy.10fb4c79db', { p0: sessionId, p1: error.message }));
           if (this.audio.get(sessionId)) {
             this.audio.set(sessionId, false);
             this.emit({ type: 'audio-unavailable', sessionId });
@@ -575,7 +576,7 @@ export class StreamManager {
     await audio.ready;
     if (this.streams.get(sessionId) !== stream || this.emulatorAudio.get(sessionId) !== audio) {
       audio.close();
-      throw new Error('Video stream changed during audio startup');
+      throw new Error(diagnostic('scrcpy.cffa58ec97'));
     }
     return audio;
   }
@@ -587,7 +588,7 @@ export class StreamManager {
       if (this.audio.get(sessionId) && this.streams.get(sessionId) === stream) audio.setEnabled(true);
     } catch (error) {
       if (this.streams.get(sessionId) !== stream) return;
-      console.warn('Emulator audio unavailable for ' + sessionId + ': ' + error.message);
+      console.warn(diagnostic('scrcpy.e77f760aa5', { p0: sessionId, p1: error.message }));
       this.audio.set(sessionId, false);
       this.emit({ type: 'audio-unavailable', sessionId });
     }
@@ -595,7 +596,7 @@ export class StreamManager {
 
   async setAudio(sessionId, enabled) {
     const stream = this.streams.get(sessionId);
-    if (enabled && !stream) throw new Error('Start the emulator stream before enabling audio');
+    if (enabled && !stream) throw new Error(diagnostic('scrcpy.a44b2fc426'));
     if (enabled && stream instanceof ScrcpyStream && stream.audioAvailable) {
       this.closeEmulatorAudio(sessionId);
       stream.setAudio(true);
@@ -628,7 +629,7 @@ export class StreamManager {
   touch(sessionId, serial, params) {
     const stream = this.controlStream(sessionId, serial);
     if (!(stream instanceof ScrcpyStream) || stream.serial !== serial) {
-      throw new Error('Live scrcpy control is unavailable for this session');
+      throw new Error(diagnostic('scrcpy.d3457cf7f5'));
     }
     return stream.touch(params);
   }

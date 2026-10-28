@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { redactLog, type ApplicationLog } from './application-log.js';
 import type { Pool } from 'pg';
 
@@ -41,5 +42,5 @@ export async function sessionLog(pool: Pick<Pool, 'query'>, hostId: string, sess
   code: ServiceLogCode, message: string, severity: 'info' | 'warning' | 'error' = 'info',
   service: 'server' | 'agent' | 'emulator' = 'server'): Promise<void> {
   try { await recordServiceLog(pool, { hostId, sessionId, code, message, severity, service }); }
-  catch (error) { console.error('Cannot persist session diagnostic: ' + (error instanceof Error ? error.message : 'unknown storage error')); }
+  catch (error) { console.error(diagnostic('service-log.e80075a3a8', { p0: (error instanceof Error ? error.message : 'unknown storage error') })); }
 }

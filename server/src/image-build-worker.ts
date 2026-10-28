@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { completeImageCheck } from './image-readiness.js';
 import type { Pool, PoolClient } from 'pg';
 import type { AgentHub } from './agent.js';
@@ -23,13 +24,13 @@ async function createProfiles(client: PoolClient, box: SecretBox, job: AgentJob,
   const tag = job.image.slice(job.image.lastIndexOf(':') + 1);
   const manifest = { version: 2, profiles: (job.profiles ?? []).map(profile => ({ ...profile, image: { repository, tag, digest: job.digest } })) };
   const { profiles: items, issues } = parseManifest(manifest);
-  if (issues.length) throw new Error('Agent returned an invalid profile manifest');
+  if (issues.length) throw new Error(diagnostic('image-build-worker.80bbcac800'));
   const created: string[] = [];
   for (const item of items) {
     const existing = await client.query('SELECT id FROM profiles WHERE id=$1', [item.input.id]);
     if (existing.rowCount) continue;
     const checked = checkManifestProfile(item, false);
-    if (!checked.parsed) throw new Error('Agent returned an invalid profile: ' + (checked.issue?.message ?? 'unknown'));
+    if (!checked.parsed) throw new Error(diagnostic('image-build-worker.545ebacb6c', { p0: (checked.issue?.message ?? 'unknown') }));
     const p = checked.parsed;
     const sealed = await sealEnv(box, p.containerEnv, {});
     await client.query(
@@ -71,7 +72,7 @@ export class ImageBuildWorker {
         if (!receipt.rowCount) return null;
         if (job.state !== 'done') return [];
         if ((await client.query('SELECT 1 FROM image_removals WHERE repository=$1 AND digest=$2', [repository, job.digest])).rowCount) return [];
-        if ('validation' in job && !completeImageCheck(job.validation)) throw new Error('Completed image build has no complete runtime validation evidence');
+        if ('validation' in job && !completeImageCheck(job.validation)) throw new Error(diagnostic('image-build-worker.47407b48da'));
         const finishedAt = job.finishedAt && Number.isFinite(Date.parse(job.finishedAt)) ? new Date(job.finishedAt) : new Date();
         const latest = await client.query(
           `INSERT INTO emulator_images(package,repository,tag,digest,size_mb,builder_host_id,built_at,validation) VALUES($1,$2,$3,$4,$5,$6,$7,$8)
@@ -107,7 +108,7 @@ export class ImageBuildWorker {
         const hostId = String(row.id);
         try {
           const result = await this.hub.command(hostId, hostId, 'emulator-jobs', {}, 15_000);
-          if (!Array.isArray(result.jobs)) throw new Error('Invalid emulator job snapshot');
+          if (!Array.isArray(result.jobs)) throw new Error(diagnostic('image-build-worker.66f5433cd8'));
           const jobs = result.jobs as AgentJob[];
           let failed = false;
           for (const job of [...jobs].reverse()) {
@@ -118,7 +119,7 @@ export class ImageBuildWorker {
             [hostId, jobs.map(job => job.id)]);
           const acknowledged = receipts.rows.map(row => String(row.job_id));
           if (acknowledged.length) await this.hub.command(hostId, hostId, 'emulator-jobs', { acknowledged }, 15_000);
-          if (failed) throw new Error('One or more image results could not be imported');
+          if (failed) throw new Error(diagnostic('image-build-worker.9cc3a7929e'));
           this.failedHosts.delete(hostId);
         } catch {
           // Keep the agent result unacknowledged. A later poll retries after reconnect or database recovery.
@@ -138,13 +139,13 @@ export class ImageBuildWorker {
       if (this.stopped) return;
       this.timer = setTimeout(() => {
         void this.poll().catch(() => {
-          console.error('Emulator image background reconciliation failed; retrying');
+          console.error(diagnostic('image-build-worker.089f95f218'));
         }).finally(schedule);
       }, this.intervalMs);
       this.timer.unref();
     };
     void this.poll().catch(() => {
-      console.error('Emulator image background reconciliation failed; retrying');
+      console.error(diagnostic('image-build-worker.089f95f218'));
     }).finally(schedule);
     return () => this.stop();
   }

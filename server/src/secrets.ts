@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import type { Pool } from 'pg';
 
@@ -6,7 +7,7 @@ const PREFIX = 'enc:v1:';
 /** AES-256-GCM for values that must not be readable from the API, exports, logs or a casual database query. */
 export class SecretBox {
   constructor(private readonly key: Buffer) {
-    if (key.length !== 32) throw new Error('Secret key must be 32 bytes');
+    if (key.length !== 32) throw new Error(diagnostic('secrets.1bbe8f60aa'));
   }
 
   static isSealed(value: unknown): value is string {
@@ -57,7 +58,7 @@ export async function sealEnv(box: SecretBox, incoming: Record<string, string | 
   for (const [name, value] of Object.entries(incoming)) {
     if (value === null) {
       const kept = existing[name];
-      if (typeof kept !== 'string') throw new Error(`No stored value to keep for ${name}`);
+      if (typeof kept !== 'string') throw new Error(diagnostic('secrets.5360b466e1', { p0: name }));
       result[name] = SecretBox.isSealed(kept) ? kept : box.seal(kept);
     } else result[name] = box.seal(value);
   }

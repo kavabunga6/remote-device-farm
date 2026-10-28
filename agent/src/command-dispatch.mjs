@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 // Image operations do not change reported slots, devices or node policy. Their
 // reply must not wait for Android reconciliation and host telemetry collection;
 // the ordinary periodic heartbeat continues to refresh that information.
@@ -16,7 +17,7 @@ export function dispatchCommand(message, { command, withSessionLock, registry, s
   if (message.action === 'input' && ['key', 'text'].includes(message.params?.kind)) {
     const sessionId = validateSessionId(message.sessionId);
     const { provider, session } = registry.require(sessionId);
-    if (!provider.ops.input) throw new Error('"input" is not supported for ' + provider.kind + ' devices');
+    if (!provider.ops.input) throw new Error(diagnostic('command-dispatch.af782a8ec0', { p0: provider.kind }));
     const realtimeInput = streams.realtimeInput(sessionId, session.serial, message.params);
     if (realtimeInput) { assertInputFresh(); return realtimeInput(); }
   }

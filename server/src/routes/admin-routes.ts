@@ -1,3 +1,4 @@
+import { diagnostic } from '../diagnostics.js';
 import { assertPermission, assertStoredPermission, hasPermission, roleForUser, allPermissions } from '../permissions.js';
 import { registerRoleRoutes } from './role-routes.js';
 import { uiMessage } from '../messages.js';
@@ -223,15 +224,15 @@ export function registerAdminRoutes(app: Express, context: ServerContext): void 
       const id = typeof item.input.id === 'string' ? item.input.id : '';
       const result = { id, name: typeof item.input.name === 'string' ? item.input.name : '', action: 'invalid' as 'create' | 'update' | 'skip' | 'invalid', issues: [...item.issues], warnings: [...item.warnings] };
       results.push(result);
-      if (id && seen.has(id)) result.issues.push({ path: `$.profiles[${item.index}].id`, message: 'duplicate id in the manifest' });
+      if (id && seen.has(id)) result.issues.push({ path: `$.profiles[${item.index}].id`, message: diagnostic('admin-routes.b811119fe6') });
       seen.add(id);
       const existing = id ? (await pool.query('SELECT * FROM profiles WHERE id=$1 AND removed_at IS NULL', [id])).rows[0] : undefined;
-      if (existing && !update) { result.action = 'skip'; result.warnings.push('A profile with this id exists; it is left unchanged (enable "update existing" to change it).'); continue; }
+      if (existing && !update) { result.action = 'skip'; result.warnings.push(uiMessage('manifest.profileExists', {}, 'en')); continue; }
       const checked = checkManifestProfile(item, Boolean(existing));
       if (checked.issue) result.issues.push(checked.issue);
       if (checked.parsed && existing) {
         const stored = (existing.container_env && typeof existing.container_env === 'object' ? existing.container_env : {}) as Record<string, unknown>;
-        for (const [name, value] of Object.entries(checked.parsed.containerEnv)) if (value === null && typeof stored[name] !== 'string') result.issues.push({ path: `$.profiles[${item.index}].container.env.${name}`, message: 'null keeps a stored value, but none is stored; give a value' });
+        for (const [name, value] of Object.entries(checked.parsed.containerEnv)) if (value === null && typeof stored[name] !== 'string') result.issues.push({ path: `$.profiles[${item.index}].container.env.${name}`, message: diagnostic('admin-routes.03eba5c58d') });
       }
       if (!result.issues.length && checked.parsed) { result.action = existing ? 'update' : 'create'; plan.push({ action: result.action, parsed: checked.parsed, existing }); }
     }
@@ -456,11 +457,11 @@ export function registerAdminRoutes(app: Express, context: ServerContext): void 
       const version = (await readFile(path.join(directory, 'version.txt'), 'utf8')).trim();
       const sha256 = (await readFile(path.join(directory, 'sha256.txt'), 'utf8')).trim();
       if (!/^[A-Za-z0-9._-]{1,80}$/.test(version) || !/^[a-f0-9]{64}$/.test(sha256)) {
-        throw new Error('Invalid agent bundle manifest');
+        throw new Error(diagnostic('admin-routes.88e000ed66'));
       }
       const filename = `rdf-linux-agent-${version}.tar.gz`;
       const bytes = await readFile(path.join(directory, filename));
-      if (createHash('sha256').update(bytes).digest('hex') !== sha256) throw new Error('Agent bundle checksum mismatch');
+      if (createHash('sha256').update(bytes).digest('hex') !== sha256) throw new Error(diagnostic('admin-routes.e062fdc92b'));
       return { bytes, filename, version, sha256 };
     } catch {
       throw new ApiError(503, 'agent_bundle_unavailable', uiMessage('ui.4099726074e3', {}, 'en'));

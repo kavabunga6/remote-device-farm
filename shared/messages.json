@@ -13978,5 +13978,769 @@
   "agent.catalog.empty": {
     "ru": "Каталог Google не содержит образов для архитектуры сборщика.",
     "en": "The Google catalog contains no images for the builder architecture."
+  },
+  "copy.AdbKeysPage.77a87e4a": {
+    "ru": "Добавлен {p0}",
+    "en": "Added {p0}"
+  },
+  "copy.AdbKeysPage.c6f3bf98": {
+    "ru": "Загружается только файл {p0}. Приватный {p1} остаётся на вашем компьютере.",
+    "en": "Only the file {p0} is uploaded. The private {p1} stays on your computer."
+  },
+  "copy.AdbKeysPage.30c82cc6": {
+    "ru": "Создан {p0}",
+    "en": "Created {p0}"
+  },
+  "copy.AdminJournal.6bf3b050": {
+    "ru": "{p0} · архивный узел",
+    "en": "{p0} · archived node"
+  },
+  "copy.AdminOps.7667c197": {
+    "ru": "{p0} из {p1}",
+    "en": "{p0} of {p1}"
+  },
+  "copy.AdminOps.f6b2b61a": {
+    "ru": "Занятые слоты по узлам за {p0} · {p1}",
+    "en": "Occupied slots by node over {p0} · {p1}"
+  },
+  "copy.AdminOps.68d29ac9": {
+    "ru": "90% сессий длятся меньше {p0}",
+    "en": "90% of sessions last less than {p0}"
+  },
+  "copy.AdminOps.0046a3d6": {
+    "ru": "за сутки: {p0}",
+    "en": "today: {p0}"
+  },
+  "copy.AdminProfiles.c480241a": {
+    "ru": "Страница {p0} из {p1}",
+    "en": "Page {p0} of {p1}"
+  },
+  "copy.AdminProfiles.72f32549": {
+    "ru": "{p0} · нет в каталоге",
+    "en": "{p0} · not in catalog"
+  },
+  "copy.AgentOnboardingDialog.6481ab8d": {
+    "ru": "Версия {p0} · {p1} КБ",
+    "en": "Version {p0} · {p1} KB"
+  },
+  "copy.AgentOnboardingDialog.7879ae6f": {
+    "ru": "IP-адрес узла {p0}",
+    "en": "Node IP address {p0}"
+  },
+  "copy.AgentOnboardingDialog.b39ee5c5": {
+    "ru": "Если браузер переименовал файл, верните имя {p0}. Сертификату HTTPS должен доверять агент; прокси сервиса должен пропускать WebSocket на {p1}.",
+    "en": "If the browser renamed the file, restore the name {p0}. The agent must trust the HTTPS certificate; the service proxy must allow WebSocket connections at {p1}."
+  },
+  "copy.AgentOnboardingDialog.f8ef48e6": {
+    "ru": "Проверяем каждые 5 секунд. {p0}",
+    "en": "Checking every 5 seconds. {p0}"
+  },
+  "copy.AgentOnboardingDialog.458f511e": {
+    "ru": "Статус пока недоступен: {p0}",
+    "en": "Status currently unavailable: {p0}"
+  },
+  "copy.App.ddde06cc": {
+    "ru": "Завершить {p0}?",
+    "en": "End {p0}?"
+  },
+  "copy.ApplicationLogStream.9678e694": {
+    "ru": "События сервера, агента и эмулятора в реальном времени. Последние {p0} сообщений с момента запуска.",
+    "en": "Live server, agent and emulator events. Last {p0} messages since startup."
+  },
+  "copy.ApplicationLogStream.63ab2190": {
+    "ru": "Сообщений: {p0}{p1}",
+    "en": "Messages: {p0}{p1}"
+  },
+  "copy.CountBadge.c552c01a": {
+    "ru": "из {p0}",
+    "en": "of {p0}"
+  },
+  "copy.CreateSessionModal.c640bd31": {
+    "ru": "{p0} CPU · {p1}",
+    "en": "{p0} CPU · {p1}"
+  },
+  "copy.CreateSessionModal.2ab9468e": {
+    "ru": "Максимум {p0} ГБ",
+    "en": "Maximum {p0} GB"
+  },
+  "copy.CreateSessionModal.57a5b291": {
+    "ru": "0 — без карты. Максимум {p0} ГБ",
+    "en": "0 — no card. Maximum {p0} GB"
+  },
+  "copy.CreateSessionModal.dfe339a9": {
+    "ru": "Запуск: {p0}, {p1}, {p2}, {p3}, {p4}.",
+    "en": "Startup: {p0}, {p1}, {p2}, {p3}, {p4}."
+  },
+  "copy.CreateSessionModal.fcd5d8bb": {
+    "ru": "Звук и журнал: {p0}, {p1}, {p2}; окно и кэш: {p3}, {p4}.",
+    "en": "Audio and logs: {p0}, {p1}, {p2}; window and cache: {p3}, {p4}."
+  },
+  "copy.CreateSessionModal.ccb388e1": {
+    "ru": "Локаль: {p0}; время: {p1}.",
+    "en": "Locale: {p0}; time: {p1}."
+  },
+  "copy.CreateSessionModal.b9257f27": {
+    "ru": "Сеть: {p0}; камера: {p1} или {p2}.",
+    "en": "Network: {p0}; camera: {p1} or {p2}."
+  },
+  "copy.CreateSessionModal.2a446b24": {
+    "ru": "Экран: {p0}. Память и ядра задаются в разделе «Ресурсы».",
+    "en": "Screen: {p0}. Set memory and cores in Resources."
+  },
+  "copy.DeviceInfoPanel.7667c197": {
+    "ru": "{p0} из {p1}",
+    "en": "{p0} of {p1}"
+  },
+  "copy.DeviceInfoPanel.8e57cccf": {
+    "ru": "Обновлено: {p0}",
+    "en": "Updated: {p0}"
+  },
+  "copy.EmulatorCatalogDialog.fc0121af": {
+    "ru": "Путь к образам: {p0}/rdf-emulator. Разрешите этот префикс в AGENT_ALLOWED_IMAGE_PREFIXES на узлах.",
+    "en": "Image path: {p0}/rdf-emulator. Allow this prefix in AGENT_ALLOWED_IMAGE_PREFIXES on nodes."
+  },
+  "copy.EmulatorCatalogDialog.586012f1": {
+    "ru": "{p0} в работе · {p1} всего",
+    "en": "{p0} in progress · {p1} total"
+  },
+  "copy.EmulatorCatalogDialog.2e638748": {
+    "ru": "Android {p0}",
+    "en": "Android {p0}"
+  },
+  "copy.EmulatorCatalogDialog.34d6a376": {
+    "ru": "API {p0}{p1}",
+    "en": "API {p0}{p1}"
+  },
+  "copy.HostCard.5818f53c": {
+    "ru": "Слот {p0}: {p1}",
+    "en": "Slot {p0}: {p1}"
+  },
+  "copy.HostCard.76274147": {
+    "ru": "свободно из {p0} слотов",
+    "en": "free of {p0} slots"
+  },
+  "copy.LogcatPanel.f2021904": {
+    "ru": "{p0} px",
+    "en": "{p0} px"
+  },
+  "copy.LogcatPanel.f6eb239f": {
+    "ru": "Общий UID: журнал также включает {p0}.",
+    "en": "Shared UID: log also includes {p0}."
+  },
+  "copy.NodeHealth.651a4f37": {
+    "ru": "Замер: {p0}",
+    "en": "Measured: {p0}"
+  },
+  "copy.NodeHealth.0b6f7acb": {
+    "ru": "{p0} потоков · {p1} доступно для сессий",
+    "en": "{p0} threads · {p1} available to sessions"
+  },
+  "copy.NodeHealth.8513c807": {
+    "ru": "{p0} доступно из {p1}",
+    "en": "{p0} available of {p1}"
+  },
+  "copy.NodeHealth.c9c576b3": {
+    "ru": "{p0} свободно из {p1}",
+    "en": "{p0} free of {p1}"
+  },
+  "copy.NodeHealth.8496e350": {
+    "ru": "Память: {p0}",
+    "en": "Memory: {p0}"
+  },
+  "copy.NodeManagement.757095ca": {
+    "ru": "Не поместятся в слот · {p0}",
+    "en": "Will not fit in a slot · {p0}"
+  },
+  "copy.NodeManagement.674be55c": {
+    "ru": "Узел отключён. Слотов при включении: {p0}.",
+    "en": "Node disabled. Slots when enabled: {p0}."
+  },
+  "copy.NodeManagement.467daa98": {
+    "ru": "Оставляем системе 20% памяти и CPU, но не менее одного ядра. Ограничение — {p0}.",
+    "en": "Reserve 20% of memory and CPU for the system, with at least one core. Limiting factor — {p0}."
+  },
+  "copy.NodeManagement.949e8e40": {
+    "ru": "{p0} · до {p1} слотов",
+    "en": "{p0} · up to {p1} slots"
+  },
+  "copy.NodeManagement.5b0ff58e": {
+    "ru": "{p0} ГБ · до {p1} слотов",
+    "en": "{p0} GB · up to {p1} slots"
+  },
+  "copy.NodeManagement.7f38fc35": {
+    "ru": "Учтён лимит старого агента: {p0} слотов.",
+    "en": "Older agent limit applied: {p0} slots."
+  },
+  "copy.NodeManagement.6703e34b": {
+    "ru": "Токен создан {p0}. После отзыва агент потеряет доступ к серверу.",
+    "en": "Token created {p0}. Revoking it removes the agent's server access."
+  },
+  "copy.NodeManagement.15ae7f7d": {
+    "ru": "{p0} в сети",
+    "en": "{p0} online"
+  },
+  "copy.NodeManagement.a673c0c6": {
+    "ru": "{p0} отключено / {p1} всего",
+    "en": "{p0} disabled / {p1} total"
+  },
+  "copy.NodeManagement.6595a07c": {
+    "ru": "Узел с ID {p0} не найден или недоступен.",
+    "en": "Node with ID {p0} not found or unavailable."
+  },
+  "copy.ProfileImportDialog.c44a903d": {
+    "ru": "Новые профили создаются {p0}: включите их, когда проверите образ. Значения переменных из файла сохраняются зашифрованными и дальше нигде не показываются; в экспорте на их месте {p1}, это значит «оставить как есть».",
+    "en": "New profiles are created {p0}: enable them after verifying the image. Variable values are stored encrypted and never shown again; exports contain {p1}, meaning “leave unchanged”."
+  },
+  "copy.RentDeviceModal.a373164f": {
+    "ru": "{p0} · узел {p1}",
+    "en": "{p0} · node {p1}"
+  },
+  "copy.SessionView.34b0e063": {
+    "ru": "Простой: освобождение через {p0} мин.",
+    "en": "Idle: releasing in {p0} min."
+  },
+  "copy.SessionView.c1d5a618": {
+    "ru": "Приватный ключ больше не будет показан. Сохраните файлы в {p0} как {p1} и {p2}. В Windows это папка {p3}. Если там уже есть ключ, сначала сохраните старую пару. Чтобы оставить старый ключ, сохраните новый отдельно и укажите полный путь к файлу {p4} через {p5}.",
+    "en": "The private key will not be shown again. Save files in {p0} as {p1} and {p2}. On Windows, the folder is {p3}. If a key already exists there, back up the old pair first. To keep the old key, save the new one separately and specify the full path to {p4} using {p5}."
+  },
+  "copy.SessionView.0776d313": {
+    "ru": "После размещения файлов выполните {p0}, затем скопируйте команду подключения выше.",
+    "en": "After placing the files, run {p0}, then copy the connection command above."
+  },
+  "copy.SessionView.eec6f383": {
+    "ru": "Отпечаток: {p0}",
+    "en": "Fingerprint: {p0}"
+  },
+  "copy.SessionView.0f1f030f": {
+    "ru": "Порт {p0} открыт {p1}.",
+    "en": "Port {p0} open {p1}."
+  },
+  "copy.SessionView.f633173d": {
+    "ru": "Администратор {p0} открывал сессию {p1}. Действие записано в журнал.",
+    "en": "Administrator {p0} accessed the session {p1}. The action is recorded in the journal."
+  },
+  "copy.SessionView.a54f5c0c": {
+    "ru": "Максимальное время сессии истекает в {p0}. Сохраните результаты заранее.",
+    "en": "Maximum session time expires at {p0}. Save your results in advance."
+  },
+  "copy.SessionView.debcf21d": {
+    "ru": "Справочник · {p0}",
+    "en": "Reference · {p0}"
+  },
+  "copy.SessionView.0f771496": {
+    "ru": "Код выхода: {p0}",
+    "en": "Exit code: {p0}"
+  },
+  "copy.SessionView.8ce621ed": {
+    "ru": "{p0} команд",
+    "en": "{p0} commands"
+  },
+  "copy.ShareControl.d6158878": {
+    "ru": "Получателей: {p0} из {p1} · действует до {p2}",
+    "en": "Recipients: {p0} of {p1} · expires {p2}"
+  },
+  "copy.TokenManager.49254e2d": {
+    "ru": "Создан {p0} {p1} {p2}",
+    "en": "Created {p0} {p1} {p2}"
+  },
+  "copy.TokenManager.5dab447b": {
+    "ru": "Последнее использование: {p0}",
+    "en": "Last used: {p0}"
+  },
+  "copy.UserManagement.6577f89e": {
+    "ru": "Логин: {p0}",
+    "en": "Username: {p0}"
+  },
+  "copy.UserSettingsPage.6ce74901": {
+    "ru": "Вашей учётной записью управляет {p0}.",
+    "en": "Your account is managed by {p0}."
+  },
+  "copy.UserSettingsPage.a2ffeba6": {
+    "ru": "Так будет выглядеть текст: {p0} {p1}",
+    "en": "Text preview: {p0} {p1}"
+  },
+  "copy.UserSettingsPage.30c82cc6": {
+    "ru": "Создана {p0}",
+    "en": "Created {p0}"
+  },
+  "copy.AppsPanel.c1f6cca8": {
+    "ru": "Занято {p0} из {p1} МБ",
+    "en": "Used {p0} of {p1} MB"
+  },
+  "copy.AppsPanel.1cdae72f": {
+    "ru": "версия {p0}",
+    "en": "version {p0}"
+  },
+  "copy.EnvPanel.2db76798": {
+    "ru": "По умолчанию: {p0} · 120–640",
+    "en": "Default: {p0} · 120–640"
+  },
+  "copy.EnvPanel.0fab0212": {
+    "ru": "По умолчанию: {p0} · 320–4096",
+    "en": "Default: {p0} · 320–4096"
+  },
+  "copy.EnvPanel.8860c50e": {
+    "ru": "Сейчас: {p0}",
+    "en": "Current: {p0}"
+  },
+  "language.loadFailed": {
+    "ru": "Не удалось загрузить язык. Повторите выбор.",
+    "en": "Could not load this language. Select it again to retry."
+  },
+  "node.environment.kubernetesPod": {
+    "ru": "Под Kubernetes",
+    "en": "Kubernetes pod"
+  },
+  "node.respondedAgo": {
+    "ru": "Ответил {p0} назад",
+    "en": "Responded {p0} ago"
+  },
+  "agent.apps.listFailed": {
+    "ru": "Не удалось получить приложения Android",
+    "en": "Could not read the Android app list"
+  },
+  "agent.apps.notInstalled": {
+    "ru": "Приложение не установлено. Обновите список приложений.",
+    "en": "The app is not installed. Refresh the app list."
+  },
+  "agent.recovery.started": {
+    "ru": "Восстановление агента: {p0}",
+    "en": "Agent recovery: {p0}"
+  },
+  "agent.recovery.cleaned": {
+    "ru": "Очистка после восстановления завершена",
+    "en": "Cleanup after recovery completed"
+  },
+  "agent.profile.checked": {
+    "ru": "Профиль и лимиты узла проверены",
+    "en": "Profile and node limits checked"
+  },
+  "agent.kvm.available": {
+    "ru": "KVM доступен; GPU backend: {p0}",
+    "en": "KVM available; GPU backend: {p0}"
+  },
+  "agent.cleanup.container": {
+    "ru": "Удаление контейнера {p0} и его томов",
+    "en": "Removing container {p0} and its volumes"
+  },
+  "agent.cleanup.networks": {
+    "ru": "Удаление сетей сессии",
+    "en": "Removing session networks"
+  },
+  "agent.cleanup.completed": {
+    "ru": "Контейнер, тома и сети удалены",
+    "en": "Container, volumes and networks removed"
+  },
+  "agent.diagnostics.snapshot": {
+    "ru": "Снимок stdout/stderr контейнера: последние 2000 строк.",
+    "en": "Container stdout/stderr snapshot: last 2000 lines."
+  },
+  "agent.diagnostics.failed": {
+    "ru": "Не удалось получить диагностику контейнера: {p0}",
+    "en": "Could not read container diagnostics: {p0}"
+  },
+  "agent.profile.tabletName": {
+    "ru": "Планшет · {p0}",
+    "en": "Tablet · {p0}"
+  },
+  "agent.console.exitCode": {
+    "ru": "{p0} (код {p1})",
+    "en": "{p0} (exit code {p1})"
+  },
+  "agent.console.unconfirmed": {
+    "ru": "Консоль устройства не подтвердила выполнение команды.",
+    "en": "The device console did not confirm that the command completed."
+  },
+  "agent.console.failed": {
+    "ru": "Не удалось выполнить команду консоли устройства",
+    "en": "Could not run the device console command"
+  },
+  "agent.settings.unconfirmed": {
+    "ru": "Android не подтвердил изменение {p0}. Обновите состояние и повторите.",
+    "en": "Android did not confirm the change to {p0}. Refresh the state and try again."
+  },
+  "agent.apps.uidUnavailable": {
+    "ru": "Android не передал UID записей. Фильтр приложения недоступен на этом образе.",
+    "en": "Android did not report app UIDs. App filtering is unavailable on this image."
+  },
+  "agent.webrtc.disabled": {
+    "ru": "WebRTC не включён на узле.",
+    "en": "WebRTC is not enabled on this node."
+  },
+  "agent.webrtc.waitForStream": {
+    "ru": "Видеопоток ещё не готов. Дождитесь подключения scrcpy.",
+    "en": "The video stream is not ready. Wait for scrcpy to connect."
+  },
+  "agent.access.viewOnly": {
+    "ru": "Доступ только для просмотра.",
+    "en": "View-only access."
+  },
+  "technical.cuda": {
+    "ru": "CUDA",
+    "en": "CUDA"
+  },
+  "technical.webSocketScrcpy": {
+    "ru": "WebSocket · scrcpy",
+    "en": "WebSocket · scrcpy"
+  },
+  "technical.root": {
+    "ru": "Root",
+    "en": "Root"
+  },
+  "technical.chrome": {
+    "ru": "Chrome",
+    "en": "Chrome"
+  },
+  "technical.openGl": {
+    "ru": "OpenGL ES",
+    "en": "OpenGL ES"
+  },
+  "technical.egl": {
+    "ru": "EGL",
+    "en": "EGL"
+  },
+  "technical.vulkan": {
+    "ru": "Vulkan",
+    "en": "Vulkan"
+  },
+  "technical.wearPlay": {
+    "ru": "Wear OS · Google Play",
+    "en": "Wear OS · Google Play"
+  },
+  "technical.automotivePlay": {
+    "ru": "Automotive · Google Play",
+    "en": "Automotive · Google Play"
+  },
+  "technical.androidDesktop": {
+    "ru": "Android Desktop",
+    "en": "Android Desktop"
+  },
+  "technical.googleXr": {
+    "ru": "Google XR",
+    "en": "Google XR"
+  },
+  "technical.aospAtd": {
+    "ru": "AOSP · Automated Test Device",
+    "en": "AOSP · Automated Test Device"
+  },
+  "technical.googleAtd": {
+    "ru": "Google · Automated Test Device",
+    "en": "Google · Automated Test Device"
+  },
+  "technical.aospAtdShort": {
+    "ru": "AOSP ATD",
+    "en": "AOSP ATD"
+  },
+  "technical.googleAtdShort": {
+    "ru": "Google APIs ATD",
+    "en": "Google APIs ATD"
+  },
+  "manifest.objectExpected": {
+    "ru": "Ожидается объект.",
+    "en": "must be an object"
+  },
+  "manifest.unknownField": {
+    "ru": "Неизвестное поле.",
+    "en": "unknown field"
+  },
+  "manifest.repositoryRequired": {
+    "ru": "Укажите репозиторий образа.",
+    "en": "is required"
+  },
+  "manifest.digestInvalid": {
+    "ru": "Укажите digest в формате sha256 и 64 шестнадцатеричных символа.",
+    "en": "must look like sha256:<64 hex characters>"
+  },
+  "manifest.paramsInvalid": {
+    "ru": "Укажите параметры строкой или списком строк без пробелов внутри значений.",
+    "en": "must be a list of strings without spaces (or one string)"
+  },
+  "manifest.versionUnsupported": {
+    "ru": "Поддерживается версия манифеста 1 или {p0}.",
+    "en": "must be 1 or {p0}"
+  },
+  "manifest.unpinnedImage": {
+    "ru": "Образ не закреплён по digest. Содержимое тега в registry может измениться.",
+    "en": "The image is not pinned by digest; a tag can be replaced upstream."
+  },
+  "manifest.legacyGpu": {
+    "ru": "Устаревшие настройки GPU не применяются. GPU выбирается при запуске сессии с учётом возможностей узла. Основной образ не меняется.",
+    "en": "Legacy GPU settings are ignored. GPU is selected when launching a session and uses the capabilities of the assigned node. The main image is unchanged."
+  },
+  "manifest.profileExists": {
+    "ru": "Профиль с таким ID уже существует. Включите обновление существующих профилей, чтобы изменить его.",
+    "en": "A profile with this id exists; it is left unchanged (enable \"update existing\" to change it)."
+  },
+  "manifest.invalidProfile": {
+    "ru": "Некорректный профиль.",
+    "en": "Invalid profile"
+  },
+  "copy.App.e973c6b1": {
+    "ru": "Открыть сессию: {p0}",
+    "en": "Open session: {p0}"
+  },
+  "copy.ApplicationLogStream.a4ae9007": {
+    "ru": " · пауза{p0}",
+    "en": " · paused{p0}"
+  },
+  "copy.console-commands.658b8cac": {
+    "ru": "Команда {p0} не принимает аргументы.",
+    "en": "Command {p0} does not accept arguments."
+  },
+  "copy.console-commands.c9a90302": {
+    "ru": "cmd {p0} <подкоманда>",
+    "en": "cmd {p0} <subcommand>"
+  },
+  "copy.CreateSessionModal.c301bee9": {
+    "ru": "{p0} яд.",
+    "en": "{p0} cores"
+  },
+  "copy.CreateSessionModal.c93d1f97": {
+    "ru": "свободно {p0}",
+    "en": "free {p0}"
+  },
+  "copy.CreateSessionModal.cd0ae943": {
+    "ru": "{p0}{p1} · {p2} свободно",
+    "en": "{p0}{p1} · {p2} free"
+  },
+  "copy.EmulatorCatalogDialog.8d29790d": {
+    "ru": "Выбрать {p0}",
+    "en": "Select {p0}"
+  },
+  "copy.EmulatorCatalogDialog.c50eab14": {
+    "ru": "Копировать пакет {p0}",
+    "en": "Copy package {p0}"
+  },
+  "copy.EmulatorCatalogDialog.470714fc": {
+    "ru": "{p0} сборку {p1}",
+    "en": "{p0} build {p1}"
+  },
+  "copy.EmulatorCatalogDialog.7351fbac": {
+    "ru": "{p0} ГБ · ",
+    "en": "{p0} GB · "
+  },
+  "copy.EmulatorCatalogDialog.26cf8465": {
+    "ru": "профилей: {p0}",
+    "en": "profiles: {p0}"
+  },
+  "copy.EmulatorCatalogDialog.a4179242": {
+    "ru": "Выбрано: {p0}",
+    "en": "Selected: {p0}"
+  },
+  "copy.HostCard.9030bbc4": {
+    "ru": "{p0} ГБ",
+    "en": "{p0} GB"
+  },
+  "copy.HostCard.0460c89b": {
+    "ru": "Виртуальная машина · {p0}",
+    "en": "Virtual machine · {p0}"
+  },
+  "copy.HostCard.1bceff4f": {
+    "ru": "{p0} ядер · {p1} потоков",
+    "en": "{p0} cores · {p1} threads"
+  },
+  "copy.HostCard.a42937af": {
+    "ru": "{p0} логических потоков",
+    "en": "{p0} logical threads"
+  },
+  "copy.HostCard.9bc8cc2c": {
+    "ru": "Режимы запуска: {p0}",
+    "en": "Launch modes: {p0}"
+  },
+  "copy.HostCard.a8db0cfd": {
+    "ru": "Настройки узла: {p0}",
+    "en": "Node settings: {p0}"
+  },
+  "copy.HostCard.440a991a": {
+    "ru": "Загрузка CPU: {p0}%",
+    "en": "CPU usage: {p0}%"
+  },
+  "copy.HostCard.648df0a8": {
+    "ru": "Занято памяти: {p0}%",
+    "en": "Memory used: {p0}%"
+  },
+  "copy.HostCard.e3d3b42c": {
+    "ru": "{p0} доступно",
+    "en": "{p0} available"
+  },
+  "copy.HostCard.29882221": {
+    "ru": "Загрузка GPU: {p0}%",
+    "en": "GPU usage: {p0}%"
+  },
+  "copy.HostCard.058b7fd9": {
+    "ru": "Занято на диске: {p0}%",
+    "en": "Disk used: {p0}%"
+  },
+  "copy.launch-readiness.b5b64f92": {
+    "ru": "ABI {p0} несовместима с архитектурой узла {p1}.",
+    "en": "ABI {p0} is incompatible with node architecture {p1}."
+  },
+  "copy.LogcatPanel.69bbc195": {
+    "ru": "Приложение запущено · PID: {p0}",
+    "en": "App running · PID: {p0}"
+  },
+  "copy.node-capacity.7c4f5033": {
+    "ru": "память: {p0} > {p1} МБ",
+    "en": "memory: {p0} > {p1} MB"
+  },
+  "copy.node-capacity.db46f868": {
+    "ru": "{p0} с",
+    "en": "{p0} s"
+  },
+  "copy.node-capacity.618d1529": {
+    "ru": "{p0} мин",
+    "en": "{p0} min"
+  },
+  "copy.node-capacity.8221ea8c": {
+    "ru": "{p0} ч",
+    "en": "{p0} h"
+  },
+  "copy.node-capacity.b4a581de": {
+    "ru": "{p0} дн",
+    "en": "{p0} d"
+  },
+  "copy.NodeHealth.603c8e1e": {
+    "ru": "Последний ответ: {p0}",
+    "en": "Last response: {p0}"
+  },
+  "copy.NodeHealth.9030bbc4": {
+    "ru": "{p0} ГБ",
+    "en": "{p0} GB"
+  },
+  "copy.NodeHealth.904028bb": {
+    "ru": "Доступен · {p0}",
+    "en": "Available · {p0}"
+  },
+  "copy.NodeHealth.c83419f2": {
+    "ru": " за {p0} с",
+    "en": " over {p0} s"
+  },
+  "copy.NodeHealth.ab60364c": {
+    "ru": "{p0} занято",
+    "en": "{p0} used"
+  },
+  "copy.NodeManagement.e973c6b1": {
+    "ru": "Открыть сессию: {p0}",
+    "en": "Open session: {p0}"
+  },
+  "copy.NodeManagement.c0fe325b": {
+    "ru": "Узлов с CUDA: {p0}",
+    "en": "Nodes with CUDA: {p0}"
+  },
+  "copy.NodeManagement.265933bf": {
+    "ru": "Узлов с GPU: {p0}",
+    "en": "Nodes with GPU: {p0}"
+  },
+  "copy.NotificationSettings.d0a5178d": {
+    "ru": "ответ {p0}",
+    "en": "response {p0}"
+  },
+  "copy.profile-metadata.dd02835c": {
+    "ru": "{p0} МБ",
+    "en": "{p0} MB"
+  },
+  "copy.profile-metadata.9030bbc4": {
+    "ru": "{p0} ГБ",
+    "en": "{p0} GB"
+  },
+  "copy.ProfileCard.da6b75bd": {
+    "ru": "{p0} — что это значит",
+    "en": "{p0} — what this means"
+  },
+  "copy.ProfileCard.9030bbc4": {
+    "ru": "{p0} ГБ",
+    "en": "{p0} GB"
+  },
+  "copy.session-audience.2c6f0df8": {
+    "ru": "Активных ссылок: {p0}{p1}{p2} · Сейчас подключено: {p3}.{p4}",
+    "en": "Active links: {p0}{p1}{p2} · Connected now: {p3}.{p4}"
+  },
+  "copy.session-video.3f00f5e6": {
+    "ru": "Ошибка отображения видео: {p0}",
+    "en": "Video rendering error: {p0}"
+  },
+  "copy.SessionMediaStatus.26e06348": {
+    "ru": "{p0} Настроить транспорт и посмотреть показатели.",
+    "en": "{p0} Configure transport and view metrics."
+  },
+  "copy.SessionMediaStatus.74fb1d19": {
+    "ru": "{p0} мс",
+    "en": "{p0} ms"
+  },
+  "copy.SessionMediaStatus.b2a995a0": {
+    "ru": "{p0} кадр/с",
+    "en": "{p0} fps"
+  },
+  "copy.SessionView.b2e214ec": {
+    "ru": "Скопировать команду adb connect {p0}:{p1}",
+    "en": "Copy adb connect command {p0}:{p1}"
+  },
+  "copy.SessionView.7830d87f": {
+    "ru": "до {p0}",
+    "en": "until {p0}"
+  },
+  "copy.SessionView.558cf26c": {
+    "ru": "Стоп {p0}",
+    "en": "Stop {p0}"
+  },
+  "copy.ShareControl.ce5cf3e4": {
+    "ru": "Подключено: {p0}",
+    "en": "Connected: {p0}"
+  },
+  "copy.ShareControl.56441386": {
+    "ru": "Ссылок: {p0}",
+    "en": "Links: {p0}"
+  },
+  "copy.startup-progress.7667c197": {
+    "ru": "{p0} из {p1}",
+    "en": "{p0} of {p1}"
+  },
+  "copy.UserSettingsPage.a14042df": {
+    "ru": "Освобождена {p0}",
+    "en": "Released {p0}"
+  },
+  "copy.useSessionAdb.3743093f": {
+    "ru": "Ключ создан, но порт текущего сеанса не открылся: {p0}",
+    "en": "Key created, but the current session's port did not open: {p0}"
+  },
+  "copy.useSessionAdb.b378e5f0": {
+    "ru": "Не удалось скопировать команду: {p0}",
+    "en": "Could not copy command: {p0}"
+  },
+  "copy.EnvPanel.e13c53e8": {
+    "ru": "Заряд {p0}%",
+    "en": "Charge {p0}%"
+  },
+  "copy.EnvPanel.f30f0a3b": {
+    "ru": "Удалить данные приложения {p0}?",
+    "en": "Delete app data for {p0}?"
+  },
+  "copy.EnvPanel.a1e1b8b2": {
+    "ru": "Показ касаний: {p0}",
+    "en": "Show touches: {p0}"
+  },
+  "copy.EnvPanel.3cc07c10": {
+    "ru": "Положение указателя: {p0}",
+    "en": "Pointer location: {p0}"
+  },
+  "copy.EnvPanel.839093bd": {
+    "ru": "Плотность: {p0} dpi",
+    "en": "Density: {p0} dpi"
+  },
+  "copy.EnvPanel.052eb957": {
+    "ru": "Сеть: {p0}",
+    "en": "Network: {p0}"
+  },
+  "copy.EnvPanel.aa4b088a": {
+    "ru": "Прокси установлен: {p0}:{p1}",
+    "en": "Proxy set: {p0}:{p1}"
+  },
+  "copy.EnvPanel.40f5eaff": {
+    "ru": "Часовой пояс: {p0}",
+    "en": "Time zone: {p0}"
+  },
+  "session.openIdentified": {
+    "ru": "Открыть сессию «{p0}», #{p1}",
+    "en": "Open session “{p0}”, #{p1}"
   }
 }

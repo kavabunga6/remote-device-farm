@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 // H.264 Annex B access units from scrcpy -> RFC 6184 single NAL / FU-A.
 // The same encoded access units feed both comparison modes; no transcoding.
 export function annexBNals(data) {
@@ -7,18 +8,18 @@ export function annexBNals(data) {
     if (data[i + 2] === 1) { starts.push([i, i + 3]); i += 2; }
     else if (data[i + 2] === 0 && data[i + 3] === 1) { starts.push([i, i + 4]); i += 3; }
   }
-  if (!starts.length) throw new Error('Expected Annex B H.264');
+  if (!starts.length) throw new Error(diagnostic('rtc-media.a9bf2e1df6'));
   return starts.map(([, start], i) => data.subarray(start, starts[i + 1]?.[0] ?? data.length)).filter(n => n.length);
 }
 
 export function h264Profile(data) {
   const sps = annexBNals(data).find(n => (n[0] & 31) === 7);
-  if (!sps || sps.length < 4) throw new Error('H.264 stream has no SPS');
+  if (!sps || sps.length < 4) throw new Error(diagnostic('rtc-media.276449a8b3'));
   return sps.subarray(1, 4).toString('hex');
 }
 
 export function packetizeH264(data, maxPayload = 1100) {
-  if (maxPayload < 3) throw new Error('Invalid RTP payload size');
+  if (maxPayload < 3) throw new Error(diagnostic('rtc-media.54207a1285'));
   const packets = [];
   for (const nal of annexBNals(data)) {
     if (nal.length <= maxPayload) { packets.push(nal); continue; }
@@ -33,14 +34,14 @@ export function packetizeH264(data, maxPayload = 1100) {
 }
 
 export function rtpTimestamp(microseconds, rate) {
-  if (!Number.isSafeInteger(microseconds) || microseconds < 0) throw new Error('Invalid media timestamp');
+  if (!Number.isSafeInteger(microseconds) || microseconds < 0) throw new Error(diagnostic('rtc-media.f45e0c6e7e'));
   return Number((BigInt(microseconds) * BigInt(rate) / 1000000n) & 0xffffffffn);
 }
 
 // Opus TOC frame duration/count, expressed on its fixed 48 kHz RTP clock.
 // RFC 6716 section 3.1: an Opus packet contains at most 120 ms of audio.
 export function opusPacketSamples(data) {
-  if (!data.length) throw new Error('Empty Opus packet');
+  if (!data.length) throw new Error(diagnostic('rtc-media.eb2cfe821c'));
   const toc = data[0];
   const frameSamples = toc & 0x80 ? 120 << ((toc >> 3) & 3)
     : (toc & 0x60) === 0x60 ? (toc & 8 ? 960 : 480)
@@ -48,7 +49,7 @@ export function opusPacketSamples(data) {
   const code = toc & 3;
   const count = code === 0 ? 1 : code === 3 ? (data[1] ?? 0) & 63 : 2;
   const samples = frameSamples * count;
-  if (!count || samples > 5760) throw new Error('Invalid Opus packet duration');
+  if (!count || samples > 5760) throw new Error(diagnostic('rtc-media.b19338535b'));
   return samples;
 }
 
@@ -69,7 +70,7 @@ export class OpusRtpClock {
 
   accept(sourcePts, samples, arrivalMs) {
     if (!Number.isSafeInteger(sourcePts) || sourcePts < 0 || !Number.isInteger(samples) || samples < 120 || samples > 5760 ||
-        !Number.isFinite(arrivalMs)) throw new Error('Invalid Opus clock input');
+        !Number.isFinite(arrivalMs)) throw new Error(diagnostic('rtc-media.94b7e95e77'));
     const gapMs = this.lastArrivalMs == null ? 0 : Math.max(0, arrivalMs - this.lastArrivalMs);
     const discontinuity = this.needsAnchor || gapMs > this.discontinuityMs ||
       (this.lastSourcePts != null && Math.abs(sourcePts - this.lastSourcePts) > this.discontinuityMs * 1000);

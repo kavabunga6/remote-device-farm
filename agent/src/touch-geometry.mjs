@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 
 // Android's InputReader viewport is authoritative: emulator sensor rotation can
@@ -10,18 +11,18 @@ export function parseTouchGeometry(output) {
     const rotation = Number(viewport.match(/orientation[=:]\s*([0-3])/)[1]);
     const size = viewport.match(/deviceSize[=:]\s*\[\s*(\d+)\s*,\s*(\d+)\s*\]/);
     const frame = viewport.match(/physicalFrame[=:]\s*\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]/);
-    if (!size || !frame) throw new Error('Android touch viewport is incomplete');
+    if (!size || !frame) throw new Error(diagnostic('touch-geometry.39f91ec355'));
     const [deviceWidth, deviceHeight] = size.slice(1).map(Number);
     const [left, top, right, bottom] = frame.slice(1).map(Number);
     if (deviceWidth < 1 || deviceHeight < 1 || deviceWidth > 8192 || deviceHeight > 8192 ||
         left >= right || top >= bottom || right > deviceWidth || bottom > deviceHeight) {
-      throw new Error('Invalid Android touch viewport');
+      throw new Error(diagnostic('touch-geometry.739bf5e0ae'));
     }
     const logical = viewport.match(/logicalFrame[=:]\s*\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]/);
     const logicalSize = logical ? { logicalWidth: Number(logical[3]) - Number(logical[1]),
       logicalHeight: Number(logical[4]) - Number(logical[2]) } : {};
     if (logical && (logicalSize.logicalWidth < 1 || logicalSize.logicalHeight < 1 ||
-        logicalSize.logicalWidth > 16384 || logicalSize.logicalHeight > 16384)) throw new Error('Invalid Android logical viewport');
+        logicalSize.logicalWidth > 16384 || logicalSize.logicalHeight > 16384)) throw new Error(diagnostic('touch-geometry.ea9e90c37c'));
     return { rotation, width: rotation % 2 ? deviceHeight : deviceWidth,
       height: rotation % 2 ? deviceWidth : deviceHeight, physicalFrame: { left, top, right, bottom }, ...logicalSize };
   }
@@ -29,14 +30,14 @@ export function parseTouchGeometry(output) {
   // dimensions from getStatus remain in effect for this legacy case.
   const legacy = String(output).match(/SurfaceOrientation:\s*([0-3])(?:\s|$)/);
   if (legacy) return { rotation: Number(legacy[1]) };
-  throw new Error('Android display orientation is unavailable');
+  throw new Error(diagnostic('touch-geometry.7e82887c35'));
 }
 
 export async function readTouchGeometry(adb, serial, signal) {
   const result = await adb.run(serial, ['shell', 'dumpsys', 'input'],
     { timeoutMs: 1500, maxOutputBytes: 512 * 1024, signal });
   signal?.throwIfAborted();
-  if (result.exitCode !== 0) throw new Error('Could not read Android display orientation');
+  if (result.exitCode !== 0) throw new Error(diagnostic('touch-geometry.b3f17d966c'));
   return parseTouchGeometry(result.stdout);
 }
 
@@ -73,7 +74,7 @@ export class TouchGeometryCache {
   }
 
   get() {
-    if (this.closed) return Promise.reject(new Error('Touch geometry observer is closed'));
+    if (this.closed) return Promise.reject(new Error(diagnostic('touch-geometry.c916e91dc2')));
     if (this.geometry) return Promise.resolve(this.geometry);
     if (this.pending) return this.pending;
     this.pending = (async () => {
@@ -82,7 +83,7 @@ export class TouchGeometryCache {
         const revision = this.revision;
         const geometry = await this.read(this.adb, this.serial, this.signal);
         this.signal?.throwIfAborted();
-        if (this.closed) throw new Error('Touch geometry observer is closed');
+        if (this.closed) throw new Error(diagnostic('touch-geometry.c916e91dc2'));
         // A display transition during dumpsys makes that snapshot uncertain.
         if (revision !== this.revision) continue;
         // DisplayManager can notify before InputReader applies its new viewport.
@@ -92,7 +93,7 @@ export class TouchGeometryCache {
         const sizePending = expected.logicalWidth && geometry.logicalWidth &&
           (geometry.logicalWidth !== expected.logicalWidth || geometry.logicalHeight !== expected.logicalHeight);
         if (rotationPending || sizePending) {
-          if (Date.now() >= deadline) throw new Error('Android touch viewport did not reach the observed display geometry');
+          if (Date.now() >= deadline) throw new Error(diagnostic('touch-geometry.aed5114bbe'));
           await delay(10, undefined, { signal: this.signal });
           continue;
         }

@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import { chmod, chown, lstat, readFile, rm, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -10,7 +11,7 @@ async function existing(pathname) {
 async function keyBytes(pathname) {
   const detail = await lstat(pathname);
   if (!detail.isFile() || detail.size < 1 || detail.size > 16 * 1024) {
-    throw new Error('Invalid legacy ADB key file');
+    throw new Error(diagnostic('import-legacy-key.e15e7fda3e'));
   }
   return readFile(pathname);
 }
@@ -25,7 +26,7 @@ export async function importLegacyKeys({
     keyBytes(privateSource), keyBytes(publicSource),
   ]);
   const directory = await lstat(destinationDir);
-  if (!directory.isDirectory() || directory.isSymbolicLink()) throw new Error('Invalid ADB key destination');
+  if (!directory.isDirectory() || directory.isSymbolicLink()) throw new Error(diagnostic('import-legacy-key.8bb6ab01fe'));
   const privateTarget = path.join(destinationDir, 'adbkey');
   const publicTarget = path.join(destinationDir, 'adbkey.pub');
   const [privateCurrent, publicCurrent] = await Promise.all([
@@ -33,13 +34,13 @@ export async function importLegacyKeys({
   ]);
   if (privateCurrent || publicCurrent) {
     if (!privateCurrent?.isFile() || !publicCurrent?.isFile()) {
-      throw new Error('Partial ADB key import; refusing to overwrite');
+      throw new Error(diagnostic('import-legacy-key.380d00e7ef'));
     }
     const [installedPrivate, installedPublic] = await Promise.all([
       readFile(privateTarget), readFile(publicTarget),
     ]);
     if (!installedPrivate.equals(privateBytes) || !installedPublic.equals(publicBytes)) {
-      throw new Error('Existing ADB key differs from legacy source; refusing to replace');
+      throw new Error(diagnostic('import-legacy-key.a9c9eb1824'));
     }
     if (owner && (directory.uid !== owner.uid || directory.gid !== owner.gid ||
         privateCurrent.uid !== owner.uid || privateCurrent.gid !== owner.gid ||
@@ -47,7 +48,7 @@ export async function importLegacyKeys({
         (directory.mode & 0o777) !== 0o700 ||
         (privateCurrent.mode & 0o777) !== 0o600 ||
         (publicCurrent.mode & 0o777) !== 0o644)) {
-      throw new Error('Imported ADB key permissions are unsafe');
+      throw new Error(diagnostic('import-legacy-key.05f79bd7ab'));
     }
     return { imported: false };
   }
@@ -66,7 +67,7 @@ export async function importLegacyKeys({
       readFile(privateTarget), readFile(publicTarget),
     ]);
     if (!installedPrivate.equals(privateBytes) || !installedPublic.equals(publicBytes)) {
-      throw new Error('ADB key copy verification failed');
+      throw new Error(diagnostic('import-legacy-key.e4caeb88b9'));
     }
     await chmod(privateTarget, 0o600);
     await chmod(publicTarget, 0o644);
@@ -88,5 +89,5 @@ export async function importLegacyKeys({
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await importLegacyKeys();
-  console.log('Legacy ADB identity is ready');
+  console.log(diagnostic('import-legacy-key.14dfe437a8'));
 }

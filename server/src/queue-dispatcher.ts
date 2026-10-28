@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { uiMessage } from './messages.js';
 import { mergeLaunchStorage, type LaunchOptions } from './launch-options.js';
 import type { Pool } from 'pg';
@@ -264,9 +265,9 @@ export function startQueueDispatcher(deps: DispatcherDeps, everyMs = 5_000): Que
     running = (async () => {
       do {
         again = false;
-        await runQueuePass(deps).catch(() => console.error('Queue pass failed'));
+        await runQueuePass(deps).catch(() => console.error(diagnostic('queue-dispatcher.9eeab180c1')));
         if (stopped) break;
-        await runNotificationPass(deps.pool, deps.policy).catch(() => console.error('Notification pass failed'));
+        await runNotificationPass(deps.pool, deps.policy).catch(() => console.error(diagnostic('queue-dispatcher.ab0a2b5884')));
         if (Date.now() - pruned > 3_600_000) {
           pruned = Date.now();
           await pruneNotifications(deps.pool).catch(() => {});

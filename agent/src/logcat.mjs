@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import { validatePackageName } from './logcat-apps.mjs';
 // Logcat snapshots for the web viewer. The viewer polls with a cursor instead of
 // holding a long-lived adb process per browser tab.
@@ -10,28 +11,28 @@ const LINE = /^(\d\d-\d\d \d\d:\d\d:\d\d\.\d{3})\s+(\d+)\s+(\d+)\s+([VDIWEFA])\s
 
 export function validateLogcatParams(params = {}) {
   const lines = params.lines === undefined ? 1000 : Number(params.lines);
-  if (!Number.isInteger(lines) || lines < 1 || lines > MAX_LOGCAT_LINES) throw new Error('Invalid logcat line count');
+  if (!Number.isInteger(lines) || lines < 1 || lines > MAX_LOGCAT_LINES) throw new Error(diagnostic('logcat.d62b5f8e98'));
   const minLevel = params.minLevel === undefined ? 'V' : params.minLevel;
-  if (!LOGCAT_LEVELS.includes(minLevel)) throw new Error('Invalid logcat level');
+  if (!LOGCAT_LEVELS.includes(minLevel)) throw new Error(diagnostic('logcat.d04fcab189'));
   const buffers = params.buffers === undefined ? ['main', 'system', 'crash'] : params.buffers;
   if (!Array.isArray(buffers) || buffers.length < 1 || buffers.length > LOGCAT_BUFFERS.length ||
       new Set(buffers).size !== buffers.length || !buffers.every((name) => LOGCAT_BUFFERS.includes(name))) {
-    throw new Error('Invalid logcat buffers');
+    throw new Error(diagnostic('logcat.d9b15dbd8e'));
   }
   let since = null;
   let skip = 0;
   if (params.since !== undefined && params.since !== null) {
-    if (typeof params.since !== 'string' || !TIMESTAMP.test(params.since)) throw new Error('Invalid logcat cursor');
+    if (typeof params.since !== 'string' || !TIMESTAMP.test(params.since)) throw new Error(diagnostic('logcat.e8580990f3'));
     since = params.since;
     skip = params.skip === undefined ? 0 : Number(params.skip);
-    if (!Number.isInteger(skip) || skip < 0 || skip > MAX_LOGCAT_LINES * 10) throw new Error('Invalid logcat cursor');
+    if (!Number.isInteger(skip) || skip < 0 || skip > MAX_LOGCAT_LINES * 10) throw new Error(diagnostic('logcat.e8580990f3'));
   }
   const packageName = params.packageName === undefined ? null : validatePackageName(params.packageName);
   return { lines, minLevel, buffers, since, skip, packageName };
 }
 
 export function logcatArgv({ lines, minLevel, buffers, since, uid }) {
-  if (uid !== undefined && (!Number.isSafeInteger(uid) || uid < 0 || uid > 2147483647)) throw new Error('Invalid Android UID');
+  if (uid !== undefined && (!Number.isSafeInteger(uid) || uid < 0 || uid > 2147483647)) throw new Error(diagnostic('logcat.4a99a9190e'));
   return ['logcat', '-d', '-v', 'threadtime', '-b', buffers.join(','), ...(uid === undefined ? [] : ['-v', 'uid']),
     ...(since ? ['-T', since] : ['-t', String(lines)]), `*:${minLevel}`];
 }
