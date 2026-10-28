@@ -18,7 +18,7 @@
 .side-nav a:hover { background: var(--ui-inset); color: var(--ui-text); }
 .side-nav a[aria-current=page] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
 .side-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.side-nav-count { flex: none; display: grid; place-items: center; min-width: 22px; height: 22px; margin-left: auto; padding: 0 5px; border-radius: 5px; background: var(--ui-inset); color: var(--ui-subtle); font-size: .75rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.side-nav-count { flex: none; display: grid; place-items: center; min-width: 22px; height: 22px; margin-inline-start: auto; padding: 0 5px; border-radius: 5px; background: var(--ui-inset); color: var(--ui-subtle); font-size: .75rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sidebar-bottom { flex: none; margin-top: 16px; padding: 0; }
 .side-profile { gap: 12px; padding: 10px 12px; }
 .side-logout { gap: 12px; padding: 10px 12px; font-size: .8125rem; }
@@ -32,4 +32,4 @@
 .sidebar-navigation .side-nav a > svg { grid-column: 1; grid-row: 1; }
 .sidebar-navigation .side-nav a > span { grid-column: 2; grid-row: 1; }
 .sidebar-navigation .side-nav .side-nav-count,
-.sidebar-navigation .side-nav a[aria-current=page]::after { grid-column: 3; grid-row: 1; justify-self: center; margin-left: 0; }
+.sidebar-navigation .side-nav a[aria-current=page]::after { grid-column: 3; grid-row: 1; justify-self: center; margin-inline-start: 0; }

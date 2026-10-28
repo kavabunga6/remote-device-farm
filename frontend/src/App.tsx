@@ -1,3 +1,4 @@
+import { TranslatedText } from './TranslatedText';
 import { Brand } from './Brand';
 import { Login } from './Login';
 import { LogoutDialog } from './LogoutDialog';
@@ -87,8 +88,8 @@ function SessionCard({ session, host, profile, onRelease, onRepeat, busy, canMan
       <div className="session-card-state"><div className="session-card-icon"><Icon name="phone" size={22} /></div><SessionStatusBadge status={session.status} /></div>
       {allowed('sessions.stop') && <button type="button" className="icon-button danger-icon card-secondary-action session-card-release" title={t('ui.d5682c76be4c')} aria-label={t('ui.d5682c76be4c')} onClick={onRelease} disabled={busy || !canOpen}><Icon name="power" size={18} /></button>}
     </div>
-    <h3 title={session.label ? (session.profileName || profile?.name || '') : undefined}>{canOpen ? <a className="card-primary-action" href={'#/session/' + encodeURIComponent(session.id)} aria-label={t('ui.442b925f50d7') + name}><span className="session-card-name">{name}</span><Icon name="arrowRight" size={18} /></a> : name}</h3>
-    <p className="session-meta">{session.label && (session.profileName || profile?.name) ? <>{session.profileName || profile?.name}<span className="middle-dot">·</span></> : null}{profile?.androidVersion ? `Android ${profile.androidVersion}` : 'Android'} <span className="middle-dot">·</span> {session.hostName || host?.name || t('ui.e77a383ee52d')}</p>
+    <h3 title={session.label ? (session.profileName || profile?.name || '') : undefined}>{canOpen ? <a className="card-primary-action" href={'#/session/' + encodeURIComponent(session.id)} aria-label={t('copy.App.e973c6b1', { p0: name })}><span className="session-card-name">{name}</span><Icon name="arrowRight" size={18} /></a> : name}</h3>
+    <p className="session-meta">{session.label && (session.profileName || profile?.name) ? <>{session.profileName || profile?.name}<span className="middle-dot">·</span></> : null}{profile?.androidVersion ? `${t('ui.6d612a86bee4')} ${profile.androidVersion}` : t('ui.6d612a86bee4')} <span className="middle-dot">·</span> {session.hostName || host?.name || t('ui.e77a383ee52d')}</p>
     <div className="session-id">#{session.id.slice(0, 8)} <span>·</span> {formatDate(session.createdAt)}</div>
     <div className="session-card-footer">
       {session.status === 'starting' && <SessionStartupProgress progress={session.startupProgress} compact/>}
@@ -167,7 +168,7 @@ function Dashboard({ user, sessionLimitValue, hosts, profiles, adminProfiles, se
           </div>
           {can(user, 'sessions.stop') && releasable.length > 1 && <div className="bulk-actions">
             {bulkConfirm ? <>
-              <span>{t('ui.90a3f69cae60')}{releasable.length}?</span>
+              <span><TranslatedText message="copy.App.ddde06cc" values={{ p0: releasable.length }} /></span>
               <button type="button" className="text-button danger" disabled={bulkBusy} onClick={() => void releaseAll()}>{bulkBusy ? t('ui.e85da2d59b06') : t('ui.48d417de363d')}</button>
               <button type="button" className="text-button" disabled={bulkBusy} onClick={() => setBulkConfirm(false)}>{t('ui.8fbe9b75cbdf')}</button>
             </> : <button type="button" className="text-button danger" onClick={() => setBulkConfirm(true)}>{t('ui.2e0dabca3682')}{releasable.length})</button>}

@@ -20,9 +20,9 @@
 .device-profile-resource-values{display:grid;grid-template-rows:subgrid;grid-row:span 2;row-gap:8px;min-width:0;margin:0}
 .device-profile-resource-values>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:baseline;gap:8px}
 .device-profile-resource-values dt{color:var(--ui-muted);font-size:.75rem;line-height:1.5;overflow-wrap:anywhere}
-.device-profile-resource-values dd{min-width:0;margin:0;text-align:right;color:var(--ui-text);font-size:.8125rem;font-weight:600;line-height:1.5;overflow-wrap:anywhere}
+.device-profile-resource-values dd{min-width:0;margin:0;text-align:end;color:var(--ui-text);font-size:.8125rem;font-weight:600;line-height:1.5;overflow-wrap:anywhere}
 .device-profile-resource-values>div:has(dd.is-unset){grid-template-columns:minmax(0,1fr);gap:2px}
-.device-profile-resource-values dd.is-unset{text-align:left}
+.device-profile-resource-values dd.is-unset{text-align:start}
 .admin-workspace .device-profile-card .device-profile-note{grid-row:5;margin:6px 0 16px;font-size:.75rem;line-height:1.5;color:var(--ui-muted)}
 .device-profile-features{grid-row:6 / span 4;grid-template-rows:subgrid;display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;margin:0 0 16px;padding-top:16px;border-top:1px solid var(--ui-border)}
 .device-profile-features>div{display:grid;grid-template-rows:subgrid;grid-row:span 2;row-gap:4px;min-width:0}

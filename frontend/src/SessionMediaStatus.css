@@ -13,7 +13,7 @@
 .session-layout .session-transport-menu>summary{list-style:none;cursor:pointer}
 .session-layout .session-transport-menu>summary::-webkit-details-marker{display:none}
 .session-layout .session-transport-menu>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.session-layout .session-transport-popover{position:absolute;z-index:50;inset:calc(100% + 8px) auto auto 0;width:300px;max-width:calc(100vw - 40px);box-sizing:border-box;padding:16px;border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface);color:var(--ui-text);box-shadow:0 8px 28px #0002;font-size:14px;line-height:1.4;white-space:normal}
+.session-layout .session-transport-popover{position:absolute;z-index:50;top:calc(100% + 8px);inset-inline-start:0;width:300px;max-width:calc(100vw - 40px);box-sizing:border-box;padding:16px;border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface);color:var(--ui-text);box-shadow:0 8px 28px #0002;font-size:14px;line-height:1.4;white-space:normal}
 .session-layout .session-transport-popover>label{display:block;margin:0 0 6px;font-weight:600}
 .session-layout .session-transport-popover>select{display:block;width:100%;height:36px;min-height:36px;margin:0;box-sizing:border-box;padding-block:0;padding-inline-start:10px;border:1px solid var(--ui-border);border-radius:8px;background-color:var(--ui-inset);color:var(--ui-text);font:inherit}
 .session-layout .session-transport-popover>p{margin:12px 0;overflow-wrap:anywhere}

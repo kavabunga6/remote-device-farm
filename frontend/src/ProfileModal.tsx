@@ -1,3 +1,4 @@
+import examples from '../../shared/interface-examples.json';
 import { localizeText, t } from './i18n';
 import { useRef, useState } from 'react';
 import { containerEnvToText, parseContainerEnvText } from './profile-env';
@@ -112,7 +113,7 @@ export function ProfileModal({ current, onClose, onSaved }: { current: Profile |
             <p className="profile-field-note" id="profile-params-help">{t('ui.4171c94201ad')}</p>
             <label className="profile-launch-field"><span>{t('ui.a60003e96650')}</span><textarea value={envText} onChange={event => setEnvText(event.target.value)} placeholder={t('ui.040ff82edb88')} rows={3} spellCheck={false} aria-describedby="profile-env-help" /></label>
             <p className="profile-field-note" id="profile-env-help">{t('ui.32e9a9b3573f')}</p>
-            <label className="profile-launch-field"><span>{t('ui.99c5cabe9e0b')}</span><textarea value={optionsText} onChange={event => setOptionsText(event.target.value)} placeholder={'{\n  "shmSizeMb": 512,\n  "command": ["--flag"]\n}'} rows={5} spellCheck={false} aria-describedby="profile-docker-help" /></label>
+            <label className="profile-launch-field"><span>{t('ui.99c5cabe9e0b')}</span><textarea value={optionsText} onChange={event => setOptionsText(event.target.value)} placeholder={examples.dockerOptions} rows={5} spellCheck={false} aria-describedby="profile-docker-help" /></label>
             <p className="profile-field-note" id="profile-docker-help">{t('ui.2ec092b8c14b')}</p>
           </section>
         </fieldset>

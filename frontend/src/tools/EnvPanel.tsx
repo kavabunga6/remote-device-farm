@@ -1,3 +1,4 @@
+import { TranslatedText } from '../TranslatedText';
 import { localizeText, t } from '../i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -144,7 +145,7 @@ export function EnvPanel({ sessionId, active, running, readForViewer = false, on
 
   const commitBattery = () => {
     if (!running || status.device?.kind === 'busy' || battery === env?.battery?.level) return;
-    void run('device', 'battery', { level: battery }, t('ui.5888c6fa90db') + battery + '%');
+    void run('device', 'battery', { level: battery }, t('copy.EnvPanel.e13c53e8', { p0: battery }));
   };
   const busy = (key: string) => status[key]?.kind === 'busy';
   const off = !running;
@@ -187,7 +188,7 @@ export function EnvPanel({ sessionId, active, running, readForViewer = false, on
           <button type="button" className="button outline small" disabled={off || !pkgValid || busy('app')}
             onClick={() => void run('app', 'app_stop', { package: pkg }, t('ui.1afb70e488c7'), { reload: false })}>{t('ui.3396400da0c4')}</button>
           <button type="button" className="button small danger-outline" disabled={off || !pkgValid || busy('app')}
-            onClick={() => { if (window.confirm(t('ui.961a05e6dac1') + pkg + '?')) void run('app', 'app_clear', { package: pkg }, t('ui.e70084d8c3da'), { reload: false }); }}>{t('ui.cb1099827e15')}</button>
+            onClick={() => { if (window.confirm(t('copy.EnvPanel.f30f0a3b', { p0: pkg }))) void run('app', 'app_clear', { package: pkg }, t('ui.e70084d8c3da'), { reload: false }); }}>{t('ui.cb1099827e15')}</button>
         </div>
       </div>
       {pkg !== '' && !pkgValid && <p className="env-validation" role="status">{t('ui.3b36880a92a6')}</p>}
@@ -214,10 +215,10 @@ export function EnvPanel({ sessionId, active, running, readForViewer = false, on
           onChange={e => { const enabled = !e.target.checked; void run('look', 'animations', { enabled }, enabled ? t('ui.d29cc7371ca3') : t('ui.6cbfed37ef21'), { verify: next => next.animations === enabled }); }} />
           <span>{t('ui.dfdd3f58ad1f')}</span></label>
         <label className="env-switch"><input type="checkbox" role="switch" checked={env?.showTouches === true} disabled={lookDisabled}
-          onChange={e => { const enabled = e.target.checked; void run('look', 'show_touches', { enabled }, t('ui.32f38bcadf1b') + (enabled ? t('ui.2923588c6533') : t('ui.b2a25ae548d2')), { verify: next => next.showTouches === enabled }); }} />
+          onChange={e => { const enabled = e.target.checked; void run('look', 'show_touches', { enabled }, t('copy.EnvPanel.a1e1b8b2', { p0: (enabled ? t('ui.2923588c6533') : t('ui.b2a25ae548d2')) }), { verify: next => next.showTouches === enabled }); }} />
           <span>{t('ui.89c75eef0d0e')}</span></label>
         <label className="env-switch"><input type="checkbox" role="switch" checked={env?.pointerLocation === true} disabled={lookDisabled}
-          onChange={e => { const enabled = e.target.checked; void run('look', 'pointer_location', { enabled }, t('ui.94e3ac9fa4c8') + (enabled ? t('ui.2923588c6533') : t('ui.b2a25ae548d2')), { verify: next => next.pointerLocation === enabled }); }} />
+          onChange={e => { const enabled = e.target.checked; void run('look', 'pointer_location', { enabled }, t('copy.EnvPanel.3cc07c10', { p0: (enabled ? t('ui.2923588c6533') : t('ui.b2a25ae548d2')) }), { verify: next => next.pointerLocation === enabled }); }} />
           <span>{t('ui.e4a493152c39')}</span></label>
       </div>
       <p className="env-hint env-touch-hint">{nativeTouches ? t('ui.3713f923b8a2') : t('ui.10e848ce6be5')}</p>
@@ -225,7 +226,7 @@ export function EnvPanel({ sessionId, active, running, readForViewer = false, on
         <form className="env-display-row" aria-label={t('ui.f89b0906a995')} onSubmit={e => {
           e.preventDefault();
           if (lookDisabled || !densityValid) return;
-          void run('look', 'display_density', { dpi: Number(density) }, t('ui.e72c989c7574') + density + ' dpi', { verify: next => (next.density?.override ?? next.density?.physical) === Number(density) });
+          void run('look', 'display_density', { dpi: Number(density) }, t('copy.EnvPanel.839093bd', { p0: density }), { verify: next => (next.density?.override ?? next.density?.physical) === Number(density) });
         }}>
           <label htmlFor="env-density">{t('ui.1fdda81c6144')}</label>
           <div className="env-display-inputs">
@@ -236,7 +237,7 @@ export function EnvPanel({ sessionId, active, running, readForViewer = false, on
           <button type="submit" className="button outline env-display-action" aria-label={t('ui.d55117e36037')} title={t('ui.d55117e36037')} disabled={lookDisabled || !densityValid || Number(density) === currentDensity}><Icon name="check" size={16} /></button>
           <button type="button" className="button outline env-display-action" aria-label={t('ui.942d6415f189')} title={t('ui.942d6415f189')} disabled={lookDisabled}
             onClick={() => void run('look', 'display_density', { reset: true }, t('ui.1c1b9e5bc0a8'), { verify: next => next.density != null && next.density.override == null, onOk: next => setDensity(String(next!.density!.physical)) })}><Icon name="refresh" size={16} /></button>
-          <small id="env-density-default">{t('ui.d177bbd879be')}{env?.density ? env.density.physical + ' dpi' : '—'} · 120–640</small>
+          <small id="env-density-default"><TranslatedText message="copy.EnvPanel.2db76798" values={{ p0: env?.density ? env.density.physical + ' dpi' : '—' }} /></small>
         </form>
         <form className="env-display-row" aria-label={t('ui.1bdcebcf1040')} onSubmit={e => {
           e.preventDefault();
@@ -255,7 +256,7 @@ export function EnvPanel({ sessionId, active, running, readForViewer = false, on
           <button type="submit" className="button outline env-display-action" aria-label={t('ui.212fb49f41ae')} title={t('ui.212fb49f41ae')} disabled={lookDisabled || !sizeValid || `${Number(width)}x${Number(height)}` === currentSize}><Icon name="check" size={16} /></button>
           <button type="button" className="button outline env-display-action" aria-label={t('ui.9225e3466e24')} title={t('ui.9225e3466e24')} disabled={lookDisabled}
             onClick={() => void run('look', 'display_size', { reset: true }, t('ui.c3445acf284c'), { verify: next => next.size != null && next.size.override == null, onOk: next => { const [w, h] = next!.size!.physical.split('x'); setWidth(w!); setHeight(h!); } })}><Icon name="refresh" size={16} /></button>
-          <small id="env-size-default">{t('ui.d177bbd879be')}{env?.size ? env.size.physical.replace('x', '×') + ' px' : '—'} · 320–4096</small>
+          <small id="env-size-default"><TranslatedText message="copy.EnvPanel.0fab0212" values={{ p0: env?.size ? env.size.physical.replace('x', '×') + ' px' : '—' }} /></small>
         </form>
       </div>
     </Card>
@@ -265,7 +266,7 @@ export function EnvPanel({ sessionId, active, running, readForViewer = false, on
         event.preventDefault();
         if (off || busy('network')) return;
         const preset = NETWORK_PRESETS.find(p => p.id === networkDraft)!;
-        void run('network', 'network', { profile: preset.id }, t('ui.9ae609ae2922') + preset.label, { reload: false, onOk: () => setNetwork(preset.id) });
+        void run('network', 'network', { profile: preset.id }, t('copy.EnvPanel.052eb957', { p0: preset.label }), { reload: false, onOk: () => setNetwork(preset.id) });
       }}>
         <label>{t('ui.0021f16647e7')}<select value={networkDraft} disabled={off || busy('network')} onChange={event => setNetworkDraft(event.target.value)}>
           {NETWORK_PRESETS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
@@ -287,7 +288,7 @@ export function EnvPanel({ sessionId, active, running, readForViewer = false, on
           event.preventDefault();
           if (proxyDisabled || !proxyValid) return;
           const host = proxyHost.toLowerCase(), port = Number(proxyPort);
-          void run('proxy', 'proxy', { host, port }, t('ui.a07a3d8d17a5') + host + ':' + port,
+          void run('proxy', 'proxy', { host, port }, t('copy.EnvPanel.aa4b088a', { p0: host, p1: port }),
             { verify: next => next.proxy?.enabled === true && next.proxy.host === host && next.proxy.port === port });
         }}>
           <div className="env-proxy-fields">
@@ -347,9 +348,9 @@ export function EnvPanel({ sessionId, active, running, readForViewer = false, on
         <label>{t('ui.ce2e24e73ac4')}<select value={zone} onChange={e => setZone(e.target.value)} disabled={off}>
           {getTimeZones().map(z => <option key={z.id} value={z.id}>{z.label}</option>)}</select></label>
         <button type="button" className="button primary small" disabled={off || busy('device')}
-          onClick={() => void run('device', 'timezone', { zone }, t('ui.27a38e1d9176') + zone)}>{t('ui.e15f960d93eb')}</button>
+          onClick={() => void run('device', 'timezone', { zone }, t('copy.EnvPanel.40f5eaff', { p0: zone }))}>{t('ui.e15f960d93eb')}</button>
       </div>
-      {env?.timezone && <p className="env-hint">{t('ui.00216d98dc10')}{env.timezone}</p>}
+      {env?.timezone && <p className="env-hint"><TranslatedText message="copy.EnvPanel.8860c50e" values={{ p0: env.timezone }} /></p>}
     </Card>
 
   </div>;

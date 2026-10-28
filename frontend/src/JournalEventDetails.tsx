@@ -5,10 +5,9 @@ import { Icon } from './icons';
 import { journalCopyText, technicalFields, type JournalDate, type JournalDetail } from './journal-details';
 import { useAdminDialog } from './useAdminDialog';
 
-const calendarDate = new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
-const clockTime = new Intl.DateTimeFormat(getLocale(), { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
 function EventDate({ field }: { field: JournalDate }) {
+  const calendarDate = new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
+  const clockTime = new Intl.DateTimeFormat(getLocale(), { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const date = field.value ? new Date(field.value) : null;
   return <div><dt>{field.label}</dt><dd>{date && !Number.isNaN(date.getTime())
     ? <time dateTime={field.value!}><span>{clockTime.format(date)}</span><small>{calendarDate.format(date)}</small></time>

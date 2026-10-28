@@ -25,6 +25,7 @@ playwright-report/
 blob-report/
 .tmp-ui/
 .tmp-i18n/
+/.tmp-*
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

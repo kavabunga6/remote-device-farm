@@ -1,3 +1,4 @@
+import { TranslatedText } from './TranslatedText';
 import { downloadFile as downloadKeyFile } from './browser-files';
 import { roleLabel } from './permissions';
 import { getLocale, localizeText, t } from './i18n';
@@ -290,7 +291,7 @@ export function AdbKeysPage({ user, embedded = false, defaultAdbKeyId = null, on
               </form> : <div className="account-key-title">
                 <strong>{key.name}{defaultAdbKeyId === key.id && <span className="account-default-tag"><Icon name="check" size={14} />{t('ui.422f550c9cff')}</span>}</strong>
               </div>}
-              <small>{t('ui.2613afc336c2')}{dateLabel(key.createdAt)}</small><code title={key.fingerprint}>{key.fingerprint}</code>
+              <small><TranslatedText message="copy.AdbKeysPage.77a87e4a" values={{ p0: dateLabel(key.createdAt) }} /></small><code title={key.fingerprint}>{key.fingerprint}</code>
             </div>
             <div className="account-key-actions">
             {defaultAdbKeyId !== key.id && onDefaultKeyChanged && <button type="button" className="button outline small" disabled={defaultBusy || editingKeyId === key.id} onClick={() => void chooseDefaultKey(key.id)}>{t('ui.12606cfe703d')}</button>}
@@ -303,7 +304,7 @@ export function AdbKeysPage({ user, embedded = false, defaultAdbKeyId = null, on
       </div>
       <form id="adb-upload-form" hidden={!uploadOpen} className="account-upload-card" onSubmit={event => void addKey(event)}>
         <h3>{t('ui.c1398f200d1b')}</h3>
-        <p>{t('ui.6dee42f79f05')}<code>{t('ui.9702ab6bff62')}</code>{t('ui.35d9f1a1ee21')}<code>{t('ui.8694fc709bdb')}</code> {t('ui.34ddeaad5458')}</p>
+        <p><TranslatedText message="copy.AdbKeysPage.c6f3bf98" values={{ p0: <code>{t('ui.9702ab6bff62')}</code>, p1: <code>{t('ui.8694fc709bdb')}</code> }} /></p>
         <label>{t('ui.0918b4ba9268')}<input ref={nameInput} type="text" value={name} onChange={event => setName(event.target.value)} maxLength={80} placeholder={t('ui.ee4cb068f541')} required /></label>
         <label className="account-file-picker"><Icon name="upload" size={18} /><span>{fileName || t('ui.1196877c500f')}</span><input ref={fileInput} type="file" accept=".pub,text/plain" onChange={event => void choosePublicKey(event)} aria-label={t('ui.fa7a0d22887a')} /></label>
         {onDefaultKeyChanged && <label className="account-default-checkbox"><input type="checkbox" checked={setUploadedAsDefault} onChange={event => setSetUploadedAsDefault(event.target.checked)} />{t('ui.fe006bc68384')}</label>}
@@ -316,7 +317,7 @@ export function AdbKeysPage({ user, embedded = false, defaultAdbKeyId = null, on
       <div className="account-farm-copy">
         <div className="account-farm-title"><h3 id="farm-key-heading">{t('ui.5ddca3970fa0')}</h3>{defaultAdbKeyId === null && <span className="account-default-tag"><Icon name="check" size={14} />{t('ui.422f550c9cff')}</span>}</div>
         <p>{t('ui.b309b919d81d')}</p>
-        <div className="account-fingerprint"><span>{t('ui.0ed41b980db8')}</span><code>{farmKey.fingerprint}</code><small>{t('ui.763594e6375d')}{dateLabel(farmKey.createdAt)}</small></div>
+        <div className="account-fingerprint"><span>{t('ui.0ed41b980db8')}</span><code>{farmKey.fingerprint}</code><small><TranslatedText message="copy.AdbKeysPage.30c82cc6" values={{ p0: dateLabel(farmKey.createdAt) }} /></small></div>
         {confirmRotate && <div className="account-confirm" role="alert"><Icon name="alert" size={17} /><span>{t('ui.72d260e08ec4')}</span><button type="button" className="text-button danger-text" onClick={() => void createOrRotateFarmKey()} disabled={farmBusy}>{t('ui.c20163fda193')}</button><button type="button" className="text-button" onClick={() => setConfirmRotate(false)} disabled={farmBusy}>{t('ui.8fbe9b75cbdf')}</button></div>}
       </div>
       <div className="account-farm-actions">

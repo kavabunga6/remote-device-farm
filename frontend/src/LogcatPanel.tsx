@@ -1,3 +1,4 @@
+import { TranslatedText } from './TranslatedText';
 import { downloadFile } from './browser-files';
 import { getLanguage, localizeText, t } from './i18n';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
@@ -226,7 +227,7 @@ export function LogcatPanel({ sessionId, active, running, panelId }: { sessionId
       </button>
       <div className="log-font-controls" role="group" aria-label={t('ui.780e6aee2cbc')}>
         <button type="button" className="log-control" onClick={() => setFontSize(value => Math.max(MIN_FONT_SIZE, value - 1))} disabled={fontSize === MIN_FONT_SIZE} aria-label={t('ui.583001c59536')} title={t('ui.2ce211762cc4')}><Icon name="minus" size={15}/></button>
-        <output aria-label={t('ui.9f9d637d4607')}>{fontSize} {t('ui.bc913fd04325')}</output>
+        <output aria-label={t('ui.9f9d637d4607')}><TranslatedText message="copy.LogcatPanel.f2021904" values={{ p0: fontSize }} /></output>
         <button type="button" className="log-control" onClick={() => setFontSize(value => Math.min(MAX_FONT_SIZE, value + 1))} disabled={fontSize === MAX_FONT_SIZE} aria-label={t('ui.587fd05a12fc')} title={t('ui.d58d963c745d')}><Icon name="plus" size={15}/></button>
       </div>
       <details className="log-menu" ref={menuRef} onKeyDown={event => { if (event.key === 'Escape' && menuRef.current) { menuRef.current.open = false; menuRef.current.querySelector('summary')?.focus(); } }}>
@@ -262,10 +263,10 @@ export function LogcatPanel({ sessionId, active, running, panelId }: { sessionId
       </div>
     </div>
     {(packageName || appsLoaded && !apps.length) && <div className="log-app-state" role="status">
-      {packageName ? appState ? appState.pids === null ? t('ui.babf43590699') : appState.pids.length ? t('ui.f526c143f270') + appState.pids.join(', ') : t('ui.34a80cfcf8a0')
+      {packageName ? appState ? appState.pids === null ? t('ui.babf43590699') : appState.pids.length ? t('copy.LogcatPanel.69bbc195', { p0: appState.pids.join(', ') }) : t('ui.34a80cfcf8a0')
         : loading ? t('ui.0d82c5634e29') : '' : t('ui.1d5198ef06be')}
     </div>}
-    {appState && appState.sharedPackages.length > 0 && <p className="log-app-warning">{t('ui.22b0d9039e0f')}{appState.sharedPackages.join(', ')}.</p>}
+    {appState && appState.sharedPackages.length > 0 && <p className="log-app-warning"><TranslatedText message="copy.LogcatPanel.f6eb239f" values={{ p0: appState.sharedPackages.join(', ') }} /></p>}
     {appsError && <div className="log-error" role="alert">{t('ui.9270a3e71538')}{localizeText(appsError)} <button type="button" onClick={() => void loadApps()}>{t('ui.5189135a6110')}</button></div>}
 
     <div className="log-search">

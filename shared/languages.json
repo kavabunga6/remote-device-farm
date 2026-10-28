@@ -1,0 +1,86 @@
+[
+  {
+    "id": "ru",
+    "locale": "ru-RU",
+    "name": "Русский",
+    "search": "Russian",
+    "direction": "ltr"
+  },
+  {
+    "id": "en",
+    "locale": "en-US",
+    "name": "English",
+    "search": "English",
+    "direction": "ltr"
+  },
+  {
+    "id": "zh-Hans",
+    "locale": "zh-CN",
+    "name": "简体中文",
+    "search": "Chinese 中文",
+    "direction": "ltr"
+  },
+  {
+    "id": "hi",
+    "locale": "hi-IN",
+    "name": "हिन्दी",
+    "search": "Hindi",
+    "direction": "ltr"
+  },
+  {
+    "id": "es",
+    "locale": "es-ES",
+    "name": "Español",
+    "search": "Spanish",
+    "direction": "ltr"
+  },
+  {
+    "id": "ar",
+    "locale": "ar",
+    "name": "العربية",
+    "search": "Arabic",
+    "direction": "rtl"
+  },
+  {
+    "id": "fr",
+    "locale": "fr-FR",
+    "name": "Français",
+    "search": "French",
+    "direction": "ltr"
+  },
+  {
+    "id": "bn",
+    "locale": "bn-BD",
+    "name": "বাংলা",
+    "search": "Bengali Bangla",
+    "direction": "ltr"
+  },
+  {
+    "id": "pt-BR",
+    "locale": "pt-BR",
+    "name": "Português (Brasil)",
+    "search": "Portuguese",
+    "direction": "ltr"
+  },
+  {
+    "id": "ur",
+    "locale": "ur-PK",
+    "name": "اردو",
+    "search": "Urdu",
+    "direction": "rtl"
+  },
+  {
+    "id": "id",
+    "locale": "id-ID",
+    "name": "Bahasa Indonesia",
+    "search": "Indonesian",
+    "direction": "ltr"
+  },
+  {
+    "id": "de",
+    "locale": "de-DE",
+    "name": "Deutsch",
+    "search": "German",
+    "direction": "ltr"
+  }
+]

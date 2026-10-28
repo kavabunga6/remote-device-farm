@@ -1,0 +1,12 @@
+{
+  "profileManifest": "{\n  \"version\": 2,\n  \"profiles\": [ … ]\n}",
+  "dockerOptions": "{\n  \"shmSizeMb\": 512,\n  \"command\": [\"--flag\"]\n}",
+  "agentStart": "tar -xzf {filename}\nchmod 600 .env.agent\ndocker compose --env-file .env.agent -f compose.agent.yaml up --build -d",
+  "logLevels": {
+    "debug": "DEBUG",
+    "info": "INFO",
+    "warning": "WARN",
+    "error": "ERROR"
+  },
+  "serverLogSource": "server"
+}

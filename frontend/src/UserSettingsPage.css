@@ -34,7 +34,7 @@
 .settings-rental strong{font-size:.875rem;overflow-wrap:anywhere;color:var(--ui-text)}
 .settings-rental span{color:var(--ui-subtle)}
 .settings-rental small{color:var(--ui-muted);font-size:.8125rem}
-.settings-rental>div:last-child{text-align:right}
+.settings-rental>div:last-child{text-align:end}
 .settings-more{margin-top:14px}
 .user-settings-page .notify-card{margin-top:0!important}
 .user-settings-page .webhook-form{margin-top:20px;padding-top:20px;border-top:1px solid var(--ui-border);grid-template-columns:1fr 1fr}
@@ -43,7 +43,7 @@
 .user-settings-page .notify-row p{font-size:.875rem}
 .user-settings-page .webhook-list:empty{display:none}
 @media(max-width:1000px){.settings-password-form{grid-template-columns:1fr 1fr}}
-@media(max-width:640px){.settings-card{padding:18px}.settings-form-two,.settings-password-form,.user-settings-page .webhook-form{grid-template-columns:1fr}.settings-identity{padding:16px;flex-wrap:wrap}.settings-identity>div{flex-basis:calc(100% - 64px)}.settings-identity .account-role{margin-left:62px}.settings-nav{gap:4px;margin-top:16px}.settings-nav button{padding:9px 10px;font-size:.8125rem;flex:1 1 calc(50% - 4px);justify-content:center}.settings-rental{align-items:flex-start;flex-direction:column;gap:10px;padding:16px}.settings-rental>div:last-child{text-align:left}.settings-form .button{width:100%;justify-self:stretch}}
+@media(max-width:640px){.settings-card{padding:18px}.settings-form-two,.settings-password-form,.user-settings-page .webhook-form{grid-template-columns:1fr}.settings-identity{padding:16px;flex-wrap:wrap}.settings-identity>div{flex-basis:calc(100% - 64px)}.settings-identity .account-role{margin-inline-start:62px}.settings-nav{gap:4px;margin-top:16px}.settings-nav button{padding:9px 10px;font-size:.8125rem;flex:1 1 calc(50% - 4px);justify-content:center}.settings-rental{align-items:flex-start;flex-direction:column;gap:10px;padding:16px}.settings-rental>div:last-child{text-align:start}.settings-form .button{width:100%;justify-self:stretch}}
 
 /* Settings: a sticky section list on the left, one calm column of content on the right. */
 .user-settings-page{max-width:72rem}
@@ -52,7 +52,7 @@
 .user-settings-page .settings-side .settings-identity{flex-wrap:wrap;gap:.75rem;padding:1rem;margin:0}
 .user-settings-page .settings-side .account-avatar{width:2.75rem;height:2.75rem;font-size:1.25rem}
 .user-settings-page .settings-side .settings-identity strong{font-size:1rem}
-.user-settings-page .settings-side .account-role{margin-left:0}
+.user-settings-page .settings-side .account-role{margin-inline-start:0}
 .settings-side .settings-nav{flex-direction:column;flex-wrap:nowrap;gap:2px;margin:0;padding:0;border:0}
 .settings-side .settings-nav button{justify-content:flex-start;width:100%;min-height:2.5rem;padding:.5rem .875rem}
 .settings-content{min-width:0;max-width:46rem}
@@ -80,7 +80,7 @@
 .choice-group small{display:block;margin-top:.5rem;color:var(--ui-muted);font-size:.8125rem;line-height:1.5}
 .appearance-form{gap:1.5rem}
 .appearance-preview{margin:0;padding:.875rem 1rem;border:1px dashed var(--ui-border);border-radius:.625rem;color:var(--ui-subtle);font-size:.9375rem}
-.appearance-preview strong{color:var(--ui-text)}.appearance-preview small{margin-left:.5rem;color:var(--ui-muted);font-size:.8125rem}
+.appearance-preview strong{color:var(--ui-text)}.appearance-preview small{margin-inline-start:.5rem;color:var(--ui-muted);font-size:.8125rem}
 .appearance-status{margin:0;min-height:1.25rem;color:var(--ui-muted);font-size:.8125rem}.appearance-status.error{color:var(--error)}
 
 /* Identity card in the settings sidebar: centred, not pinned to the left edge. */

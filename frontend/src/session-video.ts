@@ -65,7 +65,7 @@ export class SessionVideo {
       if (canvas.height !== height) canvas.height = height;
       canvas.getContext('2d')?.drawImage(frame, 0, 0, width, height);
       this.owner.frame('video', width, height);
-    } catch (error) { this.owner.fail(t('ui.ae3ad8b3eccc') + errorText(error)); }
+    } catch (error) { this.owner.fail(t('copy.session-video.3f00f5e6', { p0: errorText(error) })); }
     finally { frame.close(); }
   }
   private decode(message: StreamMessage): void {

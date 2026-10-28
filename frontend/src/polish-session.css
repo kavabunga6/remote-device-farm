@@ -28,12 +28,12 @@
 :root:root:root .session-layout .adb-title-badge{color:var(--ui-subtle);background:var(--ui-surface);border:1px solid var(--ui-border)}
 :root:root:root .session-layout .adb-title-badge.active{background:var(--accent-soft);color:var(--accent-strong);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
 .session-layout .adb-popover{z-index:40;max-width:calc(100vw - 2rem)}
-.session-layout .adb-copy-command{display:flex;align-items:center;gap:8px;width:100%;padding:10px;margin:12px 0;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-inset);color:var(--ui-text);font-size:13px;text-align:left}
+.session-layout .adb-copy-command{display:flex;align-items:center;gap:8px;width:100%;padding:10px;margin:12px 0;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-inset);color:var(--ui-text);font-size:13px;text-align:start}
 .session-layout .adb-copy-command code{flex:1;min-width:0;overflow-wrap:anywhere}
 .session-layout .adb-copy-command svg{flex:none}
 .session-layout .session-top-actions{display:flex;flex:none;align-items:center;gap:8px;position:relative;width:auto}
 .session-layout .session-top-actions>.button,.session-layout .session-top-actions>.share-control>.share-button{height:32px;min-height:32px;padding:0 10px;border-radius:8px;box-sizing:border-box;font-size:14px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none}
-.session-layout .session-heading .share-button .share-count{margin-left:0;min-width:20px;font-size:12px;line-height:20px}
+.session-layout .session-heading .share-button .share-count{margin-inline-start:0;min-width:20px;font-size:12px;line-height:20px}
 .session-layout .session-top-actions>*{flex:none}
 .session-layout .session-top-actions>.button>svg,.session-layout .session-top-actions>.share-control>.share-button>svg,.session-layout .session-more-actions>summary>svg{width:16px;height:16px;flex:none}
 .session-layout .share-control .button{width:100%}
@@ -44,7 +44,7 @@
   .session-layout .session-title-top h1{font-size:20px}
   .session-layout .session-status-row{flex-wrap:wrap}
   .session-layout .session-actions-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;padding:0 8px;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-surface);color:var(--ui-text);font-size:13px}
-  .session-layout .session-top-actions{display:none;position:absolute;right:0;top:40px;z-index:38;padding:10px;width:min(23rem,100%);box-sizing:border-box;border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface);box-shadow:0 12px 32px rgb(0 0 0 / .2)}
+  .session-layout .session-top-actions{display:none;position:absolute;inset-inline-end:0;top:40px;z-index:38;padding:10px;width:min(23rem,100%);box-sizing:border-box;border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface);box-shadow:0 12px 32px rgb(0 0 0 / .2)}
   .session-layout .session-top-actions[data-expanded]{display:flex;flex-wrap:wrap}
   .session-layout .rename-form{flex-wrap:wrap}
   .session-layout .rename-form input{flex-basis:100%}
@@ -217,10 +217,10 @@
 @container tools (min-width:900px){.session-layout .apps-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* ---------- Share dialog and guest view ---------- */
-.session-layout .share-popover{left:0;right:auto;top:calc(100% + .5rem);width:min(24rem,calc(100vw - 2rem));padding:1rem;border-radius:.75rem;gap:1rem;box-shadow:0 12px 32px rgb(0 0 0 / .22)}
-@media(min-width:1001px){.session-layout .share-popover{left:auto;right:0}}
+.session-layout .share-popover{inset-inline-start:0;inset-inline-end:auto;top:calc(100% + .5rem);width:min(24rem,calc(100vw - 2rem));padding:1rem;border-radius:.75rem;gap:1rem;box-shadow:0 12px 32px rgb(0 0 0 / .22)}
+@media(min-width:1001px){.session-layout .share-popover{inset-inline-start:auto;inset-inline-end:0}}
 @media(max-width:650px){
-  .session-layout .share-popover{left:0;right:0;width:auto}
+  .session-layout .share-popover{inset-inline-start:0;inset-inline-end:0;width:auto}
 }
 .session-layout .share-head strong{font-size:1rem}
 .session-layout .share-head p{font-size:.8125rem;line-height:1.45;color:var(--ui-subtle)}
@@ -280,7 +280,7 @@
 /* The search and category rows never shrink into the independently scrolling command list. */
 .session-layout .console-catalog{max-height:min(36rem,calc(100dvh - 13rem))}
 .session-layout .console-catalog-search{flex:0 0 auto}
-.session-layout .console-category-strip{display:flex;flex:0 0 auto;min-height:3.5rem;border-bottom:1px solid var(--ui-border);padding-right:.375rem;align-items:stretch}
+.session-layout .console-category-strip{display:flex;flex:0 0 auto;min-height:3.5rem;border-bottom:1px solid var(--ui-border);padding-inline-end:.375rem;align-items:stretch}
 .session-layout .console-catalog-categories{flex:1 1 auto;min-width:0;min-height:3.5rem;box-sizing:border-box;align-items:center;border:0;padding:.5rem;scrollbar-width:thin;overscroll-behavior-x:contain}
 .session-layout .console-catalog-categories button{min-height:2rem;line-height:1.25}
 .session-layout .console-category-next{flex:none;align-self:center;display:grid;place-items:center;width:2rem;height:2rem;border:1px solid var(--ui-border);border-radius:.5rem;background:var(--ui-surface);color:var(--ui-text)}
@@ -291,7 +291,7 @@
 .session-layout .session-more-actions summary{display:grid;place-items:center;list-style:none;width:var(--session-control-size);height:var(--session-control-size);border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-surface);color:var(--ui-text);cursor:pointer}
 .session-layout .session-more-actions summary::-webkit-details-marker{display:none}
 .session-layout .session-more-actions summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.session-layout .session-more-menu{position:absolute;right:0;top:calc(100% + .5rem);z-index:45;display:grid;gap:.75rem;width:min(22rem,calc(100vw - 2rem));padding:1rem;background:var(--ui-surface);border:1px solid var(--ui-border);border-radius:.75rem;box-shadow:0 12px 32px rgb(0 0 0 / .2)}
+.session-layout .session-more-menu{position:absolute;inset-inline-end:0;top:calc(100% + .5rem);z-index:45;display:grid;gap:.75rem;width:min(22rem,calc(100vw - 2rem));padding:1rem;background:var(--ui-surface);border:1px solid var(--ui-border);border-radius:.75rem;box-shadow:0 12px 32px rgb(0 0 0 / .2)}
 .session-layout .session-more-menu strong{font-size:.9375rem;color:var(--ui-text)}
 .session-layout .session-more-menu p{margin:0;font-size:.8125rem;color:var(--ui-subtle);line-height:1.5}
 .session-layout .session-top-actions .session-more-menu .button{white-space:normal;height:auto;min-height:2.5rem;padding:.5rem .75rem}
@@ -336,7 +336,7 @@
 .session-layout .session-metadata[open]>summary>svg:last-child{transform:rotate(180deg)}
 .session-layout .session-metadata>summary::-webkit-details-marker{display:none}
 .session-layout .session-metadata>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.session-layout .session-metadata-body{position:absolute;left:0;top:calc(100% + .25rem);z-index:30;width:min(22rem,calc(100vw - 2rem));box-sizing:border-box;padding:1rem;border:1px solid var(--ui-border);border-radius:.75rem;background:var(--ui-surface);box-shadow:0 12px 32px rgb(0 0 0 / .2)}
+.session-layout .session-metadata-body{position:absolute;inset-inline-start:0;top:calc(100% + .25rem);z-index:30;width:min(22rem,calc(100vw - 2rem));box-sizing:border-box;padding:1rem;border:1px solid var(--ui-border);border-radius:.75rem;background:var(--ui-surface);box-shadow:0 12px 32px rgb(0 0 0 / .2)}
 .session-layout .session-metadata-body dl{margin:0;display:grid;gap:.5rem}
 .session-layout .session-metadata-body dl>div{display:grid;grid-template-columns:5rem minmax(0,1fr);gap:.75rem}
 .session-layout .session-metadata-body dd{margin:0;color:var(--ui-text);overflow-wrap:anywhere}

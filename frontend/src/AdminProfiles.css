@@ -20,7 +20,7 @@
 .admin-profiles-bottom{display:flex;justify-content:flex-end;margin-top:18px}
 .admin-profiles-empty{min-height:180px}
 @media(max-width:1150px){.admin-profiles-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:700px){.admin-profiles-controls{padding:12px}.admin-profiles-search-row{flex-wrap:wrap}.admin-profiles-search{flex-basis:100%}.admin-profiles-search-row>.button{margin-left:auto}.admin-profiles-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-profiles-results-bar{flex-wrap:wrap}.admin-profiles-pagination{margin-left:auto}}
+@media(max-width:700px){.admin-profiles-controls{padding:12px}.admin-profiles-search-row{flex-wrap:wrap}.admin-profiles-search{flex-basis:100%}.admin-profiles-search-row>.button{margin-inline-start:auto}.admin-profiles-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-profiles-results-bar{flex-wrap:wrap}.admin-profiles-pagination{margin-inline-start:auto}}
 
 /* Actions live in HeadingSlot; keep them within the profile page at narrow widths and large text. */
 .page-admin:has(.admin-profile-catalog)>.page-heading{flex-wrap:wrap;gap:16px}

@@ -29,7 +29,7 @@ export function ProfileCard({ profile, onEdit, onToggle, onDelete }: {
       <p>{environment.android} · {environment.api}</p>
       <div className="device-profile-chips">
         <button type="button" className={'device-profile-status card-secondary-action is-' + status} data-profile-status={status}
-          aria-label={PROFILE_STATUS_LABELS[status] + t('ui.77571251d900')} aria-expanded={showStatusHelp} aria-controls={statusHelpId}
+          aria-label={t('copy.ProfileCard.da6b75bd', { p0: PROFILE_STATUS_LABELS[status] })} aria-expanded={showStatusHelp} aria-controls={statusHelpId}
           onClick={() => setShowStatusHelp(open => !open)}>
           <span aria-hidden="true" />{PROFILE_STATUS_LABELS[status]}<Icon name="info" size={13} />
         </button>
@@ -59,7 +59,7 @@ export function ProfileCard({ profile, onEdit, onToggle, onDelete }: {
 
     <dl className="device-profile-features">
       <div><dt>{t('ui.45b14de1a664')}</dt><dd>{environment.abi}</dd></div>
-      <div><dt>{t('ui.cd9bad6b5a92')}</dt><dd>{profile.diskGb == null ? t('ui.011e1ca54824') : profile.diskGb.toLocaleString(getLocale()) + t('ui.9fd219660ff0')}</dd></div>
+      <div><dt>{t('ui.cd9bad6b5a92')}</dt><dd>{profile.diskGb == null ? t('ui.011e1ca54824') : t('copy.ProfileCard.9030bbc4', { p0: profile.diskGb.toLocaleString(getLocale()) })}</dd></div>
       <div className={profile.deviceModel?.trim() ? undefined : 'is-unset'}><dt>{t('ui.f3bdf7cce355')}</dt><dd>{environment.model}</dd></div>
       <div className={profile.resolution?.trim() ? undefined : 'is-unset'}><dt>{t('ui.66e8aa762f6d')}</dt><dd>{environment.resolution}</dd></div>
     </dl>

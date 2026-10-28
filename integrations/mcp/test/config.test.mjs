@@ -14,7 +14,7 @@ test('configuration accepts HTTPS and loopback HTTP and rejects other URL author
     'https://user:password@service.example.test', 'https://service.example.test/path', 'https://service.example.test?x=1', 'https://service.example.test#x']) {
     assert.throws(() => loadConfig({ ...defaults, RDF_URL: url }));
   }
-  for (const language of ['en', 'ru']) assert.equal(loadConfig({ ...defaults, RDF_MCP_LANGUAGE: language }).language, language);
+  for (const language of ['en', 'ru', 'zh-Hans', 'hi', 'es', 'ar', 'fr', 'bn', 'pt-BR', 'ur', 'id', 'de']) assert.equal(loadConfig({ ...defaults, RDF_MCP_LANGUAGE: language }).language, language);
   assert.throws(() => loadConfig({ ...defaults, RDF_MCP_LANGUAGE: 'unknown' }));
 });
 

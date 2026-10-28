@@ -5,7 +5,7 @@
 .profile-import-dialog textarea{width:100%;box-sizing:border-box;padding:.625rem .75rem;border:1px solid var(--ui-border);border-radius:.5rem;background:var(--ui-inset);color:var(--ui-text);font:.8125rem/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;resize:vertical}
 .profile-import-result{border:1px solid var(--ui-border);border-radius:.625rem;padding:.75rem .875rem;font-size:.875rem}
 .profile-import-result ul{margin:0;padding:0;list-style:none;display:grid;gap:.625rem}
-.profile-import-action{margin-left:.5rem;padding:.125rem .5rem;border-radius:999px;background:var(--ui-inset);font-size:.75rem;color:var(--ui-subtle)}
+.profile-import-action{margin-inline-start:.5rem;padding:.125rem .5rem;border-radius:999px;background:var(--ui-inset);font-size:.75rem;color:var(--ui-subtle)}
 li[data-action="invalid"] .profile-import-action{background:var(--danger-soft);color:var(--danger)}
 .profile-import-issue{margin:.25rem 0 0;color:var(--error)}.profile-import-issue code{font-size:.75rem}
 .profile-import-warning{margin:.25rem 0 0;color:var(--ui-muted);font-size:.8125rem}

@@ -1,0 +1,38 @@
+/* Device coordinates, terminal output and protocol identifiers keep their physical direction. */
+.workspace-grid,
+.viewer-stage,
+.touch-layer,
+.session-media,
+pre,
+code,
+input[type="url"],
+input[type="email"],
+input[type="password"],
+input[autocomplete="username"],
+input[autocomplete="new-password"],
+input[autocomplete="current-password"] {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+[dir="rtl"] .workspace-grid > .tool-panel,
+[dir="rtl"] .workspace-grid > .tools-panel {
+  direction: rtl;
+}
+bdi { unicode-bidi: isolate; }
+input[role="switch"] { direction: ltr; }
+[dir="rtl"] .traffic-tree-node > summary::before { transform: rotate(180deg); }
+[dir="rtl"] .traffic-tree-node[open] > summary::before { transform: none; }
+[dir="rtl"] .sidebar-toggle { margin-inline-start: 0; }
+:lang(ar), :lang(ur) { letter-spacing: normal; }
+.language-options > button { line-height: 1.6; }
+.language-options > button:disabled { cursor: wait; }
+.language-popover > input { font: inherit; font-size: .875rem; }
+
+/* Password contents remain LTR; padding follows the surrounding RTL form. */
+[dir="rtl"] .login-password input { padding-left: 3rem; padding-right: .875rem; }
+@media (max-width:800px) {
+  [dir="rtl"] .sidebar { left:auto; right:0; transform:translateX(100%); }
+  [dir="rtl"] .sidebar.mobile-open { transform:translateX(0); }
+}
+
+[dir="rtl"] .login-form input:placeholder-shown { text-align: right; }

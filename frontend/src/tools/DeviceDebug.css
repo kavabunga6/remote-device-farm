@@ -17,10 +17,10 @@
 .device-debug-code { overflow:auto; max-height:50vh; min-height:70px; margin:0; padding:14px; background:var(--ui-inset); border:1px solid var(--ui-border); border-radius:10px; font: .85rem/1.6 var(--font-mono, monospace); white-space:pre-wrap; overflow-wrap:anywhere; tab-size:2; }
 .device-debug-table { overflow:auto; max-height:55vh; border:1px solid var(--ui-border); border-radius:10px; }
 .device-debug-table table { width:100%; border-collapse:collapse; font-size:.85rem; }
-.device-debug-table th { position:sticky; top:0; background:var(--ui-surface); color:var(--ui-muted); text-align:left; padding:10px; white-space:nowrap; z-index:1; }
+.device-debug-table th { position:sticky; top:0; background:var(--ui-surface); color:var(--ui-muted); text-align:start; padding:10px; white-space:nowrap; z-index:1; }
 .device-debug-table td { border-top:1px solid var(--ui-border); padding:10px; vertical-align:top; font-variant-numeric:tabular-nums; }
 .device-debug-table td:not(:first-child) { white-space:nowrap; }
-.device-debug-table .debug-url { padding:0; border:0; background:none; color:var(--ui-text); cursor:pointer; text-align:left; font:inherit; overflow-wrap:anywhere; min-width:140px; }
+.device-debug-table .debug-url { padding:0; border:0; background:none; color:var(--ui-text); cursor:pointer; text-align:start; font:inherit; overflow-wrap:anywhere; min-width:140px; }
 .device-debug-table .debug-url:hover { color:var(--accent); }
 .debug-url small { display:block; font-family:var(--font-mono, monospace); color:var(--ui-muted); margin-top:5px; }
 .device-debug-check { display:flex; align-items:center; gap:8px; }

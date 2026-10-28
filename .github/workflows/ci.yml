@@ -48,6 +48,9 @@ jobs:
           node scripts/license-inventory.mjs --check
           node scripts/check-public-content.mjs --self-test
           node scripts/check-public-content.mjs
+          node scripts/check-locales.mjs --self-test
+          node scripts/check-locales.mjs
+          node scripts/sync-diagnostics.mjs --check
           node scripts/check-repository-privacy.mjs --self-test
           node scripts/check-repository-privacy.mjs
       - name: Verify MCP package and resources

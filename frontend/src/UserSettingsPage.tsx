@@ -1,3 +1,4 @@
+import { TranslatedText } from './TranslatedText';
 import { can, roleLabel } from './permissions';
 import { getLocale, localizeText, t } from './i18n';
 import { LanguageControl, useInterfaceLanguage } from './LanguageControl';
@@ -252,7 +253,7 @@ export function UserSettingsPage({ user }: { user: User }) {
         <button type="submit" className="button outline" disabled={savingPassword}>{savingPassword ? t('ui.388a6a44bc1d') : t('ui.ce5652956107')}</button>
       </form>
     </section> : profile && <section className="settings-card settings-password">
-      <div className="settings-card-title"><h2>{t('ui.cb1a2074b3a0')}</h2><p>{t('ui.c7e28223e858')}{profile.provider === 'ldap' ? 'LDAP/AD' : profile.provider === 'oidc' ? t('ui.72ea3132f2ac') : t('ui.9e3043ce35d0')}.</p></div>
+      <div className="settings-card-title"><h2>{t('ui.cb1a2074b3a0')}</h2><p><TranslatedText message="copy.UserSettingsPage.6ce74901" values={{ p0: profile.provider === 'ldap' ? 'LDAP/AD' : profile.provider === 'oidc' ? t('ui.72ea3132f2ac') : t('ui.9e3043ce35d0') }} /></p></div>
       <p className="settings-hint">{t('ui.b2e57648fecd')}</p>
     </section>;
 
@@ -307,7 +308,7 @@ export function UserSettingsPage({ user }: { user: User }) {
           <Segmented legend={t('ui.be517dba6cd0')} value={preferences.fontScale} disabled={preferencesLoading || !preferencesReady} onChange={fontScale => changePreferences({ fontScale })}
             options={[[0, t('ui.8dca2f783130')], [0.9, '90%'], [1, '100%'], [1.15, '115%'], [1.3, '130%'], [1.5, '150%']]}
             hint={preferences.fontScale === 0 ? t('ui.e60fa06807e0') : t('ui.219e2b97e97a', { p0: Math.round(16 * preferences.fontScale) })} />
-          <p className="appearance-preview">{t('ui.501b15dc7dc7')}<strong>{t('ui.9fd8a397265e')}</strong> <small>{t('ui.b77cc129c4cb')}</small></p>
+          <p className="appearance-preview"><TranslatedText message="copy.UserSettingsPage.a2ffeba6" values={{ p0: <strong>{t('ui.9fd8a397265e')}</strong>, p1: <small>{t('ui.b77cc129c4cb')}</small> }} /></p>
           <p className={'appearance-status' + (prefsStatus === 'error' ? ' error' : '')} role="status">{prefsStatus === 'saving' ? t('ui.9c27c381dd8b') : prefsStatus === 'saved' ? t('ui.2fe8f2fd7243') : prefsStatus === 'error' ? t('ui.6d1e3f7c5f12') : t('ui.bb8cc125a08f')}</p>
         </div>
       </section>
@@ -329,7 +330,7 @@ export function UserSettingsPage({ user }: { user: User }) {
         {rentalsLoading ? <div className="settings-history-empty">{t('ui.efb18c179df6')}</div> : rentals.length === 0 ? !rentalsError && <div className="settings-history-empty">{t('ui.74e2bc5eb86a')}</div> :
           rentals.map(rental => <article className="settings-rental" key={rental.id}>
             <div><strong>{rental.profileName}</strong><small>#{rental.sessionId.slice(0, 8)} · {rental.hostName}</small></div>
-            <div><span>{t('ui.4e5f1288359e')}{dateLabel(rental.createdAt)}</span><small>{rental.endedAt ? t('ui.89b05059d036') + dateLabel(rental.endedAt) : t('ui.983ec1306814')}</small></div>
+            <div><span><TranslatedText message="copy.UserSettingsPage.30c82cc6" values={{ p0: dateLabel(rental.createdAt) }} /></span><small>{rental.endedAt ? t('copy.UserSettingsPage.a14042df', { p0: dateLabel(rental.endedAt) }) : t('ui.983ec1306814')}</small></div>
           </article>)}
       </div>
       {rentalCursor && <button className="button outline settings-more" type="button" onClick={() => void loadMoreRentals()} disabled={loadingMore}>{loadingMore ? t('ui.22a5d9112486') : t('ui.c6826c783794')}</button>}

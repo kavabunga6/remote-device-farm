@@ -1,6 +1,6 @@
 # Remote Device Farm
 
-Run Android emulators on your own Linux/KVM servers and use them from a browser, CI or an AI assistant. The interface supports English and Russian.
+Run Android emulators on your own Linux/KVM servers and use them from a browser, CI or an AI assistant. The interface supports [12 languages](docs/guides/localization.md), including English and Russian.
 
 **Alpha.** APIs and deployment settings may change. See the [verification matrix](docs/verification.md).
 
@@ -62,7 +62,7 @@ HTTP and registry ports bind to loopback. Remote access and additional nodes req
 | --- | --- |
 | Linux single-host installation, server/agent connection, backup and restore | Tested |
 | Google APIs / API 36.1 phone and tablet boot, ADB authentication; NVIDIA on phone | Tested |
-| Desktop UI in English/Russian, light/dark themes; automated API and lifecycle checks | Tested |
+| Sign-in in all 12 languages and both themes; selected administration screens, language switching, API and lifecycle checks | Tested |
 | Two-account access isolation, screen sharing, revocation and expiration | Tested |
 | Team profile access, per-member quotas, queue assignment and explicit leases | Tested |
 | Bounded image builder: small image, export/import and cleanup | Tested; full SDK builds incomplete |

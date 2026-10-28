@@ -1,3 +1,4 @@
+import { TranslatedText } from './TranslatedText';
 import { localizeText, t } from './i18n';
 import { useState } from 'react';
 import { api, type DeviceSession } from './api';
@@ -26,7 +27,7 @@ export function RentDeviceModal({ devices, onClose, onRented }: {
         {devices.length ? <fieldset className="rent-device-list" disabled={busy}><legend className="sr-only">{t('ui.b336b96eb36f')}</legend>
           {devices.map(({ host, device }) => { const key = `${host.id}|${device.kind}|${device.id}`; return <label key={key} className={'rent-device' + (selected === key ? ' selected' : '')}>
             <input type="radio" name="device" value={key} checked={selected === key} onChange={() => setSelected(key)} />
-            <span><strong>{device.model || device.id}</strong><small>{DEVICE_KIND_LABEL[device.kind]} {t('ui.b95b18a2ff79')}{host.displayName || host.name}</small></span></label>; })}
+            <span><strong>{device.model || device.id}</strong><small><TranslatedText message="copy.RentDeviceModal.a373164f" values={{ p0: DEVICE_KIND_LABEL[device.kind], p1: host.displayName || host.name }} /></small></span></label>; })}
         </fieldset> : <p className="empty-note" role="status">{t('ui.c4edbb38503a')}</p>}
         <div className="create-session-footer"><div className="create-launch-status" aria-live="polite">{error && <span className="create-error" role="alert">{localizeText(error)}</span>}</div>
           <button type="button" className="button" onClick={onClose} disabled={busy}>{t('ui.8fbe9b75cbdf')}</button>

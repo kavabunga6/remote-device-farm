@@ -1,3 +1,4 @@
+import { TranslatedText } from './TranslatedText';
 import { getLanguage, getLocale, localizeText, t } from './i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type DeviceInfo } from './api';
@@ -40,14 +41,14 @@ function sections(info: DeviceInfo): Array<{ title: string; rows: Row[] }> {
     { title: t('ui.6d612a86bee4'), rows: [
       [t('ui.c39948923340'), android.release ? `Android ${android.release}${android.sdk ? ` (API ${android.sdk})` : ''}` : null],
       [t('ui.1355c5f657b2'), android.securityPatch], [t('ui.8c39bb691b95'), android.buildId, true], [t('ui.999ebfd21959'), android.buildType],
-      [t('ui.c60b92f2c9a6'), android.debuggable ? t('ui.4b043d0b1605') : t('ui.1e4b68699013')], ['Root', android.rooted ? t('ui.0a7bfb95efdc') : t('ui.43e5ab70f691')],
-      [t('ui.f72a213b2ad8'), android.fingerprint, true, true], [t('ui.18e0b764b5c2'), system.kernel, true], ['Chrome', info.chrome, true],
+      [t('ui.c60b92f2c9a6'), android.debuggable ? t('ui.4b043d0b1605') : t('ui.1e4b68699013')], [t('technical.root'), android.rooted ? t('ui.0a7bfb95efdc') : t('ui.43e5ab70f691')],
+      [t('ui.f72a213b2ad8'), android.fingerprint, true, true], [t('ui.18e0b764b5c2'), system.kernel, true], [t('technical.chrome'), info.chrome, true],
     ] },
     { title: t('ui.c062341615dc'), rows: [
       [t('ui.adc3b01f3c15'), dimensions(display.physical)], [t('ui.020705c8d579'), dimensions(display.override)],
       [t('ui.1fdda81c6144'), display.density ? `${display.density} dpi` : null],
       [t('ui.ed20074dee6d'), session.orientation === 'landscape' ? t('ui.d34652d24c11') : t('ui.38aa441113ac')],
-      ['OpenGL ES', graphics.openGl], ['EGL', graphics.egl, true], ['Vulkan', graphics.vulkan, true],
+      [t('technical.openGl'), graphics.openGl], [t('technical.egl'), graphics.egl, true], [t('technical.vulkan'), graphics.vulkan, true],
     ] },
     { title: t('ui.6da215b1bdac'), rows: [
       [t('ui.0232a305412b'), uptime(system.uptimeSeconds)], [t('ui.ce2e24e73ac4'), system.timezone], [t('ui.5bd57038dbad'), system.locale],
@@ -82,7 +83,7 @@ function asText(info: DeviceInfo): string {
 function Meter({ label, used, total }: { label: string; used: number | null; total: number | null }) {
   if (used == null || total == null || total <= 0) return null;
   const percent = Math.min(100, Math.round(used / total * 100));
-  return <div className="info-meter"><div><span>{label}</span><strong>{kb(used)} {t('ui.e029cc4b39ce')}{kb(total)}</strong></div><div className="info-meter-track" role="img" aria-label={t('ui.7f56d22bb8dc', { p0: label, p1: percent })}><span className={percent > 90 ? 'high' : ''} style={{ width: percent + '%' }} /></div></div>;
+  return <div className="info-meter"><div><span>{label}</span><strong><TranslatedText message="copy.DeviceInfoPanel.7667c197" values={{ p0: kb(used), p1: kb(total) }} /></strong></div><div className="info-meter-track" role="img" aria-label={t('ui.7f56d22bb8dc', { p0: label, p1: percent })}><span className={percent > 90 ? 'high' : ''} style={{ width: percent + '%' }} /></div></div>;
 }
 
 export function DeviceInfoPanel({ sessionId, active, running, panelId }: { sessionId: string; active: boolean; running: boolean; panelId?: string }) {
@@ -110,7 +111,7 @@ export function DeviceInfoPanel({ sessionId, active, running, panelId }: { sessi
 
   return <div className="info-panel" id={panelId} role={panelId ? 'tabpanel' : undefined} aria-labelledby={panelId ? 'tool-tab-info' : undefined} hidden={!active}>
     <div className="log-head info-head">
-      <div className="log-title"><h2>{t('ui.1ad70005bb4e')}</h2><p>{t('ui.488d1427969c')}</p>{info && <span className="info-updated">{t('ui.d3a75ac5ad85')}{date(info.collectedAt)}</span>}</div>
+      <div className="log-title"><h2>{t('ui.1ad70005bb4e')}</h2><p>{t('ui.488d1427969c')}</p>{info && <span className="info-updated"><TranslatedText message="copy.DeviceInfoPanel.8e57cccf" values={{ p0: date(info.collectedAt) }} /></span>}</div>
       <div className="log-actions">
         <button type="button" className="icon-button" onClick={() => info && void copy('all', asText(info))} disabled={!info} title={t('ui.a976fab63b3d')} aria-label={t('ui.a976fab63b3d')}><Icon name={copied === 'all' ? 'check' : 'copy'} size={17} /></button>
         <button type="button" className="icon-button" onClick={() => void load()} disabled={loading || !running} title={t('ui.603e460bf59c')} aria-label={t('ui.5ecad382f1c6')}><Icon name="refresh" size={17} /></button>

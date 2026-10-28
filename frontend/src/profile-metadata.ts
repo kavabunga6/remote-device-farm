@@ -3,8 +3,8 @@ import type { Profile } from './api';
 
 export function memoryLabel(value?: number | null): string {
   return value == null ? t('ui.011e1ca54824') : value < 1024
-    ? value.toLocaleString(getLocale()) + t('ui.883817f1999f')
-    : (value / 1024).toLocaleString(getLocale()) + t('ui.9fd219660ff0');
+    ? t('copy.profile-metadata.dd02835c', { p0: value.toLocaleString(getLocale()) })
+    : t('copy.profile-metadata.9030bbc4', { p0: (value / 1024).toLocaleString(getLocale()) });
 }
 
 /** Read only a single unambiguous integer flag; never infer effective values from duplicates or expressions. */

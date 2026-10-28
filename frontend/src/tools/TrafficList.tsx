@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { t } from '../i18n';
+import { getDirection, t } from '../i18n';
 import { Icon } from '../icons';
 import type { TrafficEntry } from './debug-api';
 import { trafficAddress, trafficPhase, trafficTree, type TrafficNode } from './traffic-entries';
@@ -51,10 +51,10 @@ export function TrafficList({ entries, mode, selectedId, onSelect, onOrderChange
     const branch = target.closest<HTMLDetailsElement>('.traffic-tree-node');
     const summary = target.matches('summary');
     let next: HTMLElement | undefined | null;
-    if (event.key === 'ArrowLeft') {
+    if (event.key === (getDirection() === 'rtl' ? 'ArrowRight' : 'ArrowLeft')) {
       if (summary && branch?.open) branch.open = false;
       else next = (summary ? branch?.parentElement?.closest('.traffic-tree-node') : branch)?.querySelector<HTMLElement>(':scope > summary');
-    } else if (event.key === 'ArrowRight') {
+    } else if (event.key === (getDirection() === 'rtl' ? 'ArrowLeft' : 'ArrowRight')) {
       if (!summary || !branch) return;
       if (!branch.open) branch.open = true;
       else next = branch.querySelector<HTMLElement>('.traffic-tree-children summary,.traffic-tree-children .traffic-request');

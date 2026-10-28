@@ -76,7 +76,7 @@ export function hostLaunchIssues(profile: Profile | undefined, host: Host, mode:
   if (host.status === 'online' && !host.disabled && host.maxSessions <= 0) issues.push(nodeIssue(host, 'host_no_capacity',
     t('ui.c9ea189dc21c'), t('ui.04657fbe0f52')));
   if (profile && !architectureMatches(profile, host)) issues.push(nodeIssue(host, 'host_architecture',
-    'ABI ' + profile.abi + t('ui.5505b34233f8') + host.architecture + '.',
+    t('copy.launch-readiness.b5b64f92', { p0: profile.abi, p1: host.architecture }),
     t('ui.532ef516e6e1')));
   if (mode === 'nvidia' && !hostGpuBackend(host)) issues.push(nodeIssue(host, 'host_gpu_unavailable',
     t('ui.b50c5958d488'),

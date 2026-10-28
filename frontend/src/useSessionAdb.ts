@@ -128,7 +128,7 @@ export function useSessionAdb(sessionId: string, session: DeviceSession | null, 
       if (rotate) setAdbPortAccess(null);
       if (session?.status === 'running' && session.ownerId === user.id) {
         try { setAdbPortAccess(await api.createAdbPortAccess(sessionId)); }
-        catch (error) { setAdbError(t('ui.e2eb4e7f22a4') + errorText(error)); }
+        catch (error) { setAdbError(t('copy.useSessionAdb.3743093f', { p0: errorText(error) })); }
       }
     } catch (error) { setAdbError(errorText(error)); }
     finally { setAdbBusy(false); }
@@ -148,7 +148,7 @@ export function useSessionAdb(sessionId: string, session: DeviceSession | null, 
       setAdbCopied(true);
       setAdbError('');
     } catch (error) {
-      setAdbError(t('ui.55bacb6557e6') + errorText(error));
+      setAdbError(t('copy.useSessionAdb.b378e5f0', { p0: errorText(error) }));
       setAdbMenuOpen(true);
     }
   };

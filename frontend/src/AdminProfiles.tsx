@@ -1,3 +1,4 @@
+import { TranslatedText } from './TranslatedText';
 import { useNotifications } from './notifications';
 import { ActivityIndicator } from './ActivityIndicator';
 import { useAccess } from './permissions';
@@ -77,7 +78,7 @@ export function AdminProfiles({ profiles, onCreate, onEdit, onToggle, onDelete, 
   };
   const pagination = (bottom = false) => <nav className="admin-profiles-pagination" aria-label={bottom ? t('ui.48ee83c26ea3') : t('ui.804cd3a271af')}>
     <button type="button" className="icon-button" aria-label={t('ui.e7fd1db17999')} disabled={currentPage === 0} onClick={() => changePage(currentPage - 1, bottom)}><Icon name="chevronLeft" size={17}/></button>
-    <span>{t('ui.225e004e10d0')}<strong>{currentPage + 1}</strong> {t('ui.e029cc4b39ce')}{pageCount}</span>
+    <span><TranslatedText message="copy.AdminProfiles.c480241a" values={{ p0: <strong>{currentPage + 1}</strong>, p1: pageCount }} /></span>
     <button type="button" className="icon-button" aria-label={t('ui.b46cfbcfefa7')} disabled={currentPage === pageCount - 1} onClick={() => changePage(currentPage + 1, bottom)}><Icon name="arrowRight" size={17}/></button>
   </nav>;
 
@@ -104,7 +105,7 @@ export function AdminProfiles({ profiles, onCreate, onEdit, onToggle, onDelete, 
     {can('profiles.manage') && <LaunchSettings onChanged={onImported}/>}
     <div className="admin-profiles-controls">
       <div className="admin-profiles-search-row"><label className="admin-profiles-search"><Icon name="search" size={18}/><input type="search" aria-label={t('ui.799525e87625')} placeholder={t('ui.3fe77c2e6713')} value={query} onChange={event => { setQuery(event.target.value); setPage(0); }}/></label><button type="button" className="button outline small" disabled={!hasFilters} onClick={clear}>{t('ui.cd45ec7836b5')}</button></div>
-      <div className="admin-profiles-filters">{FILTERS.map(filter => <label key={filter.key}><span>{filter.label}</span><select aria-label={filter.label} value={filters[filter.key]} onChange={event => { setFilters(previous => ({ ...previous, [filter.key]: event.target.value })); setPage(0); }}><option value="">{filter.all}</option>{filters[filter.key] && !options[filter.key].some(option => option.value === filters[filter.key]) && <option value={filters[filter.key]}>{profileFacetLabel(filter.key, filters[filter.key])} {t('ui.accc31a4bbfd')}</option>}{options[filter.key].map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
+      <div className="admin-profiles-filters">{FILTERS.map(filter => <label key={filter.key}><span>{filter.label}</span><select aria-label={filter.label} value={filters[filter.key]} onChange={event => { setFilters(previous => ({ ...previous, [filter.key]: event.target.value })); setPage(0); }}><option value="">{filter.all}</option>{filters[filter.key] && !options[filter.key].some(option => option.value === filters[filter.key]) && <option value={filters[filter.key]}><TranslatedText message="copy.AdminProfiles.72f32549" values={{ p0: profileFacetLabel(filter.key, filters[filter.key]) }} /></option>}{options[filter.key].map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
         <label><span>{t('ui.f5ebb4335b88')}</span><select aria-label={t('ui.f5ebb4335b88')} value={status} onChange={event => { setStatus(event.target.value as ProfileStatus | ''); setPage(0); }}><option value="">{t('ui.2a013601f9a8')}</option>{STATUSES.map(value => <option key={value} value={value}>{PROFILE_STATUS_LABELS[value]}</option>)}</select></label>
       </div>
     </div>

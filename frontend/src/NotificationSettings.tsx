@@ -127,7 +127,7 @@ export function NotificationSettings() {
           <div className="row-actions">
             <button type="button" className="button outline" disabled={busy === hook.id} onClick={() => void run(hook.id, async () => {
               const result = await queueApi.testWebhook(hook.id);
-              setNotice(result.ok ? t('ui.9f9a43d66b03') : t('ui.a1203fae6d19', { p0: result.error ?? (result.status ? t('ui.754de9f645b7') + result.status : t('ui.6947861c68c9')) }));
+              setNotice(result.ok ? t('ui.9f9a43d66b03') : t('ui.a1203fae6d19', { p0: result.error ?? (result.status ? t('copy.NotificationSettings.d0a5178d', { p0: result.status }) : t('ui.6947861c68c9')) }));
               await load();
             })}>{t('ui.e4424a6df6f6')}</button>
             <button type="button" className="button outline" disabled={busy === hook.id} onClick={() => void run(hook.id, async () => { await queueApi.updateWebhook(hook.id, { enabled: !hook.enabled }); await load(); })}>{hook.enabled ? t('ui.eda262ba056c') : t('ui.a54eaf37858d')}</button>

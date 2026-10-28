@@ -1,6 +1,6 @@
 .role-workspace { display:grid; grid-template-columns:minmax(13rem,18rem) minmax(0,1fr); gap:1.5rem; align-items:start; }
 .role-list { display:flex; flex-direction:column; gap:.5rem; }
-.role-list button { display:flex; flex-direction:column; gap:.5rem; padding:1rem; text-align:left; color:var(--ui-text); background:var(--ui-surface); border:1px solid var(--ui-border); border-radius:12px; }
+.role-list button { display:flex; flex-direction:column; gap:.5rem; padding:1rem; text-align:start; color:var(--ui-text); background:var(--ui-surface); border:1px solid var(--ui-border); border-radius:12px; }
 .role-list button.selected { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,var(--ui-surface)); }
 .role-list button>span { display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
 .role-list small,.role-permissions-heading>span { color:var(--ui-subtle); font-size:.8rem; font-weight:400; }

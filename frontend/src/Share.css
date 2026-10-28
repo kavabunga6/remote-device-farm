@@ -1,7 +1,7 @@
 .share-control{position:relative;display:inline-flex}
-.share-button .share-count{margin-left:6px;min-width:1.25rem;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;font-size:0.75rem;font-weight:700;line-height:1.25rem;text-align:center}
+.share-button .share-count{margin-inline-start:6px;min-width:1.25rem;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;font-size:0.75rem;font-weight:700;line-height:1.25rem;text-align:center}
 :root[data-effective-theme="dark"] .share-button .share-count{color:#06231a}
-.share-popover{position:absolute;top:calc(100% + 8px);right:0;z-index:30;width:min(380px,calc(100vw - 32px));padding:16px;border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface);color:var(--ui-text);box-shadow:0 12px 32px rgba(16,24,22,.18);display:grid;gap:12px;text-align:left}
+.share-popover{position:absolute;top:calc(100% + 8px);right:0;z-index:30;width:min(380px,calc(100vw - 32px));padding:16px;border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface);color:var(--ui-text);box-shadow:0 12px 32px rgba(16,24,22,.18);display:grid;gap:12px;text-align:start}
 .share-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .share-head strong{font-size:1rem}
 .share-head p{margin:4px 0 0;font-size:0.8125rem;color:var(--ui-muted)}
@@ -25,7 +25,7 @@
 .share-item-head small{display:block;color:var(--ui-muted)}
 .share-people{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:0.8125rem}
 .share-people li{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.share-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--ui-muted)}
+.share-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:6px;background:var(--ui-muted)}
 .share-dot.online{background:var(--accent)}
 .share-empty{margin:0;font-size:0.8125rem;color:var(--ui-muted)}
 .share-error{margin:0;font-size:0.8125rem;color:var(--error)}
@@ -41,7 +41,7 @@
 .share-status-unknown{display:inline-grid;place-items:center;min-width:1.3rem;min-height:1.3rem;border:1px solid var(--ui-border);border-radius:50%;font-size:.75rem}
 .share-audience-status{margin:6px 0 12px;color:var(--ui-muted);font-size:.8125rem;line-height:1.5}
 .share-people li>span{min-width:0;overflow-wrap:anywhere}
-.share-people small{display:block;padding-left:14px;color:var(--ui-muted);font-size:.75rem;line-height:1.5}
+.share-people small{display:block;padding-inline-start:14px;color:var(--ui-muted);font-size:.75rem;line-height:1.5}
 .share-people button{flex:none}
 .share-popover{max-height:min(720px,calc(100dvh - 160px));overflow-y:auto;overscroll-behavior:contain}
 .share-empty>p{margin:0 0 6px}

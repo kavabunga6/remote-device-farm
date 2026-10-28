@@ -58,7 +58,7 @@ Replace the paths with those of the machine running the AI client. On Windows, u
 | `RDF_URL` | HTTPS service origin, without credentials, path, query or fragment. HTTP is accepted only for loopback development. |
 | `RDF_TOKEN_FILE` | File containing a personal API token. |
 | `RDF_TOKEN` | Alternative protected environment variable. Configure exactly one token source. |
-| `RDF_MCP_LANGUAGE` | Tool descriptions and adapter messages: `en` by default, or `ru`. |
+| `RDF_MCP_LANGUAGE` | Tool descriptions and adapter messages. Default: `en`. Also available: `ru`, `zh-Hans`, `hi`, `es`, `ar`, `fr`, `bn`, `pt-BR`, `ur`, `id`, `de`. |
 | `RDF_MCP_APK_ROOT` | Optional existing directory from which relative APK paths may be uploaded. Without it, local upload is unavailable. |
 | `NODE_EXTRA_CA_CERTS` | Optional trusted PEM bundle for a private CA. Configure it before starting Node.js. |
 

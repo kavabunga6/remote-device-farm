@@ -1,3 +1,4 @@
+import { TranslatedText } from '../TranslatedText';
 import { localizeText, getLocale, t } from '../i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { appsApi, checkUploadFile, formatAppSize, formatMb, uploadApp, type AppUsage, type StoredApp } from '../apps-api';
@@ -114,7 +115,7 @@ export function AppsPanel({ sessionId, active, running, panelId }: { sessionId: 
           <div className="apps-meter" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(ratio * 100)}>
             <span className={ratio > 0.9 ? 'warn' : ''} style={{ width: `${ratio * 100}%` }} />
           </div>
-          <span>{t('ui.fc41b279299c')}{formatMb(usage.usedBytes)} {t('ui.e029cc4b39ce')}{formatMb(usage.maxBytes)} {t('ui.883817f1999f')}</span>
+          <span><TranslatedText message="copy.AppsPanel.c1f6cca8" values={{ p0: formatMb(usage.usedBytes), p1: formatMb(usage.maxBytes) }} /></span>
         </div>
       )}
 
@@ -147,7 +148,7 @@ export function AppsPanel({ sessionId, active, running, panelId }: { sessionId: 
                 <strong title={app.name}>{app.name}</strong>
                 <span className="apps-meta">
                   {app.packageName && <span className="mono">{app.packageName}</span>}
-                  {app.versionName && <span>{t('ui.d9ae8e2e1567')}{app.versionName}</span>}
+                  {app.versionName && <span><TranslatedText message="copy.AppsPanel.1cdae72f" values={{ p0: app.versionName }} /></span>}
                   <span>{formatAppSize(app.size)}</span>
                   <span>{day(app.uploadedAt)}</span>
                 </span>
