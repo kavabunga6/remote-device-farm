@@ -40,15 +40,6 @@ for (const theme of ['light', 'dark']) for (const [width, fontScale] of [[1366, 
     expect(await page.locator('.page-heading .heading-actions button').evaluateAll(buttons => buttons.every(button => {
       const rect = button.getBoundingClientRect(); return rect.x >= 0 && rect.right <= innerWidth;
     }))).toBe(true);
-    const profileControls = await page.locator('.admin-profiles-filters select').evaluateAll(elements => elements.map(element => {
-      const rect = element.getBoundingClientRect(); return { y: rect.y, bottom: rect.bottom };
-    }));
-    const profileColumns = width > 1150 ? 5 : width > 700 ? 3 : 2;
-    for (let index = 0; index < profileControls.length; index += profileColumns) {
-      const row = profileControls.slice(index, index + profileColumns);
-      expect(Math.max(...row.map(control => control.y)) - Math.min(...row.map(control => control.y))).toBeLessThanOrEqual(1);
-      expect(Math.max(...row.map(control => control.bottom)) - Math.min(...row.map(control => control.bottom))).toBeLessThanOrEqual(1);
-    }
     await dialog.locator('.emulator-catalog-settings > summary').click();
     const builtin = dialog.getByRole('radio', { name: 'Встроенный registry' });
     const external = dialog.getByRole('radio', { name: 'Внешний registry' });

@@ -11,6 +11,7 @@ test('a manifest is checked first, applied only when clean, and creates disabled
     await route.fulfill({ json: { applied: body.apply === true, issues: [], results: [result] } });
   });
   await page.goto('/#/admin/profiles');
+  await page.locator('.admin-profile-tools > summary').click();
   await page.getByRole('button', { name: 'Импорт JSON' }).click();
   const dialog = page.getByRole('dialog', { name: 'Импорт профилей из JSON' });
   await expect(dialog).toContainText('выключенными');
@@ -18,7 +19,7 @@ test('a manifest is checked first, applied only when clean, and creates disabled
   await dialog.getByLabel('или вставьте JSON').fill(JSON.stringify(manifest));
   await dialog.getByRole('button', { name: 'Проверить' }).click();
   await expect(dialog).toContainText('Будет создан');
-  await expect(dialog).toContainText('not pinned by digest');
+  await expect(dialog).toContainText('Образ не закреплён по digest');
   expect(calls).toEqual([{ apply: false, update: false }]);
   await dialog.getByRole('button', { name: 'Применить' }).click();
   await expect(dialog).toContainText('Профили созданы выключенными');
@@ -29,6 +30,7 @@ test('problems block applying and are shown with the path of the field', async (
   await page.route('**/api/admin/profiles/import', route => route.fulfill({ json: { applied: false, issues: [], results: [
     { id: 'bad', name: 'Bad', action: 'invalid', issues: [{ path: '$.profiles[0].container.privileged', message: 'unknown field' }], warnings: [] }] } }));
   await page.goto('/#/admin/profiles');
+  await page.locator('.admin-profile-tools > summary').click();
   await page.getByRole('button', { name: 'Импорт JSON' }).click();
   const dialog = page.getByRole('dialog', { name: 'Импорт профилей из JSON' });
   await dialog.getByLabel('или вставьте JSON').fill('{"version":1,"profiles":[{}]}');

@@ -10,7 +10,8 @@ import { EmulatorCatalogDialog } from './EmulatorCatalogDialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, type Profile } from './api';
 import { Icon } from './icons';
-import { ProfileCard } from './ProfileCard';
+import { ProfileRow } from './ProfileRow';
+import { useDisclosureDismiss } from './useDisclosureDismiss';
 import { profileFacetLabel, profileFacetValue, UNKNOWN_FACET, type ProfileFacet } from './profile-catalog';
 import { PROFILE_STATUS_LABELS, profileStatus, type ProfileStatus } from './profile-status';
 import './AdminProfiles.css';
@@ -52,11 +53,13 @@ export function AdminProfiles({ profiles, onCreate, onEdit, onToggle, onDelete, 
   onDelete: (profile: Profile) => void;
 }) {
   const can = useAccess();
+  const tools = useDisclosureDismiss();
+  const moreFilters = useDisclosureDismiss();
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [status, setStatus] = useState<ProfileStatus | ''>('');
   const [page, setPage] = useState(0);
-  const resultsHeading = useRef<HTMLParagraphElement>(null);
+  const resultsHeading = useRef<HTMLDivElement>(null);
   const options = useMemo(() => Object.fromEntries(FILTERS.map(filter => [filter.key, facetOptions(profiles, filter.key)])) as Record<ProfileFacet, Array<{ value: string; label: string }>>, [profiles, getLanguage()]);
   const filtered = useMemo(() => {
     const terms = normalize(query).trim().split(/\s+/).filter(Boolean);
@@ -100,17 +103,89 @@ export function AdminProfiles({ profiles, onCreate, onEdit, onToggle, onDelete, 
     } catch (cause) { notifyError(t('profiles.exportFailed'), cause); }
     finally { exportPending.current = false; setExporting(false); }
   };
+  const secondaryFilters = FILTERS.filter(filter => filter.key !== 'androidVersion');
+  const secondaryCount = secondaryFilters.filter(filter => filters[filter.key]).length;
+  const renderFilter = (filter: typeof FILTERS[number]) => <label key={filter.key}>
+    <span className={filter.key === 'androidVersion' ? 'sr-only' : undefined}>{filter.label}</span>
+    <select aria-label={filter.label} value={filters[filter.key]} onChange={event => {
+      setFilters(previous => ({ ...previous, [filter.key]: event.target.value })); setPage(0);
+    }}>
+      <option value="">{filter.all}</option>
+      {filters[filter.key] && !options[filter.key].some(option => option.value === filters[filter.key]) &&
+        <option value={filters[filter.key]}><TranslatedText message="copy.AdminProfiles.72f32549" values={{ p0: profileFacetLabel(filter.key, filters[filter.key]) }} /></option>}
+      {options[filter.key].map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+    </select>
+  </label>;
+  const openImport = () => {
+    if (tools.current) { tools.current.open = false; tools.current.querySelector('summary')?.focus(); }
+    setImporting(true);
+  };
   return <section id="adm-profiles" className="content-section admin-tools admin-profile-catalog" aria-labelledby="admin-profiles-heading">
-    <div className="section-heading"><div><h2 id="admin-profiles-heading">{t('ui.4d8dc88b1785')}</h2><p>{t('ui.d67382f6428f')}</p></div><HeadingSlot slot="actions"><div className="admin-heading-actions">{can('images.view') && <button type="button" className="button outline small" onClick={() => setCatalogOpen(true)}><Icon name="grid" size={16}/>{t('ui.0f624ca5f08a')}</button>}{can('profiles.manage') && <button type="button" className="button outline small" onClick={() => setImporting(true)}><Icon name="upload" size={16}/>{t('ui.011008fbaa2d')}</button>}<button type="button" className="button outline small" onClick={() => void exportManifest()} disabled={exporting} aria-busy={exporting}>{exporting ? <ActivityIndicator /> : <Icon name="download" size={16}/>} {t(exporting ? 'profiles.exporting' : 'ui.d2ab5a1bb639')}</button>{can('profiles.manage') && <button type="button" className="button primary small" onClick={onCreate}><Icon name="plus" size={16}/>{t('ui.359497aff53e')}</button>}</div></HeadingSlot></div>
-    {can('profiles.manage') && <LaunchSettings onChanged={onImported}/>}
+    <div className="section-heading"><div><h2 id="admin-profiles-heading">{t('ui.4d8dc88b1785')}</h2></div>
+      <HeadingSlot slot="actions"><div className="admin-heading-actions admin-profile-heading-actions">
+        {can('images.view') && <button type="button" className="button outline small" onClick={() => setCatalogOpen(true)}>
+          <Icon name="grid" size={16}/>{t('ui.0f624ca5f08a')}
+        </button>}
+        <details ref={tools} className="admin-profile-tools">
+          <summary title={t('ui.cad123465b9e')} aria-label={t('ui.cad123465b9e')}><Icon name="more" size={18}/></summary>
+          <div className="admin-profile-tools-menu">
+            {can('profiles.manage') && <button type="button" onClick={openImport}><Icon name="upload" size={16}/>{t('ui.011008fbaa2d')}</button>}
+            <button type="button" onClick={() => void exportManifest()} disabled={exporting} aria-busy={exporting}>
+              {exporting ? <ActivityIndicator/> : <Icon name="download" size={16}/>}
+              {t(exporting ? 'profiles.exporting' : 'ui.d2ab5a1bb639')}
+            </button>
+          </div>
+        </details>
+        {can('profiles.manage') && <LaunchSettings compact onChanged={onImported}/>}
+        {can('profiles.manage') && <button type="button" className="button primary small" onClick={onCreate}>
+          <Icon name="plus" size={16}/>{t('ui.359497aff53e')}
+        </button>}
+      </div></HeadingSlot>
+    </div>
     <div className="admin-profiles-controls">
-      <div className="admin-profiles-search-row"><label className="admin-profiles-search"><Icon name="search" size={18}/><input type="search" aria-label={t('ui.799525e87625')} placeholder={t('ui.3fe77c2e6713')} value={query} onChange={event => { setQuery(event.target.value); setPage(0); }}/></label><button type="button" className="button outline small" disabled={!hasFilters} onClick={clear}>{t('ui.cd45ec7836b5')}</button></div>
-      <div className="admin-profiles-filters">{FILTERS.map(filter => <label key={filter.key}><span>{filter.label}</span><select aria-label={filter.label} value={filters[filter.key]} onChange={event => { setFilters(previous => ({ ...previous, [filter.key]: event.target.value })); setPage(0); }}><option value="">{filter.all}</option>{filters[filter.key] && !options[filter.key].some(option => option.value === filters[filter.key]) && <option value={filters[filter.key]}><TranslatedText message="copy.AdminProfiles.72f32549" values={{ p0: profileFacetLabel(filter.key, filters[filter.key]) }} /></option>}{options[filter.key].map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
-        <label><span>{t('ui.f5ebb4335b88')}</span><select aria-label={t('ui.f5ebb4335b88')} value={status} onChange={event => { setStatus(event.target.value as ProfileStatus | ''); setPage(0); }}><option value="">{t('ui.2a013601f9a8')}</option>{STATUSES.map(value => <option key={value} value={value}>{PROFILE_STATUS_LABELS[value]}</option>)}</select></label>
+      <div className="admin-profiles-toolbar">
+        <label className="admin-profiles-search"><Icon name="search" size={17}/>
+          <input type="search" aria-label={t('ui.799525e87625')} placeholder={t('ui.3fe77c2e6713')} value={query}
+            onChange={event => { setQuery(event.target.value); setPage(0); }}/>
+        </label>
+        {renderFilter(FILTERS[0]!)}
+        <label><span className="sr-only">{t('ui.f5ebb4335b88')}</span>
+          <select aria-label={t('ui.f5ebb4335b88')} value={status} onChange={event => { setStatus(event.target.value as ProfileStatus | ''); setPage(0); }}>
+            <option value="">{t('ui.2a013601f9a8')}</option>
+            {STATUSES.map(value => <option key={value} value={value}>{PROFILE_STATUS_LABELS[value]}</option>)}
+          </select>
+        </label>
+        <details ref={moreFilters} className="admin-profiles-more-filters">
+          <summary><Icon name="sliders" size={16}/>{t('ui.a69757b1dbe1')}
+            {secondaryCount > 0 && <span className="admin-profiles-filter-count">{secondaryCount}</span>}
+            <Icon name="chevronDown" size={14}/>
+          </summary>
+          <div className="admin-profiles-filter-panel">{secondaryFilters.map(renderFilter)}</div>
+        </details>
+        {hasFilters && <button type="button" className="icon-button admin-profiles-reset" title={t('ui.cd45ec7836b5')} aria-label={t('ui.cd45ec7836b5')} onClick={clear}><Icon name="rotate" size={16}/></button>}
       </div>
     </div>
-    <div className="admin-profiles-results-bar"><p ref={resultsHeading} tabIndex={-1} role="status" aria-live="polite">{filtered.length ? t('ui.867ed0ef8f5b', { p0: currentPage * PAGE_SIZE + 1, p1: currentPage * PAGE_SIZE + visible.length, p2: filtered.length }) : t('ui.80c36ca12e45')}</p>{pageCount > 1 && pagination()}</div>
-    {visible.length ? <><div className="profile-grid">{visible.map(profile => <ProfileCard key={profile.id} profile={profile} onEdit={() => onEdit(profile)} onToggle={() => onToggle(profile)} onDelete={() => onDelete(profile)}/>)}</div>{pageCount > 1 && <div className="admin-profiles-bottom">{pagination(true)}</div>}</> : <div className="empty-state admin-profiles-empty"><div className="empty-icon"><Icon name={profiles.length ? 'search' : 'phone'} size={27}/></div><h3>{profiles.length ? t('ui.df84a152e415') : t('ui.5a4172642e88')}</h3><p>{profiles.length ? t('ui.7e2976c6d75f') : t('ui.890189b3bc75')}</p></div>}
-  {importing && <ProfileImportDialog onClose={() => setImporting(false)} onApplied={onImported} />}
-  {catalogOpen && <EmulatorCatalogDialog onClose={() => setCatalogOpen(false)} onChanged={onImported} />}</section>;
+    {visible.length ? <div ref={resultsHeading} tabIndex={-1} className="admin-profiles-table-wrap" aria-label={t('ui.4d8dc88b1785')}>
+      <table className="admin-profiles-table">
+        <colgroup><col className="admin-profile-name-column"/><col className="admin-profile-status-column"/><col className="admin-profile-resource-column"/><col className="admin-profile-resource-column"/><col className="admin-profile-actions-column"/></colgroup>
+        <thead><tr>
+          <th scope="col">{t('ui.359497aff53e')}</th><th scope="col">{t('ui.ca285db3dd75')}</th>
+          <th scope="col">{t('ui.04fba521d85b')}</th><th scope="col">{t('ui.6ee4b2429634')}</th>
+          <th scope="col"><span className="sr-only">{t('ui.cad123465b9e')}</span></th>
+        </tr></thead>
+        <tbody>{visible.map(profile => <ProfileRow key={profile.id} profile={profile} onEdit={() => onEdit(profile)}
+          onToggle={() => onToggle(profile)} onDelete={() => onDelete(profile)}/>)}</tbody>
+      </table>
+    </div> : <div className="empty-state admin-profiles-empty">
+      <div className="empty-icon"><Icon name={profiles.length ? 'search' : 'phone'} size={27}/></div>
+      <h3>{profiles.length ? t('ui.df84a152e415') : t('ui.5a4172642e88')}</h3>
+      <p>{profiles.length ? t('ui.7e2976c6d75f') : t('ui.890189b3bc75')}</p>
+    </div>}
+    <div className="admin-profiles-results-bar">
+      <p role="status" aria-live="polite">{filtered.length ? t('ui.867ed0ef8f5b', { p0: currentPage * PAGE_SIZE + 1, p1: currentPage * PAGE_SIZE + visible.length, p2: filtered.length }) : t('ui.80c36ca12e45')}</p>
+      {pageCount > 1 && pagination(true)}
+    </div>
+    {importing && <ProfileImportDialog onClose={() => setImporting(false)} onApplied={onImported}/>}
+    {catalogOpen && <EmulatorCatalogDialog onClose={() => setCatalogOpen(false)} onChanged={onImported}/>}
+  </section>;
 }

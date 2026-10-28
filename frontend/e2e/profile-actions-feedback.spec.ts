@@ -13,7 +13,7 @@ test('profile controls lock while saving and unlock with retained values after a
     } else await route.fulfill({ json: { profile: writes.at(-1) } });
   });
   await page.goto('/#/admin/profiles');
-  await page.locator('.profile-card .card-primary-action').first().click();
+  await page.locator('.admin-profile-row .card-primary-action').first().click();
   const dialog = page.getByRole('dialog', { name: 'Изменить профиль' });
   const name = dialog.getByLabel('Название', { exact: true });
   await name.fill('Verified profile');
@@ -47,6 +47,7 @@ test('failed profile export shows feedback and allows a single download on retry
     } else await route.fulfill({ json: manifest });
   });
   await page.goto('/#/admin/profiles');
+  await page.locator('.admin-profile-tools > summary').click();
   const exportButton = page.getByRole('button', { name: 'Экспорт', exact: true });
   await exportButton.click();
   try {

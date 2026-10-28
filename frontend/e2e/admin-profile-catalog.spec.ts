@@ -23,8 +23,8 @@ async function setup(page: Page) {
   return state;
 }
 const search = (page: Page) => page.getByRole('searchbox', { name: 'Найти профиль' });
-const cards = (page: Page) => page.locator('.device-profile-card');
-const select = (page: Page, name: string) => page.getByRole('combobox', { name, exact: true });
+const cards = (page: Page) => page.locator('.admin-profile-row');
+const select = (page: Page, name: string) => page.getByLabel(name, { exact: true });
 
 test('catalogue search finds names and image references, reports empty results and resets', async ({ page }) => {
   await setup(page);
@@ -49,7 +49,10 @@ test('catalogue search finds names and image references, reports empty results a
 test('five filters combine and keep their values when inventory refreshes', async ({ page }) => {
   await setup(page);
   const filters = [['Версия Android', '15'], ['Тип устройства', 'mobile'], ['Тип образа', 'google_apis'], ['Архитектура / ABI', 'x86_64'], ['Готовность', 'ready']];
-  for (const [name, value] of filters) await select(page, name).selectOption(value);
+  for (const [name, value] of filters) {
+    if (!await select(page, name).isVisible()) await page.locator('.admin-profiles-more-filters > summary').click();
+    await select(page, name).selectOption(value);
+  }
   await expect(cards(page)).toHaveCount(1);
   await expect(cards(page)).toContainText('Unique Pixel regression');
   await page.getByRole('button', { name: 'Сбросить фильтры', exact: true }).first().click();
@@ -76,29 +79,29 @@ test('pagination keeps a bounded card list and a changed query starts on the fir
   await expect(previous).toBeDisabled();
 });
 
-test('status explanations and source details stay separate from editing and unknown metadata is explicit', async ({ page }) => {
+test('profile details and status help are available without opening the editor', async ({ page }) => {
   await setup(page);
   for (const [name, state] of [['Unique Pixel regression', 'ready'], ['Disabled legacy device', 'disabled']]) {
     await search(page).fill(name);
-    const card = cards(page);
-    await expect(card).toHaveCount(1);
-    const status = card.locator(`[data-profile-status="${state}"]`);
+    const row = cards(page);
+    await expect(row).toHaveCount(1);
+    const status = row.locator('[data-profile-status="' + state + '"]');
     await status.click();
     await expect(status).toHaveAttribute('aria-expanded', 'true');
-    await expect(card.locator('.device-profile-status-explanation')).toBeVisible();
+    await expect(page.locator('.admin-profile-expanded:visible .admin-profile-status-help')).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await status.click();
     await expect(status).toHaveAttribute('aria-expanded', 'false');
   }
   await search(page).fill('Unique Pixel regression');
-  const card = cards(page);
-  await expect(card).toContainText('Не указана в профиле');
-  await expect(card).toContainText('Не задано в профиле');
-  await card.getByText('Образ и параметры', { exact: true }).click();
-  await expect(card.getByText(profiles[0].image, { exact: true })).toBeVisible();
-  await expect(card.getByText(profiles[0].emulatorParams, { exact: true })).toBeVisible();
+  const row = cards(page);
+  await row.getByRole('button', { name: 'Образ и параметры: Unique Pixel regression', exact: true }).click();
+  const details = page.locator('.admin-profile-expanded:visible');
+  await expect(details).toContainText('Не указана в профиле');
+  await expect(details).toContainText('Не задано в профиле');
+  await expect(details.getByText(profiles[0].image, { exact: true })).toBeVisible();
+  await expect(details.getByText(profiles[0].emulatorParams, { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  const box = await card.boundingBox();
-  await card.click({ position: { x: 12, y: box!.height / 2 } });
+  await row.getByRole('button', { name: 'Изменить профиль «Unique Pixel regression»', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Изменить профиль' })).toBeVisible();
 });
