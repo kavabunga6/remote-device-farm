@@ -4414,6 +4414,11 @@ paths:
       operationId: getMePreferences
       tags: [ Account ]
       summary: Read display and ADB preferences
+      parameters:
+        - in: query
+          name: expectedUserId
+          schema: { type: string, format: uuid }
+          description: Reject with account_changed if the signed-in account differs.
       responses:
         "200":
           description: Successful response.
@@ -6096,6 +6101,10 @@ components:
     patchMePreferencesInput:
       type: object
       properties:
+        expectedUserId:
+          type: string
+          format: uuid
+          description: Optional account binding; a mismatch returns account_changed without updating preferences.
         theme:
           type: string
           enum: [ system, light, dark ]

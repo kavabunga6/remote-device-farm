@@ -170,6 +170,12 @@ test('user settings, managed identity, password rotation, rental history and saf
     assert.deepEqual(await defaults.json(), { preferences: {
       theme: 'system', fontFamily: 'system', fontScale: 0, defaultAdbKeyId: null,
     } });
+    const accountChanged = await request('/api/me/preferences', externalCookie, 'PATCH',
+      { expectedUserId: ownerId, theme: 'dark' });
+    assert.equal(accountChanged.status, 409);
+    assert.equal((await database.query('SELECT count(*)::integer AS count FROM user_preferences WHERE user_id=$1', [external.id])).rows[0]?.count, 0);
+    assert.equal((await request('/api/me/preferences?expectedUserId=' + ownerId, externalCookie)).status, 409);
+    assert.equal((await request('/api/me/preferences', ownerCookie, 'PATCH', { expectedUserId: ownerId, theme: 'system' })).status, 200);
     const pair = await generateAdbKeyPair();
     const ownKey = '22222222-2222-4222-8222-222222222222';
     const foreignKey = '33333333-3333-4333-8333-333333333333';

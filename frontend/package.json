@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
-    "test": "node --test traffic-har.test.mjs traffic-entries.test.mjs launch-readiness.test.mjs console-commands.test.mjs logcat.test.mjs env-api.test.mjs queue-logic.test.mjs apps-api.test.mjs dev/live-proxy.test.mjs node-capacity.test.mjs profile-metadata.test.mjs session-audience.test.mjs session-stream.test.mjs profile-catalog.test.mjs profile-env.test.mjs devices.test.mjs startup-progress.test.mjs password-generator.test.mjs i18n.test.mjs request-deadline.test.mjs permissions.test.mjs",
+    "test": "node --test traffic-har.test.mjs traffic-entries.test.mjs launch-readiness.test.mjs console-commands.test.mjs logcat.test.mjs env-api.test.mjs queue-logic.test.mjs apps-api.test.mjs dev/live-proxy.test.mjs node-capacity.test.mjs profile-metadata.test.mjs session-audience.test.mjs session-stream.test.mjs profile-catalog.test.mjs profile-env.test.mjs devices.test.mjs startup-progress.test.mjs password-generator.test.mjs i18n.test.mjs request-deadline.test.mjs permissions.test.mjs preferences-autosave.test.mjs",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
     "dev:live": "node dev/run-live.mjs",

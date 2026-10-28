@@ -13702,5 +13702,9 @@
   "networkInspector.runtimeUpdated": {
     "en": "Start a new capture to update this inspector. Existing proxy connections may require closing their apps or creating a new session.",
     "ru": "Для обновления инспектора начните новую запись. Открытые соединения могут потребовать закрыть приложения или создать новую сессию."
+  },
+  "account.changed": {
+    "ru": "Аккаунт изменился. Повторите действие.",
+    "en": "The account has changed. Try the action again."
   }
 }

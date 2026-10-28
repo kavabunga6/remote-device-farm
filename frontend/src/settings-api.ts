@@ -84,9 +84,9 @@ export const settingsApi = {
   profile: async () => (await request<{ profile: UserProfile }>('/me/profile')).profile,
   updateProfile: async (data: Pick<UserProfile, 'firstName' | 'lastName' | 'jobTitle' | 'company'>) =>
     (await request<{ profile: UserProfile }>('/me/profile', 'PATCH', data)).profile,
-  preferences: async () => (await request<{ preferences: UserPreferences }>('/me/preferences')).preferences,
-  updatePreferences: async (data: Partial<UserPreferences>) =>
-    (await request<{ preferences: UserPreferences }>('/me/preferences', 'PATCH', data)).preferences,
+  preferences: async (expectedUserId?: string) => (await request<{ preferences: UserPreferences }>('/me/preferences' + (expectedUserId ? '?expectedUserId=' + encodeURIComponent(expectedUserId) : ''))).preferences,
+  updatePreferences: async (data: Partial<UserPreferences>, expectedUserId: string) =>
+    (await request<{ preferences: UserPreferences }>('/me/preferences', 'PATCH', { ...data, expectedUserId })).preferences,
   changePassword: async (currentPassword: string, newPassword: string) =>
     request<{ ok: true }>('/me/password', 'POST', { currentPassword, newPassword }),
   myRentals: async (before: string | null = null, limit = 25) =>
