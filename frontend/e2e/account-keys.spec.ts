@@ -115,7 +115,7 @@ for (const [language, theme] of [['ru', 'light'], ['en', 'dark']] as const) {
     await page.goto('/#/overview');
     await page.getByRole('button', { name: copy.newSession, exact: true }).click();
     const modal = page.getByRole('dialog');
-    await modal.locator('.create-settings > summary').click();
+    await modal.locator('#create-tab-settings').click();
     await openLaunchSection(modal, 'connection');
     const picker = modal.getByRole('combobox', { name: copy.adb, exact: true });
     await expect(picker).toHaveValue(id);
@@ -153,7 +153,7 @@ for (const [language, theme] of [['ru', 'light'], ['en', 'dark']] as const) {
     await page.goto('/#/overview');
     await page.getByRole('button', { name: copy.newSession, exact: true }).click();
     const modal = page.getByRole('dialog');
-    await modal.locator('.create-settings > summary').click();
+    await modal.locator('#create-tab-settings').click();
     await openLaunchSection(modal, 'connection');
     await expect(modal.getByRole('combobox', { name: copy.adb, exact: true })).toHaveValue(id);
     await modal.getByRole('button', { name: copy.cancel, exact: true }).click();
@@ -169,7 +169,7 @@ for (const [language, theme] of [['ru', 'light'], ['en', 'dark']] as const) {
     await expect(page.getByRole('region', { name: copy.create })).toHaveCount(0);
     await page.goto('/#/overview');
     await page.getByRole('button', { name: copy.newSession, exact: true }).click();
-    await modal.locator('.create-settings > summary').click();
+    await modal.locator('#create-tab-settings').click();
     await openLaunchSection(modal, 'connection');
     const picker = modal.getByRole('combobox', { name: copy.adb, exact: true });
     await expect(picker).toHaveValue('');

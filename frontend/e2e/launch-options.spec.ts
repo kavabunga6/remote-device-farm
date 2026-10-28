@@ -18,8 +18,7 @@ async function fixture(page: Page, occupied = false) {
   await page.goto('/');
   await page.getByRole('button', { name: occupied ? 'Встать в очередь' : 'Новая сессия', exact: true }).first().click();
   const modal = page.getByRole('dialog');
-  const settings = modal.locator('.create-settings');
-  if (!await settings.evaluate(element => (element as HTMLDetailsElement).open)) await settings.locator(':scope > summary').click();
+  await modal.locator('#create-tab-settings').click();
   await openLaunchSection(modal, 'connection');
   await openLaunchSection(modal, 'storage');
   await expect(modal.getByRole('combobox', { name: 'Ключ ADB', exact: true })).toBeEnabled();
@@ -83,4 +82,58 @@ test('reset is a button enabled only for changed resources, storage or arguments
   await expect(disk).toHaveValue(String(profile.diskGb));
   await expect(args).toHaveValue(profile.emulatorParams);
   await expect(reset).toBeDisabled();
+});
+
+test('launch tabs preserve drafts and ADB selection with keyboard navigation', async ({ page }) => {
+  const state = await fixture(page), modal = page.getByRole('dialog');
+  const cpu = modal.getByLabel('Лимит CPU на узле', { exact: true });
+  const disk = modal.getByLabel('Раздел данных, ГБ', { exact: true });
+  const adb = modal.getByRole('combobox', { name: 'Ключ ADB', exact: true });
+  await cpu.fill('3');
+  await disk.fill('24');
+  await adb.selectOption('selected-key');
+  const options = modal.getByRole('tab', { name: 'Параметры запуска', exact: true });
+  await options.focus();
+  await page.keyboard.press('Home');
+  await expect(modal.getByRole('tab', { name: 'Устройство', exact: true })).toBeFocused();
+  await expect(modal.getByRole('tabpanel', { name: 'Устройство', exact: true })).toBeVisible();
+  await expect(cpu).toBeHidden();
+  await modal.getByRole('switch', { name: 'Ускорение GPU' }).check();
+  await modal.getByRole('tab', { name: 'Устройство', exact: true }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(options).toBeFocused();
+  await expect(options).toHaveAttribute('aria-selected', 'true');
+  await expect(cpu).toHaveValue('3');
+  await expect(disk).toHaveValue('24');
+  await expect(adb).toHaveValue('selected-key');
+  await expect(modal.locator('.create-connection-section')).toHaveAttribute('open');
+  const motion = await modal.locator('#create-panel-settings').evaluate(element => getComputedStyle(element).transitionDuration);
+  expect(motion).toBe('0s');
+  await page.keyboard.press('ArrowLeft');
+  await expect(modal.locator('#create-tab-device')).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(options).toBeFocused();
+  await modal.getByRole('button', { name: 'Запустить', exact: true }).click();
+  await expect.poll(() => state.requests.length).toBe(1);
+  expect(state.requests[0]).toMatchObject({ adbKeyId: 'selected-key', gpuMode: 'nvidia', launchOptions: { cpu: 3, diskGb: 24 } });
+});
+
+test('hidden tab controls are skipped by the dialog focus cycle', async ({ page }) => {
+  await fixture(page); const modal = page.getByRole('dialog');
+  await modal.locator('#create-tab-device').click();
+  const settings = modal.locator('#create-panel-settings');
+  const seen: string[] = [];
+  await modal.locator('#create-tab-device').focus();
+  for (let index = 0; index < 8; index++) {
+    await page.keyboard.press('Tab');
+    const location = await modal.evaluate(element => {
+      const active = document.activeElement;
+      return { within: element.contains(active), hidden: Boolean(active?.closest('[hidden]')), id: active?.id || active?.tagName || '' };
+    });
+    expect(location.within).toBe(true);
+    expect(location.hidden).toBe(false);
+    seen.push(location.id);
+  }
+  await expect(settings).toBeHidden();
+  expect(seen).toContain('create-tab-device');
 });

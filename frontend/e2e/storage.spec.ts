@@ -5,7 +5,6 @@ test('user picks data partition and SD card within profile limits', async ({ pag
   await page.goto('/');
   await page.getByRole('button', { name: /Новая сессия/ }).first().click();
   await page.getByRole('combobox', { name: 'Устройство', exact: true }).selectOption('a13');
-  await page.locator('.create-settings > summary').click();
   // Switching profiles preserves GPU intent; this scenario uses software rendering.
   const gpu = page.getByRole('switch', { name: 'Ускорение GPU' });
   await gpu.uncheck();

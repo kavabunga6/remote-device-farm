@@ -14,7 +14,7 @@ test('several identical devices start from one dialog and a session card offers 
   await page.locator('.session-card').first().getByRole('button', { name: 'Ещё такой же' }).click();
   const dialog = page.getByRole('dialog', { name: 'Новая сессия' });
   await expect(dialog).toBeVisible();
-  await dialog.locator('.create-settings > summary').click();
+  await dialog.locator('#create-tab-settings').click();
   await openLaunchSection(dialog, 'connection');
   await dialog.getByLabel('Количество устройств').fill('3');
   await dialog.getByRole('button', { name: 'Запустить ×3' }).click();

@@ -158,7 +158,7 @@ for (const [name, width, height, theme, scale] of [
   expect(Math.abs(typography.numberHeight - typography.selectHeight)).toBeLessThanOrEqual(1);
   const assertFit = async () => {
     const geometry = await modal.evaluate(element => {
-      const box = element.getBoundingClientRect(), body = element.querySelector('.create-session-body')!, button = element.querySelector('.modal-actions .primary')!.getBoundingClientRect();
+      const box = element.getBoundingClientRect(), body = element.querySelector('.create-session-body:not([hidden])')!, button = element.querySelector('.modal-actions .primary')!.getBoundingClientRect();
       return { top: box.top, bottom: box.bottom, buttonBottom: button.bottom, overflow: Math.max(element.scrollWidth - element.clientWidth, body.scrollWidth - body.clientWidth, document.documentElement.scrollWidth - innerWidth) };
     });
     expect(geometry.top).toBeGreaterThanOrEqual(0); expect(geometry.bottom).toBeLessThanOrEqual(height);

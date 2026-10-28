@@ -5,7 +5,7 @@ for (const [name, theme, width, height, scale, language] of [
   ['laptop', 'dark', 1366, 768, 1, 'en'], ['large-german', 'light', 1280, 1000, 1.5, 'de'],
   ['arabic', 'dark', 1440, 1000, 1, 'ar'], ['narrow', 'light', 390, 844, 1, 'ru'],
 ] as const) {
-  test('launch dialog hierarchy and progressive options in ' + name, async ({ page }, testInfo) => {
+  test('launch dialog tabs preserve hierarchy and frame in ' + name, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.route('**/api/profiles', route => route.fulfill({ json: { profiles: [{
@@ -36,11 +36,13 @@ for (const [name, theme, width, height, scale, language] of [
     await page.evaluate(() => document.fonts.ready);
     await expect(dialog.locator('.create-selected-profile h3')).toHaveCount(0);
     await expect(dialog.locator('.create-summary-resources')).toBeVisible();
-    await expect(dialog.locator('.create-settings')).not.toHaveAttribute('open');
+    await expect(dialog.getByRole('tab')).toHaveCount(2);
+    await expect(dialog.locator('#create-tab-device')).toHaveAttribute('aria-selected', 'true');
+    await expect(dialog.locator('#create-panel-settings')).toBeHidden();
     if (scale === 1 && width >= 1000) {
       const size = await dialog.boundingBox();
       expect(size!.width).toBeLessThanOrEqual(641);
-      expect(size!.height).toBeLessThanOrEqual(600);
+      expect(size!.height).toBeLessThanOrEqual(640);
     }
     await page.screenshot({ path: testInfo.outputPath('launch-' + name + '.png'), fullPage: false, animations: 'disabled' });
     await gpu.check();
@@ -57,7 +59,18 @@ for (const [name, theme, width, height, scale, language] of [
     expect(onState.capacity).toBe('ltr');
     if (name === 'dark' || name === 'light') await dialog.screenshot({ path: testInfo.outputPath('dialog-' + name + '.png'), animations: 'disabled' });
     if (name === 'dark' || name === 'light') await page.screenshot({ path: testInfo.outputPath('launch-gpu-' + name + '.png'), fullPage: false, animations: 'disabled' });
-    await dialog.locator('.create-settings > summary').click();
+    const beforeSwitch = await dialog.evaluate(element => {
+      const rect = element.getBoundingClientRect(), footer = element.querySelector('.create-session-footer')!.getBoundingClientRect();
+      return { top: rect.top, height: rect.height, footerTop: footer.top };
+    });
+    await dialog.locator('#create-tab-settings').click();
+    await expect(dialog.locator('#create-tab-settings')).toHaveAttribute('aria-selected', 'true');
+    await expect(dialog.locator('#create-panel-device')).toBeHidden();
+    const afterSwitch = await dialog.evaluate(element => {
+      const rect = element.getBoundingClientRect(), footer = element.querySelector('.create-session-footer')!.getBoundingClientRect();
+      return { top: rect.top, height: rect.height, footerTop: footer.top };
+    });
+    expect(afterSwitch).toEqual(beforeSwitch);
     await expect(dialog.locator('.create-summary-resources')).toBeHidden();
     await expect(dialog.locator('.create-resource-fields input')).toHaveCount(4);
     await expect(dialog.locator('.create-storage-section')).not.toHaveAttribute('open');
@@ -134,7 +147,7 @@ test('ADB load failure reveals connection settings and allows a keyboard retry',
   await page.locator('.page-heading button.primary').first().click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.locator('.create-connection-section .inline-warning')).toBeVisible();
-  await expect(dialog.locator('.create-settings')).toHaveAttribute('open');
+  await expect(dialog.locator('#create-tab-settings')).toHaveAttribute('aria-selected', 'true');
   await expect(dialog.locator('.create-connection-section')).toHaveAttribute('open');
   failKeys = false;
   const retry = dialog.locator('.inline-warning button');

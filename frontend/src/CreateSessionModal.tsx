@@ -131,7 +131,13 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
   const storageValid = !showStorage || (Number.isInteger(diskGb) && diskGb >= Math.min(2, diskDefault) && diskGb <= diskMax && Number.isInteger(sdcardGb * 1024) && (sdcardGb === 0 || sdcardGb >= 0.125) && sdcardGb <= sdcardMax);
   const launchOptions: SessionLaunchOptions = { ...extraOptions, ...(canEditLaunch && ownChoice ? { diskGb, sdCardMb: sdcardGb * 1024 } : {}) };
   const launchSettingsChanged = canEditLaunch && (hasLaunchDraftChanges(selectedProfile, draft) || diskGb !== diskDefault || sdcardGb !== sdcardDefault);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'device' | 'settings'>('device');
+  const [animateTab, setAnimateTab] = useState(false);
+  const selectTab = (tab: 'device' | 'settings', animate = false) => {
+    setAnimateTab(animate);
+    setActiveTab(tab);
+  };
+  useEffect(() => { if (keyError) { setAnimateTab(false); setActiveTab('settings'); } }, [keyError]);
   const [connectionOpen, setConnectionOpen] = useState(!canEditLaunch);
   const [count, setCount] = useState(1);
   const joinQueue = async () => {
@@ -149,7 +155,7 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
     <div ref={dialogRef} tabIndex={-1} className="modal create-session-modal" role="dialog" aria-modal="true" aria-labelledby="create-heading" aria-describedby="create-description" onKeyDown={event => {
       if (event.key === 'Escape' && !busy) onClose();
       if (event.key === 'Tab') {
-        const elements = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled):not([tabindex="-1"]), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], summary') || [])].filter(element => element.getClientRects().length > 0);
+        const elements = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled):not([tabindex="-1"]), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], summary, [role="tabpanel"][tabindex="0"]') || [])].filter(element => element.getClientRects().length > 0);
         const first = elements[0], last = elements.at(-1);
         if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
@@ -157,12 +163,24 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
     }}>
       <div className="modal-top"><div><h2 id="create-heading">{t('ui.f7556fd66224')}</h2><p id="create-description" className="modal-description sr-only">{t('ui.91fdf8e1a129')}</p></div><button type="button" className="icon-button" aria-label={t('ui.a7a4033657e8')} onClick={onClose} disabled={busy}><Icon name="close" size={19}/></button></div>
       <form onSubmit={event => void submit(event)}>
-        <div className="create-session-body">
+        <div className="create-session-tabs" role="tablist" aria-label={t('ui.f7556fd66224')} onKeyDown={event => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          const next = event.key === 'Home' ? 'device' : event.key === 'End' ? 'settings'
+            : activeTab === 'device' ? 'settings' : 'device';
+          selectTab(next);
+          event.currentTarget.querySelector<HTMLButtonElement>('#create-tab-' + next)?.focus();
+        }}>
+          <button type="button" role="tab" id="create-tab-device" aria-controls="create-panel-device" aria-selected={activeTab === 'device'} tabIndex={activeTab === 'device' ? 0 : -1} disabled={busy} onClick={event => selectTab('device', event.detail > 0)}>{t('ui.dba20ab53801')}</button>
+          <button type="button" role="tab" id="create-tab-settings" aria-controls="create-panel-settings" aria-selected={activeTab === 'settings'} tabIndex={activeTab === 'settings' ? 0 : -1} disabled={busy} onClick={event => selectTab('settings', event.detail > 0)}>{t('ui.b21e29568c60')}</button>
+        </div>
+        <div className="create-session-panels" data-animate={animateTab || undefined}>
+        <div className="create-session-body create-device-panel" id="create-panel-device" role="tabpanel" aria-labelledby="create-tab-device" tabIndex={0} hidden={activeTab !== 'device'}>
           <ProfilePicker profiles={profiles} selectedId={profileId} onSelect={chooseProfile} disabled={busy}/>
           <aside className="create-launch-panel" aria-label={t('ui.4e701eb36c6c')}>
             <div className="create-selected-profile">
               {environment && <>
-                <dl className="create-summary-resources" hidden={settingsOpen || Boolean(keyError)}>
+                <dl className="create-summary-resources">
                   <div><dt><Icon name="phone" size={18}/>{t('ui.6ee4b2429634')}</dt><dd>{[isUnset(environment.cores) ? '' : t('copy.CreateSessionModal.c301bee9', { p0: environment.cores }), isUnset(environment.memory) ? '' : environment.memory].filter(Boolean).map((value, index) => <span key={index}>{index > 0 && ' · '}<bdi>{value}</bdi></span>)}{isUnset(environment.cores) && isUnset(environment.memory) && t('ui.95807be9fda9')}</dd></div>
                   <div><dt><Icon name="server" size={18}/>{t('ui.d7638391d8f0')}</dt><dd><bdi dir="ltr"><TranslatedText message="copy.CreateSessionModal.c640bd31" values={{ p0: effectiveProfile?.cpu ?? '—', p1: <bdi>{memoryLabel(effectiveProfile?.memoryMb)}</bdi> }} /></bdi></dd></div>
                 </dl>
@@ -174,7 +192,10 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
               <LaunchReadiness readiness={readiness} admin={canConfigureContainer} alternative={hasAlternativeHost} onAutoHost={() => { setHostId(''); setError(''); }}/>
             </div>
           </aside>
-          <details className="create-settings create-disclosure" open={settingsOpen || Boolean(keyError)} onToggle={event => setSettingsOpen((event.currentTarget as HTMLDetailsElement).open)}><summary>{canEditLaunch ? t('ui.b21e29568c60') : t('ui.4fc4baff4497')}<Icon name="arrowDown" size={16}/></summary>
+        </div>
+        <div className="create-session-body create-settings-panel" id="create-panel-settings" role="tabpanel" aria-labelledby="create-tab-settings" tabIndex={0} hidden={activeTab !== 'settings'}>
+          {selectedProfile && <p className="create-active-device">{selectedProfile.name}</p>}
+          <div className="create-settings">
           <div className="create-launch-settings">
             {canEditLaunch && <section className="create-settings-section" aria-labelledby="create-resources-title">
               <h4 id="create-resources-title">{t('ui.eba267d9f828')}</h4>
@@ -227,7 +248,9 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
               </div>
             </details>}
             </div>
-          </details>
+          </div>
+        </div>
+        <div className="create-session-notifications" data-dialog-notifications/>
         </div>
         <div className="create-session-footer"><div className="create-launch-status" data-state={error || launchError ? 'error' : keyLoading ? 'loading' : readiness.state} aria-live="polite">{error || launchError ? <span className="create-error" role="alert">{error || launchError}</span> : readiness.state !== 'ready' ? <span>{readiness.state === 'busy' ? t('ui.e893e50ad3d3') : t('ui.bb03b92faded')}</span> : keyLoading ? <span>{t('ui.8f22f5917af0')}</span> : selectedProfile ? <span><Icon name="check" size={15}/>{t('ui.023f3b8f41eb')}{gpuMode === 'nvidia' ? t('ui.bbc2d74cef73') : t('ui.da6ace803ef6')}</span> : <span>{t('ui.62975899f715')}</span>}</div><div className="modal-actions">{canEditLaunch && <button type="button" className="button outline create-reset" title={t('ui.8c1ad85ab600')} disabled={busy || !launchSettingsChanged} onClick={() => { setDraft({}); setStorageChoice(null); setError(''); }}>{t('ui.407f871778d3')}</button>}<button type="button" className="button outline" onClick={onClose} disabled={busy}>{t('ui.8fbe9b75cbdf')}</button>{noSlots && profiles.length > 0 ? <button type="button" className="button primary" onClick={() => void joinQueue()} disabled={busy || keyLoading || Boolean(launchError) || !(queueCompatible || noSlots) || !storageValid || !selectedProfile || selectedProfile.enabled === false}>{t('ui.41c64fd5c674')}</button> : <button className="button primary" type="submit" disabled={busy || keyLoading || Boolean(launchError) || !selectedHost || !profileFitsHost || !storageValid}>{busy ? t('ui.2f6c41f7dfb1') : count > 1 ? t('ui.6a5418bb1355') + count : t('ui.c9d2fdd1623c')}<Icon name="arrowRight" size={17}/></button>}</div></div>
       </form>
