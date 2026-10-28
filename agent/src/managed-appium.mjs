@@ -77,9 +77,18 @@ export class ManagedAppium {
     this.temporaryRoot = path.resolve(temporaryRoot);
     this.maxWorkers = maxWorkers;
     this.entry = entry; this.spawn = spawnImpl; this.fetch = fetchImpl;
+    this.life = new AbortController(); this.requests = new Set(); this.closed = false; this.closing = null;
     this.startTimeoutMs = startTimeoutMs; this.workers = new Map(); this.pending = new Set(); this.stopping = new Map(); this.ports = new Set();
   }
-  async request(sessionId, serial, raw, { signal } = {}) {
+  request(sessionId, serial, raw, { signal } = {}) {
+    if (this.closed) return Promise.reject(new Error(agentMessage('agent.appium.unavailable')));
+    const combined = signal ? AbortSignal.any([this.life.signal, signal]) : this.life.signal;
+    const request = this.performRequest(sessionId, serial, raw, { signal: combined });
+    this.requests.add(request);
+    void request.then(() => this.requests.delete(request), () => this.requests.delete(request));
+    return request;
+  }
+  async performRequest(sessionId, serial, raw, { signal } = {}) {
     signal?.throwIfAborted();
     const params = validateAppiumRequest(raw);
     if (!this.entry || !path.isAbsolute(this.entry)) throw new Error(agentMessage('agent.appium.unavailable'));
@@ -235,5 +244,14 @@ export class ManagedAppium {
     this.stopping.set(sessionId, stopped);
     return stopped;
   }
-  async close() { await Promise.all([...this.workers.keys()].map(id => this.stop(id))); }
+  close() {
+    if (this.closing) return this.closing;
+    this.closed = true;
+    this.life.abort();
+    this.closing = (async () => {
+      await Promise.allSettled([...this.requests]);
+      await Promise.all([...this.workers.keys()].map(id => this.stop(id)));
+    })();
+    return this.closing;
+  }
 }

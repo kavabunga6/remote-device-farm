@@ -89,3 +89,19 @@ test('loopback workers bind one driver, redact upstream errors and terminate wit
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('closing drains pending creation and permanently rejects later requests', async () => {
+  let settled = false;
+  const manager = new ManagedAppium({ entry: process.execPath, spawnImpl: () => { throw new Error('Worker must not start during shutdown'); } });
+  const creation = manager.request('closing', 'owned-device', { method: 'POST', path: '/session', body: { capabilities: { alwaysMatch: {} } } });
+  const rejected = assert.rejects(creation).finally(() => { settled = true; });
+  try {
+    const closing = manager.close();
+    void manager.close();
+    await closing;
+    assert.equal(settled, true, 'close waits for creation to settle');
+    assert.equal(manager.workers.size, 0);
+    assert.equal(manager.pending.size, 0);
+    await assert.rejects(manager.request('later', 'owned-device', { method: 'GET', path: '/status' }));
+  } finally { await rejected; await manager.close(); }
+});
