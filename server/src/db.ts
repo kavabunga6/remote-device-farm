@@ -62,6 +62,7 @@ export async function migrate(pool: Pool): Promise<void> {
     { version: 51, file: '051_disable_unverified_starter.sql' },
     { version: 52, file: '052_session_device_metadata.sql' },
     { version: 53, file: '053_device_provider_status.sql' },
+    { version: 54, file: '054_registration_settings.sql' },
   ] as const;
   const client = await pool.connect();
   try {

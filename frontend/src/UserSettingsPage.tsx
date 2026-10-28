@@ -1,6 +1,6 @@
 import { can, roleLabel } from './permissions';
-import { getLocale, localizeText, setLanguage, t } from './i18n';
-import { useInterfaceLanguage } from './LanguageControl';
+import { getLocale, localizeText, t } from './i18n';
+import { LanguageControl, useInterfaceLanguage } from './LanguageControl';
 import { NotificationSettings } from './NotificationSettings';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User } from './api';
@@ -53,7 +53,7 @@ function Segmented<T extends string | number>({ legend, value, options, onChange
 }
 
 export function UserSettingsPage({ user }: { user: User }) {
-  const language = useInterfaceLanguage();
+  useInterfaceLanguage();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -301,8 +301,7 @@ export function UserSettingsPage({ user }: { user: User }) {
         <div className="settings-card-title"><h2>{t('ui.1731619efa3a')}</h2><p>{t('ui.ec778bdf0deb')}</p></div>
         {preferencesFeedback}
         <div className="settings-form appearance-form">
-          <Segmented legend={t('language.label')} value={language} onChange={setLanguage}
-            options={[["ru", t('language.ru')], ["en", t('language.en')]]} />
+          <div className="appearance-language-control"><span>{t('language.label')}</span><LanguageControl /></div>
           <Segmented legend={t('ui.682f961a0751')} value={preferences.theme} disabled={preferencesLoading || !preferencesReady} onChange={theme => changePreferences({ theme })}
             options={[['system', t('ui.29e4a4bd7a17')], ['light', t('ui.f0cd3a603372')], ['dark', t('ui.1eecfcaa7bdb')]]} />
           <Segmented legend={t('ui.be517dba6cd0')} value={preferences.fontScale} disabled={preferencesLoading || !preferencesReady} onChange={fontScale => changePreferences({ fontScale })}

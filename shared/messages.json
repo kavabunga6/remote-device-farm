@@ -13706,5 +13706,141 @@
   "account.changed": {
     "ru": "Аккаунт изменился. Повторите действие.",
     "en": "The account has changed. Try the action again."
+  },
+  "auth.signIn": {
+    "ru": "Вход",
+    "en": "Sign in"
+  },
+  "auth.createTitle": {
+    "ru": "Создание аккаунта",
+    "en": "Create an account"
+  },
+  "auth.loginPlaceholder": {
+    "ru": "Введите логин",
+    "en": "Enter your username"
+  },
+  "auth.passwordPlaceholder": {
+    "ru": "Введите пароль",
+    "en": "Enter your password"
+  },
+  "auth.confirmPassword": {
+    "ru": "Повторите пароль",
+    "en": "Confirm password"
+  },
+  "auth.confirmPlaceholder": {
+    "ru": "Введите пароль ещё раз",
+    "en": "Enter your password again"
+  },
+  "auth.showPassword": {
+    "ru": "Показать пароль",
+    "en": "Show password"
+  },
+  "auth.hidePassword": {
+    "ru": "Скрыть пароль",
+    "en": "Hide password"
+  },
+  "auth.register": {
+    "ru": "Зарегистрироваться",
+    "en": "Register"
+  },
+  "auth.createAccount": {
+    "ru": "Создать аккаунт",
+    "en": "Create account"
+  },
+  "auth.creatingAccount": {
+    "ru": "Создаём аккаунт…",
+    "en": "Creating account…"
+  },
+  "auth.noAccount": {
+    "ru": "Нет аккаунта?",
+    "en": "No account yet?"
+  },
+  "auth.haveAccount": {
+    "ru": "Уже есть аккаунт?",
+    "en": "Already have an account?"
+  },
+  "auth.passwordHint": {
+    "ru": "Не менее 12 символов.",
+    "en": "At least 12 characters."
+  },
+  "auth.loginHint": {
+    "ru": "От 3 до 150 символов: латинские буквы, цифры, точка, дефис, подчёркивание или @.",
+    "en": "3–150 characters: letters A–Z, numbers, dots, hyphens, underscores or @."
+  },
+  "language.search": {
+    "ru": "Поиск языка",
+    "en": "Search languages"
+  },
+  "language.noResults": {
+    "ru": "Язык не найден",
+    "en": "No languages found"
+  },
+  "registration.title": {
+    "ru": "Самостоятельная регистрация",
+    "en": "Self registration"
+  },
+  "registration.description": {
+    "ru": "Новые аккаунты получают выбранную роль. Смена настройки не меняет роли существующих пользователей.",
+    "en": "New accounts receive the selected role. Changing this setting does not change existing users’ roles."
+  },
+  "registration.allow": {
+    "ru": "Разрешить создание аккаунтов",
+    "en": "Allow account registration"
+  },
+  "registration.defaultRole": {
+    "ru": "Роль нового пользователя",
+    "en": "Role for new accounts"
+  },
+  "registration.roleHint": {
+    "ru": "Пользователь получает все права выбранной роли. Роль администратора недоступна.",
+    "en": "New users receive all permissions in this role. The Administrator role is not available."
+  },
+  "registration.saved": {
+    "ru": "Настройки регистрации сохранены",
+    "en": "Registration settings saved"
+  },
+  "registration.invalidSettings": {
+    "ru": "Проверьте настройки регистрации.",
+    "en": "Check the registration settings."
+  },
+  "registration.unavailable": {
+    "ru": "Самостоятельная регистрация недоступна при входе через корпоративный каталог или SSO.",
+    "en": "Self registration is not available when authentication uses a directory or SSO."
+  },
+  "registration.invalidRole": {
+    "ru": "Выберите существующую роль без статуса администратора.",
+    "en": "Choose an existing role other than Administrator."
+  },
+  "registration.invalidCredentials": {
+    "ru": "Проверьте логин. Пароль должен содержать от 12 до 2048 символов.",
+    "en": "Check the username. The password must contain 12–2048 characters."
+  },
+  "registration.disabled": {
+    "ru": "Самостоятельная регистрация выключена.",
+    "en": "Self registration is disabled."
+  },
+  "registration.loginUnavailable": {
+    "ru": "Этот логин недоступен. Выберите другой.",
+    "en": "This username is unavailable. Choose another."
+  },
+  "registration.roleInUse": {
+    "ru": "Эта роль назначается при регистрации. Сначала выберите другую роль в настройках регистрации.",
+    "en": "This role is assigned at registration. Select another role in the registration settings first."
+  },
+  "registration.rateLimit": {
+    "ru": "Слишком много попыток регистрации. Повторите через 15 минут.",
+    "en": "Too many registration attempts. Try again in 15 minutes."
+  },
+  "registration.busy": {
+    "ru": "Сервер обрабатывает другие регистрации. Повторите чуть позже.",
+    "en": "The server is processing other registrations. Try again shortly."
+  },
+  "audit.auth.register": {
+    "ru": "Создание аккаунта",
+    "en": "Account registration"
+  },
+  "audit.auth.registration_settings_updated": {
+    "ru": "Изменение настроек регистрации",
+    "en": "Registration settings changed"
   }
 }

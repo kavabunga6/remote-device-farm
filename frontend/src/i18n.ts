@@ -1,6 +1,10 @@
 import dictionary from '../../shared/messages.json';
 
-export type Language = 'ru' | 'en';
+export const supportedLanguages = [
+  { id: 'ru', locale: 'ru-RU', labelKey: 'language.ru' },
+  { id: 'en', locale: 'en-US', labelKey: 'language.en' },
+] as const;
+export type Language = typeof supportedLanguages[number]['id'];
 export type MessageKey = keyof typeof dictionary;
 type Params = Record<string, string | number | boolean | null | undefined>;
 const storageKey = 'rdf.language';
@@ -8,12 +12,12 @@ const listeners = new Set<() => void>();
 let language: Language = 'ru';
 try { if (typeof localStorage !== 'undefined' && localStorage.getItem(storageKey) === 'en') language = 'en'; } catch { /* Optional storage. */ }
 export const getLanguage = () => language;
-export const getLocale = () => language === 'en' ? 'en-US' : 'ru-RU';
+export const getLocale = () => supportedLanguages.find(item => item.id === language)!.locale;
 export const subscribeLanguage = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
 function applyDocumentLanguage() { if (typeof document !== 'undefined') { document.documentElement.lang = language; document.title = t('app.title'); } }
 applyDocumentLanguage();
 export function setLanguage(value: Language): void {
-  if (language === value) return;
+  if (language === value || !supportedLanguages.some(item => item.id === value)) return;
   language = value; applyDocumentLanguage();
   try { localStorage.setItem(storageKey, value); } catch { /* Optional storage. */ }
   for (const listener of listeners) listener();

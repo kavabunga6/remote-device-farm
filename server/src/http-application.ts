@@ -4,6 +4,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import multer from 'multer';
 import { ApiError, isAllowedOrigin } from './http-common.js';
 import { registerAuthRoutes } from './routes/auth-routes.js';
+import { registerRegistrationRoutes } from './routes/registration-routes.js';
 import { registerAdminRoutes } from './routes/admin-routes.js';
 import { registerImageManagementRoutes } from './routes/image-management-routes.js';
 import { registerImagePrewarmRoutes, type ImagePrewarmWorker } from './image-prewarm.js';
@@ -73,6 +74,7 @@ export function createHttpApplication(
   });
   installAuditTrail(app, pool);
   const stopAuth = registerAuthRoutes(app, context);
+  registerRegistrationRoutes(app, context);
   registerAdminRoutes(app, context);
   registerImageRoutes(app, context, imageBuilds);
   registerImageManagementRoutes(app, context, imageManagement);

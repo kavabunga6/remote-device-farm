@@ -7,6 +7,7 @@ import { setMockRole } from './mocks/roles.mjs';
 
 // Dev-only mock of the backend API so the UI can be developed without the server stack.
 // Enable with: npm run dev:mock
+const registration = { enabled: false, roleId: '00000000-0000-4000-8000-000000000002', available: true };
 const now = Date.now();
 const iso = (minAgo) => new Date(now - minAgo * 60000).toISOString();
 const user = { id: 'u1', username: 'admin', displayName: 'admin', role: 'admin' };
@@ -118,7 +119,9 @@ export default function mockApi() {
         for (const handler of featureMocks) if (handler(req, res, path, m, state, send)) return;
         if (path === '/admin/launch-settings' && m === 'GET') return send(res, 200, { allowLaunchOverrides });
         if (path === '/admin/launch-settings' && m === 'PATCH') { let body=''; req.on('data', chunk => body+=chunk); req.on('end', () => { allowLaunchOverrides = JSON.parse(body).allowLaunchOverrides === true; send(res, 200, { allowLaunchOverrides }); }); return; }
-        if (path === '/config') return send(res, 200, { authMethods: ['local'], limits: { maxSessionsPerUser: 3, idleTimeoutMinutes: 60, maxSessionHours: 8 } });
+        if (path === '/admin/registration-settings' && m === 'GET') return send(res, 200, { settings: registration });
+        if (path === '/admin/registration-settings' && m === 'PATCH') { let body=''; req.on('data', chunk => body+=chunk); req.on('end', () => { Object.assign(registration, JSON.parse(body)); send(res, 200, { settings: registration }); }); return; }
+        if (path === '/config') return send(res, 200, { authMethods: ['local'], registrationEnabled: registration.enabled, limits: { maxSessionsPerUser: 3, idleTimeoutMinutes: 60, maxSessionHours: 8 } });
         if (path === '/me') return send(res, 200, { user: loggedIn ? user : null });
         if (path === '/login') { loggedIn = true; return send(res, 200, { user }); }
         if (path === '/logout') { loggedIn = false; return send(res, 200, {}); }

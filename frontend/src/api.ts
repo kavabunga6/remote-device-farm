@@ -9,6 +9,7 @@ export type AuthMethod = 'local' | 'ldap' | 'oidc' | 'none';
 export interface SessionLimits { maxSessionsPerUser: number; idleTimeoutMinutes: number; maxSessionHours: number }
 
 export interface AppConfig {
+  registrationEnabled?: boolean;
   authMethods: AuthMethod[];
   oidcLoginUrl?: string;
   limits?: SessionLimits;
@@ -478,6 +479,7 @@ export const api = {
     if (result.oidcEnabled && !modes.includes('oidc')) modes.push('oidc');
     return {
       authMethods: modes,
+      registrationEnabled: result.registrationEnabled === true,
       oidcLoginUrl: result.oidcLoginUrl,
       limits: result.limits,
     };

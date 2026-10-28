@@ -70,7 +70,7 @@ test('legacy catalog 27 and lease/queue/options 29–31 upgrade without losing s
     const profile = (await db.query("SELECT * FROM profiles WHERE id='android-30'")).rows[0]!;
     assert.equal('image_status' in profile, false); assert.deepEqual(profile.container_env, {});
     const versions = (await db.query('SELECT version,applied_at FROM schema_migrations WHERE version>=27 ORDER BY version')).rows;
-    assert.deepEqual(versions.map(row => row.version), [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53]);
+    assert.deepEqual(versions.map(row => row.version), [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54]);
     assert.equal(new Date(String(versions.find(row => row.version === 31)?.applied_at)).toISOString(), '2026-10-02T00:00:00.000Z');
     assert.equal(new Date(String(versions.find(row => row.version === 32)?.applied_at)).toISOString(), '2026-10-03T00:00:00.000Z');
   } finally { await db.close(); }
@@ -95,7 +95,8 @@ test('registered diagnostic migration upgrades existing service logs and remains
   try {
     await db.query("INSERT INTO service_logs(service,severity,code,host_id,session_id) VALUES('agent','info','session.starting','host',$1)", [SESSION]);
     await migrate(pool); await migrate(pool);
-    assert.equal((await db.query('SELECT max(version) AS version FROM schema_migrations')).rows[0]?.version, 53);
+    assert.equal((await db.query('SELECT max(version) AS version FROM schema_migrations')).rows[0]?.version, 54);
+    assert.equal((await db.query('SELECT enabled FROM registration_settings')).rows[0]?.enabled, false);
     assert.equal((await db.query("SELECT message FROM service_logs WHERE code='session.starting'")).rows[0]?.message, '');
     await db.query("INSERT INTO service_logs(service,severity,code,host_id,session_id,message) VALUES('emulator','error','container.stderr','host',$1,$2)", [SESSION, 'Vulkan initialization failed']);
     await db.query('DELETE FROM sessions WHERE id=$1', [SESSION]);

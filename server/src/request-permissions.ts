@@ -2,6 +2,7 @@
 export function requestPermission(method: string, path: string): string | undefined {
  path = path.toLowerCase().replace(/\/+$/, '');
  const read = method === 'GET' || method === 'HEAD';
+ if (path === '/api/admin/registration-settings') return read ? 'roles.view' : 'roles.manage';
  if (/^\/api\/admin\/roles(?:\/|$)/.test(path)) return read ? 'roles.view' : 'roles.manage';
  if (/^\/api\/admin\/users\/[^/]+\/role$/.test(path)) return 'roles.manage';
  if (path.startsWith('/api/admin/users')) return read ? 'users.view' : method === 'DELETE' ? 'users.delete' : path.endsWith('/password') ? 'users.password' : 'users.manage';

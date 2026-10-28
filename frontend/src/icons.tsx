@@ -1,12 +1,13 @@
 import type { SVGProps } from 'react';
 
 export type IconName =
-  | 'pencil' | 'eye' | 'eyeOff' | 'grid' | 'phone' | 'server' | 'shield' | 'plus' | 'minus' | 'arrowRight' | 'chevronLeft'
+  | 'globe' | 'pencil' | 'eye' | 'eyeOff' | 'grid' | 'phone' | 'server' | 'shield' | 'plus' | 'minus' | 'arrowRight' | 'chevronLeft'
   | 'chevronDown' | 'power' | 'rotate' | 'volume' | 'volumeOff' | 'upload' | 'terminal' | 'more'
   | 'sliders' | 'expand' | 'back' | 'home' | 'recent' | 'play' | 'refresh' | 'close' | 'check' | 'alert'
   | 'user' | 'logout' | 'keyboard' | 'copy' | 'download' | 'bolt' | 'search' | 'menu' | 'info' | 'wifi' | 'wifiOff' | 'key' | 'camera' | 'record' | 'stop' | 'trash' | 'arrowDown' | 'arrowUp' | 'pause' | 'list' | 'star' | 'slots' | 'layers';
 
 const paths: Record<IconName, React.ReactNode> = {
+  globe: <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z"/></>,
   sliders: <><path d="M3 6h6m4 0h8M3 12h11m4 0h3M3 18h3m4 0h11"/><circle cx="11" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></>,
   expand: <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>,
   layers: <><path d="m12 3 10 5-10 5L2 8l10-5Z"/><path d="m2 12 10 5 10-5M2 16l10 5 10-5"/></>,

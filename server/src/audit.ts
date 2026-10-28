@@ -11,6 +11,8 @@ function safeTarget(value: string | undefined): string | undefined {
 function actionFor(req: Request): AuditTarget | null {
   const { method, path } = req;
   const normalized = path.toLowerCase().replace(/\/+$/, '');
+  if (normalized === '/api/admin/registration-settings' && method === 'PATCH')
+    return { action: 'auth.registration_settings_updated', targetType: 'role', targetId: typeof req.body?.roleId === 'string' ? safeTarget(req.body.roleId) : undefined };
   const accessRole = /^\/api\/admin\/roles(?:\/([a-f0-9-]{36}))?$/.exec(normalized);
   if (accessRole && ['POST','PATCH','DELETE'].includes(method)) return { action: method === 'POST' ? 'role.created' : method === 'PATCH' ? 'role.updated' : 'role.deleted', targetType:'role', targetId: accessRole[1] };
   const assignment = /^\/api\/admin\/users\/([a-f0-9-]{36})\/role$/.exec(normalized);

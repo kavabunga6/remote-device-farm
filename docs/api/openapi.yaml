@@ -25,6 +25,85 @@ tags:
   - name: Account
   - name: Service
 paths:
+  /api/register:
+    post:
+      operationId: registerAccount
+      tags: [Users]
+      summary: Create an account using the administrator-selected role
+      security: []
+      description: >
+        Disabled by default. Available only with service-managed passwords. The request cannot select roles
+        or permissions. Success creates a browser session. Settings are checked again when inserting the
+        account. Attempts and concurrent password work are limited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegistrationInput" }
+      responses:
+        "201":
+          description: Account created and signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user: { $ref: "#/components/schemas/postLoginResponseUser" }
+        default:
+          description: Registration disabled (403), username unavailable (409), invalid input (400), or rate limit (429).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /api/admin/registration-settings:
+    get:
+      operationId: getRegistrationSettings
+      tags: [Roles]
+      summary: Read self registration settings
+      x-permission: roles.view
+      responses:
+        "200":
+          description: Current settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [settings]
+                properties:
+                  settings: { $ref: "#/components/schemas/RegistrationSettings" }
+        default:
+          description: Request rejected.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    patch:
+      operationId: updateRegistrationSettings
+      tags: [Roles]
+      summary: Enable registration and choose the role for new accounts
+      x-permission: roles.manage
+      description: >
+        The built-in Administrator role is rejected. Existing accounts keep their roles. A configured role
+        cannot be deleted until another role is selected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegistrationSettingsInput" }
+      responses:
+        "200":
+          description: Saved settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [settings]
+                properties:
+                  settings: { $ref: "#/components/schemas/RegistrationSettings" }
+        default:
+          description: Request rejected.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /api/me:
     get:
       tags: [ Users ]
@@ -3256,6 +3335,8 @@ paths:
               schema:
                 type: object
                 properties:
+                  registrationEnabled:
+                    type: boolean
                   authMode:
                     type: string
                     enum: [ local, ldap, oidc, none ]
@@ -4605,6 +4686,27 @@ components:
         type: string
         format: uuid
   schemas:
+    RegistrationInput:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username: { type: string, pattern: "^[A-Za-z0-9._@-]{3,150}$" }
+        password: { type: string, minLength: 12, maxLength: 2048, writeOnly: true }
+    RegistrationSettings:
+      type: object
+      required: [enabled, roleId, available]
+      properties:
+        enabled: { type: boolean }
+        roleId: { type: string, format: uuid }
+        available: { type: boolean }
+    RegistrationSettingsInput:
+      type: object
+      additionalProperties: false
+      required: [enabled, roleId]
+      properties:
+        enabled: { type: boolean }
+        roleId: { type: string, format: uuid }
     TrafficBodyPreview: {"type":"object","required":["text","mimeType","truncated","reason","capturedBytes","limit"],"properties":{"text":{"type":"string","nullable":true},"mimeType":{"type":"string"},"truncated":{"type":"boolean"},"reason":{"type":"string","enum":["disabled","encoded","binary"],"nullable":true},"capturedBytes":{"type":"integer","minimum":0,"maximum":4096},"limit":{"type":"integer","enum":[4096]}}}
     TrafficEntry: {"type":"object","required":["id","method","url","startedAt","status","durationMs","bytes","requestHeaders","responseHeaders"],"properties":{"id":{"type":"integer"},"captureId":{"type":"string"},"method":{"type":"string"},"url":{"type":"string"},"startedAt":{"type":"number"},"status":{"type":"integer","nullable":true},"statusSource":{"type":"string","enum":["proxy","upstream"],"nullable":true},"outcome":{"type":"string","enum":["pending","open","complete","error","stopped"]},"phase":{"type":"string","enum":["connect","send","wait","receive","tunnel","done"]},"errorKind":{"type":"string","nullable":true,"enum":["dns","timeout","refused","incomplete","reset","protocol","io"]},"errorPhase":{"type":"string","nullable":true},"durationMs":{"type":"number","nullable":true},"elapsedMs":{"type":"number","minimum":0},"bytes":{"type":"integer","minimum":0},"bytesSent":{"type":"integer","minimum":0},"bytesReceived":{"type":"integer","minimum":0},"timings":{"type":"object","properties":{"connect":{"type":"number","minimum":0},"send":{"type":"number","minimum":0},"wait":{"type":"number","minimum":0},"receive":{"type":"number","minimum":0}}},"requestHeaders":{"type":"array","items":{"type":"object","required":["name","value"],"properties":{"name":{"type":"string"},"value":{"type":"string"}}}},"responseHeaders":{"type":"array","items":{"type":"object","required":["name","value"],"properties":{"name":{"type":"string"},"value":{"type":"string"}}}},"requestBody":{"$ref":"#/components/schemas/TrafficBodyPreview"},"responseBody":{"$ref":"#/components/schemas/TrafficBodyPreview"}}}
     TrafficCapture: {"type":"object","required":["available","recording","entries"],"properties":{"available":{"type":"boolean"},"recording":{"type":"boolean"},"protocolVersion":{"type":"integer"},"runtimeVersion":{"type":"string"},"runtimeCompatible":{"type":"boolean"},"captureId":{"type":"string","nullable":true},"startedAt":{"type":"number","nullable":true},"stoppedAt":{"type":"number","nullable":true},"stopReason":{"type":"string","enum":["manual","time_limit","size_limit","recovery","start_failed"],"nullable":true},"proxyActive":{"type":"boolean"},"finalizing":{"type":"boolean"},"captureBodies":{"type":"boolean"},"pcapRequested":{"type":"boolean"},"pcapAvailable":{"type":"boolean"},"packetCount":{"type":"integer","minimum":0},"pcapState":{"type":"string","enum":["none","starting","recording","finalizing","stopped","error"]},"entries":{"type":"array","maxItems":200,"items":{"$ref":"#/components/schemas/TrafficEntry"}},"pcapBytes":{"type":"integer","minimum":0},"limit":{"type":"integer","minimum":0},"totalCaptured":{"type":"integer","minimum":0},"evicted":{"type":"integer","minimum":0},"rejectedConnections":{"type":"integer","minimum":0},"activeConnections":{"type":"integer","minimum":0},"connectionLimit":{"type":"integer","minimum":0}}}
