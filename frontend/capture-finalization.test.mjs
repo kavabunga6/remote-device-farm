@@ -56,3 +56,49 @@ test('a late paint cannot extend the finalization deadline', () => {
   assert.equal(f.count(), 1); assert.equal(f.pending(), 0);
   f.advance(100); assert.equal(f.count(), 1);
 });
+
+function mediaFixture(t) {
+  let controller, stopped = 0, cancelled = 0, closed = 0;
+  const original = { clone: () => ({ stop: () => stopped++ }) };
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'MediaStreamTrackProcessor');
+  Object.defineProperty(globalThis, 'MediaStreamTrackProcessor', { configurable: true, value: class {
+    readable = new ReadableStream({ start(value) { controller = value; }, cancel() { cancelled++; } });
+  } });
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, 'MediaStreamTrackProcessor', previous);
+    else delete globalThis.MediaStreamTrackProcessor;
+  });
+  return {
+    stream: { getVideoTracks: () => [original] },
+    frame: () => controller.enqueue({ close: () => closed++ }),
+    counts: () => ({ stopped, cancelled, closed }),
+  };
+}
+const drain = () => new Promise(resolve => setImmediate(resolve));
+
+test('finalization observes fresh media frames and releases their clone before stopping the recorder', async t => {
+  const media = mediaFixture(t), f = fixture();
+  scheduleCaptureStop(f.finish, 100, f.clock, media.stream);
+  f.frame(); f.frame(); f.advance(200); assert.equal(f.count(), 0);
+  media.frame(); await drain(); f.advance(100); assert.equal(f.count(), 0);
+  media.frame(); await drain(); f.advance(99); assert.equal(f.count(), 0);
+  f.advance(1); assert.equal(f.count(), 1); assert.equal(f.pending(), 0);
+  assert.deepEqual(media.counts(), { stopped: 1, cancelled: 1, closed: 2 });
+});
+
+test('cancellation releases a pending frame reader without stopping the recorder', async t => {
+  const media = mediaFixture(t), f = fixture();
+  const cancel = scheduleCaptureStop(f.finish, 100, f.clock, media.stream);
+  f.frame(); f.frame(); media.frame(); await drain(); cancel(); await drain();
+  f.advance(2000); assert.equal(f.count(), 0); assert.equal(f.pending(), 0);
+  assert.equal(media.counts().closed, 1); assert.ok(media.counts().stopped > 0);
+  assert.equal(media.counts().cancelled, 1);
+});
+
+test('a stalled media pipeline still stops within the deadline and releases its reader', async t => {
+  const media = mediaFixture(t), f = fixture();
+  scheduleCaptureStop(f.finish, 100, f.clock, media.stream);
+  f.frame(); f.frame(); f.advance(1000); await drain();
+  assert.equal(f.count(), 1); assert.equal(f.pending(), 0);
+  assert.ok(media.counts().stopped > 0); assert.equal(media.counts().cancelled, 1);
+});

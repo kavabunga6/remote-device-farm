@@ -146,7 +146,7 @@ export function useSessionCapture({ sessionId, status, format, imageRef, canvasR
     // Capture the painted final frame before asking the encoder to flush it.
     active.cancelStop = scheduleCaptureStop(() => {
       if (active.recorder.state !== 'inactive') active.recorder.stop();
-    }, Math.ceil(3000 / RECORDING_FPS));
+    }, Math.ceil(3000 / RECORDING_FPS), window, active.stream);
   }, []);
 
   const startRecording = useCallback(() => {
