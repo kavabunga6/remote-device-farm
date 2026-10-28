@@ -37,6 +37,17 @@ for (const [name, theme, width, height, scale, language] of [
     await expect(dialog.locator('.create-selected-profile h3')).toHaveCount(0);
     await expect(dialog.locator('.create-summary-resources')).toBeVisible();
     await expect(dialog.getByRole('tab')).toHaveCount(2);
+    await expect(dialog.locator('.modal-top,h2')).toHaveCount(0);
+    await expect(dialog.locator('.create-session-toolbar > .create-session-close')).toBeVisible();
+    const toolbar = await dialog.locator('.create-session-toolbar').evaluate(element => {
+      const row = element.getBoundingClientRect(), close = element.querySelector('.create-session-close')!.getBoundingClientRect();
+      const style = getComputedStyle(element), rtl = style.direction === 'rtl';
+      return { centerDifference: Math.abs(close.top + close.height / 2 - row.top - row.height / 2),
+        endGap: rtl ? close.left - row.left : row.right - close.right,
+        endPadding: parseFloat(style.paddingInlineEnd) };
+    });
+    expect(toolbar.centerDifference).toBeLessThanOrEqual(1);
+    expect(Math.abs(toolbar.endGap - toolbar.endPadding)).toBeLessThanOrEqual(1);
     await expect(dialog.locator('#create-tab-device')).toHaveAttribute('aria-selected', 'true');
     await expect(dialog.locator('#create-panel-settings')).toBeHidden();
     if (scale === 1 && width >= 1000) {

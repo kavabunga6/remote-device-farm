@@ -1,13 +1,12 @@
 /* Stable dialog frame: only the active tab panel scrolls. */
 .modal.create-session-modal{width:min(40rem,calc(100vw - 48px));max-width:none;height:min(38rem,calc(100dvh - 48px));max-height:calc(100dvh - 48px);padding:0;overflow:hidden;display:flex;flex-direction:column;border-radius:16px;outline:none}
-.modal.create-session-modal .modal-top{flex:none;align-items:flex-start;gap:16px;padding:16px 24px;border-bottom:1px solid var(--ui-border)}
-.modal.create-session-modal h2{margin:0;font-size:1.5rem;line-height:1.3;color:var(--ui-text)}
-.modal.create-session-modal .modal-description{margin:6px 0 0;font-size:1rem;font-weight:400;line-height:1.5;color:var(--ui-muted)}
 .modal.create-session-modal form{display:flex;flex-direction:column;flex:1;min-height:0;gap:0}
 .create-session-body{grid-area:1/1;display:grid;grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;gap:16px 24px;align-items:start;align-content:start;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px 24px}
 .create-session-body>*{min-width:0}
 
-.create-session-tabs{display:flex;flex:none;gap:24px;padding:0 24px;border-bottom:1px solid var(--ui-border)}
+.create-session-toolbar{display:flex;flex:none;align-items:stretch;gap:16px;padding-inline:24px 16px;border-bottom:1px solid var(--ui-border)}
+.create-session-tabs{display:flex;flex:1;min-width:0;gap:24px}
+.modal.create-session-modal .create-session-close{flex:none;align-self:center;width:40px;min-width:40px;height:40px;min-height:40px;margin:8px 0}
 .modal.create-session-modal .create-session-tabs>button{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;min-height:52px;margin:0;padding:12px 0;border:0;border-radius:0;background:transparent;color:var(--ui-muted);font:inherit;font-size:1rem;font-weight:600;line-height:1.5;text-align:start;cursor:pointer}
 .modal.create-session-modal .create-session-tabs>button[aria-selected=true]{color:var(--accent-strong)}
 .create-session-tabs>button[aria-selected=true]::after{position:absolute;content:'';inset-inline:0;bottom:-1px;height:2px;background:var(--accent)}
@@ -21,7 +20,7 @@
 .create-active-device{margin:0;font-size:1rem;line-height:1.5;color:var(--ui-muted);overflow-wrap:anywhere}
 .create-session-panels[data-animate=true]>.create-session-body:not([hidden]){opacity:1;transition:opacity 140ms cubic-bezier(.23,1,.32,1)}
 @starting-style{.create-session-panels[data-animate=true]>.create-session-body:not([hidden]){opacity:0}}
-@media(max-width:540px){.create-session-notifications{inset-inline:16px}.create-session-tabs{gap:20px;padding-inline:16px}.modal.create-session-modal .create-session-tabs>button{flex:1;min-height:52px;justify-content:flex-start}}
+@media(max-width:540px){.create-session-notifications{inset-inline:16px}.create-session-toolbar{gap:12px;padding-inline:16px 12px}.create-session-tabs{gap:20px}.modal.create-session-modal .create-session-tabs>button{flex:1;min-height:52px;justify-content:flex-start}}
 @media(prefers-reduced-motion:reduce){.create-session-panels[data-animate=true]>.create-session-body:not([hidden]){transition:none}}
 
 .create-session-body>.profile-picker{grid-column:1;grid-row:1;min-height:auto;gap:20px;padding:0;overflow:visible}
@@ -156,9 +155,6 @@
 }
 @media(max-width:540px){
   .modal.create-session-modal{width:calc(100vw - 16px);height:min(38rem,calc(100dvh - 16px));max-height:calc(100dvh - 16px);border-radius:12px}
-  .modal.create-session-modal .modal-top{padding:18px 16px;gap:12px}
-  .modal.create-session-modal h2{font-size:1.25rem}
-  .modal.create-session-modal .modal-description{font-size:.9375rem}
   .create-session-body{padding:16px;gap:16px}
   .create-launch-panel{gap:16px}
   .create-resource-fields{column-gap:12px}

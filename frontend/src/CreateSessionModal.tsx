@@ -152,7 +152,7 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
     catch (cause) { setError(cause instanceof Error ? cause.message : t('ui.16bb1217be82')); setBusy(false); }
   };
   return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose(); }}>
-    <div ref={dialogRef} tabIndex={-1} className="modal create-session-modal" role="dialog" aria-modal="true" aria-labelledby="create-heading" aria-describedby="create-description" onKeyDown={event => {
+    <div ref={dialogRef} tabIndex={-1} className="modal create-session-modal" role="dialog" aria-modal="true" aria-label={t('ui.f7556fd66224')} aria-describedby="create-description" onKeyDown={event => {
       if (event.key === 'Escape' && !busy) onClose();
       if (event.key === 'Tab') {
         const elements = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled):not([tabindex="-1"]), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], summary, [role="tabpanel"][tabindex="0"]') || [])].filter(element => element.getClientRects().length > 0);
@@ -161,8 +161,9 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }
     }}>
-      <div className="modal-top"><div><h2 id="create-heading">{t('ui.f7556fd66224')}</h2><p id="create-description" className="modal-description sr-only">{t('ui.91fdf8e1a129')}</p></div><button type="button" className="icon-button" aria-label={t('ui.a7a4033657e8')} onClick={onClose} disabled={busy}><Icon name="close" size={19}/></button></div>
+      <p id="create-description" className="sr-only">{t('ui.91fdf8e1a129')}</p>
       <form onSubmit={event => void submit(event)}>
+        <div className="create-session-toolbar">
         <div className="create-session-tabs" role="tablist" aria-label={t('ui.f7556fd66224')} onKeyDown={event => {
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
           event.preventDefault();
@@ -173,6 +174,8 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
         }}>
           <button type="button" role="tab" id="create-tab-device" aria-controls="create-panel-device" aria-selected={activeTab === 'device'} tabIndex={activeTab === 'device' ? 0 : -1} disabled={busy} onClick={event => selectTab('device', event.detail > 0)}>{t('ui.dba20ab53801')}</button>
           <button type="button" role="tab" id="create-tab-settings" aria-controls="create-panel-settings" aria-selected={activeTab === 'settings'} tabIndex={activeTab === 'settings' ? 0 : -1} disabled={busy} onClick={event => selectTab('settings', event.detail > 0)}>{t('ui.b21e29568c60')}</button>
+        </div>
+        <button type="button" className="icon-button create-session-close" aria-label={t('ui.a7a4033657e8')} onClick={onClose} disabled={busy}><Icon name="close" size={19}/></button>
         </div>
         <div className="create-session-panels" data-animate={animateTab || undefined}>
         <div className="create-session-body create-device-panel" id="create-panel-device" role="tabpanel" aria-labelledby="create-tab-device" tabIndex={0} hidden={activeTab !== 'device'}>
