@@ -63,30 +63,40 @@ async function loadLanguage(value: Language): Promise<Messages> {
   }
   return pending;
 }
-/** Commit a language only after its complete dictionary has loaded. Older requests cannot replace a newer choice. */
+function publishLanguageChange() { for (const listener of listeners) listener(); }
+function commitLanguage(value: Language, persist: boolean) {
+  const changed = language !== value || initialLoadFailed;
+  language = value;
+  initialLoadFailed = false;
+  if (persist) try { localStorage.setItem(storageKey, value); } catch { /* Optional storage. */ }
+  applyDocumentLanguage();
+  if (changed) publishLanguageChange();
+}
+/** Only the newest request can commit a language or report a loading failure. */
 export async function setLanguage(value: Language, persist = true): Promise<void> {
   if (!isLanguage(value)) return;
   const request = ++languageRequest;
-  if (!messages.has(value)) await loadLanguage(value);
-  if (request !== languageRequest) return;
-  const recovered = initialLoadFailed;
-  initialLoadFailed = false;
-  if (persist) try { localStorage.setItem(storageKey, value); } catch { /* Optional storage. */ }
-  if (language === value) { if (recovered) for (const listener of listeners) listener(); return; }
-  language = value;
-  applyDocumentLanguage();
-  for (const listener of listeners) listener();
+  try {
+    if (!messages.has(value)) await loadLanguage(value);
+  } catch (error) {
+    if (request !== languageRequest) return;
+    initialLoadFailed = true;
+    publishLanguageChange();
+    throw error;
+  }
+  if (request === languageRequest) commitLanguage(value, persist);
 }
 export async function initializeLanguage(): Promise<void> {
   try { await setLanguage(storedLanguage(), false); }
-  catch { initialLoadFailed = true; }
+  catch { /* The rendered language control exposes the failure and retry. */ }
   applyDocumentLanguage();
 }
 if (typeof window !== 'undefined') window.addEventListener('storage', event => {
-  if (event.key === storageKey || event.key === null) void setLanguage(isLanguage(event.newValue) ? event.newValue : 'ru', false).catch(() => {
-    initialLoadFailed = true;
-    for (const listener of listeners) listener();
-  });
+  if (event.key === storageKey || event.key === null) {
+    void setLanguage(isLanguage(event.newValue) ? event.newValue : 'ru', false).catch(() => {
+      // setLanguage publishes failures for the current request only.
+    });
+  }
 });
 const rendered = new Map<string, { key: MessageKey; params: Params }>();
 const exact = new Map<string, MessageKey>();
@@ -116,26 +126,29 @@ export function t(key: MessageKey, params: Params = {}): string {
   }
   return value;
 }
+function matchTemplate(value: string, parts: string[]): Params | undefined {
+  if (!value.startsWith(parts[0]!)) return undefined;
+  let cursor = parts[0]!.length;
+  const params: Params = {};
+  for (let index = 1; index < parts.length; index += 2) {
+    const delimiter = parts[index + 1]!;
+    const end = delimiter ? value.indexOf(delimiter, cursor) : value.length;
+    if (end < 0) return undefined;
+    const name = parts[index]!.slice(1, -1);
+    const parameter = value.slice(cursor, end);
+    if (name in params && params[name] !== parameter) return undefined;
+    params[name] = parameter; cursor = end + delimiter.length;
+  }
+  return cursor === value.length ? params : undefined;
+}
 function resolveMessage(value: string): { key: MessageKey; params: Params } | undefined {
   const saved = rendered.get(value); if (saved) return saved;
   const key = exact.get(value) ?? exact.get(value.replace(/[\s.]+$/, ''));
   if (key) return { key, params: {} };
   if (value.length > 2000) return undefined;
   for (const template of templates) {
-    if (!value.startsWith(template.parts[0]!)) continue;
-    let cursor = template.parts[0]!.length;
-    const params: Params = {};
-    let matches = true;
-    for (let index = 1; index < template.parts.length; index += 2) {
-      const delimiter = template.parts[index + 1]!;
-      const end = delimiter ? value.indexOf(delimiter, cursor) : value.length;
-      if (end < 0) { matches = false; break; }
-      const name = template.parts[index]!.slice(1, -1);
-      const parameter = value.slice(cursor, end);
-      if (name in params && params[name] !== parameter) { matches = false; break; }
-      params[name] = parameter; cursor = end + delimiter.length;
-    }
-    if (matches && cursor === value.length) return { key: template.key, params };
+    const params = matchTemplate(value, template.parts);
+    if (params) return { key: template.key, params };
   }
   return undefined;
 }
@@ -147,13 +160,14 @@ export function localizeText(value: string): string {
   return message ? t(message.key, message.params) : value;
 }
 
+const statusMessages: Partial<Record<number, MessageKey>> = {
+  400: 'error.invalid', 422: 'error.invalid', 401: 'error.unauthorized',
+  403: 'error.forbidden', 404: 'error.notFound', 409: 'error.conflict',
+  413: 'error.tooLarge', 429: 'error.rateLimit',
+};
 export function errorMessage(status: number, message?: string): string {
   if (message && resolveMessage(message)) return localizeText(message);
-  const key: MessageKey = status === 400 || status === 422 ? 'error.invalid'
-    : status === 401 ? 'error.unauthorized' : status === 403 ? 'error.forbidden'
-    : status === 404 ? 'error.notFound' : status === 409 ? 'error.conflict'
-    : status === 413 ? 'error.tooLarge' : status === 429 ? 'error.rateLimit' : 'error.server';
-  return t(key);
+  return t(statusMessages[status] ?? 'error.server');
 }
 
 /** API codes resolve through the same dictionary; no feature module mutates global messages. */

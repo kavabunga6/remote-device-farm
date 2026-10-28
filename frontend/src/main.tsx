@@ -26,8 +26,9 @@ import { restoreUserPreferences } from './user-preferences';
 
 restoreUserPreferences();
 
-void initializeLanguage().then(() => createRoot(document.getElementById('root')!).render(
+void initializeLanguage();
+createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <NotificationsProvider><App /></NotificationsProvider>
   </React.StrictMode>,
-));
+);

@@ -68,3 +68,129 @@ test('a later language choice wins over an earlier asynchronous request', async 
   assert.equal(fresh.localizeText('adb: device unauthorized'), 'adb: device unauthorized');
  } finally { globalThis.fetch = originalFetch; }
 });
+
+
+test('a stale cross-tab download failure cannot replace a successful choice with an error', async () => {
+ const originalFetch = globalThis.fetch, originalWindow = globalThis.window;
+ let storageChanged, rejectDownload;
+ globalThis.window = { addEventListener: (name, handler) => { if (name === 'storage') storageChanged = handler; } };
+ globalThis.fetch = () => new Promise((resolve, reject) => { rejectDownload = reject; });
+ try {
+  const fresh = await import(moduleUrl + '#stale-storage-error');
+  storageChanged({ key: 'rdf.language', newValue: 'ar' });
+  await fresh.setLanguage('en');
+  rejectDownload(new Error('offline'));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(fresh.getLanguage(), 'en');
+  assert.equal(fresh.languageInitializationFailed(), false);
+ } finally { globalThis.fetch = originalFetch; globalThis.window = originalWindow; }
+});
+
+test('initial dictionary failure notifies an already rendered interface', async () => {
+ const originalFetch = globalThis.fetch, originalStorage = globalThis.localStorage;
+ globalThis.localStorage = { getItem: () => 'fr' };
+ globalThis.fetch = async () => { throw new Error('offline'); };
+ try {
+  const fresh = await import(moduleUrl + '#initial-failure');
+  let updates = 0;
+  fresh.subscribeLanguage(() => updates++);
+  await fresh.initializeLanguage();
+  assert.equal(fresh.languageInitializationFailed(), true);
+  assert.equal(fresh.getLanguage(), 'ru');
+  assert.equal(updates, 1);
+ } finally { globalThis.fetch = originalFetch; globalThis.localStorage = originalStorage; }
+});
+
+
+test('dictionary validation rejects blank copy, keeps the active language and permits a clean retry', async () => {
+ const originalFetch = globalThis.fetch;
+ const french = JSON.parse(fs.readFileSync(new URL('../shared/locales/fr.json', import.meta.url), 'utf8'));
+ globalThis.fetch = async () => new Response(JSON.stringify({ ...french, 'auth.signIn': ' ' }), { status: 200 });
+ try {
+  const fresh = await import(moduleUrl + '#invalid-dictionary');
+  await fresh.setLanguage('en');
+  await assert.rejects(fresh.setLanguage('fr'), /Incomplete locale: fr:auth.signIn/);
+  assert.equal(fresh.getLanguage(), 'en');
+  globalThis.fetch = async () => new Response(JSON.stringify(french), { status: 200 });
+  await fresh.setLanguage('fr');
+  assert.equal(fresh.t('auth.signIn'), french['auth.signIn']);
+  assert.equal(fresh.languageInitializationFailed(), false);
+ } finally { globalThis.fetch = originalFetch; }
+});
+
+test('a user language choice is saved while loading a saved preference does not write it again', async () => {
+ const originalStorage = globalThis.localStorage;
+ const writes = [];
+ globalThis.localStorage = { getItem: () => 'en', setItem: (key, value) => writes.push([key, value]) };
+ try {
+  const fresh = await import(moduleUrl + '#persist-preference');
+  await fresh.initializeLanguage();
+  assert.equal(fresh.getLanguage(), 'en'); assert.deepEqual(writes, []);
+  await fresh.setLanguage('ru');
+  assert.deepEqual(writes, [['rdf.language', 'ru']]);
+ } finally { globalThis.localStorage = originalStorage; }
+});
+
+test('error fallbacks do not expose unrecognized server details and keep API mappings enumerable', async () => {
+ const fresh = await import(moduleUrl + '#error-fallbacks');
+ await fresh.setLanguage('en');
+ for (const [status, key] of [[400,'error.invalid'],[401,'error.unauthorized'],[403,'error.forbidden'],[404,'error.notFound'],[409,'error.conflict'],[413,'error.tooLarge'],[422,'error.invalid'],[429,'error.rateLimit'],[503,'error.server']]) {
+  assert.equal(fresh.errorMessage(status, 'unrecognized internal error'), dictionary[key].en);
+  assert.equal(fresh.errorMessage(status), dictionary[key].en);
+ }
+ assert.ok(Object.keys(fresh.knownErrorMessages()).includes('invalid_launch_options'));
+ assert.equal(fresh.t('copy.HostCard.440a991a', { p0: 0 }), dictionary['copy.HostCard.440a991a'].en.replace('{p0}', '0'));
+ assert.equal(fresh.t('copy.HostCard.440a991a', { p0: false }), dictionary['copy.HostCard.440a991a'].en.replace('{p0}', 'false'));
+ assert.equal(fresh.t('copy.HostCard.440a991a', { p0: null }), dictionary['copy.HostCard.440a991a'].en.replace('{p0}', ''));
+ assert.throws(() => fresh.t('missing-key'), /Missing translation key: missing-key/);
+});
+
+test('uncached notices resolve short prefixes and complete sentences before general templates', async () => {
+ const fresh = await import(moduleUrl + '#uncached-notices');
+ await fresh.setLanguage('ru');
+ assert.equal(fresh.localizeText('of 12'), dictionary['copy.CountBadge.c552c01a'].ru.replace('{p0}', '12'));
+ const complete = dictionary['ui.0cc432761585'];
+ const withValues = text => text.replace('{p0}', 'worker').replace('{p1}', 'emulator').replace('{p2}', 'ready');
+ assert.equal(fresh.localizeText(withValues(complete.en)), withValues(complete.ru));
+ const longNotice = 'Node ' + 'x'.repeat(1995);
+ assert.equal(fresh.localizeText(longNotice), dictionary['ui.66bda389f3a5'].ru.replace('{p0}', 'x'.repeat(1995)));
+ assert.equal(fresh.localizeText(longNotice + 'x'), longNotice + 'x');
+
+ await fresh.setLanguage('en');
+ assert.equal(fresh.localizeText('Сессия #demo'), 'Session #demo');
+ assert.equal(fresh.localizeText('Сессия #'), 'Session #');
+ assert.equal(fresh.localizeText('raw device output'), 'raw device output');
+});
+
+test('notice matching rejects ambiguous copy and inconsistent repeated parameters', async () => {
+ const originalFetch = globalThis.fetch;
+ const french = JSON.parse(fs.readFileSync(new URL('../shared/locales/fr.json', import.meta.url), 'utf8'));
+ const copy = {
+  ...french,
+  'ui.66bda389f3a5': 'Notice {p0}; repeated {p0}.',
+  'copy.HostCard.440a991a': 'Ambiguous {p0}{p1}',
+  'copy.CountBadge.c552c01a': 'x{p0}',
+  'ui.0cc432761585': 'Report {p0} completed with details.',
+  'ui.71565c75af24': 'Report {p0} {p1}',
+ };
+ globalThis.fetch = async () => new Response(JSON.stringify(copy), { status: 200 });
+ try {
+  const fresh = await import(moduleUrl + '#notice-contract');
+  await fresh.setLanguage('fr');
+  await fresh.setLanguage('en');
+  assert.equal(fresh.localizeText('Notice alpha; repeated alpha.'), 'Node alpha');
+  assert.equal(fresh.localizeText('Notice alpha; repeated beta.'), 'Notice alpha; repeated beta.');
+  assert.equal(fresh.isInterfaceMessage('Ambiguous anything'), false);
+  assert.equal(fresh.isInterfaceMessage('xanything'), false);
+  assert.equal(fresh.localizeText('Report alpha completed with details.'), dictionary['ui.0cc432761585'].en.replace('{p0}', 'alpha'));
+ } finally { globalThis.fetch = originalFetch; }
+});
+
+test('rendered notice history stays bounded and retains the latest notices', async () => {
+ const fresh = await import(moduleUrl + '#notice-history');
+ await fresh.setLanguage('en');
+ for (let count = 0; count <= 5000; count++) fresh.t('ui.1febafe019db', { p0: count });
+ await fresh.setLanguage('ru');
+ assert.equal(fresh.localizeText('0 min'), '0 min');
+ assert.equal(fresh.localizeText('5000 min'), '5000 мин');
+});

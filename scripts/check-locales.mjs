@@ -7,16 +7,17 @@ import { resolve } from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = path => JSON.parse(readFileSync(resolve(root, path), 'utf8'));
 export const placeholders = value => [...value.matchAll(/\{[a-zA-Z]\w*\}/g)].map(match => match[0]).sort();
-export function validateLocale(source, translated, name) {
+function validateMessage(reference, text, name, key) {
+  if (typeof text !== 'string' || !text.trim()) return [name + ': missing text for ' + key];
   const errors = [];
-  for (const key of Object.keys(translated)) if (!Object.hasOwn(source, key)) errors.push(name + ': unexpected key ' + key);
-  for (const [key, reference] of Object.entries(source)) {
-    const text = translated[key];
-    if (['ui.6ba0bdeccb42', 'ui.3457b1617fe5'].includes(key) && text !== reference) errors.push(name + ': product name must stay unchanged in ' + key);
-    if (typeof text !== 'string' || !text.trim()) { errors.push(name + ': missing text for ' + key); continue; }
-    if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(text)) errors.push(name + ': control character in ' + key);
-    if (JSON.stringify(placeholders(reference)) !== JSON.stringify(placeholders(text))) errors.push(name + ': placeholders differ in ' + key);
-  }
+  if (['ui.6ba0bdeccb42', 'ui.3457b1617fe5'].includes(key) && text !== reference) errors.push(name + ': product name must stay unchanged in ' + key);
+  if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u.test(text)) errors.push(name + ': control character in ' + key);
+  if (JSON.stringify(placeholders(reference)) !== JSON.stringify(placeholders(text))) errors.push(name + ': placeholders differ in ' + key);
+  return errors;
+}
+export function validateLocale(source, translated, name) {
+  const errors = Object.keys(translated).filter(key => !Object.hasOwn(source, key)).map(key => name + ': unexpected key ' + key);
+  for (const [key, reference] of Object.entries(source)) errors.push(...validateMessage(reference, translated[key], name, key));
   return errors;
 }
 const fingerprint = value => createHash('sha256').update(JSON.stringify(Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b, 'en'))))).digest('hex');

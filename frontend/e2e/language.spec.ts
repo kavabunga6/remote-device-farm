@@ -166,3 +166,21 @@ test('persisted server notices change language with the interface', async ({ pag
   await expect(toast.locator('.notification-title')).toHaveText('Не удалось запустить устройство');
   await expect(toast.locator('.notification-message')).toHaveText('Сессия #language. Эмулятор завершился до загрузки Android. Проверьте образ и параметры запуска.');
 });
+
+
+test('a slow saved dictionary does not block the sign-in form', async ({ page }) => {
+  let release: (() => void) | undefined;
+  await page.addInitScript(() => localStorage.setItem('rdf.language', 'fr'));
+  await page.route(/\/shared\/locales\/fr\.json/, async route => {
+    await new Promise<void>(resolve => { release = resolve; });
+    await route.continue();
+  });
+  await signedOut(page);
+  try {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('.login-form input').first()).toBeVisible({ timeout: 2000 });
+    await page.locator('.login-form input').first().fill('example-user');
+  } finally { release?.(); }
+  await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
+  await expect(page.locator('.login-form input').first()).toHaveValue('example-user');
+});
