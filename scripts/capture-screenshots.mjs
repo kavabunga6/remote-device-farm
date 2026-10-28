@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -12,6 +12,11 @@ const html = await (await fetch(base, { signal: AbortSignal.timeout(5000) })).te
 if (!html.includes('function wsMock(')) throw new Error('Start frontend/dev/run-mock.mjs before capture');
 const output = resolve(root, 'docs/screenshots');
 mkdirSync(output, { recursive: true });
+function saveCapture(file, bytes) {
+  const temporary = resolve(output, '.tmp-' + file);
+  writeFileSync(temporary, bytes);
+  renameSync(temporary, resolve(output, file));
+}
 const stamp = new Date();
 const earlier = minutes => new Date(stamp.getTime() - minutes * 60000).toISOString();
 const sid = 'cbd55091-aaaa-bbbb-cccc-000000000001';
@@ -64,6 +69,7 @@ const screens = [
   { id: 'device-dark', route: 'session/' + sid, theme: 'dark', selector: '.device-screen' },
   { id: 'logcat-light', route: 'session/' + sid, theme: 'light', selector: '[role=tablist]', tab: 'Logcat' },
   { id: 'nodes-light', route: 'admin/nodes', theme: 'light', selector: '.host-card', fullPage: true },
+  { id: 'agent-onboarding-dark', route: 'admin/nodes', theme: 'dark', selector: '.host-card', publicOrigin: true },
   { id: 'profiles-light', route: 'admin/profiles', theme: 'light', selector: '.admin-profile-row', fullPage: true },
   { id: 'images-dark', route: 'admin/images', theme: 'dark', selector: '.image-inventory-table tbody tr' },
   { id: 'roles-light', route: 'admin/roles', theme: 'light', selector: 'h1', fullPage: true },
@@ -78,12 +84,16 @@ try {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(theme => { localStorage.setItem('rdf.language', 'en'); localStorage.setItem('rdf.theme', theme); }, screen.theme);
+    if (screen.publicOrigin) await page.route('https://farm.example.test/**', async route => {
+      const url = new URL(route.request().url());
+      await route.fulfill({ response: await route.fetch({ url: base + url.pathname + url.search }) });
+    });
     await page.route('**/api/**', async route => {
       const request = route.request(), path = new URL(request.url()).pathname;
       if (request.method() !== 'GET') return route.abort();
       if (path === '/api/me/preferences') return route.fulfill({ json: { preferences: { theme: screen.theme, fontFamily: 'system', fontScale: 1, defaultAdbKeyId: null } } });
       if (path === '/api/hosts') {
-        const payload = await (await route.fetch()).json();
+        const payload = await (await route.fetch({ url: base + path })).json();
         return route.fulfill({ json: { hosts: payload.hosts.map(host => ({ ...host, usedSlots: sessions.length, slotCpu: 8, slotMemoryMb: 8192 })) } });
       }
       if (path === '/api/queue') return route.fulfill({ json: { entries: [{
@@ -108,10 +118,15 @@ try {
       if (path === '/api/sessions/' + sid) return route.fulfill({ json: { session: sessions[0] } });
       if (path === '/api/admin/image-management/registry') return route.fulfill({ json: { supported: true, repository: repo, items: images, maintenance: false } });
       if (path === '/api/navigation-counts') return route.fulfill({ json: { counts: { sessions: 2, allSessions: 2, nodes: 1, profiles: profiles.length, users: 2, tokens: 2 } } });
+      if (screen.publicOrigin) return route.fallback();
       return route.continue();
     });
-    await page.goto(base + '/#/' + screen.route);
+    await page.goto((screen.publicOrigin ? 'https://farm.example.test' : base) + '/#/' + screen.route);
     await page.locator(screen.selector).first().waitFor({ timeout: 15000 });
+    if (screen.id === 'agent-onboarding-dark') {
+      await page.getByRole('button', { name: 'Connect a node', exact: true }).click();
+      await page.locator('.agent-package-row').waitFor();
+    }
     if (screen.id === 'roles-light') await page.getByRole('button', { name: /^QA Engineer/ }).click();
     if (screen.tab) { await page.getByRole('tab', { name: screen.tab, exact: true }).click(); await page.locator('.log-panel').waitFor(); }
     await page.evaluate(() => document.fonts.ready);
@@ -119,10 +134,10 @@ try {
     const geometry = await page.evaluate(() => ({ theme: document.documentElement.dataset.effectiveTheme, overflow: Math.max(0, document.documentElement.scrollWidth - innerWidth) }));
     if (errors.length || geometry.overflow > 1 || geometry.theme !== screen.theme) throw new Error(JSON.stringify({ screen: screen.id, errors, ...geometry }));
     const file = screen.id + '.png';
-    await page.screenshot({ path: resolve(output, file), animations: 'disabled', fullPage: screen.fullPage === true });
+    saveCapture(file, await page.screenshot({ animations: 'disabled', fullPage: screen.fullPage === true }));
     manifest.screens.push({ file, route: screen.route, theme: screen.theme, horizontalOverflow: geometry.overflow, browserErrors: errors });
-    writeFileSync(resolve(output, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
     console.log(file);
     await context.close();
   }
+  saveCapture('manifest.json', JSON.stringify(manifest, null, 2) + '\n');
 } finally { await browser.close(); }

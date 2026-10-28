@@ -26,6 +26,12 @@ Slot allocation, resource capacity and agent status.
 
 ![Nodes, light theme](nodes-light.png)
 
+## Connect a node
+
+Public archive download, a shareable download link and a separate token for each Linux node. The agent reads its connection settings on the node and appears in the farm after connecting.
+
+![Connect a Linux node, dark theme](agent-onboarding-dark.png)
+
 ## Device profiles
 
 Searchable profile inventory with node and Android resource limits, status and expandable configuration.
