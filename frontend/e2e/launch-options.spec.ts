@@ -50,3 +50,35 @@ test('desktop dialog aligns fields and keeps launch action in view', async ({ pa
     await page.screenshot({ path: testInfo.outputPath(`launch-${size.width}.png`), fullPage: true });
   }
 });
+
+
+test('reset is a button enabled only for changed resources, storage or arguments', async ({ page }) => {
+  await fixture(page);
+  const modal = page.getByRole('dialog');
+  const reset = modal.getByRole('button', { name: 'Сбросить', exact: true });
+  const cpu = modal.getByLabel('Лимит CPU на узле', { exact: true });
+  const disk = modal.getByLabel('Раздел данных, ГБ', { exact: true });
+  await expect(reset).toHaveClass(/button outline/);
+  await expect(reset).toBeDisabled();
+  await cpu.fill('2');
+  await expect(reset).toBeEnabled();
+  await cpu.fill(String(profile.cpu));
+  await expect(reset).toBeDisabled();
+  await disk.fill('24');
+  await expect(reset).toBeEnabled();
+  await disk.fill(String(profile.diskGb));
+  await expect(reset).toBeDisabled();
+  await modal.locator('.create-advanced-settings > summary').click();
+  const args = modal.getByLabel('Аргументы эмулятора', { exact: true });
+  await args.fill('  -no-snapshot  ');
+  await expect(reset).toBeDisabled();
+  await args.fill('-no-boot-anim');
+  await expect(reset).toBeEnabled();
+  await cpu.fill('2');
+  await disk.fill('24');
+  await reset.click();
+  await expect(cpu).toHaveValue(String(profile.cpu));
+  await expect(disk).toHaveValue(String(profile.diskGb));
+  await expect(args).toHaveValue(profile.emulatorParams);
+  await expect(reset).toBeDisabled();
+});

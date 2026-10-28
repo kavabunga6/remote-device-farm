@@ -69,6 +69,18 @@ for (const [name, theme, width, height, scale, language] of [
       return { size: style.fontSize, weight: style.fontWeight, color: style.color, opacity: style.opacity };
     }));
     for (const heading of headings) expect(heading).toEqual(headings[0]);
+    const controls = await dialog.evaluate(element => {
+      const rtl = getComputedStyle(element).direction === 'rtl';
+      const arrows = [...element.querySelectorAll('summary')].filter(summary => summary.getClientRects().length > 0).map(summary => {
+        const box = summary.getBoundingClientRect(), arrow = summary.querySelector(':scope > svg')!.getBoundingClientRect();
+        return rtl ? arrow.left - box.left : box.right - arrow.right;
+      });
+      const footer = element.querySelector('.create-session-footer')!.getBoundingClientRect();
+      const launch = element.querySelector('.create-session-footer .primary')!.getBoundingClientRect();
+      return { arrows, launchWidth: launch.width, footerWidth: footer.width };
+    });
+    for (const gap of controls.arrows) expect(Math.abs(gap)).toBeLessThanOrEqual(1);
+    if (width >= 1000) expect(controls.launchWidth).toBeLessThan(controls.footerWidth / 2);
     const geometry = await dialog.evaluate(element => {
       const box = element.getBoundingClientRect();
       const controls = [...element.querySelectorAll('.create-resource-fields input')].map(input => {
@@ -88,6 +100,8 @@ for (const [name, theme, width, height, scale, language] of [
     expect(geometry.footerBottom).toBeLessThanOrEqual(height);
     for (const delta of geometry.differences) expect(delta).toBeLessThanOrEqual(1);
     await page.screenshot({ path: testInfo.outputPath('launch-options-' + name + '.png'), fullPage: false, animations: 'disabled' });
+    await dialog.locator('.create-reset').scrollIntoViewIfNeeded();
+    await dialog.screenshot({ path: testInfo.outputPath('launch-controls-' + name + '.png'), animations: 'disabled' });
   });
 }
 

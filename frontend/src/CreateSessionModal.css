@@ -22,8 +22,8 @@
 
 /* Optional settings remain separate from device selection. */
 .create-settings{min-width:0}
-.create-settings>summary{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0;box-sizing:border-box;cursor:pointer;list-style:none}
-.create-settings>summary>svg{margin-inline-start:0}
+.create-settings>summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:0;box-sizing:border-box;cursor:pointer;list-style:none}
+.create-settings>summary>svg{margin-inline-start:auto}
 .create-session-modal summary::-webkit-details-marker{display:none}
 .create-session-modal summary>svg{flex:none}
 .create-settings[open]>summary{display:flex;padding-bottom:12px;border-bottom:1px solid var(--ui-border);margin-bottom:16px}
@@ -59,7 +59,7 @@
 .create-gpu-setting>.create-field-hint{margin-top:8px}
 .create-container-details{min-width:0;border-top:1px solid var(--ui-border);font-size:1rem;color:var(--ui-muted)}
 .create-container-details summary{display:flex;align-items:center;gap:8px;min-height:40px;cursor:pointer;list-style:none}
-.create-container-details summary>svg{margin-inline-start:0}
+.create-container-details summary>svg{margin-inline-start:auto}
 .create-image-facts{display:grid;gap:14px;margin:6px 0 0}
 .create-image-facts dt{margin-bottom:4px;line-height:1.5;color:var(--ui-muted)}
 .create-image-facts dd{margin:0;color:var(--ui-text);overflow-wrap:anywhere;line-height:1.6}
@@ -101,7 +101,7 @@
 .create-container-access dt{color:var(--ui-muted)}
 .create-container-access dd{margin:0;color:var(--ui-text);overflow-wrap:anywhere}
 .create-settings-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}
-.create-settings-actions .create-reset{padding:6px 0;min-height:32px;font-size:.9375rem;line-height:1.5}
+.create-settings-actions .create-reset{min-height:44px;padding:10px 16px;font-size:1rem;line-height:1.5}
 .modal.create-session-modal .inline-warning,.modal.create-session-modal .inline-error{margin:0;font-size:.9375rem;line-height:1.5}
 
 /* Readiness belongs beside the selected profile and never expands the footer. */
@@ -132,9 +132,9 @@
 .create-launch-status>span{display:flex;align-items:center;gap:8px}
 .create-launch-status svg{flex:none;color:var(--accent)}
 .create-launch-status .create-error{color:var(--error);max-height:6rem;overflow-y:auto}
-.modal.create-session-modal .modal-actions{display:flex;flex:1;gap:10px;margin:0;padding:0;border:0}
+.modal.create-session-modal .modal-actions{display:flex;flex:0 1 auto;flex-wrap:wrap;justify-content:flex-end;gap:10px;max-width:100%;margin:0;margin-inline-start:auto;padding:0;border:0}
 .create-session-footer .button{min-height:48px;padding:0 20px;font-size:1.0625rem}
-.create-session-footer .button.primary{flex:1;justify-content:center}
+.create-session-footer .button.primary{flex:none;justify-content:center}
 
 @media(max-width:959px){
   .modal.create-session-modal{width:min(40rem,calc(100vw - 32px));max-height:calc(100dvh - 32px)}
@@ -147,7 +147,7 @@
   .modal.create-session-modal h2{font-size:1.25rem}
   .modal.create-session-modal .modal-description{font-size:.9375rem}
   .create-session-body{padding:16px;gap:16px}
-  .create-settings>summary>svg{margin-inline-start:0}
+  .create-settings>summary>svg{margin-inline-start:auto}
   .create-launch-panel{gap:16px}
   .create-settings>.create-launch-settings{padding:0 0 12px}
   .create-resource-fields{column-gap:12px}
@@ -155,8 +155,7 @@
   .create-count-control{grid-template-columns:5rem minmax(0,1fr);gap:12px}
   .create-session-footer{padding:12px 16px;flex-wrap:wrap;gap:10px}
   .create-launch-status{width:100%;font-size:.9375rem}
-  .modal.create-session-modal .modal-actions{width:100%}
-  .create-session-footer .button{flex:1;padding:0 12px}
+  .create-session-footer .button{max-width:100%;padding:0 12px;white-space:normal}
 }
 @media(prefers-reduced-motion:reduce){.modal.create-session-modal .create-gpu-switch input{transition:none}}
 
