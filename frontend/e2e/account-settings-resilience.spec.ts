@@ -11,7 +11,7 @@ async function mockAccount(page: Page) {
   await page.addInitScript(() => localStorage.setItem('rdf.language', 'ru'));
   await page.route('**/api/me/profile', route => route.fulfill({ json: { profile: initialProfile } }));
   await page.route('**/api/me/rentals?*', route => route.fulfill({ json: { rentals: [], nextCursor: null } }));
-  await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: initialPreferences } }));
+  await page.route('**/api/me/preferences*', route => route.fulfill({ json: { preferences: initialPreferences } }));
 }
 const appearance = (page: Page) => page.locator('#settings-appearance');
 const theme = (page: Page, name: string) => appearance(page).getByRole('radio', { name, exact: true });
@@ -72,7 +72,7 @@ test('a failed profile cannot submit empty fields while other account sections s
 test('a preference-loading failure leaves profile usable and retries without writing defaults', async ({ page }) => {
   await mockAccount(page);
   let failPreferences = true, writes = 0;
-  await page.route('**/api/me/preferences', route => {
+  await page.route('**/api/me/preferences*', route => {
     if (route.request().method() === 'PATCH') { writes++; return route.fulfill({ json: { preferences: initialPreferences } }); }
     return failPreferences ? route.fulfill({ status: 500, json: { error: 'Preferences unavailable' } }) : route.fulfill({ json: { preferences: { ...initialPreferences, theme: 'dark' } } });
   });
@@ -94,7 +94,7 @@ for (const firstStatus of [200, 500]) {
     const first = deferred(), second = deferred();
     const requests: Array<Record<string, unknown>> = [];
     let stored = { ...initialPreferences }, active = 0, maximumActive = 0;
-    await page.route('**/api/me/preferences', async route => {
+    await page.route('**/api/me/preferences*', async route => {
       if (route.request().method() === 'GET') return route.fulfill({ json: { preferences: stored } });
       const patch = route.request().postDataJSON(); requests.push(patch);
       active++; maximumActive = Math.max(maximumActive, active);
@@ -134,7 +134,7 @@ test('leaving before the debounce flushes the choice, and returning waits for th
   await mockAccount(page);
   const reply = deferred();
   let writes = 0, stored = { ...initialPreferences };
-  await page.route('**/api/me/preferences', async route => {
+  await page.route('**/api/me/preferences*', async route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { preferences: stored } });
     writes++;
     const patch = route.request().postDataJSON();
@@ -160,7 +160,7 @@ test('leaving before the debounce flushes the choice, and returning waits for th
 test('the latest failed preference remains selected and can be retried', async ({ page }) => {
   await mockAccount(page);
   let fail = true;
-  await page.route('**/api/me/preferences', route => {
+  await page.route('**/api/me/preferences*', route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { preferences: initialPreferences } });
     return fail ? route.fulfill({ status: 500, json: { error: 'Save unavailable' } })
       : route.fulfill({ json: { preferences: { ...initialPreferences, ...route.request().postDataJSON() } } });
@@ -179,15 +179,18 @@ test('the latest failed preference remains selected and can be retried', async (
 test('a queued account write never applies to a different signed-in user', async ({ page }) => {
   await mockAccount(page);
   const firstReply = deferred();
-  let userId = 'u1', writes = 0, checkedDifferentUser = 0;
+  let userId = 'u1', writes = 0, rejected = 0;
   await page.route('**/api/me', route => {
-    if (userId !== 'u1') checkedDifferentUser++;
     return route.fulfill({ json: { user: { id: userId, username: userId, displayName: userId, role: 'admin' } } });
   });
-  await page.route('**/api/me/preferences', async route => {
+  await page.route('**/api/me/preferences*', async route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: { preferences: initialPreferences } });
-    writes++;
     const patch = route.request().postDataJSON();
+    if (patch.expectedUserId !== userId) {
+      rejected++;
+      return route.fulfill({ status: 409, json: { error: { code: 'account_changed', message: 'The account has changed. Try the action again.' } } });
+    }
+    writes++;
     await firstReply.promise;
     await route.fulfill({ json: { preferences: { ...initialPreferences, ...patch } } });
   });
@@ -198,8 +201,8 @@ test('a queued account write never applies to a different signed-in user', async
     await theme(page, 'Светлая').click();
     await page.waitForTimeout(650);
     userId = 'u2'; firstReply.resolve();
-    await expect.poll(() => checkedDifferentUser).toBe(1);
-    await expect(appearance(page).getByRole('alert')).toContainText('Сеанс входа завершён. Войдите снова.');
+    await expect.poll(() => rejected).toBe(1);
+    await expect(appearance(page).getByRole('alert')).toContainText('Аккаунт изменился. Повторите действие.');
     await expect(appearance(page).locator('.appearance-status')).not.toHaveText('Сохраняем…');
     expect(writes).toBe(1);
     await expect(theme(page, 'Светлая')).toHaveAttribute('aria-checked', 'true');
