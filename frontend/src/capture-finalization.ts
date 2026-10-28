@@ -1,5 +1,7 @@
 type CaptureClock = Pick<Window, 'requestAnimationFrame' | 'cancelAnimationFrame' | 'setTimeout' | 'clearTimeout'>;
-const FINAL_FRAME_DEADLINE_MS = 1000;
+const ENCODER_DRAIN_MS = 2000;
+const FINAL_FRAME_DEADLINE_MS = 4000;
+type FinalCapture = { stream?: MediaStream; pause?: () => void };
 type FrameProcessor = new (options: { track: MediaStreamTrack; maxBufferSize: number }) => { readable: ReadableStream<VideoFrame> };
 
 // A painted canvas is not necessarily delivered to its media track yet. Observe
@@ -35,7 +37,7 @@ function observeFinalFrames(stream: MediaStream | undefined, ready: () => void):
   return cancel;
 }
 
-export function scheduleCaptureStop(finish: () => void, frameDelayMs: number, clock: CaptureClock = window, stream?: MediaStream): () => void {
+export function scheduleCaptureStop(finish: () => void, capture: FinalCapture = {}, clock: CaptureClock = window): () => void {
   let done = false;
   let cancelFrames: (() => void) | undefined;
   let frame: number | null = null;
@@ -60,8 +62,12 @@ export function scheduleCaptureStop(finish: () => void, frameDelayMs: number, cl
     if (done) return;
     frame = clock.requestAnimationFrame(() => {
       frame = null;
-      if (!done) cancelFrames = observeFinalFrames(stream, () => {
-        if (!done) settleTimer = clock.setTimeout(finishOnce, frameDelayMs);
+      if (!done) cancelFrames = observeFinalFrames(capture.stream, () => {
+        if (done) return;
+        // Chromium stop() can discard frames still in its encoding queue
+        // (crbug.com/719023). Stop feeding it before allowing that queue to drain.
+        try { capture.pause?.(); } catch { /* Still finalize after a recorder error. */ }
+        settleTimer = clock.setTimeout(finishOnce, ENCODER_DRAIN_MS);
       });
     });
   });

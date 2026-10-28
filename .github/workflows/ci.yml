@@ -41,6 +41,11 @@ jobs:
           node-version: '24'
       - run: npm ci --prefix integrations --ignore-scripts
       - run: npm ci --prefix integrations/mcp --ignore-scripts
+      - name: Verify documentation dependencies and static build
+        run: |
+          npm ci --prefix docs --ignore-scripts
+          npm audit --prefix docs --audit-level=moderate
+          npm run build --prefix docs
       - name: Check integration examples and contracts
         run: |
           for tool in bash curl jq timeout; do command -v "$tool"; done
@@ -296,6 +301,11 @@ jobs:
       - name: Verify browser transport and recorded touch pixels
         working-directory: frontend
         run: npx playwright test e2e/session-transport.spec.ts e2e/touch-capture.spec.ts
+      - name: Verify recording finalization under CPU contention
+        working-directory: frontend
+        env:
+          CAPTURE_CPU_THROTTLE: '4'
+        run: npx playwright test e2e/touch-capture.spec.ts --grep 'fallback tap' --repeat-each 3
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:

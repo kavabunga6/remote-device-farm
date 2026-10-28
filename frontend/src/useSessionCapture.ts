@@ -143,10 +143,17 @@ export function useSessionCapture({ sessionId, status, format, imageRef, canvasR
     if (mountedRef.current) { setRecording(false); setSaving(true); }
     try { active.drawFrame(); }
     catch { /* Finalize the recording even if its source became unreadable. */ }
-    // Capture the painted final frame before asking the encoder to flush it.
+    // Deliver the final canvas frame before pausing and draining the encoder.
     active.cancelStop = scheduleCaptureStop(() => {
       if (active.recorder.state !== 'inactive') active.recorder.stop();
-    }, Math.ceil(3000 / RECORDING_FPS), window, active.stream);
+    }, {
+      stream: active.stream,
+      pause: () => {
+        window.clearInterval(active.drawTimer);
+        window.clearInterval(active.clockTimer);
+        if (active.recorder.state === 'recording') active.recorder.pause();
+      },
+    });
   }, []);
 
   const startRecording = useCallback(() => {

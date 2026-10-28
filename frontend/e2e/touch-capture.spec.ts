@@ -15,6 +15,12 @@ async function nextPaint(page: Page) {
 
 type FixtureOptions = { landscape?: boolean; native?: boolean; failReads?: number };
 async function fixture(page: Page, options: FixtureOptions = {}) {
+  const cpuRate = Number(process.env.CAPTURE_CPU_THROTTLE || 1);
+  if (!Number.isFinite(cpuRate) || cpuRate < 1 || cpuRate > 8) throw new Error('Invalid capture CPU rate');
+  if (cpuRate !== 1) {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
+  }
   let reads = 0;
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.addInitScript(({ landscape, native }) => {

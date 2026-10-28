@@ -681,7 +681,7 @@
     },
     {
       "component": "frontend",
-      "lockSha256": "5477ca7ab578caf4615f05ab60f14f489407819c413f946b7234da853c6e2428",
+      "lockSha256": "08df9be8a8502e9250bbcd73739eda01681db09046f371ae4a5d3b40c2592b8c",
       "packages": [
         {
           "name": "@fontsource-variable/jetbrains-mono",

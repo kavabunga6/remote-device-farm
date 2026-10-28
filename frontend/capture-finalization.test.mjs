@@ -26,33 +26,33 @@ function fixture() {
 }
 
 test('finalization waits for a painted capture before allowing the encoder to flush', () => {
-  const f = fixture(); scheduleCaptureStop(f.finish, 100, f.clock);
+  const f = fixture(); scheduleCaptureStop(f.finish, {}, f.clock);
   f.advance(200); assert.equal(f.count(), 0);
   f.frame(); f.advance(40); assert.equal(f.count(), 0);
-  f.frame(); f.advance(99); assert.equal(f.count(), 0);
+  f.frame(); f.advance(1999); assert.equal(f.count(), 0);
   f.advance(1); assert.equal(f.count(), 1); assert.equal(f.pending(), 0);
   f.advance(1000); assert.equal(f.count(), 1);
 });
 
 test('a suspended renderer still finalizes within a bounded deadline and cancels its frame callback', () => {
-  const f = fixture(); scheduleCaptureStop(f.finish, 100, f.clock);
-  f.advance(999); assert.equal(f.count(), 0);
+  const f = fixture(); scheduleCaptureStop(f.finish, {}, f.clock);
+  f.advance(3999); assert.equal(f.count(), 0);
   f.advance(1); assert.equal(f.count(), 1); assert.equal(f.pending(), 0);
   f.frame(); assert.equal(f.count(), 1); assert.equal(f.pending(), 0);
 });
 
 test('cancellation at any paint stage removes timers and cannot stop another recording', () => {
   for (const paints of [0, 1, 2]) {
-    const f = fixture(); const cancel = scheduleCaptureStop(f.finish, 100, f.clock);
+    const f = fixture(); const cancel = scheduleCaptureStop(f.finish, {}, f.clock);
     for (let i = 0; i < paints; i++) f.frame();
     cancel(); cancel(); assert.equal(f.pending(), 0);
-    f.advance(2000); f.frame(); assert.equal(f.count(), 0); assert.equal(f.pending(), 0);
+    f.advance(5000); f.frame(); assert.equal(f.count(), 0); assert.equal(f.pending(), 0);
   }
 });
 
 test('a late paint cannot extend the finalization deadline', () => {
-  const f = fixture(); scheduleCaptureStop(f.finish, 100, f.clock);
-  f.advance(950); f.frame(); f.frame(); f.advance(50);
+  const f = fixture(); scheduleCaptureStop(f.finish, {}, f.clock);
+  f.advance(3950); f.frame(); f.frame(); f.advance(50);
   assert.equal(f.count(), 1); assert.equal(f.pending(), 0);
   f.advance(100); assert.equal(f.count(), 1);
 });
@@ -78,17 +78,17 @@ const drain = () => new Promise(resolve => setImmediate(resolve));
 
 test('finalization observes fresh media frames and releases their clone before stopping the recorder', async t => {
   const media = mediaFixture(t), f = fixture();
-  scheduleCaptureStop(f.finish, 100, f.clock, media.stream);
+  scheduleCaptureStop(f.finish, { stream: media.stream }, f.clock);
   f.frame(); f.frame(); f.advance(200); assert.equal(f.count(), 0);
   media.frame(); await drain(); f.advance(100); assert.equal(f.count(), 0);
-  media.frame(); await drain(); f.advance(99); assert.equal(f.count(), 0);
+  media.frame(); await drain(); f.advance(1999); assert.equal(f.count(), 0);
   f.advance(1); assert.equal(f.count(), 1); assert.equal(f.pending(), 0);
   assert.deepEqual(media.counts(), { stopped: 1, cancelled: 1, closed: 2 });
 });
 
 test('cancellation releases a pending frame reader without stopping the recorder', async t => {
   const media = mediaFixture(t), f = fixture();
-  const cancel = scheduleCaptureStop(f.finish, 100, f.clock, media.stream);
+  const cancel = scheduleCaptureStop(f.finish, { stream: media.stream }, f.clock);
   f.frame(); f.frame(); media.frame(); await drain(); cancel(); await drain();
   f.advance(2000); assert.equal(f.count(), 0); assert.equal(f.pending(), 0);
   assert.equal(media.counts().closed, 1); assert.ok(media.counts().stopped > 0);
@@ -97,8 +97,18 @@ test('cancellation releases a pending frame reader without stopping the recorder
 
 test('a stalled media pipeline still stops within the deadline and releases its reader', async t => {
   const media = mediaFixture(t), f = fixture();
-  scheduleCaptureStop(f.finish, 100, f.clock, media.stream);
-  f.frame(); f.frame(); f.advance(1000); await drain();
+  scheduleCaptureStop(f.finish, { stream: media.stream }, f.clock);
+  f.frame(); f.frame(); f.advance(4000); await drain();
   assert.equal(f.count(), 1); assert.equal(f.pending(), 0);
   assert.ok(media.counts().stopped > 0); assert.equal(media.counts().cancelled, 1);
+});
+
+test('the producer pauses after delivery and the encoder can drain before final stop', async t => {
+  const media = mediaFixture(t), f = fixture(); let paused = 0;
+  scheduleCaptureStop(f.finish, { stream: media.stream, pause: () => paused++ }, f.clock);
+  f.frame(); f.frame(); assert.equal(paused, 0);
+  media.frame(); await drain(); media.frame(); await drain();
+  assert.equal(paused, 1); assert.equal(f.count(), 0);
+  f.advance(1999); assert.equal(f.count(), 0);
+  f.advance(1); assert.equal(f.count(), 1); assert.equal(f.pending(), 0);
 });
