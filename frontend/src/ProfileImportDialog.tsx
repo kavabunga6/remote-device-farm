@@ -1,3 +1,5 @@
+import examples from '../../shared/interface-examples.json';
+import { TranslatedText } from './TranslatedText';
 import { localizeText, t } from './i18n';
 import { useState } from 'react';
 import { api, type ProfileImportResult } from './api';
@@ -37,17 +39,17 @@ export function ProfileImportDialog({ onClose, onApplied }: { onClose: () => voi
   return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose(); }}>
     <div className="modal profile-import-dialog" ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="profile-import-heading">
       <div className="modal-top"><h2 id="profile-import-heading">{t('ui.218d77705244')}</h2><button type="button" className="icon-button" aria-label={t('ui.a7a4033657e8')} onClick={onClose} disabled={busy}><Icon name="close" size={19} /></button></div>
-      <p className="profile-import-note">{t('ui.deb201392c7f')}<strong>{t('ui.3108ace8d87e')}</strong>{t('ui.65f350ea28d2')}<code>{t('ui.74234e98afe7')}</code>{t('ui.372237caf109')}</p>
+      <p className="profile-import-note"><TranslatedText message="copy.ProfileImportDialog.c44a903d" values={{ p0: <strong>{t('ui.3108ace8d87e')}</strong>, p1: <code>{t('ui.74234e98afe7')}</code> }} /></p>
       <label className="profile-import-file"><span>{t('ui.c35718c46580')}</span><input type="file" accept="application/json,.json" disabled={busy} onChange={event => { const file = event.target.files?.[0]; if (file) void file.text().then(content => { setText(content); setResult(null); setError(''); }); }} /></label>
-      <label className="profile-import-text"><span>{t('ui.93a87a98d673')}</span><textarea value={text} onChange={event => { setText(event.target.value); setResult(null); }} rows={9} spellCheck={false} placeholder={'{\n  "version": 2,\n  "profiles": [ … ]\n}'} disabled={busy} /></label>
+      <label className="profile-import-text"><span>{t('ui.93a87a98d673')}</span><textarea value={text} onChange={event => { setText(event.target.value); setResult(null); }} rows={9} spellCheck={false} placeholder={examples.profileManifest} disabled={busy} /></label>
       <label className="checkbox-label"><input type="checkbox" checked={update} onChange={event => { setUpdate(event.target.checked); setResult(null); }} disabled={busy} />{t('ui.6bbfcf3f6e22')}</label>
       {error && <div className="inline-error" role="alert">{localizeText(error)}</div>}
       {result && <div className="profile-import-result" role="status">
-        {result.issues.map(issue => <p className="profile-import-issue" key={issue.path}><code>{issue.path}</code> {issue.message}</p>)}
+        {result.issues.map(issue => <p className="profile-import-issue" key={issue.path}><code>{issue.path}</code> {localizeText(issue.message)}</p>)}
         <ul>{result.results.map(item => <li key={item.id || item.name} data-action={item.action}>
           <strong>{item.name || item.id || t('ui.0106f3ae2502')}</strong> <span className="profile-import-action">{ACTION[item.action]}</span>
-          {item.issues.map(issue => <p className="profile-import-issue" key={issue.path + issue.message}><code>{issue.path}</code> {issue.message}</p>)}
-          {item.warnings.map(warning => <p className="profile-import-warning" key={warning}>{warning}</p>)}
+          {item.issues.map(issue => <p className="profile-import-issue" key={issue.path + issue.message}><code>{issue.path}</code> {localizeText(issue.message)}</p>)}
+          {item.warnings.map(warning => <p className="profile-import-warning" key={warning}>{localizeText(warning)}</p>)}
         </li>)}</ul>
         {result.applied && <p className="profile-import-done">{t('ui.41842447c717')}</p>}
       </div>}

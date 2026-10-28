@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { readFile } from 'node:fs/promises';
 import { ApiError } from './http-common.js';
 import { uiMessage } from './messages.js';
@@ -14,20 +15,20 @@ export class RegistryMaintenanceClient implements RegistryMaintenance {
   constructor(private readonly url = process.env.RDF_REGISTRY_CONTROL_URL ?? 'http://registry:5001',
     private readonly tokenFile = process.env.RDF_REGISTRY_CONTROL_TOKEN_FILE ?? '/run/registry-maintenance/token') {
     const parsed = new URL(url);
-    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) throw new Error('Invalid registry control URL');
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) throw new Error(diagnostic('image-maintenance-client.98d41fc493'));
   }
   private async call<T>(path: string, body?: unknown): Promise<T> {
     try {
       const token = (await readFile(this.tokenFile, 'utf8')).trim();
-      if (!/^[a-f0-9]{64}$/.test(token)) throw new Error('Invalid control token');
+      if (!/^[a-f0-9]{64}$/.test(token)) throw new Error(diagnostic('image-maintenance-client.dd920f8a9d'));
       const response = await fetch(new URL(path, this.url), {
         redirect: 'error', signal: AbortSignal.timeout(30000),
         method: body === undefined ? 'GET' : 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body)
       });
-      if (!response.ok) throw new Error('Maintenance unavailable');
+      if (!response.ok) throw new Error(diagnostic('image-maintenance-client.712c70b9b1'));
       const text = await response.text();
-      if (text.length > 8 * 1024 * 1024) throw new Error('Inventory exceeds limit');
+      if (text.length > 8 * 1024 * 1024) throw new Error(diagnostic('image-maintenance-client.32d54d9a0c'));
       return JSON.parse(text) as T;
     } catch { throw new ApiError(503, 'image_management_unavailable', uiMessage('images.error.unavailable')); }
   }

@@ -18,7 +18,7 @@ need() { command -v "$1" >/dev/null 2>&1 || fail "$1 is required"; }
 need_timeout() {
   local candidate
   for candidate in timeout gtimeout; do
-    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" --version 2>/dev/null | grep -q 'GNU coreutils'; then
+    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" --version 2>/dev/null | grep 'GNU coreutils' >/dev/null; then
       TIMEOUT_TOOL="$candidate"
       return 0
     fi

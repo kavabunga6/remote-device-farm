@@ -1,0 +1,446 @@
+{
+  "agent.1af461dcc07c": {
+    "ru": "Запуск сессии отменён",
+    "en": "Session startup cancelled"
+  },
+  "agent.1c2b5b00ab42": {
+    "ru": "Функция устройства недоступна",
+    "en": "Device capability is unavailable"
+  },
+  "agent.1fa0375b158e": {
+    "ru": "Параметр enabled должен быть логическим",
+    "en": "enabled must be boolean"
+  },
+  "agent.2162454b0b76": {
+    "ru": "Очистка предыдущей сессии ещё не завершена",
+    "en": "Previous session cleanup is still pending"
+  },
+  "agent.2271047a7f94": {
+    "ru": "Android не загрузился за отведённое время",
+    "en": "Android did not finish booting before the startup timeout"
+  },
+  "agent.36ca4f18c906": {
+    "ru": "Чистота устройства ещё не подтверждена. Идёт подготовка.",
+    "en": "Device has not been verified clean yet; it is being prepared"
+  },
+  "agent.3d4b5f89dca1": {
+    "ru": "Некорректный серийный номер устройства",
+    "en": "Invalid device serial"
+  },
+  "agent.4334ae1a7ebf": {
+    "ru": "Нет свободных USB-устройств",
+    "en": "No free USB devices"
+  },
+  "agent.43edc8d561c1": {
+    "ru": "Контейнер эмулятора остановился до завершения загрузки Android",
+    "en": "Emulator container stopped before Android finished booting"
+  },
+  "agent.45a7afcab5b9": {
+    "ru": "Некорректное действие касания",
+    "en": "Invalid touch action"
+  },
+  "agent.4603ecd59333": {
+    "ru": "Очистка этого устройства уже выполняется",
+    "en": "Cleaning is already in progress for this device"
+  },
+  "agent.51d321a3854e": {
+    "ru": "Некорректные координаты касания",
+    "en": "Invalid touch coordinates"
+  },
+  "agent.55b0b1c11639": {
+    "ru": "Пакет scrcpy превысил лимит",
+    "en": "scrcpy packet exceeds limit"
+  },
+  "agent.5c9e04a77662": {
+    "ru": "Неподдерживаемый тип устройства",
+    "en": "Unsupported device kind"
+  },
+  "agent.653f16499e77": {
+    "ru": "Некорректный заголовок scrcpy",
+    "en": "Invalid scrcpy header"
+  },
+  "agent.66cfc47a68a2": {
+    "ru": "Устройство для этого действия не найдено",
+    "en": "No device matched this action"
+  },
+  "agent.690472e46a6e": {
+    "ru": "Некорректный код клавиши Android",
+    "en": "Invalid Android keycode"
+  },
+  "agent.79aacfc01a6b": {
+    "ru": "Агенту недоступен /dev/kvm",
+    "en": "/dev/kvm is not available to the agent"
+  },
+  "agent.802d346781b7": {
+    "ru": "Буфер приёма scrcpy превысил лимит",
+    "en": "scrcpy receive buffer exceeded limit"
+  },
+  "agent.8c1dd88736bc": {
+    "ru": "Неподдерживаемая платформа устройства",
+    "en": "Unsupported device platform"
+  },
+  "agent.8e0728d7bf55": {
+    "ru": "Устройство не подключено или не управляется этим агентом",
+    "en": "Device is not connected or not managed by this agent"
+  },
+  "agent.91b23cf76718": {
+    "ru": "Соединение scrcpy закрыто",
+    "en": "scrcpy socket closed"
+  },
+  "agent.94a6b461a77a": {
+    "ru": "Устройство уже используется",
+    "en": "Device is already in use"
+  },
+  "agent.972c3683897a": {
+    "ru": "USB-устройство не подключено",
+    "en": "USB device is not connected"
+  },
+  "agent.a13554e0b9b5": {
+    "ru": "Хранилище состояния устройств недоступно. Выдача запрещена.",
+    "en": "Device state store is unavailable; refusing to lease"
+  },
+  "agent.a14b4d584e08": {
+    "ru": "Сессия не работает на этом агенте",
+    "en": "Session is not running on this agent"
+  },
+  "agent.a3e284efaef3": {
+    "ru": "Устройство очищается и пока недоступно",
+    "en": "Device is being cleaned and is not available yet"
+  },
+  "agent.access.viewOnly": {
+    "ru": "Доступ только для просмотра.",
+    "en": "View-only access."
+  },
+  "agent.androidReady": {
+    "ru": "ADB подключён; sys.boot_completed=1",
+    "en": "ADB connected; sys.boot_completed=1"
+  },
+  "agent.androidRejected": {
+    "ru": "Android отклонил настройку {p0}",
+    "en": "Android rejected {p0}"
+  },
+  "agent.appium.androidVersion": {
+    "en": "Appium requires a confirmed Android 8 (API 26) or newer device.",
+    "ru": "Для Appium нужна подтверждённая версия Android 8 (API 26) или новее."
+  },
+  "agent.appium.busy": {
+    "en": "An Appium command or session is already active.",
+    "ru": "Команда или сессия Appium уже выполняется."
+  },
+  "agent.appium.commandFailed": {
+    "en": "The Appium command failed. Check the selector and device state.",
+    "ru": "Команда Appium не выполнена. Проверьте селектор и состояние устройства."
+  },
+  "agent.appium.failed": {
+    "en": "The Appium worker could not complete the request.",
+    "ru": "Процесс Appium не смог выполнить запрос."
+  },
+  "agent.appium.ready": {
+    "en": "Appium is available for this device session.",
+    "ru": "Appium доступен для этой сессии устройства."
+  },
+  "agent.appium.unavailable": {
+    "en": "Managed Appium is not installed on this node.",
+    "ru": "Управляемый Appium не установлен на этом узле."
+  },
+  "agent.apps.listFailed": {
+    "ru": "Не удалось получить приложения Android",
+    "en": "Could not read the Android app list"
+  },
+  "agent.apps.notInstalled": {
+    "ru": "Приложение не установлено. Обновите список приложений.",
+    "en": "The app is not installed. Refresh the app list."
+  },
+  "agent.apps.uidUnavailable": {
+    "ru": "Android не передал UID записей. Фильтр приложения недоступен на этом образе.",
+    "en": "Android did not report app UIDs. App filtering is unavailable on this image."
+  },
+  "agent.b437662d8b65": {
+    "ru": "Некорректный размер пакета scrcpy",
+    "en": "Invalid scrcpy packet size"
+  },
+  "agent.b8ca0338ba26": {
+    "ru": "Некорректный аудиозаголовок scrcpy",
+    "en": "Invalid scrcpy audio header"
+  },
+  "agent.b9a2aff69247": {
+    "ru": "Список устройств ADB недоступен",
+    "en": "ADB device list is unavailable"
+  },
+  "agent.ba6ac7423541": {
+    "ru": "Чистота устройства уже подтверждена",
+    "en": "Device is already verified clean"
+  },
+  "agent.bootProbe": {
+    "ru": "ADB ещё не готов: {p0}",
+    "en": "ADB is not ready yet: {p0}"
+  },
+  "agent.camera.failed": {
+    "en": "The emulator could not update the virtual camera.",
+    "ru": "Эмулятор не смог обновить виртуальную камеру."
+  },
+  "agent.camera.invalid": {
+    "en": "Use a PNG image up to 256 KiB and 1024 × 1024 pixels.",
+    "ru": "Используйте PNG до 256 КиБ и 1024 × 1024 пикселей."
+  },
+  "agent.camera.invalidRequest": {
+    "en": "Invalid virtual camera command.",
+    "ru": "Некорректная команда виртуальной камеры."
+  },
+  "agent.camera.unavailable": {
+    "en": "This emulator does not have a virtual scene camera. Use a compatible phone or tablet image.",
+    "ru": "У этого эмулятора нет камеры виртуальной сцены. Выберите совместимый образ телефона или планшета."
+  },
+  "agent.catalog.empty": {
+    "ru": "Каталог Google не содержит образов для архитектуры сборщика.",
+    "en": "The Google catalog contains no images for the builder architecture."
+  },
+  "agent.catalog.timeout": {
+    "ru": "Истекло время подготовки каталога Google.",
+    "en": "Google catalog preparation timed out."
+  },
+  "agent.cleanup.completed": {
+    "ru": "Контейнер, тома и сети удалены",
+    "en": "Container, volumes and networks removed"
+  },
+  "agent.cleanup.container": {
+    "ru": "Удаление контейнера {p0} и его томов",
+    "en": "Removing container {p0} and its volumes"
+  },
+  "agent.cleanup.networks": {
+    "ru": "Удаление сетей сессии",
+    "en": "Removing session networks"
+  },
+  "agent.codecFailed": {
+    "ru": "Ошибка аудиокодера scrcpy {p0}",
+    "en": "scrcpy {p0} audio encoder failed"
+  },
+  "agent.codecUnexpected": {
+    "ru": "Неожиданный аудиокодек scrcpy: {p0}",
+    "en": "Unexpected scrcpy audio codec {p0}"
+  },
+  "agent.console.exitCode": {
+    "ru": "{p0} (код {p1})",
+    "en": "{p0} (exit code {p1})"
+  },
+  "agent.console.failed": {
+    "ru": "Не удалось выполнить команду консоли устройства",
+    "en": "Could not run the device console command"
+  },
+  "agent.console.unconfirmed": {
+    "ru": "Консоль устройства не подтвердила выполнение команды.",
+    "en": "The device console did not confirm that the command completed."
+  },
+  "agent.containerStarted": {
+    "ru": "Контейнер запущен: {p0}",
+    "en": "Container started: {p0}"
+  },
+  "agent.diagnostics.failed": {
+    "ru": "Не удалось получить диагностику контейнера: {p0}",
+    "en": "Could not read container diagnostics: {p0}"
+  },
+  "agent.diagnostics.snapshot": {
+    "ru": "Снимок stdout/stderr контейнера: последние 2000 строк.",
+    "en": "Container stdout/stderr snapshot: last 2000 lines."
+  },
+  "agent.dummyByte": {
+    "ru": "Некорректный байт подтверждения scrcpy: {p0}",
+    "en": "Invalid scrcpy dummy byte: {p0}"
+  },
+  "agent.e7e47949c94a": {
+    "ru": "Контейнер эмулятора остался после остановки",
+    "en": "Emulator container still exists after stop"
+  },
+  "agent.eb3597029ef9": {
+    "ru": "Запуск сессии ещё не завершён",
+    "en": "Session startup is still pending"
+  },
+  "agent.edb6e60881d1": {
+    "ru": "Восстановление сессии отменено",
+    "en": "Session recovery cancelled"
+  },
+  "agent.f4309a285e65": {
+    "ru": "Некорректный идентификатор касания",
+    "en": "Invalid touch pointer ID"
+  },
+  "agent.f4e60ac952ee": {
+    "ru": "Некорректный текст ввода",
+    "en": "Invalid input text"
+  },
+  "agent.fc8ecbf72def": {
+    "ru": "Некорректные размеры экрана касаний",
+    "en": "Invalid touch screen dimensions"
+  },
+  "agent.fe61e1669f6e": {
+    "ru": "Устройство используется",
+    "en": "Device is in use"
+  },
+  "agent.handshakeFailed": {
+    "ru": "Не удалось установить соединение scrcpy: {p0}",
+    "en": "scrcpy forward handshake failed: {p0}"
+  },
+  "agent.kvm.available": {
+    "ru": "KVM доступен; GPU backend: {p0}",
+    "en": "KVM available; GPU backend: {p0}"
+  },
+  "agent.noWiper": {
+    "ru": "Стратегия очистки для {p0} не настроена. Выдача устройства запрещена.",
+    "en": "No wipe strategy configured for {p0} devices; refusing to lease"
+  },
+  "agent.operationTimeout": {
+    "ru": "Истекло время ожидания: {p0}",
+    "en": "{p0} timed out"
+  },
+  "agent.profile.checked": {
+    "ru": "Профиль и лимиты узла проверены",
+    "en": "Profile and node limits checked"
+  },
+  "agent.profile.tabletName": {
+    "ru": "Планшет · {p0}",
+    "en": "Tablet · {p0}"
+  },
+  "agent.providerFailure": {
+    "ru": "Провайдер {p0}: ошибка {p1}: {p2}",
+    "en": "Provider {p0}: {p1} failed: {p2}"
+  },
+  "agent.providerRecovered": {
+    "ru": "Провайдер {p0}: {p1} восстановлен",
+    "en": "Provider {p0}: {p1} recovered"
+  },
+  "agent.providerStart": {
+    "ru": "Провайдер {p0} не поддерживает запуск сессий",
+    "en": "Provider {p0} cannot start sessions"
+  },
+  "agent.providerStop": {
+    "ru": "Провайдер {p0} не поддерживает остановку сессий",
+    "en": "Provider {p0} cannot stop sessions"
+  },
+  "agent.quarantined": {
+    "ru": "Устройство в карантине: {p0}",
+    "en": "Device is quarantined: {p0}"
+  },
+  "agent.recovery.cleaned": {
+    "ru": "Очистка после восстановления завершена",
+    "en": "Cleanup after recovery completed"
+  },
+  "agent.recovery.started": {
+    "ru": "Восстановление агента: {p0}",
+    "en": "Agent recovery: {p0}"
+  },
+  "agent.settings.unconfirmed": {
+    "ru": "Android не подтвердил изменение {p0}. Обновите состояние и повторите.",
+    "en": "Android did not confirm the change to {p0}. Refresh the state and try again."
+  },
+  "agent.startCheck": {
+    "ru": "Проверка ресурсов, KVM и GPU",
+    "en": "Checking resources, KVM and GPU"
+  },
+  "agent.ui.ambiguous": {
+    "ru": "Найдено несколько элементов. Уточните ID или индекс.",
+    "en": "Several elements match. Specify a resource ID or index."
+  },
+  "agent.ui.busy": {
+    "ru": "Дерево интерфейса уже запрашивается.",
+    "en": "A UI hierarchy request is already running."
+  },
+  "agent.ui.inputFailed": {
+    "ru": "Не удалось подтвердить нажатие. Проверьте экран устройства перед повторной попыткой.",
+    "en": "The tap could not be confirmed. Check the device screen before trying again."
+  },
+  "agent.ui.notActionable": {
+    "ru": "Элемент отключён или находится за пределами экрана.",
+    "en": "The element is disabled or outside the visible screen."
+  },
+  "agent.ui.notFound": {
+    "ru": "Подходящий элемент интерфейса не найден.",
+    "en": "No matching UI element was found."
+  },
+  "agent.ui.selector": {
+    "ru": "Некорректный селектор элемента интерфейса.",
+    "en": "Invalid UI element selector."
+  },
+  "agent.ui.unavailable": {
+    "ru": "Не удалось прочитать структуру экрана. Включите экран, дождитесь загрузки интерфейса и повторите попытку.",
+    "en": "Could not read the screen hierarchy. Wake the screen, wait for the interface to load, and try again."
+  },
+  "agent.unexpectedStop": {
+    "ru": "Устройство отключилось или очистка не завершена. Повторная очистка запущена.",
+    "en": "The device disconnected or cleanup did not finish. Cleanup is being retried."
+  },
+  "agent.unsupportedAction": {
+    "ru": "Действие \"{p0}\" не поддерживается устройствами {p1}",
+    "en": "\"{p0}\" is not supported for {p1} devices"
+  },
+  "agent.usbAuthorize": {
+    "ru": "USB-устройство в состоянии {p0}. Разрешите ADB-доступ на устройстве.",
+    "en": "USB device is {p0}; authorize this host's ADB key on the phone"
+  },
+  "agent.webrtc.disabled": {
+    "ru": "WebRTC не включён на узле.",
+    "en": "WebRTC is not enabled on this node."
+  },
+  "agent.webrtc.waitForStream": {
+    "ru": "Видеопоток ещё не готов. Дождитесь подключения scrcpy.",
+    "en": "The video stream is not ready. Wait for scrcpy to connect."
+  },
+  "apps.bundletoolMissing": {
+    "en": "This agent does not have bundletool. Update the agent to install .apks archives.",
+    "ru": "На этом агенте нет bundletool. Обновите агент для установки архивов .apks."
+  },
+  "apps.deviceSpecFailed": {
+    "en": "Could not read the device configuration for APK selection.",
+    "ru": "Не удалось прочитать конфигурацию устройства для подбора APK."
+  },
+  "apps.incompatibleSet": {
+    "en": "The APK set could not be installed. Check the device configuration, package versions and signing certificates.",
+    "ru": "Не удалось установить набор APK. Проверьте конфигурацию устройства, версии пакетов и сертификаты подписи."
+  },
+  "apps.invalidSet": {
+    "en": "Upload an APK, a bundletool .apks archive, or a ZIP containing one base APK and its splits.",
+    "ru": "Загрузите APK, архив .apks из bundletool или ZIP с базовым APK и его частями."
+  },
+  "debug.busy": {
+    "en": "Debug requests are already running. Wait for them to finish.",
+    "ru": "Отладочные запросы уже выполняются. Дождитесь их завершения."
+  },
+  "networkInspector.alreadyStarted": {
+    "en": "Traffic capture is already running.",
+    "ru": "Запись трафика уже идёт."
+  },
+  "networkInspector.captureChanged": {
+    "en": "Capture changed during download. Download the file again.",
+    "ru": "Запись изменилась во время скачивания. Скачайте файл заново."
+  },
+  "networkInspector.connectionsOpen": {
+    "en": "Existing proxy connections prevent the traffic inspector update. Close the apps using them and start a new capture, or create a new session. The previous capture can still be exported.",
+    "ru": "Открытые соединения через прокси мешают обновить инспектор трафика. Закройте использующие их приложения и начните новую запись или создайте новую сессию. Предыдущая запись доступна для выгрузки."
+  },
+  "networkInspector.failed": {
+    "en": "Could not update traffic capture. Refresh its state and try again.",
+    "ru": "Не удалось изменить запись трафика. Обновите состояние и повторите попытку."
+  },
+  "networkInspector.proxyConflict": {
+    "en": "Disable the device's custom HTTP proxy before starting traffic capture.",
+    "ru": "Перед записью трафика выключите пользовательский HTTP-прокси устройства."
+  },
+  "networkInspector.restartRequired": {
+    "en": "Update the agent and start a new session for detailed traffic diagnostics.",
+    "ru": "Для подробной диагностики обновите агент и создайте новую сессию."
+  },
+  "networkInspector.stopBeforeExport": {
+    "en": "Stop capture before downloading the PCAP.",
+    "ru": "Остановите запись перед скачиванием PCAP."
+  },
+  "networkInspector.unavailable": {
+    "en": "Traffic inspection requires a compatible emulator image with Python 3. Rebuild the image and start a new session.",
+    "ru": "Для инспектора нужен совместимый образ эмулятора с Python 3. Пересоберите образ и запустите новую сессию."
+  },
+  "webviews.busy": {
+    "en": "A page inspection is already running. Try again when it finishes.",
+    "ru": "Проверка страницы уже выполняется. Дождитесь её завершения."
+  },
+  "webviews.failed": {
+    "en": "Could not inspect the page. Refresh the list and check that WebView debugging is enabled.",
+    "ru": "Не удалось прочитать страницу. Обновите список и проверьте, что отладка WebView включена."
+  }
+}

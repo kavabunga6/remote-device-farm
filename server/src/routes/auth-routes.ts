@@ -3,6 +3,7 @@ import type { Express } from 'express';
 import type { ServerContext } from '../server-context.js';
 import { ApiError, boundedString, route } from '../http-common.js';
 import { recordAuditEvent } from '../audit.js';
+import { registrationSettings } from '../registration.js';
 
 export function registerAuthRoutes(app: Express, context: ServerContext): () => Promise<void> {
   const { pool, config, auth, oidc } = context;
@@ -10,12 +11,13 @@ export function registerAuthRoutes(app: Express, context: ServerContext): () => 
     await pool.query('SELECT 1');
     res.json({ ok: true });
   }));
-  app.get('/api/config', (_req, res) => {
+  app.get('/api/config', route(async (_req, res) => {
     res.json({
       authMode: config.authMode, authRequired: config.authMode !== 'none', oidcEnabled: config.authMode === 'oidc',
+      registrationEnabled: (await registrationSettings(pool, config.authMode === 'local')).enabled,
       limits: { maxSessionsPerUser: config.maxSessionsPerUser, idleTimeoutMinutes: config.idleTimeoutMinutes, maxSessionHours: config.maxSessionHours },
     });
-  });
+  }));
   app.get('/api/me', route(async (req, res) => {
     const context = await auth.authenticate(req, res, config.authMode === 'none');
     res.json({ user: context?.user || null });

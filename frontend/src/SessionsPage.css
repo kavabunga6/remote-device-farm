@@ -21,7 +21,7 @@
 .page-overview .session-card-actions { grid-row: 2; margin: 0; padding-top: 12px; border-top: 1px solid var(--ui-border); }
 .page-overview .session-card-actions .text-button { min-height: 32px; }
 .page-overview .session-grid-empty { display: block; }
-.page-overview .session-create-card { display: flex; align-items: center; gap: 20px; min-height: 0; padding: 28px; text-align: left; }
+.page-overview .session-create-card { display: flex; align-items: center; gap: 20px; min-height: 0; padding: 28px; text-align:start; }
 .page-overview .session-create-card .session-card-icon { flex: none; width: 44px; height: 44px; }
 .session-empty-copy { flex: 1; min-width: 0; }
 .page-overview .session-empty-copy .session-meta { margin-top: 4px; }
@@ -49,3 +49,5 @@
   .page-overview .queue-item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; }
   .page-overview .queue-item > .button { grid-column: 2; justify-self: start; }
 }
+
+.session-card h3 > .card-primary-action > svg { flex: 0 0 auto; color: var(--accent); }

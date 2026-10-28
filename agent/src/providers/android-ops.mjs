@@ -1,7 +1,15 @@
+import { agentMessage } from '../messages.mjs';
+import { WebViews } from '../webviews.mjs';
+import { UiHierarchy } from '../ui-hierarchy.mjs';
 // Android actions that only need an adb serial. Emulators and USB phones both speak adb, so both providers
 // reuse this table instead of duplicating it behind `if (kind === ...)`.
 export function androidOps({ adb, streams, appTransfers }) {
+  const ui = new UiHierarchy(adb);
+  const webviews = new WebViews(adb);
   return {
+    webviews: (s, p) => { s.uiAbort ??= new AbortController(); return webviews.command(s.serial, p, { signal: s.uiAbort.signal }); },
+    'ui-tree': s => { s.uiAbort ??= new AbortController(); return ui.read(s.serial, { signal: s.uiAbort.signal }); },
+    'ui-tap': (s, p) => { s.uiAbort ??= new AbortController(); return ui.tap(s.serial, p.selector, { signal: s.uiAbort.signal }); },
     adb: (s, p) => adb.command(s.serial, p.argv),
     logcat: (s, p) => adb.logcat(s.serial, p),
     'logcat-apps': (s) => adb.logcatApps(s.serial),
@@ -12,7 +20,7 @@ export function androidOps({ adb, streams, appTransfers }) {
     rotate: (s, p) => adb.rotate(s.serial, p.orientation),
     file: (s, p) => adb.file(s.serial, p),
     audio: async (s, p, { sessionId }) => {
-      if (typeof p.enabled !== 'boolean') throw new Error('enabled must be boolean');
+      if (typeof p.enabled !== 'boolean') throw new Error(agentMessage('agent.1fa0375b158e'));
       const newlyStarted = p.enabled && !streams.streams.has(sessionId);
       if (newlyStarted) await streams.start(sessionId, s.serial);
       try { return await streams.setAudio(sessionId, p.enabled); }

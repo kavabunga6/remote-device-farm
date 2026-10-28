@@ -41,16 +41,16 @@ test('legacy profile settings link waits for inventory and closing clears only e
   await expect(page).toHaveURL(/#\/admin\/profiles\?from=launch$/);
   await expect(modal).toHaveCount(0);
   await page.getByRole('navigation', { name: 'Администрирование' }).getByRole('link', { name: 'Профили устройств' }).click();
-  await expect(page.locator('.device-profile-card')).toHaveCount(2);
-  await expect(page.locator('.device-profile-card').getByText('Ускорение GPU', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.admin-profile-row')).toHaveCount(2);
+  await expect(page.locator('.admin-profile-row').getByText('Ускорение GPU', { exact: true })).toHaveCount(0);
   await expect(modal).toHaveCount(0);
 });
 
 test('hash navigation opens the exact profile and resets the previous draft', async ({ page }) => {
   await setup(page);
   await page.goto('/#/admin/profiles');
-  await expect(page.locator('.device-profile-card')).toHaveCount(2);
-  await expect(page.locator('.device-profile-card').getByText('Ускорение GPU', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.admin-profile-row')).toHaveCount(2);
+  await expect(page.locator('.admin-profile-row').getByText('Ускорение GPU', { exact: true })).toHaveCount(0);
   await page.evaluate(hash => { window.location.hash = hash; }, profileLink(profiles[0]!.id).slice(1));
   const modal = editor(page);
   await expect(modal.getByLabel('Название', { exact: true })).toHaveValue(profiles[0]!.name);
@@ -85,7 +85,7 @@ test('saving a linked profile updates that profile and prevents the editor reope
   await expect(page).toHaveURL(/#\/admin\/profiles$/);
   await expect(modal).toHaveCount(0);
   await page.getByRole('navigation', { name: 'Администрирование' }).getByRole('link', { name: 'Профили устройств' }).click();
-  await expect(page.locator('.device-profile-card')).toHaveCount(2);
-  await expect(page.locator('.device-profile-card').getByText('Ускорение GPU', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.admin-profile-row')).toHaveCount(2);
+  await expect(page.locator('.admin-profile-row').getByText('Ускорение GPU', { exact: true })).toHaveCount(0);
   await expect(modal).toHaveCount(0);
 });

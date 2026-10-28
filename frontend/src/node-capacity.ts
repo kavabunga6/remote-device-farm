@@ -38,7 +38,7 @@ export function profilesExceedingSlot(profiles: Profile[], slotCpu: number, slot
   return profiles.filter(profile => profile.enabled !== false).flatMap(profile => {
     const reasons: string[] = [];
     if (profile.cpu != null && profile.cpu > slotCpu) reasons.push('CPU: ' + profile.cpu + ' > ' + slotCpu);
-    if (profile.memoryMb != null && profile.memoryMb > slotMemoryMb) reasons.push(t('ui.ebb345965463') + profile.memoryMb + ' > ' + slotMemoryMb + t('ui.883817f1999f'));
+    if (profile.memoryMb != null && profile.memoryMb > slotMemoryMb) reasons.push(t('copy.node-capacity.7c4f5033', { p0: profile.memoryMb, p1: slotMemoryMb }));
     return reasons.length ? [{ profile, reasons }] : [];
   });
 }
@@ -47,6 +47,6 @@ export function heartbeatAge(lastSeenAt: string | null | undefined, now = Date.n
   const timestamp = lastSeenAt ? Date.parse(lastSeenAt) : NaN;
   if (!Number.isFinite(timestamp)) return { label: t('ui.ff5511447db5'), stale: true, timestamp: null };
   const seconds = Math.max(0, Math.floor((now - timestamp) / 1000));
-  const label = seconds < 60 ? seconds + t('ui.ddae8eb8bf21') : seconds < 3600 ? Math.floor(seconds / 60) + t('ui.84d5d93d1277') : seconds < 86400 ? Math.floor(seconds / 3600) + t('ui.e34d8851244f') : Math.floor(seconds / 86400) + t('ui.37e04cffd96c');
-  return { label: seconds < 5 ? t('ui.5e8dcd6b1ed9') : t('ui.1daa0dacab1d') + label + t('ui.0eaf5fecc889'), stale: seconds > 45, timestamp };
+  const label = seconds < 60 ? t('copy.node-capacity.db46f868', { p0: seconds }) : seconds < 3600 ? t('copy.node-capacity.618d1529', { p0: Math.floor(seconds / 60) }) : seconds < 86400 ? t('copy.node-capacity.8221ea8c', { p0: Math.floor(seconds / 3600) }) : t('copy.node-capacity.b4a581de', { p0: Math.floor(seconds / 86400) });
+  return { label: seconds < 5 ? t('ui.5e8dcd6b1ed9') : t('node.respondedAgo', { p0: label }), stale: seconds > 45, timestamp };
 }

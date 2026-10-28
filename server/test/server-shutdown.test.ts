@@ -142,10 +142,10 @@ test('hub disposal rejects pending RPCs, closes channels, and clears its timers'
   const internal = hub as any;
   internal.agents.set('host', { ws: agent, hostId: 'host', lastHeartbeat: 0 });
   hub.attachAgent(awaitingHello as unknown as WebSocket, 'other');
-  hub.refreshStream = () => {};
   hub.addViewer('session', 'host', viewer as unknown as WebSocket);
   hub.addTunnel('session', 'host', tunnel as unknown as WebSocket);
-  internal.scheduleKeyframeOnDrain('session', 'host', viewer);
+  viewer.bufferedAmount = 256 * 1024 + 1;
+  await internal.onAgentMessage(agent, 'host', { type: 'video-frame', sessionId: 'session', keyframe: false }, () => {});
   const rpc = assert.rejects(hub.command('host', 'session', 'start', {}, 60_000), /shutting down/);
   const stop = hub.dispose();
   assert.equal(stop, hub.dispose());
@@ -153,9 +153,10 @@ test('hub disposal rejects pending RPCs, closes channels, and clears its timers'
   assert.equal(hub.hasAgent('host'), false);
   assert.equal(hub.hasActiveTunnel('session'), false);
   for (const socket of [agent, viewer, tunnel, awaitingHello]) assert.equal(socket.readyState, WebSocket.CLOSED);
-  assert.equal(internal.pending.size, 0);
-  assert.equal(internal.viewerDrainPolls.has(viewer), false);
+  assert.equal([...internal.pending.values()].length, 0);
+  const sentBefore = agent.sent.length;
   t.mock.timers.tick(120_000);
+  assert.equal(agent.sent.length, sentBefore, 'disposed viewer timers cannot start another RPC');
   await assert.rejects(hub.command('host', 'session', 'start', {}), /shutting down/);
 });
 

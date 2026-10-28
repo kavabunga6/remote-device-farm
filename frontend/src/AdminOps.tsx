@@ -1,3 +1,4 @@
+import { TranslatedText } from './TranslatedText';
 import { getLanguage, getLocale, localizeText, t } from './i18n';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from './icons';
@@ -126,12 +127,12 @@ function UtilizationChart({ series, range, bucketMinutes, now }: { series: OpsSe
     </svg>
     {hover !== null && <div className="ops-tooltip" style={{ left: tipLeft, top: 8 }} role="status">
       <strong>{range === '24h' ? timeLabel(hover) : `${dayLabel(hover)} ${timeLabel(hover)}`}</strong>
-      {hoverRows.map(({ item, index, point }) => <div key={item.hostId}><i style={{ background: seriesColor(index) }} />{item.hostName}<b>{formatSlotCount(point.used)} {t('ui.e029cc4b39ce')}{formatSlotCount(point.total)}</b></div>)}
+      {hoverRows.map(({ item, index, point }) => <div key={item.hostId}><i style={{ background: seriesColor(index) }} />{item.hostName}<b><TranslatedText message="copy.AdminOps.7667c197" values={{ p0: formatSlotCount(point.used), p1: formatSlotCount(point.total) }} /></b></div>)}
     </div>}
     <details className="ops-data" onToggle={event => setShowTable(event.currentTarget.open)}>
       <summary>{t('ui.940b752f5e1c')}</summary>
       {showTable && <div className="table-wrap"><table className="sessions-table ops-table">
-        <caption>{t('ui.2367addf6e46')}{range === '24h' ? t('ui.7941488fa3af') : t('ui.7e08a2ca839e')} · {averagingLabel.toLocaleLowerCase(getLocale())}</caption>
+        <caption><TranslatedText message="copy.AdminOps.f6b2b61a" values={{ p0: range === '24h' ? t('ui.7941488fa3af') : t('ui.7e08a2ca839e'), p1: averagingLabel.toLocaleLowerCase(getLocale()) }} /></caption>
         <thead><tr><th>{t('ui.6711f073ab8b')}</th><th>{t('ui.e77a383ee52d')}</th><th className="num">{t('ui.609968f00d5d')}</th><th className="num">{t('ui.b2daabc8bfe9')}</th></tr></thead>
         <tbody>{tableRows.map((row, index) => <tr key={row.hostName + ':' + row.at + ':' + index}>
           <td>{new Intl.DateTimeFormat(getLocale(), { dateStyle: 'short', timeStyle: 'short' }).format(row.at)}</td>
@@ -222,9 +223,9 @@ export function AdminOps() {
     {data && <>
       <div className="ops-cards">
         <div className="ops-card"><span>{t('ui.140b78c4bf38')}</span><strong>{total14}</strong></div>
-        <div className="ops-card"><span>{t('ui.fe7905f64bee')}</span><strong>{formatDuration(data.duration.avgSeconds)}</strong><small>{t('ui.d5373b67bbfc')}{formatDuration(data.duration.p90Seconds)}</small></div>
+        <div className="ops-card"><span>{t('ui.fe7905f64bee')}</span><strong>{formatDuration(data.duration.avgSeconds)}</strong><small><TranslatedText message="copy.AdminOps.68d29ac9" values={{ p0: formatDuration(data.duration.p90Seconds) }} /></small></div>
         <div className="ops-card"><span>{t('ui.21765716bc2d')}</span><strong>{peak === null ? '—' : `${pad(peak)}:00`}</strong><small>{t('ui.ddf3f81a4867')}</small></div>
-        <div className={`ops-card ${data.failures.last14d ? 'bad' : ''}`}><span>{t('ui.22b700067e3d')}</span><strong>{data.failures.last14d}</strong><small>{t('ui.fe32982fff7c')}{data.failures.last24h}</small></div>
+        <div className={`ops-card ${data.failures.last14d ? 'bad' : ''}`}><span>{t('ui.22b700067e3d')}</span><strong>{data.failures.last14d}</strong><small><TranslatedText message="copy.AdminOps.0046a3d6" values={{ p0: data.failures.last24h }} /></small></div>
       </div>
 
       <div className="ops-panels"><div className="ops-panel">

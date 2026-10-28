@@ -1,9 +1,11 @@
+import { diagnostic } from './diagnostics.js';
 import { operationalError } from './startup.js';
 import { uiMessage } from './messages.js';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import multer from 'multer';
 import { ApiError, isAllowedOrigin } from './http-common.js';
 import { registerAuthRoutes } from './routes/auth-routes.js';
+import { registerRegistrationRoutes } from './routes/registration-routes.js';
 import { registerAdminRoutes } from './routes/admin-routes.js';
 import { registerImageManagementRoutes } from './routes/image-management-routes.js';
 import { registerImagePrewarmRoutes, type ImagePrewarmWorker } from './image-prewarm.js';
@@ -16,6 +18,10 @@ import { registerQueueRoutes } from './routes/queue-routes.js';
 import { registerShareRoutes } from './routes/share-routes.js';
 import { registerAppRoutes } from './routes/app-routes.js';
 import { registerEnvRoutes } from './routes/env-routes.js';
+import { registerUiRoutes } from './routes/ui-routes.js';
+import { registerDeviceDebugRoutes } from './routes/device-debug-routes.js';
+import { registerAppiumRoutes } from './routes/appium-routes.js';
+import { registerCameraRoutes } from './routes/camera-routes.js';
 import { registerOpsRoutes } from './routes/ops-routes.js';
 import { httpCounter } from './metrics.js';
 import { registerTeamRoutes } from './routes/team-routes.js';
@@ -69,6 +75,7 @@ export function createHttpApplication(
   });
   installAuditTrail(app, pool);
   const stopAuth = registerAuthRoutes(app, context);
+  registerRegistrationRoutes(app, context);
   registerAdminRoutes(app, context);
   registerImageRoutes(app, context, imageBuilds);
   registerImageManagementRoutes(app, context, imageManagement);
@@ -81,6 +88,10 @@ export function createHttpApplication(
   registerShareRoutes(app, context);
   registerAppRoutes(app, context);
   registerEnvRoutes(app, context);
+  registerUiRoutes(app, context);
+  registerAppiumRoutes(app, context);
+  registerDeviceDebugRoutes(app, context);
+  registerCameraRoutes(app, context);
   const stopOps = registerOpsRoutes(app, context);
   registerTeamRoutes(app, context);
 
@@ -93,7 +104,7 @@ export function createHttpApplication(
     if (res.headersSent) return;
     if (error instanceof SyntaxError && (error as { type?: string }).type === 'entity.parse.failed') {
       res.locals.applicationError = 'invalid_json';
-      res.status(400).json({ error: { code: 'invalid_json', message: 'Expected a JSON object or array' } });
+      res.status(400).json({ error: { code: 'invalid_json', message: diagnostic('http-application.e6ee3297db') } });
       return;
     }
     if (error instanceof multer.MulterError) {

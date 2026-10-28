@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { Pool, type PoolClient } from 'pg';
@@ -60,6 +61,9 @@ export async function migrate(pool: Pool): Promise<void> {
     { version: 49, file: '049_access_roles.sql' },
     { version: 50, file: '050_image_management.sql' },
     { version: 51, file: '051_disable_unverified_starter.sql' },
+    { version: 52, file: '052_session_device_metadata.sql' },
+    { version: 53, file: '053_device_provider_status.sql' },
+    { version: 54, file: '054_registration_settings.sql' },
   ] as const;
   const client = await pool.connect();
   try {
@@ -88,7 +92,7 @@ export async function migrate(pool: Pool): Promise<void> {
       if ((legacy.rows[0].has_lease && (schema.lease_columns !== 2 || !schema.lease_constraint || !schema.lease_index)) ||
           (!legacy.rows[0].has_lease && schema.lease_columns !== 0) ||
           (legacy.rows[0].has_queue && (schema.queue_columns !== 5 || !schema.queue_index)) ||
-          (!legacy.rows[0].has_queue && schema.queue_columns !== 0)) throw new Error('Incomplete legacy development schema; migration bookkeeping was not changed');
+          (!legacy.rows[0].has_queue && schema.queue_columns !== 0)) throw new Error(diagnostic('db.f6b8ddfa44'));
       await client.query('DELETE FROM schema_migrations WHERE version BETWEEN 27 AND 31');
       if (legacy.rows[0].has_lease) await client.query('INSERT INTO schema_migrations(version,applied_at) VALUES(31,COALESCE($1,now())) ON CONFLICT DO NOTHING', [legacy.rows[0].lease_at]);
       if (legacy.rows[0].has_queue) await client.query('INSERT INTO schema_migrations(version,applied_at) VALUES(32,COALESCE($1,now())) ON CONFLICT DO NOTHING', [legacy.rows[0].queue_at]);

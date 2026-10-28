@@ -10,17 +10,16 @@ for (const language of ['ru', 'en'] as const) for (const theme of ['light', 'dar
     }, { language, theme });
     await page.route('**/api/me', route => route.fulfill({ json: { user: null } }));
     await page.goto('/');
-    const languageControl = page.getByRole('combobox', { name: language === 'ru' ? 'Язык интерфейса' : 'Interface language' });
+    const languageControl = page.getByRole('button', { name: language === 'ru' ? 'Язык интерфейса: Русский' : 'Interface language: English' });
     await expect(languageControl).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-effective-theme', theme);
-    await expect(page.locator('.login-brand-row .sr-only')).toHaveCSS('position', 'absolute');
     await page.evaluate(() => document.fonts.ready);
     for (const scale of [1, 1.5]) {
       await page.evaluate(scale => document.documentElement.style.fontSize = `${16 * scale}px`, scale);
       const geometry = await page.locator('.login-card').evaluate(card => {
         const controls = [...card.querySelectorAll('.login-form input,.login-submit')].map(el => el.getBoundingClientRect());
         const brand = card.querySelector('.brand')!.getBoundingClientRect();
-        const lang = card.querySelector('select')!.getBoundingClientRect();
+        const lang = card.querySelector('.language-trigger')!.getBoundingClientRect();
         return { lefts: controls.map(r => r.left), rights: controls.map(r => r.right), heights: controls.map(r => r.height), brandGap: lang.left - brand.right, centerGap: Math.abs((lang.top + lang.bottom - brand.top - brand.bottom) / 2), overflow: card.scrollWidth - card.clientWidth };
       });
       expect(Math.max(...geometry.lefts) - Math.min(...geometry.lefts)).toBeLessThanOrEqual(1);

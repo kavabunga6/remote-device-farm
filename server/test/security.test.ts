@@ -189,8 +189,11 @@ test('agent host metrics preserve hardware details and reject malformed values',
   }), {});
 });
 
-test('viewer backlog asks for a fresh keyframe only after draining and throttles requests', async () => {
+test('viewer backlog asks for a fresh keyframe only after draining and throttles requests', async t => {
+  let clock = Date.now();
+  t.mock.method(Date, 'now', () => clock);
   const hub = new AgentHub({} as Pool);
+  t.after(() => hub.dispose());
   const agent = new FakeSocket();
   const viewer = new FakeSocket();
   const unregistered = new FakeSocket();
@@ -198,19 +201,17 @@ test('viewer backlog asks for a fresh keyframe only after draining and throttles
   const internals = hub as unknown as {
     agents: Map<string, { ws: WebSocket; hostId: string; lastHeartbeat: number }>;
     sessionHosts: Map<string, string>;
-    lastKeyframeRequest: Map<string, number>;
     onAgentMessage(ws: WebSocket, hostId: string, message: Record<string, unknown>, setLink: () => void): Promise<void>;
   };
   internals.agents.set(hostId, { ws: agent as unknown as WebSocket, hostId, lastHeartbeat: Date.now() });
   internals.sessionHosts.set(sessionId, hostId);
-  hub.refreshStream = () => {};
   hub.addViewer(sessionId, hostId, viewer as unknown as WebSocket);
   const frame = (keyframe: boolean) => ({ type: 'video-frame', sessionId, keyframe, data: 'frame' });
   const relay = async (message: Record<string, unknown>) => internals.onAgentMessage(agent as unknown as WebSocket, hostId, message, () => {});
   await relay(frame(true));
   viewer.bufferedAmount = 256 * 1024 + 1;
   await relay(frame(false));
-  assert.equal(agent.sent.length, 0);
+  assert.equal(agent.sent.filter(data => JSON.parse(data).action === 'video-keyframe').length, 0);
   viewer.bufferedAmount = 0;
   const requests = () => agent.sent.map(data => JSON.parse(data) as { id: string; action: string }).filter(data => data.action === 'video-keyframe');
   for (let attempt = 0; attempt < 30 && requests().length === 0; attempt++) {
@@ -222,7 +223,7 @@ test('viewer backlog asks for a fresh keyframe only after draining and throttles
   hub.requestKeyframe(sessionId, hostId, viewer as unknown as WebSocket);
   assert.equal(requests().length, 1);
   await relay({ type: 'result', id: requests()[0]!.id, ok: true });
-  internals.lastKeyframeRequest.set(sessionId, Date.now() - 1001);
+  clock += 1001;
   hub.requestKeyframe(sessionId, hostId, viewer as unknown as WebSocket);
   assert.equal(requests().length, 2);
   await relay({ type: 'result', id: requests()[1]!.id, ok: true });
@@ -233,7 +234,10 @@ test('viewer backlog asks for a fresh keyframe only after draining and throttles
   viewer.bufferedAmount = 256 * 1024 + 1;
   await relay(frame(false));
   viewer.bufferedAmount = 0;
-  internals.lastKeyframeRequest.set(sessionId, Date.now() - 600);
+  clock += 600;
+  await new Promise(resolve => setTimeout(resolve, 150));
+  assert.equal(requests().length, 2, 'the current allowance is still exhausted');
+  clock += 401;
   for (let attempt = 0; attempt < 70 && requests().length < 3; attempt++) {
     await new Promise(resolve => setTimeout(resolve, 10));
   }
@@ -241,7 +245,7 @@ test('viewer backlog asks for a fresh keyframe only after draining and throttles
   await relay({ type: 'result', id: requests()[2]!.id, ok: true });
   internals.agents.delete(hostId);
   viewer.close();
-  assert.equal(internals.lastKeyframeRequest.has(sessionId), false);
+  assert.equal(hub.requestKeyframe(sessionId, hostId, viewer as unknown as WebSocket), false);
 });
 
 

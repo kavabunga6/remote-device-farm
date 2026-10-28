@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-10-08T23:38:52.319Z",
+  "capturedAt": "2026-10-28T18:29:13.563Z",
   "source": "Current UI with mock API and demo data",
   "language": "en",
   "viewport": {
@@ -32,6 +32,13 @@
       "file": "nodes-light.png",
       "route": "admin/nodes",
       "theme": "light",
+      "horizontalOverflow": 0,
+      "browserErrors": []
+    },
+    {
+      "file": "agent-onboarding-dark.png",
+      "route": "admin/nodes",
+      "theme": "dark",
       "horizontalOverflow": 0,
       "browserErrors": []
     },

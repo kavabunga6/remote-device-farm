@@ -10,6 +10,6 @@
 
 .token-page .token-empty > .token-empty-arrow {
   flex: none;
-  margin-left: auto;
+  margin-inline-start: auto;
   color: var(--ui-accent);
 }

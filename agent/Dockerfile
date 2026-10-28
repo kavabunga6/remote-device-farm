@@ -2,8 +2,15 @@ ARG NODE_IMAGE=node:24-bookworm-slim
 FROM ${NODE_IMAGE}
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends adb ca-certificates curl \
+    && apt-get install -y --no-install-recommends adb ca-certificates curl unzip tcpdump openjdk-17-jre-headless \
     && rm -rf /var/lib/apt/lists/*
+
+ARG BUNDLETOOL_VERSION=1.18.3
+ARG BUNDLETOOL_SHA256=a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29
+RUN mkdir -p /opt/rdf-bundletool \
+    && curl --fail --location --silent --show-error "https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar" -o /opt/rdf-bundletool/bundletool.jar \
+    && echo "${BUNDLETOOL_SHA256}  /opt/rdf-bundletool/bundletool.jar" | sha256sum -c -
+ENV RDF_BUNDLETOOL_JAR=/opt/rdf-bundletool/bundletool.jar
 
 ARG SCRCPY_VERSION=4.1
 ARG SCRCPY_SHA256=deacb991ed2509715160ffdc7907e47b4160eb30d1566217e9047fd5b8850cae
@@ -19,6 +26,8 @@ RUN groupadd --gid 10001 rdf \
     && chown -R 10001:10001 /home/agent/.android \
     && chown 0:10001 /run/agent-control \
     && chmod 0770 /run/agent-control
+
+LABEL remote-device-farm.packet-capture="1"
 
 WORKDIR /app
 COPY package*.json ./

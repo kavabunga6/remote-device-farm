@@ -14,7 +14,7 @@
 .apps-uploads li{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:8px 12px;border:1px solid #dbe6e3;border-radius:10px;font-size:0.8438rem}
 .apps-uploads li.is-error{border-color:var(--error-line);background:var(--error-bg)}
 .apps-upload-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.apps-upload-note{color:#6f817d;text-align:right}
+.apps-upload-note{color:#6f817d;text-align:end}
 .apps-uploads li.is-error .apps-upload-note{color:var(--error);font-weight:600}
 .apps-uploads progress{width:40%;accent-color:var(--accent)}
 .apps-result{padding:10px 12px;border-radius:10px;background:var(--accent-soft);color:var(--accent-strong);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);font-size:0.8438rem;font-weight:600}

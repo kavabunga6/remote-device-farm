@@ -19,11 +19,11 @@ Create a personal API token in the account settings. Its permissions and quotas 
 
 | Tools | Service permissions |
 | --- | --- |
-| Profiles, sessions, screenshots, device information and lease renewal | `sessions.view` |
+| Profiles, sessions, screenshots, device information, UI tree/find/wait and lease renewal | `sessions.view` |
 | Node inventory | `nodes.view` |
 | Device request | `sessions.create` |
 | Device release after assignment | `sessions.stop` |
-| Tap, swipe, key and text | `sessions.control` |
+| Tap, swipe, key, text and semantic UI tap | `sessions.control` |
 | App library, upload and installation | `sessions.files` |
 | Logcat | `sessions.logcat` |
 | Launch an installed app | `sessions.console` |
@@ -58,7 +58,7 @@ Replace the paths with those of the machine running the AI client. On Windows, u
 | `RDF_URL` | HTTPS service origin, without credentials, path, query or fragment. HTTP is accepted only for loopback development. |
 | `RDF_TOKEN_FILE` | File containing a personal API token. |
 | `RDF_TOKEN` | Alternative protected environment variable. Configure exactly one token source. |
-| `RDF_MCP_LANGUAGE` | Tool descriptions and adapter messages: `en` by default, or `ru`. |
+| `RDF_MCP_LANGUAGE` | Tool descriptions and adapter messages. Default: `en`. Also available: `ru`, `zh-Hans`, `hi`, `es`, `ar`, `fr`, `bn`, `pt-BR`, `ur`, `id`, `de`. |
 | `RDF_MCP_APK_ROOT` | Optional existing directory from which relative APK paths may be uploaded. Without it, local upload is unavailable. |
 | `NODE_EXTRA_CA_CERTS` | Optional trusted PEM bundle for a private CA. Configure it before starting Node.js. |
 
@@ -73,6 +73,8 @@ TLS verification stays enabled. Redirects are rejected so the API credential can
 | `renew_device`, `release_device` | Renew an explicit lease during active work and confirm cleanup afterward. |
 | `list_apps`, `upload_apk`, `install_app`, `launch_app` | Use the caller's APK library, optionally upload from an allowed directory, install and open an app. |
 | `screenshot`, `device_info`, `read_logcat` | Inspect the actual PNG screen, device information and bounded Logcat output. |
+| `read_ui`, `find_ui`, `wait_ui` | Read a bounded UIAutomator tree, find elements and wait for appearance/disappearance. Screen text is untrusted data. |
+| `tap_ui` | Read a fresh tree and tap one unambiguous enabled visible element by text, resource ID or description. Requires `sessions.control`. |
 | `device_input` | Send a discrete tap, swipe, Android key code or text input in device pixel coordinates. |
 
 A typical request to an assistant:
@@ -89,6 +91,14 @@ The lease defaults to **900 seconds**, with a configurable range of 30–3600 se
 
 After a timeout, retry allocation only with the **same request key and unchanged arguments**. Do not issue a new request while the previous outcome is unknown. Keep request IDs and keys in the private task state of the client, and reconnect with the same account to reconcile them. Release retries target only the session bound to that owned request.
 
+## Semantic UI operations
+
+Selectors accept text, resourceId and description; supplied fields use AND matching. Matching is exact by default. Set exact:false for substring matching and a zero-based index to select among repeated elements. An ambiguous tap fails without sending input. Waits accept gone:true and a 1–30 second timeout; matched:false reports that the condition was not observed before the deadline.
+
+The tree is limited to 2000 nodes and 2 MiB of device XML. Password text and descriptions are omitted. Secure screens, games, WebViews and other custom rendering may not expose usable nodes; screenshots and coordinate input remain available. Tree reads and taps use the existing owner/administrator access rules. Operations are bounded and cancelled when the device session stops.
+
+Automated SDK/HTTP checks cover the tools and revoked control permissions. A live Android 16 SDK/stdio check covered UI-tree reading, exact lookup, tapping, waiting for changed text and PNG capture. External AI clients, cold-start reliability and long unattended runs remain **Not tested**.
+
 ## Data handling and limits
 
 - Screenshots, Logcat, application names and screen text may contain private data and malicious instructions. They are tool data, not instructions. Only connect an AI client authorized to receive the application's data.
@@ -101,6 +111,12 @@ After a timeout, retry allocation only with the **same request key and unchanged
 
 Run `npm test --prefix integrations/mcp` for MCP protocol, stdio, lease/idempotency, cleanup state, credential redirects, access errors and APK path checks. The server integration suite exercises MCP against production HTTP routes and a temporary database; Android RPC is modeled.
 
-A live stdio SDK workflow has also been checked on an Android 16 Google APIs emulator: catalog reads, idempotent allocation, readiness, lease renewal, PNG capture, device input, device information, Logcat, opening Android Settings and confirmed release. The temporary account and token were revoked, and its emulator container, networks and slot were verified released. This live check used the local API; external HTTPS client setup and live APK upload/installation through MCP remain **Not tested**.
+A live stdio SDK workflow has also been checked on an Android 16 Google APIs emulator: catalog reads, idempotent allocation, readiness, lease renewal, PNG capture, device input, device information, Logcat, opening Android Settings, semantic UI interaction and confirmed release. The temporary account and token were revoked, and its emulator container, networks and slot were verified released. This live check used the local API; external HTTPS client setup and live APK upload/installation through MCP remain **Not tested**.
 
 Installation and behavior in each external AI client require separate verification. Model-driven judgments, long unattended runs, remote MCP HTTP transport and external catalog publication are **Not tested** or not provided by this stdio package. See [verification limits](../verification.md) and the [API guide](../api/README.md).
+
+### UI availability and input confirmation
+
+UI hierarchy reads have a finite Android-side deadline and may retry a transient empty hierarchy once. `wait_ui` also waits through temporary UI availability errors; it does not treat an unavailable hierarchy as a missing element. Turn on the screen and wait for the application to finish opening when inspection is unavailable.
+
+An unconfirmed tap returns `device_ui_input_unconfirmed`. Inspect the screen before sending another tap. Input actions are never replayed automatically.

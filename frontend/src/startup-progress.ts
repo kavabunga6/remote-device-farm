@@ -29,7 +29,7 @@ export function startupBytes(bytes: number): string {
 export function startupTransfer(progress?: StartupProgress | null): string | undefined {
   if (!validNumber(progress?.currentBytes)) return undefined;
   const current = startupBytes(progress.currentBytes);
-  return validNumber(progress.totalBytes) && progress.totalBytes > 0 && progress.totalBytes >= progress.currentBytes ? current + t('ui.e029cc4b39ce') + startupBytes(progress.totalBytes) : current;
+  return validNumber(progress.totalBytes) && progress.totalBytes > 0 && progress.totalBytes >= progress.currentBytes ? t('copy.startup-progress.7667c197', { p0: current, p1: startupBytes(progress.totalBytes) }) : current;
 }
 export function startupSummary(progress?: StartupProgress | null): string {
   const stage = startupStage(progress);

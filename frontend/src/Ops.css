@@ -7,7 +7,7 @@
 .ops-card span{color:var(--ui-muted,#5f726d);font-size:0.75rem;font-weight:700}
 .ops-card strong{color:var(--ui-text,#1f3a34);font-size:1.5rem;line-height:1.2;overflow-wrap:anywhere}
 .ops-card small{color:var(--ui-muted,#5f726d);font-size:0.75rem}
-.ops-card.bad{border-left:4px solid var(--error,#c62828)}
+.ops-card.bad{border-inline-start:4px solid var(--error,#c62828)}
 .ops-panel{padding:15px;margin-bottom:13px;border:1px solid var(--ui-border,#e1ebe6);border-radius:12px;background:var(--ui-surface,#fff);min-width:0}
 .ops-panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px}
 .ops-panel-head h3{margin:0;color:var(--ui-text,#1f3a34);font-size:0.9375rem}
@@ -30,9 +30,9 @@
 .ops-tooltip{position:absolute;z-index:2;display:grid;gap:4px;min-width:140px;max-width:220px;padding:8px 10px;border:1px solid var(--ui-border,#e1ebe6);border-radius:9px;background:var(--ui-surface,#fff);box-shadow:0 4px 14px #0f1f1c26;color:var(--ui-text,#1f3a34);font-size:0.75rem;pointer-events:none}
 .ops-tooltip div{display:flex;align-items:center;gap:6px;color:var(--ui-subtle,#3f5a53)}
 .ops-tooltip i{width:9px;height:9px;border-radius:50%;flex:none}
-.ops-tooltip b{margin-left:auto;padding-left:8px;color:var(--ui-text,#1f3a34)}
+.ops-tooltip b{margin-inline-start:auto;padding-inline-start:8px;color:var(--ui-text,#1f3a34)}
 .ops-empty{padding:26px 12px;color:var(--ui-muted,#5f726d);text-align:center;font-size:0.8125rem;border:1px dashed var(--ui-border,#e1ebe6);border-radius:10px}
-.ops-table .num{text-align:right;white-space:nowrap}
+.ops-table .num{text-align:end;white-space:nowrap}
 @media(max-width:600px){.ops-refresh{font-size:0;min-width:36px;padding:8px}.ops-card strong{font-size:1.25rem}}
 .ops-table{min-width:0}
 .ops-table th{color:var(--ui-muted,#5f726d)}
@@ -41,6 +41,6 @@
 .ops-data summary{display:list-item;width:max-content;max-width:100%;cursor:pointer;color:var(--accent,#0f6b58);font-size:.8125rem;font-weight:700}
 .ops-data summary:focus-visible{outline:2px solid var(--accent,#0f6b58);outline-offset:3px;border-radius:3px}
 .ops-data .table-wrap{max-height:22rem;overflow:auto;margin-top:9px}
-.ops-data caption{text-align:left;color:var(--ui-muted,#5f726d);font-size:.75rem;padding:5px 0}
+.ops-data caption{text-align:start;color:var(--ui-muted,#5f726d);font-size:.75rem;padding:5px 0}
 .ops-data .ops-table{min-width:27rem}
 .ops-chart-note{margin:0 0 6px;color:var(--ui-muted);font-size:.75rem}

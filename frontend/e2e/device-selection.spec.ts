@@ -1,3 +1,4 @@
+import { openLaunchSection } from './launch-controls';
 import { expect, test, type Page } from '@playwright/test';
 import type { Profile } from '../src/api';
 const image = 'us-docker.pkg.dev/android-emulator-268719/images/30-google-x64-no-metrics:30.1.2';
@@ -32,12 +33,14 @@ test('one dropdown replaces all presets, with locked parameters and independent 
   const { modal, requests, retiredRequests } = await fixture(page);
   await expect(modal.getByRole('combobox', { name: 'Устройство', exact: true })).toHaveValue('device-qa');
   await expect(modal.getByText('Пресеты профилей')).toHaveCount(0);
-  await expect(modal.getByRole('tab')).toHaveCount(0);
+  await expect(modal.getByRole('tab')).toHaveCount(2);
   await expect(modal.getByRole('button', { name: 'Сохранить пресет' })).toHaveCount(0);
   await expect(modal.getByText('Параметры устройства заданы администратором.', { exact: false })).toBeVisible();
-  await modal.locator('.create-settings > summary').click();
+  await modal.locator('#create-tab-settings').click();
+  await openLaunchSection(modal, 'connection');
   await expect(modal.getByLabel('Ядра Android', { exact: true })).toHaveCount(0);
   await expect(modal.getByRole('combobox', { name: 'Ключ ADB', exact: true })).toBeEnabled();
+  await modal.locator('#create-tab-device').click();
   await modal.getByRole('switch', { name: 'Ускорение GPU' }).check();
   await modal.getByRole('button', { name: 'Запустить', exact: true }).click();
   await expect.poll(() => requests.length).toBe(1);
@@ -49,8 +52,10 @@ test('per-profile permission unlocks resources and changing devices discards ove
   const { modal, requests } = await fixture(page);
   const device = modal.getByRole('combobox', { name: 'Устройство', exact: true });
   await device.selectOption('tablet-qa');
-  await modal.locator('.create-settings > summary').click();
+  await modal.locator('#create-tab-settings').click();
+  await openLaunchSection(modal, 'connection');
   await modal.getByLabel('Ядра Android', { exact: true }).fill('1');
+  await modal.locator('#create-tab-device').click();
   await modal.getByRole('switch', { name: 'Ускорение GPU' }).check();
   await device.selectOption('device-qa');
   await expect(modal.getByLabel('Ядра Android', { exact: true })).toHaveCount(0);
@@ -59,12 +64,14 @@ test('per-profile permission unlocks resources and changing devices discards ove
   await expect.poll(() => requests.length).toBe(1);
   expect(requests[0]).toMatchObject({ profileId: 'device-qa', gpuMode: 'nvidia', launchOptions: {} });
   await device.selectOption('tablet-qa');
+  await modal.locator('#create-tab-settings').click();
   await expect(modal.getByLabel('Ядра Android', { exact: true })).toHaveValue('2');
 });
 
 test('administrators can edit launches even when ordinary-user overrides are denied', async ({ page }) => {
   const { modal } = await fixture(page, 'admin');
-  await modal.locator('.create-settings > summary').click();
+  await modal.locator('#create-tab-settings').click();
+  await openLaunchSection(modal, 'connection');
   await expect(modal.getByLabel('Лимит CPU на узле', { exact: true })).toBeEnabled();
   await expect(modal.getByLabel('Лимит CPU на узле', { exact: true })).toHaveAttribute('max', '16');
   await expect(modal.getByRole('combobox', { name: 'Узел запуска', exact: true })).toBeEnabled();
@@ -100,7 +107,8 @@ for (const [width, height, theme, scale] of [
 ] as const) test(`device dialog geometry ${width} ${theme} ${scale}`, async ({ page }) => {
   await page.setViewportSize({ width, height });
   const { modal } = await fixture(page, 'admin', theme, scale);
-  await modal.locator('.create-settings > summary').click();
+  await modal.locator('#create-tab-settings').click();
+  await openLaunchSection(modal, 'connection');
   await page.evaluate(() => document.fonts.ready);
   const result = await modal.evaluate(element => {
     const box = element.getBoundingClientRect();

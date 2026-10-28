@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { uiMessage } from './messages.js';
 import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
@@ -32,8 +33,8 @@ export async function notifyUser(db: Db, userId: string, item: NewNotification, 
       [id, userId, item.kind, item.title.slice(0, 200), (item.body ?? '').slice(0, 500), item.sessionId ?? null],
     );
     if (!inserted.rowCount) return;
-  } catch { console.error('Notification persistence failed'); return; }
-  const delivery = dispatchWebhooks(db, userId, id, item, options.delivery).catch(() => console.error('Webhook dispatch failed'));
+  } catch { console.error(diagnostic('notifications.b7a6775c79')); return; }
+  const delivery = dispatchWebhooks(db, userId, id, item, options.delivery).catch(() => console.error(diagnostic('notifications.0c27068c6c')));
   if (options.awaitWebhooks) await delivery;
 }
 
@@ -48,7 +49,7 @@ export async function notifySessionReady(db: Db, sessionId: string): Promise<voi
     if (row) await notifyUser(db, String(row.owner_user_id), {
       kind: 'session.ready', title: uiMessage('ui.ad0b444760b8'), body: String(row.name), sessionId,
     });
-  } catch { console.error('Ready notification persistence failed'); }
+  } catch { console.error(diagnostic('notifications.e55bbb9082')); }
 }
 
 async function dispatchWebhooks(db: Db, userId: string, id: string, item: NewNotification, overrides?: Partial<DeliveryOptions>): Promise<void> {

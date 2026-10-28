@@ -1,3 +1,4 @@
+import { TranslatedText } from './TranslatedText';
 import { getLocale, localizeText, t } from './i18n';
 import { useEffect, useRef, useState } from 'react';
 import type { DeviceSession, Host } from './api';
@@ -16,6 +17,10 @@ const actionLabels: Record<string, string> = {
   get 'account.profile_preset_saved'() { return t('ui.326b43cad165'); },
   get 'account.profile_preset_updated'() { return t('ui.dce8d8d4eb51'); },
   get 'account.profile_preset_deleted'() { return t('ui.a917068fd14d'); },
+  get 'session.camera_changed'() { return t('audit.cameraChanged'); },
+  get 'session.semantic_input'() { return t('audit.semanticInput'); },
+  get 'session.automation_started'() { return t('audit.automationStarted'); },
+  get 'session.automation_stopped'() { return t('audit.automationStopped'); },
   get 'session.created'() { return t('ui.73d3528e1433'); },
   get 'session.admin_access'() { return t('ui.b38ea40261d2'); },
   get 'share.created'() { return t('ui.a9fc9a60945f'); },
@@ -214,7 +219,7 @@ export function AdminJournal({ hosts, sessions }: { hosts: Host[]; sessions: Dev
     <form className="admin-journal-filters" onSubmit={applyFilters} aria-label={t('ui.61af88353976')}>
       {tab === 'rentals' && <>
         <label>{t('ui.2a5c42af7c00')}<input value={drafts.rentals.owner || ''} onChange={event => updateDraft('owner', event.target.value)} placeholder={t('ui.5be12bfe49ea')} maxLength={100} /></label>
-        <label>{t('ui.e77a383ee52d')}<select value={drafts[tab].host || ''} onChange={event => updateDraft('host', event.target.value)}><option value="">{t('ui.41dcab5fee02')}</option>{hosts.map(host => <option key={host.id} value={host.id}>{hostLabel(host)}</option>)}{drafts[tab].host && !hosts.some(host => host.id === drafts[tab].host) && <option value={drafts[tab].host}>{drafts[tab].host} {t('ui.da72e467c1ff')}</option>}</select></label>
+        <label>{t('ui.e77a383ee52d')}<select value={drafts[tab].host || ''} onChange={event => updateDraft('host', event.target.value)}><option value="">{t('ui.41dcab5fee02')}</option>{hosts.map(host => <option key={host.id} value={host.id}>{hostLabel(host)}</option>)}{drafts[tab].host && !hosts.some(host => host.id === drafts[tab].host) && <option value={drafts[tab].host}><TranslatedText message="copy.AdminJournal.6bf3b050" values={{ p0: drafts[tab].host }} /></option>}</select></label>
       </>}
       {tab === 'actions' && <>
         <label>{t('ui.6665414a26a7')}<input value={drafts.actions.actor || ''} onChange={event => updateDraft('actor', event.target.value)} placeholder={t('ui.5be12bfe49ea')} maxLength={100} /></label>
@@ -224,7 +229,7 @@ export function AdminJournal({ hosts, sessions }: { hosts: Host[]; sessions: Dev
       </>}
       {tab === 'logs' && <>
         <label>{t('ui.f7aa03484689')}<input value={drafts.logs.session || ''} onChange={event => updateDraft('session', event.target.value)} placeholder={t('ui.3c75a7106aae')} maxLength={36} pattern="[a-fA-F0-9]{8}(-[a-fA-F0-9-]{1,27})?" /></label>
-        <label>{t('ui.e77a383ee52d')}<select value={drafts[tab].host || ''} onChange={event => updateDraft('host', event.target.value)}><option value="">{t('ui.41dcab5fee02')}</option>{hosts.map(host => <option key={host.id} value={host.id}>{hostLabel(host)}</option>)}{drafts[tab].host && !hosts.some(host => host.id === drafts[tab].host) && <option value={drafts[tab].host}>{drafts[tab].host} {t('ui.da72e467c1ff')}</option>}</select></label>
+        <label>{t('ui.e77a383ee52d')}<select value={drafts[tab].host || ''} onChange={event => updateDraft('host', event.target.value)}><option value="">{t('ui.41dcab5fee02')}</option>{hosts.map(host => <option key={host.id} value={host.id}>{hostLabel(host)}</option>)}{drafts[tab].host && !hosts.some(host => host.id === drafts[tab].host) && <option value={drafts[tab].host}><TranslatedText message="copy.AdminJournal.6bf3b050" values={{ p0: drafts[tab].host }} /></option>}</select></label>
         <label>{t('ui.7f67af3d6cd9')}<select value={drafts.logs.severity || ''} onChange={event => updateDraft('severity', event.target.value)}>
           <option value="">{t('ui.56894a445022')}</option><option value="info">{t('ui.3319b9b01f2a')}</option><option value="warning">{t('ui.233a8e993aeb')}</option><option value="error">{t('ui.bf22dfeeba8b')}</option>
         </select></label>

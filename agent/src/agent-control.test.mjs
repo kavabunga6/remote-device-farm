@@ -207,3 +207,14 @@ test('image cancellation delegates only the selected build ledger job', async ()
   assert.deepEqual(await control.handle({ op: 'emulatorCancel', jobId: 'queued-build' }), { jobs: [{ id: 'queued-build', state: 'cancelled' }] });
   assert.deepEqual(calls, ['queued-build']);
 });
+
+test('I/O discovery ignores containers inheriting Compose image labels',async()=>{
+  const labels={'com.docker.compose.project':'farm','com.docker.compose.service':'agent-control','com.docker.compose.container-number':'1'};
+  const docker={inspect:async()=>({Config:{Labels:labels}}),request:async()=>[
+    {Id:'maintenance',State:'running',Labels:{'com.docker.compose.project':'farm','com.docker.compose.service':'agent'}},
+    {Id:'actual-io',State:'running',Labels:{'com.docker.compose.project':'farm','com.docker.compose.service':'agent','com.docker.compose.container-number':'1'}},
+  ]};
+  const control=new AgentControl({...config,ioContainerOverride:null,selfContainerId:'control'},docker);
+  assert.equal(await control.ioContainerId(),'actual-io');
+  delete labels['com.docker.compose.container-number'];await assert.rejects(control.ioContainerId(),/Cannot identify/);
+});

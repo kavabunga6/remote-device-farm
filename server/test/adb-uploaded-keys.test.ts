@@ -28,7 +28,7 @@ test('uploaded ADB public keys stay private to an account and select the broker 
   try {
     for (const file of ['001_init.sql', '005_host_settings.sql', '006_adb_port_access.sql',
       '008_user_adb_keys.sql', '009_uploaded_adb_public_keys.sql', '010_user_settings_audit.sql', '011_node_management.sql', '012_session_lifecycle.sql', '018_teams.sql',
-      '002_gpu_mode.sql', '004_guest_resources.sql', '013_queue_notifications.sql', '020_profile_metadata.sql', '021_profile_gpu_variants.sql', '022_profile_gpu_memory.sql', '026_session_startup_progress.sql', '029_storage_limits.sql', '038_profile_secrets_docker_options.sql', '025_physical_devices.sql', '023_user_profile_presets.sql', '030_preset_storage.sql', '033_launch_options.sql', '040_emulator_image_registry.sql', '046_session_diagnostics.sql', '048_user_removal.sql', '049_access_roles.sql']) {
+      '002_gpu_mode.sql', '004_guest_resources.sql', '013_queue_notifications.sql', '020_profile_metadata.sql', '021_profile_gpu_variants.sql', '022_profile_gpu_memory.sql', '026_session_startup_progress.sql', '029_storage_limits.sql', '038_profile_secrets_docker_options.sql', '025_physical_devices.sql', '023_user_profile_presets.sql', '030_preset_storage.sql', '033_launch_options.sql', '040_emulator_image_registry.sql', '046_session_diagnostics.sql', '048_user_removal.sql', '049_access_roles.sql', '052_session_device_metadata.sql', '053_device_provider_status.sql']) {
       await database.exec(await readFile(new URL('../migrations/' + file, import.meta.url), 'utf8'));
     }
     await database.query(

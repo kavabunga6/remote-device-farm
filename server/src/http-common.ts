@@ -1,3 +1,5 @@
+import { diagnostic } from './diagnostics.js';
+import { devicePlatform, normalizeProviderStatuses, normalizeDeviceMetadata, sessionCapabilities, type DevicePlatform, type DeviceCapabilityReasons } from './generated/device-contract.js';
 import { uiMessage } from './messages.js';
 import { normalizeProfileResources, mergeLaunchStorage, type LaunchOptions } from './launch-options.js';
 import { validateDockerOptions } from './docker-options.js';
@@ -49,6 +51,8 @@ export type Session = {
   label: string | null; lastActivityAt: string;
   leaseTtlSeconds?: number | null; leaseExpiresAt?: string | null;
   startupProgress?: StartupProgress | null;
+  platform?: DevicePlatform;
+  sdkLevel?: number | null; osVersion?: string | null; capabilityReasons?: DeviceCapabilityReasons;
   deviceKind: string; deviceId: string | null; capabilities: string[] | null;
   launchOptions?: LaunchOptions;
   gpuMode: string | null; launchImage: string | null; launchMemoryMb: number | null;
@@ -75,9 +79,11 @@ export function sessionJson(row: Record<string, unknown>): Session {
     ownerName: row.owner_name ? String(row.owner_name) : undefined,
     error: row.error ? String(row.error) : null,
     label: row.label ? String(row.label) : null,
+    ...(devicePlatform(row.device_kind ?? 'emulator') ? { platform: devicePlatform(row.device_kind ?? 'emulator')! } : {}),
     deviceKind: row.device_kind == null ? 'emulator' : String(row.device_kind),
     deviceId: row.device_id == null ? null : String(row.device_id),
-    capabilities: Array.isArray(row.capabilities) ? row.capabilities.map(String) : null,
+    ...normalizeDeviceMetadata(row.device_metadata),
+    capabilities: sessionCapabilities(row.device_kind ?? 'emulator', row.capabilities),
     lastActivityAt: new Date(String(row.last_activity_at ?? row.created_at)).toISOString(),
     leaseTtlSeconds: row.lease_ttl_seconds == null ? null : Number(row.lease_ttl_seconds),
     leaseExpiresAt: row.lease_expires_at == null ? null : new Date(String(row.lease_expires_at)).toISOString(),
@@ -129,6 +135,7 @@ export function hostJson(row: Record<string, unknown>) {
     slotMemoryMb: Number(row.slot_memory_mb ?? 4096), disabled, policySupported, imageBuilder: row.image_builder === true,
     policyPending: policySupported && Number(row.applied_policy_revision) !== Number(row.policy_revision),
     usedSlots: Number(row.used_slots || 0), metrics: row.metrics || {}, devices: cleanPhysicalDevices(row.devices),
+    providers: normalizeProviderStatuses(row.provider_status),
     lastSeenAt: row.last_seen_at ? new Date(String(row.last_seen_at)).toISOString() : null,
   };
 }
@@ -157,7 +164,7 @@ export function parseProfile(input: Record<string, unknown>, options: { allowKee
   const diskMaxGb = optionalGb(input.diskMaxGb), sdcardGb = optionalGb(input.sdcardGb), sdcardMaxGb = optionalGb(input.sdcardMaxGb);
   const rawEnvNames = input.containerEnv && typeof input.containerEnv === 'object' && !Array.isArray(input.containerEnv) ? Object.keys(input.containerEnv) : [];
   const docker = validateDockerOptions(input.dockerOptions, name => rawEnvNames.some(item => item.toUpperCase() === name.toUpperCase()));
-  if ('error' in docker) throw new ApiError(400, 'invalid_profile', 'Invalid container options: ' + docker.error);
+  if ('error' in docker) throw new ApiError(400, 'invalid_profile', diagnostic('http-common.6d5d8edd3e', { p0: docker.error }));
   const dockerOptions = docker.value;
   const containerEnv = validateContainerEnv(input.containerEnv, { allowKeep: options.allowKeepEnv === true, extraReserved: [dockerOptions.emulatorParamsEnv, dockerOptions.adbKeyEnv].filter((item): item is string => Boolean(item)) });
   if (!containerEnv) throw new ApiError(400, 'invalid_profile', uiMessage('ui.9066d77faef6', {}, 'en'));

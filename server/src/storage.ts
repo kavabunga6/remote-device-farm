@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { uiMessage } from './messages.js';
 import { ApiError } from './http-common.js';
 
@@ -42,7 +43,7 @@ export function resolveStorage(profile: ProfileStorage, request: StorageRequest 
     throw new ApiError(409, 'storage_out_of_range', uiMessage('ui.e242377da8ff', { p0: limits.diskMin, p1: limits.diskMax }, 'en'));
   }
   if (!Number.isInteger(sdcardGb * 1024) || sdcardGb < 0 || (sdcardGb > 0 && sdcardGb < 0.125) || sdcardGb > Math.min(MAX_SDCARD_GB, limits.sdcardMax)) {
-    throw new ApiError(409, 'storage_out_of_range', limits.sdcardMax ? `SD card must be 0–${limits.sdcardMax} GB for this profile` : 'This profile has no SD card');
+    throw new ApiError(409, 'storage_out_of_range', limits.sdcardMax ? diagnostic('storage.4eef2b8c39', { p0: limits.sdcardMax }) : diagnostic('storage.47fb7a24c3'));
   }
   return { diskGb, sdcardGb: sdcardGb > 0 ? sdcardGb : null };
 }

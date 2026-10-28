@@ -1,7 +1,8 @@
+import { TranslatedText } from './TranslatedText';
 import { useAccess, roleLabel, type AccessRole } from './permissions';
 import { roleApi } from './roles-api';
 import { RoleAssignmentDialog } from './RoleAssignmentDialog';
-import { getLanguage, getLocale, localizeText, t } from './i18n';
+import { getLocale, localizeText, t } from './i18n';
 import { useEffect, useState } from 'react';
 import { api, type AdminUser } from './api';
 import { Icon } from './icons';
@@ -10,16 +11,15 @@ import { useAdminDialog } from './useAdminDialog';
 import { useNotifications } from './notifications';
 import { PasswordTools } from './PasswordTools';
 import './UserManagement.css';
+import { RegistrationSettings } from './RegistrationSettings';
 
 function errorText(error: unknown): string { return error instanceof Error ? error.message : t('ui.8f9c4884b8f9'); }
 
-const nameCollators = { ru: new Intl.Collator('ru-RU', { sensitivity: 'base', numeric: true }), en: new Intl.Collator('en-US', { sensitivity: 'base', numeric: true }) };
-const userNameOrder = { compare: (left: string, right: string) => nameCollators[getLanguage()].compare(left, right) };
-const registrationDate = new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
+const userNameOrder = { compare: (left: string, right: string) => left.localeCompare(right, getLocale(), { sensitivity: 'base', numeric: true }) };
 function registeredOn(value: string | undefined): string {
   if (!value) return t('ui.975ffdce6aa2');
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? t('ui.975ffdce6aa2') : registrationDate.format(date);
+  return Number.isNaN(date.getTime()) ? t('ui.975ffdce6aa2') : new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
 export function UserManagement({ allowLocalUsers, onChanged }: { allowLocalUsers: boolean; onChanged?: () => void }) {
@@ -130,6 +130,7 @@ export function UserManagement({ allowLocalUsers, onChanged }: { allowLocalUsers
     <div className="section-heading"><div><h2>{t('ui.845595d6e899')}</h2><p>{t('ui.19b9c9ecca8b')}</p></div>
       <HeadingSlot slot="actions"><div className="admin-heading-actions">{allowLocalUsers && can('users.manage') && <button className="button primary small" type="button" onClick={() => start(null)}><Icon name="plus" size={16} />{t('ui.75ffea39abea')}</button>}</div></HeadingSlot>
     </div>
+    {can('roles.view') && roles.length > 0 && <RegistrationSettings roles={roles}/>}
     {users.length > 0 && <div className="admin-filter-bar">
       <label className="admin-search"><Icon name="search" size={18} /><input aria-label={t('ui.b8bcabd66839')} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('ui.477c5ac57267')} /></label>
       {companies.length > 0 && <select aria-label={t('ui.64d92044a1ff')} value={companyFilter} onChange={event => setCompanyFilter(event.target.value)}><option value="">{t('ui.a3cc5e58235f')}</option>{companies.map(value => <option key={value} value={value}>{value}</option>)}</select>}
@@ -145,7 +146,7 @@ export function UserManagement({ allowLocalUsers, onChanged }: { allowLocalUsers
             <strong>{person.provider === 'local' && can('users.manage') ? <button className="card-primary-action" type="button" onClick={() => start(person)} aria-label={t('ui.a4891c87f538') + (person.displayName || person.username) + "»"}>{person.displayName || person.username}</button> : person.displayName || person.username}</strong>
             {(person.role === 'admin' || person.roleBuiltin === null && person.roleName) && <span className={'user-role ' + (person.role === 'admin' ? 'is-admin' : 'is-custom')} title={roleLabel(person)}><span>{roleLabel(person)}</span></span>}
           </div>
-          <small>{t('ui.dadbfd422298')}{person.username}</small>
+          <small><TranslatedText message="copy.UserManagement.6577f89e" values={{ p0: person.username }} /></small>
           {(person.company || person.jobTitle) && <small className="user-record-work">{[person.company, person.jobTitle].filter(Boolean).join(' · ')}</small>}
         </div>
         <div className="user-record-registration"><span>{t('ui.8d7746c4a1bd')}</span><time dateTime={person.createdAt}>{registeredOn(person.createdAt)}</time></div>
@@ -191,7 +192,7 @@ export function UserManagement({ allowLocalUsers, onChanged }: { allowLocalUsers
       <div className="modal admin-form-dialog user-delete-dialog" ref={removeDialogRef} tabIndex={-1} role="alertdialog" aria-modal="true" aria-labelledby="user-delete-heading" aria-describedby="user-delete-description">
         <div className="modal-top"><h2 id="user-delete-heading">{t('ui.806f94995626')}</h2><button type="button" className="icon-button" aria-label={t('ui.a7a4033657e8')} disabled={busy} onClick={closeRemove}><Icon name="close" size={19} /></button></div>
         <div className="user-delete-content">
-          <p className="user-password-person"><strong>{removing.displayName || removing.username}</strong><span>{t('ui.dadbfd422298')}{removing.username}</span></p>
+          <p className="user-password-person"><strong>{removing.displayName || removing.username}</strong><span><TranslatedText message="copy.UserManagement.6577f89e" values={{ p0: removing.username }} /></span></p>
           <p id="user-delete-description">{t('ui.dc52df57efeb')}</p>
           {removing.provider !== 'local' && <p>{t('ui.d23a5c6db7b7')}</p>}
           {removeError && <div className="inline-error" role="alert">{localizeText(removeError)}</div>}

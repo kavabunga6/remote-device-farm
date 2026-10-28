@@ -9156,8 +9156,8 @@
     "en": "Upload an APK once and install it in any of your sessions."
   },
   "ui.b5d0b38f9faf": {
-    "ru": " Загрузить APK",
-    "en": " Upload APK"
+    "en": "Upload app",
+    "ru": "Загрузить приложение"
   },
   "ui.07365513d144": {
     "ru": "Отпустите файлы, чтобы загрузить",
@@ -9184,8 +9184,8 @@
     "en": "Session inactive. Installation becomes available after connecting to the device."
   },
   "ui.f8587ba80e89": {
-    "ru": "Библиотека пуста. Перетащите APK сюда или нажмите «Загрузить APK».",
-    "en": "Library empty. Drag an APK here or click Upload APK."
+    "en": "The library is empty. Drop an APK or APK set here, or upload a file.",
+    "ru": "Библиотека пуста. Перетащите APK или набор APK сюда либо загрузите файл."
   },
   "ui.d9ae8e2e1567": {
     "ru": "версия ",
@@ -12366,5 +12366,2413 @@
   "mcp.launch_app.description": {
     "ru": "Открыть установленный Android-пакет через его launcher activity.",
     "en": "Open an installed Android package using its launcher activity. This does not install or download an APK."
+  },
+  "api.provider_unavailable": {
+    "ru": "Устройства на этом узле временно недоступны. Проверьте состояние провайдера и повторите попытку.",
+    "en": "Devices on this node are temporarily unavailable. Check provider status and try again."
+  },
+  "api.device_capability_unavailable": {
+    "ru": "Эта функция недоступна для выбранного устройства.",
+    "en": "This feature is unavailable for the selected device."
+  },
+  "providers.failedLog": {
+    "ru": "Провайдер {p0} недоступен: {p1}. Новые сессии приостановлены.",
+    "en": "Provider {p0} is unavailable: {p1}. New sessions are blocked."
+  },
+  "providers.recoveredLog": {
+    "ru": "Провайдер {p0} восстановлен. Опрос устройств снова работает.",
+    "en": "Provider {p0} recovered. Device polling is working again."
+  },
+  "providers.title": {
+    "ru": "Провайдеры устройств",
+    "en": "Device providers"
+  },
+  "providers.ready": {
+    "ru": "Доступен",
+    "en": "Ready"
+  },
+  "providers.unknown": {
+    "ru": "Нет данных",
+    "en": "Unknown"
+  },
+  "providers.unavailable": {
+    "ru": "Недоступен",
+    "en": "Unavailable"
+  },
+  "providers.inventory-unavailable": {
+    "ru": "Не удалось получить список устройств. Проверьте ADB или службу управления контейнерами на узле.",
+    "en": "Could not list devices. Check ADB or the container control service on the node."
+  },
+  "providers.maintenance-unavailable": {
+    "ru": "Подготовка устройств завершилась ошибкой. Проверьте журнал агента.",
+    "en": "Device preparation failed. Check the agent log."
+  },
+  "providers.reconcile-unavailable": {
+    "ru": "Не удалось проверить работающие устройства. Проверьте подключения и журнал агента.",
+    "en": "Could not check running devices. Check connections and the agent log."
+  },
+  "providers.unavailableHint": {
+    "ru": "Новые сессии недоступны до восстановления провайдера.",
+    "en": "New sessions are blocked until the provider recovers."
+  },
+  "providers.stale": {
+    "ru": "Последние полученные данные",
+    "en": "Last reported status"
+  },
+  "providers.emulator": {
+    "ru": "Эмуляторы Android",
+    "en": "Android emulators"
+  },
+  "providers.usb": {
+    "ru": "USB Android",
+    "en": "USB Android"
+  },
+  "agent.providerFailure": {
+    "ru": "Провайдер {p0}: ошибка {p1}: {p2}",
+    "en": "Provider {p0}: {p1} failed: {p2}"
+  },
+  "agent.providerRecovered": {
+    "ru": "Провайдер {p0}: {p1} восстановлен",
+    "en": "Provider {p0}: {p1} recovered"
+  },
+  "agent.unexpectedStop": {
+    "ru": "Устройство отключилось или очистка не завершена. Повторная очистка запущена.",
+    "en": "The device disconnected or cleanup did not finish. Cleanup is being retried."
+  },
+  "agent.androidReady": {
+    "ru": "ADB подключён; sys.boot_completed=1",
+    "en": "ADB connected; sys.boot_completed=1"
+  },
+  "agent.startCheck": {
+    "ru": "Проверка ресурсов, KVM и GPU",
+    "en": "Checking resources, KVM and GPU"
+  },
+  "agent.containerStarted": {
+    "ru": "Контейнер запущен: {p0}",
+    "en": "Container started: {p0}"
+  },
+  "agent.androidRejected": {
+    "ru": "Android отклонил настройку {p0}",
+    "en": "Android rejected {p0}"
+  },
+  "agent.bootProbe": {
+    "ru": "ADB ещё не готов: {p0}",
+    "en": "ADB is not ready yet: {p0}"
+  },
+  "agent.unsupportedAction": {
+    "ru": "Действие \"{p0}\" не поддерживается устройствами {p1}",
+    "en": "\"{p0}\" is not supported for {p1} devices"
+  },
+  "agent.usbAuthorize": {
+    "ru": "USB-устройство в состоянии {p0}. Разрешите ADB-доступ на устройстве.",
+    "en": "USB device is {p0}; authorize this host's ADB key on the phone"
+  },
+  "agent.providerStart": {
+    "ru": "Провайдер {p0} не поддерживает запуск сессий",
+    "en": "Provider {p0} cannot start sessions"
+  },
+  "agent.providerStop": {
+    "ru": "Провайдер {p0} не поддерживает остановку сессий",
+    "en": "Provider {p0} cannot stop sessions"
+  },
+  "agent.noWiper": {
+    "ru": "Стратегия очистки для {p0} не настроена. Выдача устройства запрещена.",
+    "en": "No wipe strategy configured for {p0} devices; refusing to lease"
+  },
+  "agent.quarantined": {
+    "ru": "Устройство в карантине: {p0}",
+    "en": "Device is quarantined: {p0}"
+  },
+  "agent.codecFailed": {
+    "ru": "Ошибка аудиокодера scrcpy {p0}",
+    "en": "scrcpy {p0} audio encoder failed"
+  },
+  "agent.codecUnexpected": {
+    "ru": "Неожиданный аудиокодек scrcpy: {p0}",
+    "en": "Unexpected scrcpy audio codec {p0}"
+  },
+  "agent.operationTimeout": {
+    "ru": "Истекло время ожидания: {p0}",
+    "en": "{p0} timed out"
+  },
+  "agent.dummyByte": {
+    "ru": "Некорректный байт подтверждения scrcpy: {p0}",
+    "en": "Invalid scrcpy dummy byte: {p0}"
+  },
+  "agent.handshakeFailed": {
+    "ru": "Не удалось установить соединение scrcpy: {p0}",
+    "en": "scrcpy forward handshake failed: {p0}"
+  },
+  "agent.8c1dd88736bc": {
+    "ru": "Неподдерживаемая платформа устройства",
+    "en": "Unsupported device platform"
+  },
+  "agent.5c9e04a77662": {
+    "ru": "Неподдерживаемый тип устройства",
+    "en": "Unsupported device kind"
+  },
+  "agent.a14b4d584e08": {
+    "ru": "Сессия не работает на этом агенте",
+    "en": "Session is not running on this agent"
+  },
+  "agent.2162454b0b76": {
+    "ru": "Очистка предыдущей сессии ещё не завершена",
+    "en": "Previous session cleanup is still pending"
+  },
+  "agent.eb3597029ef9": {
+    "ru": "Запуск сессии ещё не завершён",
+    "en": "Session startup is still pending"
+  },
+  "agent.1c2b5b00ab42": {
+    "ru": "Функция устройства недоступна",
+    "en": "Device capability is unavailable"
+  },
+  "agent.66cfc47a68a2": {
+    "ru": "Устройство для этого действия не найдено",
+    "en": "No device matched this action"
+  },
+  "agent.a13554e0b9b5": {
+    "ru": "Хранилище состояния устройств недоступно. Выдача запрещена.",
+    "en": "Device state store is unavailable; refusing to lease"
+  },
+  "agent.94a6b461a77a": {
+    "ru": "Устройство уже используется",
+    "en": "Device is already in use"
+  },
+  "agent.a3e284efaef3": {
+    "ru": "Устройство очищается и пока недоступно",
+    "en": "Device is being cleaned and is not available yet"
+  },
+  "agent.36ca4f18c906": {
+    "ru": "Чистота устройства ещё не подтверждена. Идёт подготовка.",
+    "en": "Device has not been verified clean yet; it is being prepared"
+  },
+  "agent.4603ecd59333": {
+    "ru": "Очистка этого устройства уже выполняется",
+    "en": "Cleaning is already in progress for this device"
+  },
+  "agent.fe61e1669f6e": {
+    "ru": "Устройство используется",
+    "en": "Device is in use"
+  },
+  "agent.ba6ac7423541": {
+    "ru": "Чистота устройства уже подтверждена",
+    "en": "Device is already verified clean"
+  },
+  "agent.8e0728d7bf55": {
+    "ru": "Устройство не подключено или не управляется этим агентом",
+    "en": "Device is not connected or not managed by this agent"
+  },
+  "agent.b9a2aff69247": {
+    "ru": "Список устройств ADB недоступен",
+    "en": "ADB device list is unavailable"
+  },
+  "agent.3d4b5f89dca1": {
+    "ru": "Некорректный серийный номер устройства",
+    "en": "Invalid device serial"
+  },
+  "agent.972c3683897a": {
+    "ru": "USB-устройство не подключено",
+    "en": "USB device is not connected"
+  },
+  "agent.4334ae1a7ebf": {
+    "ru": "Нет свободных USB-устройств",
+    "en": "No free USB devices"
+  },
+  "agent.1fa0375b158e": {
+    "ru": "Параметр enabled должен быть логическим",
+    "en": "enabled must be boolean"
+  },
+  "agent.79aacfc01a6b": {
+    "ru": "Агенту недоступен /dev/kvm",
+    "en": "/dev/kvm is not available to the agent"
+  },
+  "agent.edb6e60881d1": {
+    "ru": "Восстановление сессии отменено",
+    "en": "Session recovery cancelled"
+  },
+  "agent.e7e47949c94a": {
+    "ru": "Контейнер эмулятора остался после остановки",
+    "en": "Emulator container still exists after stop"
+  },
+  "agent.43edc8d561c1": {
+    "ru": "Контейнер эмулятора остановился до завершения загрузки Android",
+    "en": "Emulator container stopped before Android finished booting"
+  },
+  "agent.1af461dcc07c": {
+    "ru": "Запуск сессии отменён",
+    "en": "Session startup cancelled"
+  },
+  "agent.2271047a7f94": {
+    "ru": "Android не загрузился за отведённое время",
+    "en": "Android did not finish booting before the startup timeout"
+  },
+  "agent.802d346781b7": {
+    "ru": "Буфер приёма scrcpy превысил лимит",
+    "en": "scrcpy receive buffer exceeded limit"
+  },
+  "agent.91b23cf76718": {
+    "ru": "Соединение scrcpy закрыто",
+    "en": "scrcpy socket closed"
+  },
+  "agent.b437662d8b65": {
+    "ru": "Некорректный размер пакета scrcpy",
+    "en": "Invalid scrcpy packet size"
+  },
+  "agent.653f16499e77": {
+    "ru": "Некорректный заголовок scrcpy",
+    "en": "Invalid scrcpy header"
+  },
+  "agent.55b0b1c11639": {
+    "ru": "Пакет scrcpy превысил лимит",
+    "en": "scrcpy packet exceeds limit"
+  },
+  "agent.b8ca0338ba26": {
+    "ru": "Некорректный аудиозаголовок scrcpy",
+    "en": "Invalid scrcpy audio header"
+  },
+  "agent.45a7afcab5b9": {
+    "ru": "Некорректное действие касания",
+    "en": "Invalid touch action"
+  },
+  "agent.f4309a285e65": {
+    "ru": "Некорректный идентификатор касания",
+    "en": "Invalid touch pointer ID"
+  },
+  "agent.fc8ecbf72def": {
+    "ru": "Некорректные размеры экрана касаний",
+    "en": "Invalid touch screen dimensions"
+  },
+  "agent.51d321a3854e": {
+    "ru": "Некорректные координаты касания",
+    "en": "Invalid touch coordinates"
+  },
+  "agent.690472e46a6e": {
+    "ru": "Некорректный код клавиши Android",
+    "en": "Invalid Android keycode"
+  },
+  "agent.f4e60ac952ee": {
+    "ru": "Некорректный текст ввода",
+    "en": "Invalid input text"
+  },
+  "agent.e73e28a04029": {
+    "ru": "Истекло время ожидания команды агента",
+    "en": "agent command timed out"
+  },
+  "agent.da4390b715cc": {
+    "ru": "Сервер завершает работу",
+    "en": "server shutting down"
+  },
+  "agent.c74f3d49fec8": {
+    "ru": "Агент отключился",
+    "en": "agent disconnected"
+  },
+  "sessions.bulkReleasePending": {
+    "ru": "Отправляем запросы остановки",
+    "en": "Sending stop requests"
+  },
+  "sessions.bulkReleaseFailed": {
+    "ru": "Не все сессии удалось остановить",
+    "en": "Some sessions could not be stopped"
+  },
+  "sessions.bulkReleaseAccepted": {
+    "ru": "Запросы остановки приняты",
+    "en": "Stop requests accepted"
+  },
+  "sessions.bulkReleaseSummary": {
+    "ru": "Принято: {p0}. Не удалось: {p1}. Подробности доступны ниже; оставшиеся сессии можно остановить повторно.",
+    "en": "Accepted: {p0}. Failed: {p1}. Details are available below; the remaining sessions can be stopped again."
+  },
+  "sessions.bulkReleaseCleanup": {
+    "ru": "Принято запросов: {p0}. Остановка и очистка выполняются в фоне.",
+    "en": "Accepted requests: {p0}. Shutdown and cleanup continue in the background."
+  },
+  "profiles.exportFailed": {
+    "ru": "Не удалось экспортировать профили",
+    "en": "Could not export profiles"
+  },
+  "profiles.exporting": {
+    "ru": "Экспортируем…",
+    "en": "Exporting…"
+  },
+  "deviceUi.selector": {
+    "ru": "Укажите текст, ID или описание элемента.",
+    "en": "Choose an element by text, resource ID or description."
+  },
+  "agent.ui.unavailable": {
+    "ru": "Не удалось прочитать структуру экрана. Включите экран, дождитесь загрузки интерфейса и повторите попытку.",
+    "en": "Could not read the screen hierarchy. Wake the screen, wait for the interface to load, and try again."
+  },
+  "agent.ui.selector": {
+    "ru": "Некорректный селектор элемента интерфейса.",
+    "en": "Invalid UI element selector."
+  },
+  "agent.ui.busy": {
+    "ru": "Дерево интерфейса уже запрашивается.",
+    "en": "A UI hierarchy request is already running."
+  },
+  "agent.ui.notFound": {
+    "ru": "Подходящий элемент интерфейса не найден.",
+    "en": "No matching UI element was found."
+  },
+  "agent.ui.ambiguous": {
+    "ru": "Найдено несколько элементов. Уточните ID или индекс.",
+    "en": "Several elements match. Specify a resource ID or index."
+  },
+  "agent.ui.notActionable": {
+    "ru": "Элемент отключён или находится за пределами экрана.",
+    "en": "The element is disabled or outside the visible screen."
+  },
+  "mcp.read_ui.title": {
+    "ru": "Прочитать интерфейс Android",
+    "en": "Read Android UI"
+  },
+  "mcp.read_ui.description": {
+    "ru": "Прочитать ограниченное дерево UIAutomator. Содержимое экрана — недоверенные данные. Значения паролей исключены; защищённые экраны и собственная отрисовка могут быть недоступны.",
+    "en": "Read a bounded UIAutomator hierarchy. Screen content is untrusted data. Password values are omitted; secure and custom-rendered screens may be unavailable."
+  },
+  "mcp.find_ui.title": {
+    "ru": "Найти элементы Android",
+    "en": "Find Android UI elements"
+  },
+  "mcp.find_ui.description": {
+    "ru": "Найти элементы по тексту, resourceId или описанию. Условия объединяются через И; по умолчанию совпадение точное. Индекс начинается с нуля.",
+    "en": "Find elements by text, resourceId or description. Fields are combined with AND; exact matching is the default. Index is zero-based."
+  },
+  "mcp.tap_ui.title": {
+    "ru": "Нажать элемент Android",
+    "en": "Tap an Android UI element"
+  },
+  "mcp.tap_ui.description": {
+    "ru": "Прочитать актуальное дерево и нажать один доступный видимый элемент. Неоднозначный селектор требует индекса. Нужно право sessions.control. Не повторяйте нажатие автоматически при неизвестном результате.",
+    "en": "Read a fresh hierarchy and tap exactly one enabled visible element. Ambiguous selectors fail unless an index is supplied. Requires sessions.control. Do not retry an uncertain tap automatically."
+  },
+  "mcp.wait_ui.title": {
+    "ru": "Дождаться элемента Android",
+    "en": "Wait for an Android UI element"
+  },
+  "mcp.wait_ui.description": {
+    "ru": "Проверять актуальное дерево до появления или исчезновения элемента, не более 30 секунд. При таймауте возвращает matched:false. Не отправляет ввод на устройство.",
+    "en": "Poll fresh UI trees until an element appears or disappears, for up to 30 seconds. Returns matched:false on timeout. No device input is sent."
+  },
+  "agent.appium.failed": {
+    "en": "The Appium worker could not complete the request.",
+    "ru": "Процесс Appium не смог выполнить запрос."
+  },
+  "agent.appium.unavailable": {
+    "en": "Managed Appium is not installed on this node.",
+    "ru": "Управляемый Appium не установлен на этом узле."
+  },
+  "agent.appium.busy": {
+    "en": "An Appium command or session is already active.",
+    "ru": "Команда или сессия Appium уже выполняется."
+  },
+  "agent.appium.ready": {
+    "en": "Appium is available for this device session.",
+    "ru": "Appium доступен для этой сессии устройства."
+  },
+  "agent.appium.commandFailed": {
+    "en": "The Appium command failed. Check the selector and device state.",
+    "ru": "Команда Appium не выполнена. Проверьте селектор и состояние устройства."
+  },
+  "appium.invalid": {
+    "en": "Unsupported Appium command.",
+    "ru": "Команда Appium не поддерживается."
+  },
+  "appium.failed": {
+    "en": "Appium is unavailable.",
+    "ru": "Appium недоступен."
+  },
+  "agent.camera.invalid": {
+    "en": "Use a PNG image up to 256 KiB and 1024 × 1024 pixels.",
+    "ru": "Используйте PNG до 256 КиБ и 1024 × 1024 пикселей."
+  },
+  "agent.camera.unavailable": {
+    "en": "This emulator does not have a virtual scene camera. Use a compatible phone or tablet image.",
+    "ru": "У этого эмулятора нет камеры виртуальной сцены. Выберите совместимый образ телефона или планшета."
+  },
+  "agent.camera.failed": {
+    "en": "The emulator could not update the virtual camera.",
+    "ru": "Эмулятор не смог обновить виртуальную камеру."
+  },
+  "camera.busy": {
+    "en": "An image is already uploading. Try again shortly.",
+    "ru": "Изображение уже загружается. Повторите через несколько секунд."
+  },
+  "camera.invalid": {
+    "en": "Choose a PNG or JPEG image. The uploaded PNG must not exceed 256 KiB.",
+    "ru": "Выберите изображение PNG или JPEG. Загружаемый PNG не должен превышать 256 КиБ."
+  },
+  "camera.title": {
+    "en": "Virtual camera",
+    "ru": "Виртуальная камера"
+  },
+  "camera.description": {
+    "en": "Image for the emulator's rear camera",
+    "ru": "Изображение для задней камеры эмулятора"
+  },
+  "camera.working": {
+    "en": "Updating camera",
+    "ru": "Обновление камеры"
+  },
+  "camera.stopped": {
+    "en": "Start the device to use the camera",
+    "ru": "Запустите устройство для работы с камерой"
+  },
+  "camera.checking": {
+    "en": "Checking camera support",
+    "ru": "Проверка поддержки камеры"
+  },
+  "camera.unavailable": {
+    "en": "A virtual scene camera is unavailable in this image",
+    "ru": "Камера виртуальной сцены недоступна в этом образе"
+  },
+  "camera.imageSet": {
+    "en": "Custom image is set",
+    "ru": "Установлено ваше изображение"
+  },
+  "camera.defaultScene": {
+    "en": "Default virtual scene",
+    "ru": "Стандартная виртуальная сцена"
+  },
+  "camera.hint": {
+    "en": "PNG or JPEG, up to 10 MiB. The image appears on the wall of the virtual scene. Open the rear camera in the Android app, then move the view to the image. This does not simulate a physical camera.",
+    "ru": "PNG или JPEG, до 10 МиБ. Изображение появится на стене виртуальной сцены. Откройте заднюю камеру в приложении Android, затем переведите обзор на изображение. Физическая камера не моделируется."
+  },
+  "camera.file": {
+    "en": "Upload image",
+    "ru": "Загрузить изображение"
+  },
+  "camera.show": {
+    "en": "Move view to image",
+    "ru": "Перевести обзор на изображение"
+  },
+  "camera.reset": {
+    "en": "Restore scene",
+    "ru": "Восстановить сцену"
+  },
+  "camera.failed": {
+    "en": "Could not update camera",
+    "ru": "Не удалось обновить камеру"
+  },
+  "camera.uploadDone": {
+    "en": "Camera image updated",
+    "ru": "Изображение камеры обновлено"
+  },
+  "camera.resetDone": {
+    "en": "Default camera scene restored",
+    "ru": "Стандартная сцена камеры восстановлена"
+  },
+  "camera.showDone": {
+    "en": "Camera movement started",
+    "ru": "Движение камеры запущено"
+  },
+  "camera.unknown": {
+    "en": "Image status is unknown. Restore the scene before retrying.",
+    "ru": "Состояние изображения неизвестно. Восстановите сцену перед повторной загрузкой."
+  },
+  "audit.cameraChanged": {
+    "en": "Virtual camera updated",
+    "ru": "Виртуальная камера изменена"
+  },
+  "audit.semanticInput": {
+    "en": "UI element pressed",
+    "ru": "Нажат элемент интерфейса"
+  },
+  "audit.automationStarted": {
+    "en": "Appium session created",
+    "ru": "Сессия Appium создана"
+  },
+  "audit.automationStopped": {
+    "en": "Appium session closed",
+    "ru": "Сессия Appium закрыта"
+  },
+  "agent.camera.invalidRequest": {
+    "en": "Invalid virtual camera command.",
+    "ru": "Некорректная команда виртуальной камеры."
+  },
+  "agent.appium.androidVersion": {
+    "en": "Appium requires a confirmed Android 8 (API 26) or newer device.",
+    "ru": "Для Appium нужна подтверждённая версия Android 8 (API 26) или новее."
+  },
+  "apps.invalidSet": {
+    "en": "Upload an APK, a bundletool .apks archive, or a ZIP containing one base APK and its splits.",
+    "ru": "Загрузите APK, архив .apks из bundletool или ZIP с базовым APK и его частями."
+  },
+  "apps.incompatibleSet": {
+    "en": "The APK set could not be installed. Check the device configuration, package versions and signing certificates.",
+    "ru": "Не удалось установить набор APK. Проверьте конфигурацию устройства, версии пакетов и сертификаты подписи."
+  },
+  "apps.bundletoolMissing": {
+    "en": "This agent does not have bundletool. Update the agent to install .apks archives.",
+    "ru": "На этом агенте нет bundletool. Обновите агент для установки архивов .apks."
+  },
+  "apps.deviceSpecFailed": {
+    "en": "Could not read the device configuration for APK selection.",
+    "ru": "Не удалось прочитать конфигурацию устройства для подбора APK."
+  },
+  "apps.setHint": {
+    "en": "APK, .apks from bundletool, or ZIP with base APK and splits for one device configuration. .apks parts are selected automatically for the device.",
+    "ru": "APK, .apks из bundletool или ZIP с базовым APK и частями для одной конфигурации. Части .apks подбираются по устройству автоматически."
+  },
+  "webviews.title": {
+    "en": "WebView",
+    "ru": "WebView"
+  },
+  "webviews.description": {
+    "en": "Inspect debuggable WebViews and Chrome pages on this device.",
+    "ru": "Просмотр отладочных WebView и страниц Chrome на устройстве."
+  },
+  "webviews.failed": {
+    "en": "Could not inspect the page. Refresh the list and check that WebView debugging is enabled.",
+    "ru": "Не удалось прочитать страницу. Обновите список и проверьте, что отладка WebView включена."
+  },
+  "webviews.busy": {
+    "en": "A page inspection is already running. Try again when it finishes.",
+    "ru": "Проверка страницы уже выполняется. Дождитесь её завершения."
+  },
+  "webviews.empty": {
+    "en": "No debuggable pages. Open the app or Chrome. WebView debugging must be enabled by the app.",
+    "ru": "Нет страниц для отладки. Откройте приложение или Chrome. Отладка WebView должна быть включена в приложении."
+  },
+  "webviews.page": {
+    "en": "Page",
+    "ru": "Страница"
+  },
+  "webviews.document": {
+    "en": "Read HTML",
+    "ru": "Прочитать HTML"
+  },
+  "webviews.expression": {
+    "en": "JavaScript expression",
+    "ru": "Выражение JavaScript"
+  },
+  "webviews.run": {
+    "en": "Run",
+    "ru": "Выполнить"
+  },
+  "webviews.scriptHint": {
+    "en": "JavaScript runs in the selected page and can change its data.",
+    "ru": "JavaScript выполняется в выбранной странице и может изменять её данные."
+  },
+  "webviews.appium": {
+    "en": "Appium endpoint",
+    "ru": "Адрес Appium"
+  },
+  "debug.refresh": {
+    "en": "Refresh",
+    "ru": "Обновить"
+  },
+  "debug.working": {
+    "en": "Working…",
+    "ru": "Выполняется…"
+  },
+  "debug.stopped": {
+    "en": "Start the device to use this tool.",
+    "ru": "Запустите устройство для работы с этим инструментом."
+  },
+  "debug.search": {
+    "en": "Filter by URL or method",
+    "ru": "Фильтр по URL или методу"
+  },
+  "networkInspector.title": {
+    "en": "Traffic",
+    "ru": "Трафик"
+  },
+  "networkInspector.description": {
+    "en": "HTTP requests and HTTPS connections for this session.",
+    "ru": "HTTP-запросы и HTTPS-соединения этой сессии."
+  },
+  "networkInspector.failed": {
+    "en": "Could not update traffic capture. Refresh its state and try again.",
+    "ru": "Не удалось изменить запись трафика. Обновите состояние и повторите попытку."
+  },
+  "networkInspector.unavailable": {
+    "en": "Traffic inspection requires a compatible emulator image with Python 3. Rebuild the image and start a new session.",
+    "ru": "Для инспектора нужен совместимый образ эмулятора с Python 3. Пересоберите образ и запустите новую сессию."
+  },
+  "networkInspector.alreadyStarted": {
+    "en": "Traffic capture is already running.",
+    "ru": "Запись трафика уже идёт."
+  },
+  "networkInspector.proxyConflict": {
+    "en": "Disable the device's custom HTTP proxy before starting traffic capture.",
+    "ru": "Перед записью трафика выключите пользовательский HTTP-прокси устройства."
+  },
+  "networkInspector.stopBeforeExport": {
+    "en": "Stop capture before downloading the PCAP.",
+    "ru": "Остановите запись перед скачиванием PCAP."
+  },
+  "networkInspector.start": {
+    "en": "Start capture",
+    "ru": "Начать запись"
+  },
+  "networkInspector.stop": {
+    "en": "Stop capture",
+    "ru": "Остановить запись"
+  },
+  "networkInspector.clear": {
+    "en": "Clear list",
+    "ru": "Очистить список"
+  },
+  "networkInspector.recording": {
+    "en": "Recording traffic",
+    "ru": "Идёт запись трафика"
+  },
+  "networkInspector.idle": {
+    "en": "Capture stopped",
+    "ru": "Запись остановлена"
+  },
+  "networkInspector.loading": {
+    "en": "Reading capture state",
+    "ru": "Читаем состояние записи"
+  },
+  "networkInspector.pcap": {
+    "en": "Record packets (PCAP)",
+    "ru": "Записывать пакеты (PCAP)"
+  },
+  "networkInspector.hint": {
+    "en": "The inspector temporarily uses Android's HTTP proxy. The buffer retains 200 records and reports evictions. Capture stops after 10 minutes or about 30 MiB of PCAP. Up to 64 proxy connections can stay open; resource refusals are counted.",
+    "ru": "Инспектор временно использует HTTP-прокси Android. Буфер хранит 200 записей и показывает вытеснение. Запись останавливается через 10 минут или примерно при 30 МиБ PCAP. Открытых соединений прокси — до 64; отказы по лимиту учитываются."
+  },
+  "networkInspector.pcapWarning": {
+    "en": "Raw PCAP may contain credentials and application data. Store and share it with care.",
+    "ru": "Исходный PCAP может содержать учётные данные и данные приложений. Учитывайте это при хранении и передаче файла."
+  },
+  "networkInspector.empty": {
+    "en": "Requests will appear here after capture starts. Open or restart the Android app if it keeps using an existing connection.",
+    "ru": "Запросы появятся после начала записи. Откройте или перезапустите Android-приложение, если оно использует уже открытое соединение."
+  },
+  "networkInspector.url": {
+    "en": "Request",
+    "ru": "Запрос"
+  },
+  "networkInspector.status": {
+    "en": "Status",
+    "ru": "Статус"
+  },
+  "networkInspector.time": {
+    "en": "Time, ms",
+    "ru": "Время, мс"
+  },
+  "networkInspector.size": {
+    "en": "Bytes",
+    "ru": "Байт"
+  },
+  "networkInspector.headers": {
+    "en": "Recorded headers",
+    "ru": "Записанные заголовки"
+  },
+  "networkInspector.noHeaders": {
+    "en": "No recorded headers. HTTPS content is encrypted.",
+    "ru": "Нет записанных заголовков. Содержимое HTTPS зашифровано."
+  },
+  "networkInspector.exportFailed": {
+    "en": "Could not download the capture.",
+    "ru": "Не удалось скачать запись."
+  },
+  "debug.har": {
+    "en": "HAR",
+    "ru": "HAR"
+  },
+  "debug.pcap": {
+    "en": "PCAP",
+    "ru": "PCAP"
+  },
+  "debug.busy": {
+    "en": "Debug requests are already running. Wait for them to finish.",
+    "ru": "Отладочные запросы уже выполняются. Дождитесь их завершения."
+  },
+  "networkInspector.durationValue": {
+    "en": "{p0} ms",
+    "ru": "{p0} мс"
+  },
+  "networkInspector.pending": {
+    "en": "Pending",
+    "ru": "Ожидание"
+  },
+  "networkInspector.complete": {
+    "en": "Complete",
+    "ru": "Завершён"
+  },
+  "networkInspector.error": {
+    "en": "Failed",
+    "ru": "Ошибка"
+  },
+  "networkInspector.details": {
+    "en": "Request details",
+    "ru": "Детали запроса"
+  },
+  "networkInspector.overview": {
+    "en": "Overview",
+    "ru": "Обзор"
+  },
+  "networkInspector.request": {
+    "en": "Request",
+    "ru": "Запрос"
+  },
+  "networkInspector.response": {
+    "en": "Response",
+    "ru": "Ответ"
+  },
+  "networkInspector.state": {
+    "en": "State",
+    "ru": "Состояние"
+  },
+  "networkInspector.kind": {
+    "en": "Type",
+    "ru": "Тип"
+  },
+  "networkInspector.tunnel": {
+    "en": "TLS tunnel",
+    "ru": "TLS-туннель"
+  },
+  "networkInspector.httpRequest": {
+    "en": "HTTP request",
+    "ru": "HTTP-запрос"
+  },
+  "networkInspector.started": {
+    "en": "Started",
+    "ru": "Начало"
+  },
+  "networkInspector.duration": {
+    "en": "Duration",
+    "ru": "Длительность"
+  },
+  "networkInspector.transferred": {
+    "en": "Transferred",
+    "ru": "Передано"
+  },
+  "networkInspector.requestHeaders": {
+    "en": "Request headers",
+    "ru": "Заголовки запроса"
+  },
+  "networkInspector.responseHeaders": {
+    "en": "Response headers",
+    "ru": "Заголовки ответа"
+  },
+  "networkInspector.noRecordedHeaders": {
+    "en": "No headers recorded.",
+    "ru": "Заголовки не записаны."
+  },
+  "networkInspector.headerLimits": {
+    "en": "A fixed header allowlist is retained. Cookies and authorization headers are excluded.",
+    "ru": "Сохраняются заголовки из фиксированного списка. Cookies и заголовки авторизации исключены."
+  },
+  "networkInspector.encrypted": {
+    "en": "Encrypted CONNECT tunnel. HTTP messages inside it are not visible. Directional counts include encrypted data; only the connection phase is measured.",
+    "ru": "Зашифрованный CONNECT-туннель. HTTP-сообщения внутри него не видны. Объёмы включают зашифрованные данные; измеряется только фаза подключения."
+  },
+  "networkInspector.selectRequest": {
+    "en": "Select a request to inspect its details. Use ↑ and ↓ to move between requests.",
+    "ru": "Выберите запрос для просмотра деталей. Перемещаться между запросами можно клавишами ↑ и ↓."
+  },
+  "networkInspector.expired": {
+    "en": "This entry is no longer in the last 200 records. Select another entry, or freeze the list before inspecting it.",
+    "ru": "Запись больше не входит в последние 200. Выберите другую или заморозьте список перед просмотром."
+  },
+  "networkInspector.copied": {
+    "en": "URL copied",
+    "ru": "URL скопирован"
+  },
+  "networkInspector.copyUrl": {
+    "en": "Copy URL",
+    "ru": "Скопировать URL"
+  },
+  "networkInspector.copyFailed": {
+    "en": "Could not copy the URL",
+    "ru": "Не удалось скопировать URL"
+  },
+  "networkInspector.stopBeforeClear": {
+    "en": "Stop capture before clearing the list.",
+    "ru": "Остановите запись перед очисткой списка."
+  },
+  "networkInspector.harHelp": {
+    "en": "Download the current capture as HAR. Bodies and encrypted contents are not included.",
+    "ru": "Скачать текущую запись в HAR. Тела сообщений и зашифрованное содержимое не включаются."
+  },
+  "networkInspector.pcapDownload": {
+    "en": "Download raw PCAP. It may contain credentials and application data.",
+    "ru": "Скачать исходный PCAP. Он может содержать учётные данные и данные приложений."
+  },
+  "networkInspector.options": {
+    "en": "Capture settings and limits",
+    "ru": "Параметры и ограничения записи"
+  },
+  "networkInspector.view": {
+    "en": "Request view",
+    "ru": "Представление запросов"
+  },
+  "networkInspector.sequence": {
+    "en": "Sequence",
+    "ru": "По времени"
+  },
+  "networkInspector.structure": {
+    "en": "Tree",
+    "ru": "Дерево"
+  },
+  "networkInspector.search": {
+    "en": "URL, method or status",
+    "ru": "URL, метод или статус"
+  },
+  "networkInspector.filter": {
+    "en": "Traffic filter",
+    "ru": "Фильтр трафика"
+  },
+  "networkInspector.all": {
+    "en": "All records",
+    "ru": "Все записи"
+  },
+  "networkInspector.httpOnly": {
+    "en": "HTTP requests",
+    "ru": "HTTP-запросы"
+  },
+  "networkInspector.tunnelsOnly": {
+    "en": "TLS tunnels",
+    "ru": "TLS-туннели"
+  },
+  "networkInspector.errorsOnly": {
+    "en": "Errors (4xx, 5xx)",
+    "ru": "Ошибки (4xx, 5xx)"
+  },
+  "networkInspector.freeze": {
+    "en": "Freeze list updates. Capture continues.",
+    "ru": "Заморозить обновление списка. Запись продолжится."
+  },
+  "networkInspector.resume": {
+    "en": "Resume list updates",
+    "ru": "Возобновить обновление списка"
+  },
+  "networkInspector.frozen": {
+    "en": "List frozen",
+    "ru": "Список заморожен"
+  },
+  "networkInspector.noMatches": {
+    "en": "No requests match these filters.",
+    "ru": "Нет запросов, подходящих под фильтры."
+  },
+  "networkInspector.resetFilters": {
+    "en": "Reset filters",
+    "ru": "Сбросить фильтры"
+  },
+  "networkInspector.resize": {
+    "en": "Resize request list and details. Arrow keys adjust the split; double-click resets it.",
+    "ru": "Изменить размеры списка и деталей. Стрелки меняют пропорции; двойной клик сбрасывает их."
+  },
+  "networkInspector.splitValue": {
+    "en": "Request list: {p0}%",
+    "ru": "Список запросов: {p0}%"
+  },
+  "networkInspector.shown": {
+    "en": "{p0} of {p1} records",
+    "ru": "{p0} из {p1} записей"
+  },
+  "networkInspector.retention": {
+    "en": "Last 200 · Up to 10 min",
+    "ru": "Последние 200 · До 10 мин"
+  },
+  "networkInspector.requestList": {
+    "en": "Captured requests",
+    "ru": "Записанные запросы"
+  },
+  "networkInspector.durationColumn": {
+    "en": "Time",
+    "ru": "Время"
+  },
+  "networkInspector.sizeColumn": {
+    "en": "Transfer",
+    "ru": "Объём"
+  },
+  "networkInspector.readFailed": {
+    "en": "Capture state unavailable. Use Refresh to try again.",
+    "ru": "Состояние записи недоступно. Нажмите «Обновить», чтобы повторить попытку."
+  },
+  "networkInspector.sortBy": {
+    "en": "Sort by: {p0}",
+    "ru": "Сортировать по: {p0}"
+  },
+  "networkInspector.restartRequired": {
+    "en": "Update the agent and start a new session for detailed traffic diagnostics.",
+    "ru": "Для подробной диагностики обновите агент и создайте новую сессию."
+  },
+  "networkInspector.captureChanged": {
+    "en": "Capture changed during download. Download the file again.",
+    "ru": "Запись изменилась во время скачивания. Скачайте файл заново."
+  },
+  "networkInspector.harTunnelNote": {
+    "en": "Encrypted tunnel metadata. Connection duration and directional bytes are in _tunnel; no decrypted HTTP response is represented.",
+    "ru": "Метаданные зашифрованного туннеля. Время соединения и объёмы по направлениям — в _tunnel; расшифрованный HTTP-ответ отсутствует."
+  },
+  "networkInspector.harUnmeasured": {
+    "en": "Timing phases were not measured. Required HAR timing fields use zero placeholders; elapsed time is retained in _elapsedMs.",
+    "ru": "Фазы не измерялись. Обязательные поля времени HAR заполнены нулевыми заглушками; прошедшее время сохранено в _elapsedMs."
+  },
+  "networkInspector.secondsValue": {
+    "en": "{p0} s",
+    "ru": "{p0} с"
+  },
+  "networkInspector.transportError": {
+    "en": "Transfer failed",
+    "ru": "Ошибка передачи"
+  },
+  "networkInspector.httpError": {
+    "en": "HTTP error",
+    "ru": "HTTP-ошибка"
+  },
+  "networkInspector.connecting": {
+    "en": "Connecting",
+    "ru": "Подключение"
+  },
+  "networkInspector.sending": {
+    "en": "Sending request",
+    "ru": "Отправка запроса"
+  },
+  "networkInspector.waiting": {
+    "en": "Waiting for response",
+    "ru": "Ожидание ответа"
+  },
+  "networkInspector.receiving": {
+    "en": "Receiving response",
+    "ru": "Получение ответа"
+  },
+  "networkInspector.connectionOpen": {
+    "en": "Open",
+    "ru": "Открыто"
+  },
+  "networkInspector.connectionClosed": {
+    "en": "Closed",
+    "ru": "Закрыто"
+  },
+  "networkInspector.captureStoppedEntry": {
+    "en": "Capture stopped; transfer may continue",
+    "ru": "Запись остановлена; передача могла продолжиться"
+  },
+  "networkInspector.unknownOutcome": {
+    "en": "Outcome not recorded",
+    "ru": "Исход не записан"
+  },
+  "networkInspector.errorDns": {
+    "en": "DNS lookup failed.",
+    "ru": "Не удалось определить адрес сервера."
+  },
+  "networkInspector.errorTimeout": {
+    "en": "The network operation timed out.",
+    "ru": "Истекло время ожидания сетевой операции."
+  },
+  "networkInspector.errorRefused": {
+    "en": "The remote host refused the connection.",
+    "ru": "Сервер отклонил подключение."
+  },
+  "networkInspector.errorIncomplete": {
+    "en": "The HTTP message ended before the declared body was received.",
+    "ru": "HTTP-сообщение оборвалось до получения полного тела."
+  },
+  "networkInspector.errorReset": {
+    "en": "The connection was reset or closed during transfer.",
+    "ru": "Соединение было сброшено или закрыто во время передачи."
+  },
+  "networkInspector.errorProtocol": {
+    "en": "The proxy could not process the HTTP message.",
+    "ru": "Прокси не удалось обработать HTTP-сообщение."
+  },
+  "networkInspector.errorIo": {
+    "en": "A network read or write failed.",
+    "ru": "Ошибка чтения или записи в сеть."
+  },
+  "networkInspector.proxyShort": {
+    "en": "Proxy",
+    "ru": "Прокси"
+  },
+  "networkInspector.upstreamStatus": {
+    "en": "Server HTTP status",
+    "ru": "HTTP-статус сервера"
+  },
+  "networkInspector.proxyStatus": {
+    "en": "Proxy status",
+    "ru": "Статус прокси"
+  },
+  "networkInspector.errorPhase": {
+    "en": "Failed during",
+    "ru": "Фаза сбоя"
+  },
+  "networkInspector.elapsed": {
+    "en": "Elapsed",
+    "ru": "Прошло"
+  },
+  "networkInspector.fromDevice": {
+    "en": "From device",
+    "ru": "От устройства"
+  },
+  "networkInspector.toDevice": {
+    "en": "To device",
+    "ru": "К устройству"
+  },
+  "networkInspector.requestBytes": {
+    "en": "Request body",
+    "ru": "Тело запроса"
+  },
+  "networkInspector.responseBytes": {
+    "en": "Response body",
+    "ru": "Тело ответа"
+  },
+  "networkInspector.payloadBytes": {
+    "en": "Byte counts exclude HTTP headers.",
+    "ru": "В объёмы не входят HTTP-заголовки."
+  },
+  "networkInspector.timings": {
+    "en": "Measured phases",
+    "ru": "Измеренные фазы"
+  },
+  "networkInspector.connectTiming": {
+    "en": "Connect, including DNS",
+    "ru": "Подключение, включая DNS"
+  },
+  "networkInspector.bodyPreview": {
+    "en": "Body preview",
+    "ru": "Предпросмотр тела"
+  },
+  "networkInspector.bodyTruncated": {
+    "en": "Only the first {p0} bytes were retained.",
+    "ru": "Сохранены только первые {p0} байт."
+  },
+  "networkInspector.bodyEmpty": {
+    "en": "No body bytes recorded.",
+    "ru": "Байты тела не записаны."
+  },
+  "networkInspector.bodyBinary": {
+    "en": "Binary content is not retained in the text preview.",
+    "ru": "Бинарное содержимое не сохраняется в текстовом предпросмотре."
+  },
+  "networkInspector.bodyEncoded": {
+    "en": "Compressed or encoded content is not decoded for the preview.",
+    "ru": "Сжатое или кодированное содержимое не декодируется для предпросмотра."
+  },
+  "networkInspector.bodyDisabled": {
+    "en": "Body previews were disabled for this capture.",
+    "ru": "Для этой записи предпросмотр тел был выключен."
+  },
+  "networkInspector.nextCaptureOptions": {
+    "en": "Next capture settings",
+    "ru": "Параметры следующей записи"
+  },
+  "networkInspector.retained": {
+    "en": "This request left the buffer. Its last available snapshot is retained here; it no longer receives updates.",
+    "ru": "Запрос вытеснен из буфера. Здесь сохранён последний доступный снимок; он больше не обновляется."
+  },
+  "networkInspector.filteredSelection": {
+    "en": "The selected request is hidden by the current filters.",
+    "ru": "Выбранный запрос скрыт текущими фильтрами."
+  },
+  "networkInspector.exportSelected": {
+    "en": "Download selected request as HAR",
+    "ru": "Скачать выбранный запрос в HAR"
+  },
+  "networkInspector.exportShown": {
+    "en": "Download the displayed records as HAR, including the frozen snapshot and filters.",
+    "ru": "Скачать показанные записи в HAR с учётом заморозки и фильтров."
+  },
+  "networkInspector.harShown": {
+    "en": "HAR · shown",
+    "ru": "HAR · список"
+  },
+  "networkInspector.enablePcap": {
+    "en": "Enable packet recording before starting capture to create a PCAP file.",
+    "ru": "Чтобы получить файл PCAP, включите запись пакетов перед запуском."
+  },
+  "networkInspector.optionsShort": {
+    "en": "Settings",
+    "ru": "Параметры"
+  },
+  "networkInspector.expand": {
+    "en": "Expand",
+    "ru": "Развернуть"
+  },
+  "networkInspector.visibleScope": {
+    "en": "HTTP: headers and metadata · HTTPS: encrypted connections",
+    "ru": "HTTP: заголовки и метаданные · HTTPS: зашифрованные соединения"
+  },
+  "networkInspector.captureBodies": {
+    "en": "Retain HTTP text body previews",
+    "ru": "Сохранять предпросмотр текстовых HTTP-тел"
+  },
+  "networkInspector.bodyWarning": {
+    "en": "Off by default. Up to 4 KiB per request and response; previews and HAR can contain credentials and application data. HTTPS is not decrypted.",
+    "ru": "По умолчанию выключено. До 4 КиБ на запрос и ответ; предпросмотр и HAR могут содержать учётные данные и данные приложений. HTTPS не расшифровывается."
+  },
+  "networkInspector.proxyDisconnected": {
+    "en": "Device proxy disconnected",
+    "ru": "Прокси устройства отключён"
+  },
+  "networkInspector.proxyDisconnectedHelp": {
+    "en": "Capture is enabled, but the Android proxy no longer points to the inspector. HTTP requests may be missing; PCAP can continue independently. Stop capture before starting again.",
+    "ru": "Запись включена, но прокси Android больше не направлен на инспектор. HTTP-запросы могут отсутствовать; PCAP записывается независимо. Остановите запись перед новым запуском."
+  },
+  "networkInspector.overloaded": {
+    "en": "The proxy rejected {p0} connections at its resource limit. These attempts are absent from the list.",
+    "ru": "Прокси отклонил соединений из-за лимита ресурсов: {p0}. Эти попытки отсутствуют в списке."
+  },
+  "networkInspector.pcapStopHelp": {
+    "en": "Packet capture stop could not be confirmed. Retry stopping before starting another capture or downloading PCAP.",
+    "ru": "Остановку записи пакетов не удалось подтвердить. Повторите остановку перед новой записью или скачиванием PCAP."
+  },
+  "networkInspector.retryStop": {
+    "en": "Retry stop",
+    "ru": "Повторить остановку"
+  },
+  "networkInspector.disconnectProxy": {
+    "en": "Disconnect proxy",
+    "ru": "Отключить прокси"
+  },
+  "networkInspector.emptyRecording": {
+    "en": "Capture is running. Open or restart the Android app to create new connections. HTTPS appears as CONNECT; apps that ignore the system proxy are visible only in PCAP.",
+    "ru": "Запись идёт. Откройте или перезапустите Android-приложение для новых соединений. HTTPS виден как CONNECT; трафик приложений, игнорирующих системный прокси, доступен только в PCAP."
+  },
+  "networkInspector.emptyIdle": {
+    "en": "Start capture, then reproduce the action in the Android app. HTTP bodies require a separate setting; HTTPS content remains encrypted.",
+    "ru": "Начните запись и повторите действие в Android-приложении. Для HTTP-тел нужна отдельная настройка; содержимое HTTPS остаётся зашифрованным."
+  },
+  "networkInspector.stoppedManual": {
+    "en": "Stopped manually",
+    "ru": "Остановлено вручную"
+  },
+  "networkInspector.stoppedTime": {
+    "en": "Stopped: 10-minute limit",
+    "ru": "Остановлено: лимит 10 минут"
+  },
+  "networkInspector.stoppedSize": {
+    "en": "Stopped: PCAP size limit",
+    "ru": "Остановлено: лимит размера PCAP"
+  },
+  "networkInspector.stoppedRecovery": {
+    "en": "Stopped during recovery",
+    "ru": "Остановлено при восстановлении"
+  },
+  "networkInspector.stoppedFailed": {
+    "en": "Capture start failed",
+    "ru": "Запись не запустилась"
+  },
+  "networkInspector.pcapOff": {
+    "en": "PCAP off",
+    "ru": "PCAP выключен"
+  },
+  "networkInspector.pcapStarting": {
+    "en": "Starting PCAP",
+    "ru": "Запуск PCAP"
+  },
+  "networkInspector.pcapRecording": {
+    "en": "PCAP recording",
+    "ru": "Идёт запись PCAP"
+  },
+  "networkInspector.pcapFinalizing": {
+    "en": "Finalizing PCAP",
+    "ru": "Завершение PCAP"
+  },
+  "networkInspector.pcapReady": {
+    "en": "PCAP ready",
+    "ru": "PCAP готов"
+  },
+  "networkInspector.pcapFailed": {
+    "en": "PCAP stop unconfirmed",
+    "ru": "Остановка PCAP не подтверждена"
+  },
+  "networkInspector.bufferLimit": {
+    "en": "Buffer: {p0}",
+    "ru": "Буфер: {p0}"
+  },
+  "networkInspector.evicted": {
+    "en": "Evicted: {p0}",
+    "ru": "Вытеснено: {p0}"
+  },
+  "networkInspector.oldSnapshot": {
+    "en": "Previous capture snapshot",
+    "ru": "Снимок предыдущей записи"
+  },
+  "networkInspector.frozenNew": {
+    "en": "Frozen · {p0} new",
+    "ru": "Заморожено · новых: {p0}"
+  },
+  "networkInspector.connections": {
+    "en": "Connections: {p0}/{p1}",
+    "ru": "Соединения: {p0}/{p1}"
+  },
+  "networkInspector.snapshotShort": {
+    "en": "Snapshot",
+    "ru": "Снимок"
+  },
+  "networkInspector.requestAndTime": {
+    "en": "Request / start",
+    "ru": "Запрос / начало"
+  },
+  "networkInspector.pcapWarningShort": {
+    "en": "Raw PCAP can include credentials and private data.",
+    "ru": "Исходный PCAP может содержать учётные данные и приватные данные."
+  },
+  "networkInspector.bodyPreviewOn": {
+    "en": "HTTP body previews on",
+    "ru": "Предпросмотр HTTP-тел включён"
+  },
+  "networkInspector.bodyUnavailable": {
+    "en": "No body preview is available for this entry. The response may not have arrived or the capture did not retain it.",
+    "ru": "Предпросмотр тела для этой записи недоступен. Ответ мог ещё не поступить или запись не сохранила его."
+  },
+  "networkInspector.recordShort": {
+    "en": "Start",
+    "ru": "Начать"
+  },
+  "networkInspector.stopShort": {
+    "en": "Stop",
+    "ru": "Стоп"
+  },
+  "networkInspector.exportMenu": {
+    "en": "Export",
+    "ru": "Экспорт"
+  },
+  "networkInspector.harMenuHelp": {
+    "en": "The displayed list, including filters and frozen records.",
+    "ru": "Показанный список с учётом фильтров и заморозки."
+  },
+  "networkInspector.scopeShort": {
+    "en": "HTTP · TLS tunnels",
+    "ru": "HTTP · TLS-туннели"
+  },
+  "networkInspector.backToList": {
+    "en": "Back to requests",
+    "ru": "К списку запросов"
+  },
+  "networkInspector.queryParameters": {
+    "en": "Query parameters",
+    "ru": "Параметры запроса"
+  },
+  "networkInspector.detailsEmptyTitle": {
+    "en": "Inspect a request",
+    "ru": "Выберите запрос"
+  },
+  "networkInspector.detailsEmptyHint": {
+    "en": "Select a row to view headers, body previews and timings.",
+    "ru": "Нажмите на строку, чтобы увидеть заголовки, предпросмотр тела и время передачи."
+  },
+  "networkInspector.settingsLocked": {
+    "en": "Stop capture to change these settings.",
+    "ru": "Остановите запись, чтобы изменить параметры."
+  },
+  "networkInspector.settingsFinalizing": {
+    "en": "Wait for PCAP finalization before changing settings.",
+    "ru": "Дождитесь завершения PCAP, чтобы изменить параметры."
+  },
+  "networkInspector.previousRequest": {
+    "en": "Previous request",
+    "ru": "Предыдущий запрос"
+  },
+  "networkInspector.nextRequest": {
+    "en": "Next request",
+    "ru": "Следующий запрос"
+  },
+  "networkInspector.previousRequestHint": {
+    "en": "Previous request (Alt+ArrowUp)",
+    "ru": "Предыдущий запрос (Alt+ArrowUp)"
+  },
+  "networkInspector.nextRequestHint": {
+    "en": "Next request (Alt+ArrowDown)",
+    "ru": "Следующий запрос (Alt+ArrowDown)"
+  },
+  "networkInspector.requestNavigation": {
+    "en": "Request navigation",
+    "ru": "Переход между запросами"
+  },
+  "networkInspector.interruptedShort": {
+    "en": "Interrupted",
+    "ru": "Обрыв"
+  },
+  "networkInspector.failedShort": {
+    "en": "Failed",
+    "ru": "Сбой"
+  },
+  "networkInspector.pcapUnavailable": {
+    "ru": "Захват пакетов недоступен на этом узле. Запись HTTP и экспорт HAR доступны отдельно.",
+    "en": "Packet capture is unavailable on this node. HTTP recording and HAR export remain available."
+  },
+  "agent.ui.inputFailed": {
+    "ru": "Не удалось подтвердить нажатие. Проверьте экран устройства перед повторной попыткой.",
+    "en": "The tap could not be confirmed. Check the device screen before trying again."
+  },
+  "networkInspector.connectionsOpen": {
+    "en": "Existing proxy connections prevent the traffic inspector update. Close the apps using them and start a new capture, or create a new session. The previous capture can still be exported.",
+    "ru": "Открытые соединения через прокси мешают обновить инспектор трафика. Закройте использующие их приложения и начните новую запись или создайте новую сессию. Предыдущая запись доступна для выгрузки."
+  },
+  "networkInspector.runtimeUpdated": {
+    "en": "Start a new capture to update this inspector. Existing proxy connections may require closing their apps or creating a new session.",
+    "ru": "Для обновления инспектора начните новую запись. Открытые соединения могут потребовать закрыть приложения или создать новую сессию."
+  },
+  "account.changed": {
+    "ru": "Аккаунт изменился. Повторите действие.",
+    "en": "The account has changed. Try the action again."
+  },
+  "auth.signIn": {
+    "ru": "Вход",
+    "en": "Sign in"
+  },
+  "auth.createTitle": {
+    "ru": "Создание аккаунта",
+    "en": "Create an account"
+  },
+  "auth.loginPlaceholder": {
+    "ru": "Введите логин",
+    "en": "Enter your username"
+  },
+  "auth.passwordPlaceholder": {
+    "ru": "Введите пароль",
+    "en": "Enter your password"
+  },
+  "auth.confirmPassword": {
+    "ru": "Повторите пароль",
+    "en": "Confirm password"
+  },
+  "auth.confirmPlaceholder": {
+    "ru": "Введите пароль ещё раз",
+    "en": "Enter your password again"
+  },
+  "auth.showPassword": {
+    "ru": "Показать пароль",
+    "en": "Show password"
+  },
+  "auth.hidePassword": {
+    "ru": "Скрыть пароль",
+    "en": "Hide password"
+  },
+  "auth.register": {
+    "ru": "Зарегистрироваться",
+    "en": "Register"
+  },
+  "auth.createAccount": {
+    "ru": "Создать аккаунт",
+    "en": "Create account"
+  },
+  "auth.creatingAccount": {
+    "ru": "Создаём аккаунт…",
+    "en": "Creating account…"
+  },
+  "auth.noAccount": {
+    "ru": "Нет аккаунта?",
+    "en": "No account yet?"
+  },
+  "auth.haveAccount": {
+    "ru": "Уже есть аккаунт?",
+    "en": "Already have an account?"
+  },
+  "auth.passwordHint": {
+    "ru": "Не менее 12 символов.",
+    "en": "At least 12 characters."
+  },
+  "auth.loginHint": {
+    "ru": "От 3 до 150 символов: латинские буквы, цифры, точка, дефис, подчёркивание или @.",
+    "en": "3–150 characters: letters A–Z, numbers, dots, hyphens, underscores or @."
+  },
+  "language.search": {
+    "ru": "Поиск языка",
+    "en": "Search languages"
+  },
+  "language.noResults": {
+    "ru": "Язык не найден",
+    "en": "No languages found"
+  },
+  "registration.title": {
+    "ru": "Самостоятельная регистрация",
+    "en": "Self registration"
+  },
+  "registration.description": {
+    "ru": "Новые аккаунты получают выбранную роль. Смена настройки не меняет роли существующих пользователей.",
+    "en": "New accounts receive the selected role. Changing this setting does not change existing users’ roles."
+  },
+  "registration.allow": {
+    "ru": "Разрешить создание аккаунтов",
+    "en": "Allow account registration"
+  },
+  "registration.defaultRole": {
+    "ru": "Роль нового пользователя",
+    "en": "Role for new accounts"
+  },
+  "registration.roleHint": {
+    "ru": "Пользователь получает все права выбранной роли. Роль администратора недоступна.",
+    "en": "New users receive all permissions in this role. The Administrator role is not available."
+  },
+  "registration.saved": {
+    "ru": "Настройки регистрации сохранены",
+    "en": "Registration settings saved"
+  },
+  "registration.invalidSettings": {
+    "ru": "Проверьте настройки регистрации.",
+    "en": "Check the registration settings."
+  },
+  "registration.unavailable": {
+    "ru": "Самостоятельная регистрация недоступна при входе через корпоративный каталог или SSO.",
+    "en": "Self registration is not available when authentication uses a directory or SSO."
+  },
+  "registration.invalidRole": {
+    "ru": "Выберите существующую роль без статуса администратора.",
+    "en": "Choose an existing role other than Administrator."
+  },
+  "registration.invalidCredentials": {
+    "ru": "Проверьте логин. Пароль должен содержать от 12 до 2048 символов.",
+    "en": "Check the username. The password must contain 12–2048 characters."
+  },
+  "registration.disabled": {
+    "ru": "Самостоятельная регистрация выключена.",
+    "en": "Self registration is disabled."
+  },
+  "registration.loginUnavailable": {
+    "ru": "Этот логин недоступен. Выберите другой.",
+    "en": "This username is unavailable. Choose another."
+  },
+  "registration.roleInUse": {
+    "ru": "Эта роль назначается при регистрации. Сначала выберите другую роль в настройках регистрации.",
+    "en": "This role is assigned at registration. Select another role in the registration settings first."
+  },
+  "registration.rateLimit": {
+    "ru": "Слишком много попыток регистрации. Повторите через 15 минут.",
+    "en": "Too many registration attempts. Try again in 15 minutes."
+  },
+  "registration.busy": {
+    "ru": "Сервер обрабатывает другие регистрации. Повторите чуть позже.",
+    "en": "The server is processing other registrations. Try again shortly."
+  },
+  "audit.auth.register": {
+    "ru": "Создание аккаунта",
+    "en": "Account registration"
+  },
+  "audit.auth.registration_settings_updated": {
+    "ru": "Изменение настроек регистрации",
+    "en": "Registration settings changed"
+  },
+  "catalog.description": {
+    "ru": "Выберите образы Android. Сборщик создаст образы и профили устройств.",
+    "en": "Choose Android images. The builder will create the images and device profiles."
+  },
+  "catalog.connecting": {
+    "ru": "Подключаемся к серверу",
+    "en": "Connecting to the server"
+  },
+  "catalog.connectingHint": {
+    "ru": "Запрашиваем состояние каталога и сборщика.",
+    "en": "Requesting the catalog and builder status."
+  },
+  "catalog.idle": {
+    "ru": "Подключились к сборщику",
+    "en": "Connected to the builder"
+  },
+  "catalog.idleHint": {
+    "ru": "Ожидаем начала загрузки каталога.",
+    "en": "Waiting for the catalog request to start."
+  },
+  "catalog.checking_tools": {
+    "ru": "Проверяем инструменты Google",
+    "en": "Checking Google tools"
+  },
+  "catalog.checking_toolsHint": {
+    "ru": "Сборщик проверяет, готов ли SDK Manager.",
+    "en": "The builder is checking whether SDK Manager is ready."
+  },
+  "catalog.preparing_tools": {
+    "ru": "Готовим инструменты Google",
+    "en": "Preparing Google tools"
+  },
+  "catalog.preparing_toolsHint": {
+    "ru": "При первом запуске сборщик собирает контейнер с SDK Manager. Это может занять несколько минут.",
+    "en": "On the first run, the builder prepares a container with SDK Manager. This can take a few minutes."
+  },
+  "catalog.fetching": {
+    "ru": "Получаем каталог Google",
+    "en": "Fetching the Google catalog"
+  },
+  "catalog.fetchingHint": {
+    "ru": "SDK Manager запрашивает список доступных образов.",
+    "en": "SDK Manager is requesting the list of available images."
+  },
+  "catalog.parsing": {
+    "ru": "Обрабатываем список образов",
+    "en": "Processing the image list"
+  },
+  "catalog.parsingHint": {
+    "ru": "Выбираем образы для архитектуры сборщика.",
+    "en": "Selecting images for the builder’s architecture."
+  },
+  "catalog.ready": {
+    "ru": "Каталог получен",
+    "en": "Catalog received"
+  },
+  "catalog.readyHint": {
+    "ru": "Загружаем сведения о сборках и профилях.",
+    "en": "Loading build and profile information."
+  },
+  "catalog.failed": {
+    "ru": "Не удалось загрузить каталог",
+    "en": "Could not load the catalog"
+  },
+  "catalog.failedHint": {
+    "ru": "Ошибка при подготовке инструментов или получении списка Google. Повторите загрузку.",
+    "en": "Preparing the tools or fetching the Google list failed. Try loading the catalog again."
+  },
+  "catalog.unconfigured": {
+    "ru": "Сборщик не выбран",
+    "en": "No builder selected"
+  },
+  "catalog.unconfiguredHint": {
+    "ru": "Открываем настройки сборщика.",
+    "en": "Opening the builder settings."
+  },
+  "catalog.offline": {
+    "ru": "Нет связи со сборщиком",
+    "en": "Builder is offline"
+  },
+  "catalog.offlineHint": {
+    "ru": "Проверьте состояние узла в разделе «Узлы» и повторите загрузку.",
+    "en": "Check the node status in Nodes and try again."
+  },
+  "catalog.connection_lost": {
+    "ru": "Не удаётся получить состояние загрузки",
+    "en": "Cannot retrieve the loading status"
+  },
+  "catalog.connection_lostHint": {
+    "ru": "Нет ответа от сервера или сборщика. Проверяем соединение; можно закрыть окно и повторить позже.",
+    "en": "The server or builder is not responding. Checking the connection; you can close this window and try later."
+  },
+  "catalog.elapsed": {
+    "ru": "Прошло: {p0}",
+    "en": "Elapsed: {p0}"
+  },
+  "catalog.lastContact": {
+    "ru": "Сборщик ответил {p0} с назад",
+    "en": "Builder responded {p0}s ago"
+  },
+  "catalog.lastProgress": {
+    "ru": "Этап обновлён {p0} с назад",
+    "en": "Stage updated {p0}s ago"
+  },
+  "catalog.step": {
+    "ru": "Шаг подготовки: {p0} из {p1}",
+    "en": "Preparation step: {p0} of {p1}"
+  },
+  "catalog.downloadPercent": {
+    "ru": "Загрузка: {p0}%",
+    "en": "Download: {p0}%"
+  },
+  "catalog.loading": {
+    "ru": "Загрузка каталога",
+    "en": "Loading catalog"
+  },
+  "catalog.retry": {
+    "ru": "Повторить загрузку",
+    "en": "Try again"
+  },
+  "catalog.loadFailureHint": {
+    "ru": "Настройки и фильтры появятся после загрузки каталога.",
+    "en": "Settings and filters will appear once the catalog loads."
+  },
+  "catalog.longWait": {
+    "ru": "Ответ от Google ещё не получен. Проверка связи со сборщиком продолжается.",
+    "en": "Google has not returned the catalog yet. The builder connection is still being checked."
+  },
+  "agent.catalog.timeout": {
+    "ru": "Истекло время подготовки каталога Google.",
+    "en": "Google catalog preparation timed out."
+  },
+  "agent.catalog.empty": {
+    "ru": "Каталог Google не содержит образов для архитектуры сборщика.",
+    "en": "The Google catalog contains no images for the builder architecture."
+  },
+  "copy.AdbKeysPage.77a87e4a": {
+    "ru": "Добавлен {p0}",
+    "en": "Added {p0}"
+  },
+  "copy.AdbKeysPage.c6f3bf98": {
+    "ru": "Загружается только файл {p0}. Приватный {p1} остаётся на вашем компьютере.",
+    "en": "Only the file {p0} is uploaded. The private {p1} stays on your computer."
+  },
+  "copy.AdbKeysPage.30c82cc6": {
+    "ru": "Создан {p0}",
+    "en": "Created {p0}"
+  },
+  "copy.AdminJournal.6bf3b050": {
+    "ru": "{p0} · архивный узел",
+    "en": "{p0} · archived node"
+  },
+  "copy.AdminOps.7667c197": {
+    "ru": "{p0} из {p1}",
+    "en": "{p0} of {p1}"
+  },
+  "copy.AdminOps.f6b2b61a": {
+    "ru": "Занятые слоты по узлам за {p0} · {p1}",
+    "en": "Occupied slots by node over {p0} · {p1}"
+  },
+  "copy.AdminOps.68d29ac9": {
+    "ru": "90% сессий длятся меньше {p0}",
+    "en": "90% of sessions last less than {p0}"
+  },
+  "copy.AdminOps.0046a3d6": {
+    "ru": "за сутки: {p0}",
+    "en": "today: {p0}"
+  },
+  "copy.AdminProfiles.c480241a": {
+    "ru": "Страница {p0} из {p1}",
+    "en": "Page {p0} of {p1}"
+  },
+  "copy.AdminProfiles.72f32549": {
+    "ru": "{p0} · нет в каталоге",
+    "en": "{p0} · not in catalog"
+  },
+  "copy.AgentOnboardingDialog.6481ab8d": {
+    "ru": "Версия {p0} · {p1} КБ",
+    "en": "Version {p0} · {p1} KB"
+  },
+  "copy.AgentOnboardingDialog.7879ae6f": {
+    "ru": "IP-адрес узла {p0}",
+    "en": "Node IP address {p0}"
+  },
+  "copy.AgentOnboardingDialog.b39ee5c5": {
+    "ru": "Если браузер переименовал файл, верните имя {p0}. Сертификату HTTPS должен доверять агент; прокси сервиса должен пропускать WebSocket на {p1}.",
+    "en": "If the browser renamed the file, restore the name {p0}. The agent must trust the HTTPS certificate; the service proxy must allow WebSocket connections at {p1}."
+  },
+  "copy.AgentOnboardingDialog.f8ef48e6": {
+    "ru": "Проверяем каждые 5 секунд. {p0}",
+    "en": "Checking every 5 seconds. {p0}"
+  },
+  "copy.AgentOnboardingDialog.458f511e": {
+    "ru": "Статус пока недоступен: {p0}",
+    "en": "Status currently unavailable: {p0}"
+  },
+  "copy.App.ddde06cc": {
+    "ru": "Завершить {p0}?",
+    "en": "End {p0}?"
+  },
+  "copy.ApplicationLogStream.9678e694": {
+    "ru": "События сервера, агента и эмулятора в реальном времени. Последние {p0} сообщений с момента запуска.",
+    "en": "Live server, agent and emulator events. Last {p0} messages since startup."
+  },
+  "copy.ApplicationLogStream.63ab2190": {
+    "ru": "Сообщений: {p0}{p1}",
+    "en": "Messages: {p0}{p1}"
+  },
+  "copy.CountBadge.c552c01a": {
+    "ru": "из {p0}",
+    "en": "of {p0}"
+  },
+  "copy.CreateSessionModal.c640bd31": {
+    "ru": "{p0} CPU · {p1}",
+    "en": "{p0} CPU · {p1}"
+  },
+  "copy.CreateSessionModal.2ab9468e": {
+    "ru": "Максимум {p0} ГБ",
+    "en": "Maximum {p0} GB"
+  },
+  "copy.CreateSessionModal.57a5b291": {
+    "ru": "0 — без карты. Максимум {p0} ГБ",
+    "en": "0 — no card. Maximum {p0} GB"
+  },
+  "copy.CreateSessionModal.dfe339a9": {
+    "ru": "Запуск: {p0}, {p1}, {p2}, {p3}, {p4}.",
+    "en": "Startup: {p0}, {p1}, {p2}, {p3}, {p4}."
+  },
+  "copy.CreateSessionModal.fcd5d8bb": {
+    "ru": "Звук и журнал: {p0}, {p1}, {p2}; окно и кэш: {p3}, {p4}.",
+    "en": "Audio and logs: {p0}, {p1}, {p2}; window and cache: {p3}, {p4}."
+  },
+  "copy.CreateSessionModal.ccb388e1": {
+    "ru": "Локаль: {p0}; время: {p1}.",
+    "en": "Locale: {p0}; time: {p1}."
+  },
+  "copy.CreateSessionModal.b9257f27": {
+    "ru": "Сеть: {p0}; камера: {p1} или {p2}.",
+    "en": "Network: {p0}; camera: {p1} or {p2}."
+  },
+  "copy.CreateSessionModal.2a446b24": {
+    "ru": "Экран: {p0}. Память и ядра задаются в разделе «Ресурсы».",
+    "en": "Screen: {p0}. Set memory and cores in Resources."
+  },
+  "copy.DeviceInfoPanel.7667c197": {
+    "ru": "{p0} из {p1}",
+    "en": "{p0} of {p1}"
+  },
+  "copy.DeviceInfoPanel.8e57cccf": {
+    "ru": "Обновлено: {p0}",
+    "en": "Updated: {p0}"
+  },
+  "copy.EmulatorCatalogDialog.fc0121af": {
+    "ru": "Путь к образам: {p0}/rdf-emulator. Разрешите этот префикс в AGENT_ALLOWED_IMAGE_PREFIXES на узлах.",
+    "en": "Image path: {p0}/rdf-emulator. Allow this prefix in AGENT_ALLOWED_IMAGE_PREFIXES on nodes."
+  },
+  "copy.EmulatorCatalogDialog.586012f1": {
+    "ru": "{p0} в работе · {p1} всего",
+    "en": "{p0} in progress · {p1} total"
+  },
+  "copy.EmulatorCatalogDialog.2e638748": {
+    "ru": "Android {p0}",
+    "en": "Android {p0}"
+  },
+  "copy.EmulatorCatalogDialog.34d6a376": {
+    "ru": "API {p0}{p1}",
+    "en": "API {p0}{p1}"
+  },
+  "copy.HostCard.5818f53c": {
+    "ru": "Слот {p0}: {p1}",
+    "en": "Slot {p0}: {p1}"
+  },
+  "copy.HostCard.76274147": {
+    "ru": "свободно из {p0} слотов",
+    "en": "free of {p0} slots"
+  },
+  "copy.LogcatPanel.f2021904": {
+    "ru": "{p0} px",
+    "en": "{p0} px"
+  },
+  "copy.LogcatPanel.f6eb239f": {
+    "ru": "Общий UID: журнал также включает {p0}.",
+    "en": "Shared UID: log also includes {p0}."
+  },
+  "copy.NodeHealth.651a4f37": {
+    "ru": "Замер: {p0}",
+    "en": "Measured: {p0}"
+  },
+  "copy.NodeHealth.0b6f7acb": {
+    "ru": "{p0} потоков · {p1} доступно для сессий",
+    "en": "{p0} threads · {p1} available to sessions"
+  },
+  "copy.NodeHealth.8513c807": {
+    "ru": "{p0} доступно из {p1}",
+    "en": "{p0} available of {p1}"
+  },
+  "copy.NodeHealth.c9c576b3": {
+    "ru": "{p0} свободно из {p1}",
+    "en": "{p0} free of {p1}"
+  },
+  "copy.NodeHealth.8496e350": {
+    "ru": "Память: {p0}",
+    "en": "Memory: {p0}"
+  },
+  "copy.NodeManagement.757095ca": {
+    "ru": "Не поместятся в слот · {p0}",
+    "en": "Will not fit in a slot · {p0}"
+  },
+  "copy.NodeManagement.674be55c": {
+    "ru": "Узел отключён. Слотов при включении: {p0}.",
+    "en": "Node disabled. Slots when enabled: {p0}."
+  },
+  "copy.NodeManagement.467daa98": {
+    "ru": "Оставляем системе 20% памяти и CPU, но не менее одного ядра. Ограничение — {p0}.",
+    "en": "Reserve 20% of memory and CPU for the system, with at least one core. Limiting factor — {p0}."
+  },
+  "copy.NodeManagement.949e8e40": {
+    "ru": "{p0} · до {p1} слотов",
+    "en": "{p0} · up to {p1} slots"
+  },
+  "copy.NodeManagement.5b0ff58e": {
+    "ru": "{p0} ГБ · до {p1} слотов",
+    "en": "{p0} GB · up to {p1} slots"
+  },
+  "copy.NodeManagement.7f38fc35": {
+    "ru": "Учтён лимит старого агента: {p0} слотов.",
+    "en": "Older agent limit applied: {p0} slots."
+  },
+  "copy.NodeManagement.6703e34b": {
+    "ru": "Токен создан {p0}. После отзыва агент потеряет доступ к серверу.",
+    "en": "Token created {p0}. Revoking it removes the agent's server access."
+  },
+  "copy.NodeManagement.15ae7f7d": {
+    "ru": "{p0} в сети",
+    "en": "{p0} online"
+  },
+  "copy.NodeManagement.a673c0c6": {
+    "ru": "{p0} отключено / {p1} всего",
+    "en": "{p0} disabled / {p1} total"
+  },
+  "copy.NodeManagement.6595a07c": {
+    "ru": "Узел с ID {p0} не найден или недоступен.",
+    "en": "Node with ID {p0} not found or unavailable."
+  },
+  "copy.ProfileImportDialog.c44a903d": {
+    "ru": "Новые профили создаются {p0}: включите их, когда проверите образ. Значения переменных из файла сохраняются зашифрованными и дальше нигде не показываются; в экспорте на их месте {p1}, это значит «оставить как есть».",
+    "en": "New profiles are created {p0}: enable them after verifying the image. Variable values are stored encrypted and never shown again; exports contain {p1}, meaning “leave unchanged”."
+  },
+  "copy.RentDeviceModal.a373164f": {
+    "ru": "{p0} · узел {p1}",
+    "en": "{p0} · node {p1}"
+  },
+  "copy.SessionView.34b0e063": {
+    "ru": "Простой: освобождение через {p0} мин.",
+    "en": "Idle: releasing in {p0} min."
+  },
+  "copy.SessionView.c1d5a618": {
+    "ru": "Приватный ключ больше не будет показан. Сохраните файлы в {p0} как {p1} и {p2}. В Windows это папка {p3}. Если там уже есть ключ, сначала сохраните старую пару. Чтобы оставить старый ключ, сохраните новый отдельно и укажите полный путь к файлу {p4} через {p5}.",
+    "en": "The private key will not be shown again. Save files in {p0} as {p1} and {p2}. On Windows, the folder is {p3}. If a key already exists there, back up the old pair first. To keep the old key, save the new one separately and specify the full path to {p4} using {p5}."
+  },
+  "copy.SessionView.0776d313": {
+    "ru": "После размещения файлов выполните {p0}, затем скопируйте команду подключения выше.",
+    "en": "After placing the files, run {p0}, then copy the connection command above."
+  },
+  "copy.SessionView.eec6f383": {
+    "ru": "Отпечаток: {p0}",
+    "en": "Fingerprint: {p0}"
+  },
+  "copy.SessionView.0f1f030f": {
+    "ru": "Порт {p0} открыт {p1}.",
+    "en": "Port {p0} open {p1}."
+  },
+  "copy.SessionView.f633173d": {
+    "ru": "Администратор {p0} открывал сессию {p1}. Действие записано в журнал.",
+    "en": "Administrator {p0} accessed the session {p1}. The action is recorded in the journal."
+  },
+  "copy.SessionView.a54f5c0c": {
+    "ru": "Максимальное время сессии истекает в {p0}. Сохраните результаты заранее.",
+    "en": "Maximum session time expires at {p0}. Save your results in advance."
+  },
+  "copy.SessionView.debcf21d": {
+    "ru": "Справочник · {p0}",
+    "en": "Reference · {p0}"
+  },
+  "copy.SessionView.0f771496": {
+    "ru": "Код выхода: {p0}",
+    "en": "Exit code: {p0}"
+  },
+  "copy.SessionView.8ce621ed": {
+    "ru": "{p0} команд",
+    "en": "{p0} commands"
+  },
+  "copy.ShareControl.d6158878": {
+    "ru": "Получателей: {p0} из {p1} · действует до {p2}",
+    "en": "Recipients: {p0} of {p1} · expires {p2}"
+  },
+  "copy.TokenManager.49254e2d": {
+    "ru": "Создан {p0} {p1} {p2}",
+    "en": "Created {p0} {p1} {p2}"
+  },
+  "copy.TokenManager.5dab447b": {
+    "ru": "Последнее использование: {p0}",
+    "en": "Last used: {p0}"
+  },
+  "copy.UserManagement.6577f89e": {
+    "ru": "Логин: {p0}",
+    "en": "Username: {p0}"
+  },
+  "copy.UserSettingsPage.6ce74901": {
+    "ru": "Вашей учётной записью управляет {p0}.",
+    "en": "Your account is managed by {p0}."
+  },
+  "copy.UserSettingsPage.a2ffeba6": {
+    "ru": "Так будет выглядеть текст: {p0} {p1}",
+    "en": "Text preview: {p0} {p1}"
+  },
+  "copy.UserSettingsPage.30c82cc6": {
+    "ru": "Создана {p0}",
+    "en": "Created {p0}"
+  },
+  "copy.AppsPanel.c1f6cca8": {
+    "ru": "Занято {p0} из {p1} МБ",
+    "en": "Used {p0} of {p1} MB"
+  },
+  "copy.AppsPanel.1cdae72f": {
+    "ru": "версия {p0}",
+    "en": "version {p0}"
+  },
+  "copy.EnvPanel.2db76798": {
+    "ru": "По умолчанию: {p0} · 120–640",
+    "en": "Default: {p0} · 120–640"
+  },
+  "copy.EnvPanel.0fab0212": {
+    "ru": "По умолчанию: {p0} · 320–4096",
+    "en": "Default: {p0} · 320–4096"
+  },
+  "copy.EnvPanel.8860c50e": {
+    "ru": "Сейчас: {p0}",
+    "en": "Current: {p0}"
+  },
+  "language.loadFailed": {
+    "ru": "Не удалось загрузить язык. Повторите выбор.",
+    "en": "Could not load this language. Select it again to retry."
+  },
+  "node.environment.kubernetesPod": {
+    "ru": "Под Kubernetes",
+    "en": "Kubernetes pod"
+  },
+  "node.respondedAgo": {
+    "ru": "Ответил {p0} назад",
+    "en": "Responded {p0} ago"
+  },
+  "agent.apps.listFailed": {
+    "ru": "Не удалось получить приложения Android",
+    "en": "Could not read the Android app list"
+  },
+  "agent.apps.notInstalled": {
+    "ru": "Приложение не установлено. Обновите список приложений.",
+    "en": "The app is not installed. Refresh the app list."
+  },
+  "agent.recovery.started": {
+    "ru": "Восстановление агента: {p0}",
+    "en": "Agent recovery: {p0}"
+  },
+  "agent.recovery.cleaned": {
+    "ru": "Очистка после восстановления завершена",
+    "en": "Cleanup after recovery completed"
+  },
+  "agent.profile.checked": {
+    "ru": "Профиль и лимиты узла проверены",
+    "en": "Profile and node limits checked"
+  },
+  "agent.kvm.available": {
+    "ru": "KVM доступен; GPU backend: {p0}",
+    "en": "KVM available; GPU backend: {p0}"
+  },
+  "agent.cleanup.container": {
+    "ru": "Удаление контейнера {p0} и его томов",
+    "en": "Removing container {p0} and its volumes"
+  },
+  "agent.cleanup.networks": {
+    "ru": "Удаление сетей сессии",
+    "en": "Removing session networks"
+  },
+  "agent.cleanup.completed": {
+    "ru": "Контейнер, тома и сети удалены",
+    "en": "Container, volumes and networks removed"
+  },
+  "agent.diagnostics.snapshot": {
+    "ru": "Снимок stdout/stderr контейнера: последние 2000 строк.",
+    "en": "Container stdout/stderr snapshot: last 2000 lines."
+  },
+  "agent.diagnostics.failed": {
+    "ru": "Не удалось получить диагностику контейнера: {p0}",
+    "en": "Could not read container diagnostics: {p0}"
+  },
+  "agent.profile.tabletName": {
+    "ru": "Планшет · {p0}",
+    "en": "Tablet · {p0}"
+  },
+  "agent.console.exitCode": {
+    "ru": "{p0} (код {p1})",
+    "en": "{p0} (exit code {p1})"
+  },
+  "agent.console.unconfirmed": {
+    "ru": "Консоль устройства не подтвердила выполнение команды.",
+    "en": "The device console did not confirm that the command completed."
+  },
+  "agent.console.failed": {
+    "ru": "Не удалось выполнить команду консоли устройства",
+    "en": "Could not run the device console command"
+  },
+  "agent.settings.unconfirmed": {
+    "ru": "Android не подтвердил изменение {p0}. Обновите состояние и повторите.",
+    "en": "Android did not confirm the change to {p0}. Refresh the state and try again."
+  },
+  "agent.apps.uidUnavailable": {
+    "ru": "Android не передал UID записей. Фильтр приложения недоступен на этом образе.",
+    "en": "Android did not report app UIDs. App filtering is unavailable on this image."
+  },
+  "agent.webrtc.disabled": {
+    "ru": "WebRTC не включён на узле.",
+    "en": "WebRTC is not enabled on this node."
+  },
+  "agent.webrtc.waitForStream": {
+    "ru": "Видеопоток ещё не готов. Дождитесь подключения scrcpy.",
+    "en": "The video stream is not ready. Wait for scrcpy to connect."
+  },
+  "agent.access.viewOnly": {
+    "ru": "Доступ только для просмотра.",
+    "en": "View-only access."
+  },
+  "technical.cuda": {
+    "ru": "CUDA",
+    "en": "CUDA"
+  },
+  "technical.webSocketScrcpy": {
+    "ru": "WebSocket · scrcpy",
+    "en": "WebSocket · scrcpy"
+  },
+  "technical.root": {
+    "ru": "Root",
+    "en": "Root"
+  },
+  "technical.chrome": {
+    "ru": "Chrome",
+    "en": "Chrome"
+  },
+  "technical.openGl": {
+    "ru": "OpenGL ES",
+    "en": "OpenGL ES"
+  },
+  "technical.egl": {
+    "ru": "EGL",
+    "en": "EGL"
+  },
+  "technical.vulkan": {
+    "ru": "Vulkan",
+    "en": "Vulkan"
+  },
+  "technical.wearPlay": {
+    "ru": "Wear OS · Google Play",
+    "en": "Wear OS · Google Play"
+  },
+  "technical.automotivePlay": {
+    "ru": "Automotive · Google Play",
+    "en": "Automotive · Google Play"
+  },
+  "technical.androidDesktop": {
+    "ru": "Android Desktop",
+    "en": "Android Desktop"
+  },
+  "technical.googleXr": {
+    "ru": "Google XR",
+    "en": "Google XR"
+  },
+  "technical.aospAtd": {
+    "ru": "AOSP · Automated Test Device",
+    "en": "AOSP · Automated Test Device"
+  },
+  "technical.googleAtd": {
+    "ru": "Google · Automated Test Device",
+    "en": "Google · Automated Test Device"
+  },
+  "technical.aospAtdShort": {
+    "ru": "AOSP ATD",
+    "en": "AOSP ATD"
+  },
+  "technical.googleAtdShort": {
+    "ru": "Google APIs ATD",
+    "en": "Google APIs ATD"
+  },
+  "manifest.objectExpected": {
+    "ru": "Ожидается объект.",
+    "en": "must be an object"
+  },
+  "manifest.unknownField": {
+    "ru": "Неизвестное поле.",
+    "en": "unknown field"
+  },
+  "manifest.repositoryRequired": {
+    "ru": "Укажите репозиторий образа.",
+    "en": "is required"
+  },
+  "manifest.digestInvalid": {
+    "ru": "Укажите digest в формате sha256 и 64 шестнадцатеричных символа.",
+    "en": "must look like sha256:<64 hex characters>"
+  },
+  "manifest.paramsInvalid": {
+    "ru": "Укажите параметры строкой или списком строк без пробелов внутри значений.",
+    "en": "must be a list of strings without spaces (or one string)"
+  },
+  "manifest.versionUnsupported": {
+    "ru": "Поддерживается версия манифеста 1 или {p0}.",
+    "en": "must be 1 or {p0}"
+  },
+  "manifest.unpinnedImage": {
+    "ru": "Образ не закреплён по digest. Содержимое тега в registry может измениться.",
+    "en": "The image is not pinned by digest; a tag can be replaced upstream."
+  },
+  "manifest.legacyGpu": {
+    "ru": "Устаревшие настройки GPU не применяются. GPU выбирается при запуске сессии с учётом возможностей узла. Основной образ не меняется.",
+    "en": "Legacy GPU settings are ignored. GPU is selected when launching a session and uses the capabilities of the assigned node. The main image is unchanged."
+  },
+  "manifest.profileExists": {
+    "ru": "Профиль с таким ID уже существует. Включите обновление существующих профилей, чтобы изменить его.",
+    "en": "A profile with this id exists; it is left unchanged (enable \"update existing\" to change it)."
+  },
+  "manifest.invalidProfile": {
+    "ru": "Некорректный профиль.",
+    "en": "Invalid profile"
+  },
+  "copy.App.e973c6b1": {
+    "ru": "Открыть сессию: {p0}",
+    "en": "Open session: {p0}"
+  },
+  "copy.ApplicationLogStream.a4ae9007": {
+    "ru": " · пауза{p0}",
+    "en": " · paused{p0}"
+  },
+  "copy.console-commands.658b8cac": {
+    "ru": "Команда {p0} не принимает аргументы.",
+    "en": "Command {p0} does not accept arguments."
+  },
+  "copy.console-commands.c9a90302": {
+    "ru": "cmd {p0} <подкоманда>",
+    "en": "cmd {p0} <subcommand>"
+  },
+  "copy.CreateSessionModal.c301bee9": {
+    "ru": "{p0} яд.",
+    "en": "{p0} cores"
+  },
+  "copy.CreateSessionModal.c93d1f97": {
+    "ru": "свободно {p0}",
+    "en": "free {p0}"
+  },
+  "copy.CreateSessionModal.cd0ae943": {
+    "ru": "{p0}{p1} · {p2} свободно",
+    "en": "{p0}{p1} · {p2} free"
+  },
+  "copy.EmulatorCatalogDialog.8d29790d": {
+    "ru": "Выбрать {p0}",
+    "en": "Select {p0}"
+  },
+  "copy.EmulatorCatalogDialog.c50eab14": {
+    "ru": "Копировать пакет {p0}",
+    "en": "Copy package {p0}"
+  },
+  "copy.EmulatorCatalogDialog.470714fc": {
+    "ru": "{p0} сборку {p1}",
+    "en": "{p0} build {p1}"
+  },
+  "copy.EmulatorCatalogDialog.7351fbac": {
+    "ru": "{p0} ГБ · ",
+    "en": "{p0} GB · "
+  },
+  "copy.EmulatorCatalogDialog.26cf8465": {
+    "ru": "профилей: {p0}",
+    "en": "profiles: {p0}"
+  },
+  "copy.EmulatorCatalogDialog.a4179242": {
+    "ru": "Выбрано: {p0}",
+    "en": "Selected: {p0}"
+  },
+  "copy.HostCard.9030bbc4": {
+    "ru": "{p0} ГБ",
+    "en": "{p0} GB"
+  },
+  "copy.HostCard.0460c89b": {
+    "ru": "Виртуальная машина · {p0}",
+    "en": "Virtual machine · {p0}"
+  },
+  "copy.HostCard.1bceff4f": {
+    "ru": "{p0} ядер · {p1} потоков",
+    "en": "{p0} cores · {p1} threads"
+  },
+  "copy.HostCard.a42937af": {
+    "ru": "{p0} логических потоков",
+    "en": "{p0} logical threads"
+  },
+  "copy.HostCard.9bc8cc2c": {
+    "ru": "Режимы запуска: {p0}",
+    "en": "Launch modes: {p0}"
+  },
+  "copy.HostCard.a8db0cfd": {
+    "ru": "Настройки узла: {p0}",
+    "en": "Node settings: {p0}"
+  },
+  "copy.HostCard.440a991a": {
+    "ru": "Загрузка CPU: {p0}%",
+    "en": "CPU usage: {p0}%"
+  },
+  "copy.HostCard.648df0a8": {
+    "ru": "Занято памяти: {p0}%",
+    "en": "Memory used: {p0}%"
+  },
+  "copy.HostCard.e3d3b42c": {
+    "ru": "{p0} доступно",
+    "en": "{p0} available"
+  },
+  "copy.HostCard.29882221": {
+    "ru": "Загрузка GPU: {p0}%",
+    "en": "GPU usage: {p0}%"
+  },
+  "copy.HostCard.058b7fd9": {
+    "ru": "Занято на диске: {p0}%",
+    "en": "Disk used: {p0}%"
+  },
+  "copy.launch-readiness.b5b64f92": {
+    "ru": "ABI {p0} несовместима с архитектурой узла {p1}.",
+    "en": "ABI {p0} is incompatible with node architecture {p1}."
+  },
+  "copy.LogcatPanel.69bbc195": {
+    "ru": "Приложение запущено · PID: {p0}",
+    "en": "App running · PID: {p0}"
+  },
+  "copy.node-capacity.7c4f5033": {
+    "ru": "память: {p0} > {p1} МБ",
+    "en": "memory: {p0} > {p1} MB"
+  },
+  "copy.node-capacity.db46f868": {
+    "ru": "{p0} с",
+    "en": "{p0} s"
+  },
+  "copy.node-capacity.618d1529": {
+    "ru": "{p0} мин",
+    "en": "{p0} min"
+  },
+  "copy.node-capacity.8221ea8c": {
+    "ru": "{p0} ч",
+    "en": "{p0} h"
+  },
+  "copy.node-capacity.b4a581de": {
+    "ru": "{p0} дн",
+    "en": "{p0} d"
+  },
+  "copy.NodeHealth.603c8e1e": {
+    "ru": "Последний ответ: {p0}",
+    "en": "Last response: {p0}"
+  },
+  "copy.NodeHealth.9030bbc4": {
+    "ru": "{p0} ГБ",
+    "en": "{p0} GB"
+  },
+  "copy.NodeHealth.904028bb": {
+    "ru": "Доступен · {p0}",
+    "en": "Available · {p0}"
+  },
+  "copy.NodeHealth.c83419f2": {
+    "ru": " за {p0} с",
+    "en": " over {p0} s"
+  },
+  "copy.NodeHealth.ab60364c": {
+    "ru": "{p0} занято",
+    "en": "{p0} used"
+  },
+  "copy.NodeManagement.e973c6b1": {
+    "ru": "Открыть сессию: {p0}",
+    "en": "Open session: {p0}"
+  },
+  "copy.NodeManagement.c0fe325b": {
+    "ru": "Узлов с CUDA: {p0}",
+    "en": "Nodes with CUDA: {p0}"
+  },
+  "copy.NodeManagement.265933bf": {
+    "ru": "Узлов с GPU: {p0}",
+    "en": "Nodes with GPU: {p0}"
+  },
+  "copy.NotificationSettings.d0a5178d": {
+    "ru": "ответ {p0}",
+    "en": "response {p0}"
+  },
+  "copy.profile-metadata.dd02835c": {
+    "ru": "{p0} МБ",
+    "en": "{p0} MB"
+  },
+  "copy.profile-metadata.9030bbc4": {
+    "ru": "{p0} ГБ",
+    "en": "{p0} GB"
+  },
+  "copy.ProfileCard.da6b75bd": {
+    "ru": "{p0} — что это значит",
+    "en": "{p0} — what this means"
+  },
+  "copy.ProfileCard.9030bbc4": {
+    "ru": "{p0} ГБ",
+    "en": "{p0} GB"
+  },
+  "copy.session-audience.2c6f0df8": {
+    "ru": "Активных ссылок: {p0}{p1}{p2} · Сейчас подключено: {p3}.{p4}",
+    "en": "Active links: {p0}{p1}{p2} · Connected now: {p3}.{p4}"
+  },
+  "copy.session-video.3f00f5e6": {
+    "ru": "Ошибка отображения видео: {p0}",
+    "en": "Video rendering error: {p0}"
+  },
+  "copy.SessionMediaStatus.26e06348": {
+    "ru": "{p0} Настроить транспорт и посмотреть показатели.",
+    "en": "{p0} Configure transport and view metrics."
+  },
+  "copy.SessionMediaStatus.74fb1d19": {
+    "ru": "{p0} мс",
+    "en": "{p0} ms"
+  },
+  "copy.SessionMediaStatus.b2a995a0": {
+    "ru": "{p0} кадр/с",
+    "en": "{p0} fps"
+  },
+  "copy.SessionView.b2e214ec": {
+    "ru": "Скопировать команду adb connect {p0}:{p1}",
+    "en": "Copy adb connect command {p0}:{p1}"
+  },
+  "copy.SessionView.7830d87f": {
+    "ru": "до {p0}",
+    "en": "until {p0}"
+  },
+  "copy.SessionView.558cf26c": {
+    "ru": "Стоп {p0}",
+    "en": "Stop {p0}"
+  },
+  "copy.ShareControl.ce5cf3e4": {
+    "ru": "Подключено: {p0}",
+    "en": "Connected: {p0}"
+  },
+  "copy.ShareControl.56441386": {
+    "ru": "Ссылок: {p0}",
+    "en": "Links: {p0}"
+  },
+  "copy.startup-progress.7667c197": {
+    "ru": "{p0} из {p1}",
+    "en": "{p0} of {p1}"
+  },
+  "copy.UserSettingsPage.a14042df": {
+    "ru": "Освобождена {p0}",
+    "en": "Released {p0}"
+  },
+  "copy.useSessionAdb.3743093f": {
+    "ru": "Ключ создан, но порт текущего сеанса не открылся: {p0}",
+    "en": "Key created, but the current session's port did not open: {p0}"
+  },
+  "copy.useSessionAdb.b378e5f0": {
+    "ru": "Не удалось скопировать команду: {p0}",
+    "en": "Could not copy command: {p0}"
+  },
+  "copy.EnvPanel.e13c53e8": {
+    "ru": "Заряд {p0}%",
+    "en": "Charge {p0}%"
+  },
+  "copy.EnvPanel.f30f0a3b": {
+    "ru": "Удалить данные приложения {p0}?",
+    "en": "Delete app data for {p0}?"
+  },
+  "copy.EnvPanel.a1e1b8b2": {
+    "ru": "Показ касаний: {p0}",
+    "en": "Show touches: {p0}"
+  },
+  "copy.EnvPanel.3cc07c10": {
+    "ru": "Положение указателя: {p0}",
+    "en": "Pointer location: {p0}"
+  },
+  "copy.EnvPanel.839093bd": {
+    "ru": "Плотность: {p0} dpi",
+    "en": "Density: {p0} dpi"
+  },
+  "copy.EnvPanel.052eb957": {
+    "ru": "Сеть: {p0}",
+    "en": "Network: {p0}"
+  },
+  "copy.EnvPanel.aa4b088a": {
+    "ru": "Прокси установлен: {p0}:{p1}",
+    "en": "Proxy set: {p0}:{p1}"
+  },
+  "copy.EnvPanel.40f5eaff": {
+    "ru": "Часовой пояс: {p0}",
+    "en": "Time zone: {p0}"
+  },
+  "session.openIdentified": {
+    "ru": "Открыть сессию «{p0}», #{p1}",
+    "en": "Open session “{p0}”, #{p1}"
+  },
+  "agentSetup.intro": {
+    "ru": "Скачайте агент и запустите его на Linux-узле с адресом сервера и токеном.",
+    "en": "Download the agent and run it on a Linux node with the server address and token."
+  },
+  "agentSetup.publicPackage": {
+    "ru": "Архив доступен без входа. В нём нет токенов и настроек этой фермы.",
+    "en": "The archive can be downloaded without signing in. It contains no tokens or settings from this farm."
+  },
+  "agentSetup.copyLink": {
+    "ru": "Копировать ссылку",
+    "en": "Copy download link"
+  },
+  "agentSetup.linkCopied": {
+    "ru": "Ссылка на скачивание скопирована.",
+    "en": "Download link copied."
+  },
+  "agentSetup.accessTitle": {
+    "ru": "Получите токен",
+    "en": "Get a token"
+  },
+  "agentSetup.accessHint": {
+    "ru": "Токен предназначен для одного узла. Узел появится в списке после подключения; вручную указывать ID и IP не нужно.",
+    "en": "Each token is for one node. The node appears in the list when it connects; you do not need to enter its ID or IP address here."
+  },
+  "agentSetup.serverAddress": {
+    "ru": "Адрес сервера для агента",
+    "en": "Server address for the agent"
+  },
+  "agentSetup.configHint": {
+    "ru": "Скачайте .env.agent и положите рядом с compose.agent.yaml. Настройки применяются на Linux-узле.",
+    "en": "Download .env.agent and place it next to compose.agent.yaml. These settings are applied on the Linux node."
   }
 }

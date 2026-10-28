@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { createHash } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { IMAGE_REPOSITORY } from './registry.js';
@@ -37,13 +38,13 @@ export class DistributionRegistry implements CleanupRegistry {
   constructor(url: string, private readonly request: typeof fetch = fetch) {
     this.base = new URL(url);
     if (!['http:', 'https:'].includes(this.base.protocol) || this.base.username || this.base.password ||
-      this.base.pathname !== '/' || this.base.search || this.base.hash) throw new Error('Registry maintenance URL must be an HTTP(S) origin without credentials or path');
+      this.base.pathname !== '/' || this.base.search || this.base.hash) throw new Error(diagnostic('registry-cleanup.fcc74d56a1'));
   }
 
   private async call(path: string, method = 'GET', body?: string, contentType?: string, missing = false): Promise<Response> {
     const response = await this.request(new URL(path, this.base), { method, redirect: 'error', signal: AbortSignal.timeout(30_000),
       headers: { Accept: TYPES.join(', '), ...(contentType ? { 'Content-Type': contentType } : {}) }, body });
-    if (!response.ok && !(missing && response.status === 404)) throw new Error(`Registry ${method} failed (${response.status}); nothing further will be deleted`);
+    if (!response.ok && !(missing && response.status === 404)) throw new Error(diagnostic('registry-cleanup.16e892ac12', { p0: method, p1: response.status }));
     return response;
   }
 
@@ -52,20 +53,20 @@ export class DistributionRegistry implements CleanupRegistry {
     const seen = new Set<string>();
     let page = path + '?n=100';
     while (page) {
-      if (seen.has(page) || seen.size > 1000) throw new Error('Invalid registry pagination');
+      if (seen.has(page) || seen.size > 1000) throw new Error(diagnostic('registry-cleanup.0feecea72e'));
       seen.add(page);
       const response = await this.call(page, 'GET', undefined, undefined, field === 'tags');
       if (response.status === 404) return [];
       const data = await response.json() as Record<string, unknown>;
       const values = data[field];
-      if (values !== null && (!Array.isArray(values) || values.some(value => typeof value !== 'string'))) throw new Error('Invalid registry list');
+      if (values !== null && (!Array.isArray(values) || values.some(value => typeof value !== 'string'))) throw new Error(diagnostic('registry-cleanup.1ac8e07e9b'));
       items.push(...(values as string[] | null ?? []));
       const link = response.headers.get('link');
       if (!link) break;
       const match = /^<([^>]+)>;\s*rel="?next"?$/.exec(link);
-      if (!match) throw new Error('Invalid registry pagination link');
+      if (!match) throw new Error(diagnostic('registry-cleanup.a278d705de'));
       const next = new URL(match[1]!, this.base);
-      if (next.origin !== this.base.origin || next.pathname !== path) throw new Error('Foreign registry pagination is not permitted');
+      if (next.origin !== this.base.origin || next.pathname !== path) throw new Error(diagnostic('registry-cleanup.c233fb245b'));
       page = next.pathname + next.search;
     }
     return [...new Set(items)];
@@ -74,35 +75,35 @@ export class DistributionRegistry implements CleanupRegistry {
   repositories() { return this.list('/v2/_catalog', 'repositories'); }
   tags() { return this.list(`/v2/${IMAGE_REPOSITORY}/tags/list`, 'tags'); }
   async resolve(tag: string): Promise<string> {
-    if (!/^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/.test(tag)) throw new Error('Invalid registry tag');
+    if (!/^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/.test(tag)) throw new Error(diagnostic('registry-cleanup.184e51fdec'));
     const response = await this.call(`/v2/${IMAGE_REPOSITORY}/manifests/${tag}`, 'HEAD');
     const digest = response.headers.get('docker-content-digest') ?? '';
-    if (!DIGEST.test(digest)) throw new Error('Registry omitted a valid manifest digest');
+    if (!DIGEST.test(digest)) throw new Error(diagnostic('registry-cleanup.2c2b67792d'));
     return digest;
   }
   async manifest(digest: string): Promise<Manifest> {
-    if (!DIGEST.test(digest)) throw new Error('Invalid manifest digest');
+    if (!DIGEST.test(digest)) throw new Error(diagnostic('registry-cleanup.418d49afc3'));
     const response = await this.call(`/v2/${IMAGE_REPOSITORY}/manifests/${digest}`);
     const contentType = response.headers.get('content-type')?.split(';')[0] ?? '';
-    if (!TYPES.includes(contentType)) throw new Error('Unsupported manifest type; refusing garbage collection');
+    if (!TYPES.includes(contentType)) throw new Error(diagnostic('registry-cleanup.8170d138d9'));
     const body = await response.text();
-    if (Buffer.byteLength(body) > 8 * 1024 * 1024) throw new Error('Registry manifest exceeds size limit');
+    if (Buffer.byteLength(body) > 8 * 1024 * 1024) throw new Error(diagnostic('registry-cleanup.559517d2eb'));
     const actual = 'sha256:' + createHash('sha256').update(body).digest('hex');
-    if (actual !== digest || response.headers.get('docker-content-digest') !== digest) throw new Error('Registry manifest digest mismatch');
+    if (actual !== digest || response.headers.get('docker-content-digest') !== digest) throw new Error(diagnostic('registry-cleanup.fef5000b8a'));
     const data = JSON.parse(body) as { schemaVersion?: number; manifests?: Array<{ digest?: string }> };
-    if (data.schemaVersion !== 2 || (data.manifests !== undefined && !Array.isArray(data.manifests))) throw new Error('Invalid registry manifest');
+    if (data.schemaVersion !== 2 || (data.manifests !== undefined && !Array.isArray(data.manifests))) throw new Error(diagnostic('registry-cleanup.7fd9e01307'));
     const children = (data.manifests ?? []).map(item => item.digest ?? '');
-    if (children.some(value => !DIGEST.test(value))) throw new Error('Invalid child manifest digest');
+    if (children.some(value => !DIGEST.test(value))) throw new Error(diagnostic('registry-cleanup.b71d1b6f4b'));
     return { digest, body, contentType, children };
   }
   async retain(tag: string, manifest: Manifest): Promise<void> {
     await this.call(`/v2/${IMAGE_REPOSITORY}/manifests/${tag}`, 'PUT', manifest.body, manifest.contentType);
-    if (await this.resolve(tag) !== manifest.digest) throw new Error('Retention tag verification failed; refusing deletion');
+    if (await this.resolve(tag) !== manifest.digest) throw new Error(diagnostic('registry-cleanup.df2a686ecc'));
   }
   async remove(digest: string): Promise<void> {
-    if (!DIGEST.test(digest)) throw new Error('Invalid manifest digest');
+    if (!DIGEST.test(digest)) throw new Error(diagnostic('registry-cleanup.418d49afc3'));
     const response = await this.call(`/v2/${IMAGE_REPOSITORY}/manifests/${digest}`, 'DELETE');
-    if (response.status !== 202) throw new Error('Registry did not confirm manifest deletion');
+    if (response.status !== 202) throw new Error(diagnostic('registry-cleanup.e168b3c0f8'));
   }
 }
 
@@ -110,13 +111,13 @@ export class DistributionRegistry implements CleanupRegistry {
 export async function planRegistryCleanup(registry: CleanupRegistry, refs: CleanupReferences): Promise<CleanupPlan> {
   const repositories = await registry.repositories();
   // Distribution GC is global; do not offer --delete-untagged if another consumer's repository shares this store.
-  if (repositories.some(name => name !== IMAGE_REPOSITORY)) throw new Error('The registry contains other repositories; their retention must be managed separately');
+  if (repositories.some(name => name !== IMAGE_REPOSITORY)) throw new Error(diagnostic('registry-cleanup.01256231e9'));
   const tags: Record<string, string> = {};
   for (const tag of await registry.tags()) tags[tag] = await registry.resolve(tag);
   const protectedDigests = new Set<string>();
   const pending: string[] = [];
   const completed = new Set(refs.knownCompletedDigests);
-  if ([...completed].some(digest => !DIGEST.test(digest))) throw new Error('Invalid completed build digest');
+  if ([...completed].some(digest => !DIGEST.test(digest))) throw new Error(diagnostic('registry-cleanup.9538ad050a'));
   const unreconciledTags: Record<string, string> = {};
   for (const [tag, digest] of Object.entries(tags)) {
     const retentionTag = tag === RETENTION_PREFIX + digest.slice(7);
@@ -131,13 +132,13 @@ export async function planRegistryCleanup(registry: CleanupRegistry, refs: Clean
     const reference = image.slice(marker + IMAGE_REPOSITORY.length + 1);
     if (!reference.startsWith(':') && !reference.startsWith('@')) continue;
     const pinned = reference.includes('@') ? reference.slice(reference.indexOf('@') + 1) : null;
-    if (pinned && !DIGEST.test(pinned)) throw new Error('A protected image has an invalid digest');
+    if (pinned && !DIGEST.test(pinned)) throw new Error(diagnostic('registry-cleanup.8fde9d9649'));
     pending.push(pinned ?? await registry.resolve(reference.slice(1)));
   }
   while (pending.length) {
     const digest = pending.pop()!;
     if (protectedDigests.has(digest)) continue;
-    if (protectedDigests.size >= 10_000) throw new Error('Manifest graph exceeds safety limit');
+    if (protectedDigests.size >= 10_000) throw new Error(diagnostic('registry-cleanup.66a7139d21'));
     const manifest = await registry.manifest(digest);
     protectedDigests.add(digest);
     // Retain index children too: --delete-untagged must not remove platform manifests.
@@ -149,20 +150,20 @@ export async function planRegistryCleanup(registry: CleanupRegistry, refs: Clean
 }
 
 export async function applyRegistryCleanup(registry: CleanupRegistry, plan: CleanupPlan, maintenance: boolean): Promise<void> {
-  if (!maintenance) throw new Error('--apply requires --maintenance: stop API servers and image builders first');
-  if (Object.keys(plan.unreconciledTags).length) throw new Error('Unreconciled build tags found. Reconnect every current and former builder and import/acknowledge terminal jobs before maintenance; no manifests were deleted');
-  if (plan.activeSessions || plan.recentNodes) throw new Error('Stop active sessions and writers, then wait at least 90 seconds for node heartbeats to expire');
+  if (!maintenance) throw new Error(diagnostic('registry-cleanup.0548ecdd2c'));
+  if (Object.keys(plan.unreconciledTags).length) throw new Error(diagnostic('registry-cleanup.07080ef4e5'));
+  if (plan.activeSessions || plan.recentNodes) throw new Error(diagnostic('registry-cleanup.8a2dc9d650'));
   // Every protected manifest receives a tag before any deletion, including profiles pinned to old builds.
   for (const digest of plan.retain) await registry.retain(RETENTION_PREFIX + digest.slice(7), await registry.manifest(digest));
   for (const digest of plan.remove) {
-    if (plan.retain.includes(digest)) throw new Error('Refusing to delete a protected manifest');
+    if (plan.retain.includes(digest)) throw new Error(diagnostic('registry-cleanup.f5a80e572c'));
     await registry.remove(digest);
   }
 }
 
 export async function cleanupReferences(client: Pick<PoolClient, 'query'>): Promise<CleanupReferences> {
   const settings = (await client.query('SELECT mode,builtin_address FROM registry_settings WHERE id')).rows[0];
-  if (settings?.mode !== 'builtin' || !settings.builtin_address) throw new Error('Cleanup supports the configured built-in registry only');
+  if (settings?.mode !== 'builtin' || !settings.builtin_address) throw new Error(diagnostic('registry-cleanup.fe41833c4b'));
   const repository = `${settings.builtin_address}/${IMAGE_REPOSITORY}`;
   const rows = (await client.query(`SELECT image FROM profiles WHERE removed_at IS NULL OR id IN
       (SELECT profile_id FROM sessions WHERE state IN ('starting','running','stopping'))
@@ -177,10 +178,10 @@ export async function cleanupReferences(client: Pick<PoolClient, 'query'>): Prom
 }
 
 export async function registryCleanupCli(argv = process.argv.slice(2), env = process.env): Promise<void> {
-  if (argv.some(arg => !['--dry-run', '--apply', '--maintenance'].includes(arg)) || (argv.includes('--apply') && argv.includes('--dry-run'))) throw new Error('Usage: registry-cleanup [--dry-run | --apply --maintenance]');
+  if (argv.some(arg => !['--dry-run', '--apply', '--maintenance'].includes(arg)) || (argv.includes('--apply') && argv.includes('--dry-run'))) throw new Error(diagnostic('registry-cleanup.25a5f0e639'));
   const apply = argv.includes('--apply');
-  if (apply && !argv.includes('--maintenance')) throw new Error('--apply requires --maintenance');
-  if (!env.DATABASE_URL) throw new Error('DATABASE_URL is required');
+  if (apply && !argv.includes('--maintenance')) throw new Error(diagnostic('registry-cleanup.a5f808730f'));
+  if (!env.DATABASE_URL) throw new Error(diagnostic('registry-cleanup.3980494fc0'));
   // Run from an isolated server one-shot container on the Compose network. No bypass is exposed to the host.
   const registry = new DistributionRegistry(env.RDF_REGISTRY_MAINTENANCE_URL || 'http://registry:5000');
   const pool = new Pool({ connectionString: env.DATABASE_URL, max: 1 });
@@ -191,14 +192,14 @@ export async function registryCleanupCli(argv = process.argv.slice(2), env = pro
     await client.query("SET LOCAL lock_timeout='5s'");
     // Shares the prewarm claim lock: a maintenance plan cannot race a new cache-pull lease.
     const lock = await client.query('SELECT pg_try_advisory_xact_lock(649736218) AS acquired');
-    if (!lock.rows[0]?.acquired) throw new Error('Another registry cleanup is already running');
+    if (!lock.rows[0]?.acquired) throw new Error(diagnostic('registry-cleanup.cd0c105e5a'));
     if (apply) await client.query('LOCK TABLE profiles,sessions,emulator_images,image_prewarm_jobs,hosts,registry_settings IN SHARE MODE');
     const refs = await cleanupReferences(client);
     const plan = await planRegistryCleanup(registry, refs);
     console.log(JSON.stringify({ mode: apply ? 'apply' : 'dry-run', ...plan }, null, 2));
     if (apply) {
       await applyRegistryCleanup(registry, plan, true);
-      console.log('Manifests prepared. Keep writers stopped, stop the registry or enable read-only mode, back up registry_data, then run distribution garbage-collect. Only add --delete-untagged after separately verifying that every current and former builder has no active builds and every terminal build was imported/acknowledged. This CLI cannot verify offline agent ledgers. Do not run global GC on a shared registry.');
+      console.log(diagnostic('registry-cleanup.4c967a0aa3'));
     }
     await client.query('COMMIT');
   } catch (error) {
@@ -208,5 +209,5 @@ export async function registryCleanupCli(argv = process.argv.slice(2), env = pro
 }
 
 if (process.argv[1] && /(?:^|[\\/])registry-cleanup\.(?:ts|js)$/.test(process.argv[1])) {
-  registryCleanupCli().catch(error => { console.error(error instanceof Error ? error.message : 'Registry cleanup failed'); process.exitCode = 1; });
+  registryCleanupCli().catch(error => { console.error(error instanceof Error ? error.message : diagnostic('registry-cleanup.761febc87a')); process.exitCode = 1; });
 }

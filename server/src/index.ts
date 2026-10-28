@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { createHttpApplication } from './http-application.js';
 import { operationalError, StartupFailure, waitForStartupDependency, type StartupPhase } from './startup.js';
 import { uiMessage } from './messages.js';
@@ -126,7 +127,7 @@ if (process.argv[1] && /(?:^|[\\/])index\.(?:ts|js)$/.test(process.argv[1])) {
       await stop().catch(() => {});
       throw new StartupFailure('listeners', error);
     }
-    console.log(`Remote Device Farm API listening on ${config.port}`);
+    console.log(diagnostic('index.aabba7ce49', { p0: config.port }));
     const shutdown = () => {
       void stop().then(() => process.exit(0)).catch(error => { console.error(uiMessage('runtime.shutdownFailure', {}, 'en'), operationalError(error, 'shutdown')); process.exit(1); });
     };

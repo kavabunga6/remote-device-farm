@@ -3,7 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 import type { ServerContext } from '../src/server-context.js';
-import { ApiError } from '../src/http-common.js';
+import { sessionJson, ApiError } from '../src/http-common.js';
 import { createDeviceSession } from '../src/device-session.js';
 import { testPool } from './support/api-fixture.js';
 
@@ -34,7 +34,7 @@ async function setup(devices: unknown[]) {
 }
 
 test('renting a free USB phone stores device, capability snapshot and sends a lease to the agent', async () => {
-  const { db, pool, context, commands } = await setup([{ kind: 'usb-android', id: 'R58M', state: 'free' }]);
+  const { db, pool, context, commands } = await setup([{ kind: 'usb-android', id: 'R58M', state: 'free', capabilities: ['video', 'shell', 'audio', 'unknown'] }]);
   try {
     const id = await createDeviceSession(context, { id: U1, role: 'user' }, { hostId: 'h1', kind: 'usb-android', deviceId: 'R58M' });
     for (let attempt = 0; attempt < 100; attempt++) {
@@ -43,7 +43,7 @@ test('renting a free USB phone stores device, capability snapshot and sends a le
       await new Promise(resolve => setTimeout(resolve, 10));
     }
     const row = (await pool.query('SELECT device_kind,device_id,capabilities,profile_id FROM sessions WHERE id=$1', [id])).rows[0] as Record<string, unknown>;
-    assert.deepEqual(row, { device_kind: 'usb-android', device_id: 'R58M', capabilities: ['video', 'touch', 'shell'], profile_id: 'device-usb-android' });
+    assert.deepEqual(row, { device_kind: 'usb-android', device_id: 'R58M', capabilities: ['video', 'shell'], profile_id: 'device-usb-android' });
     assert.deepEqual(commands[0], { hostId: 'h1', sessionId: id, action: 'start', params: { kind: 'usb-android', deviceSerial: 'R58M' } });
     await assert.rejects(createDeviceSession(context, { id: U2, role: 'user' }, { hostId: 'h1', kind: 'usb-android', deviceId: 'R58M' }),
       (e: unknown) => e instanceof ApiError && e.status === 409);
@@ -60,5 +60,36 @@ test('quarantined, cleaning or unknown devices cannot be rented', async () => {
     await assert.rejects(createDeviceSession(context, { id: U1, role: 'user' }, { hostId: 'h1', kind: 'usb-android', deviceId: 'nope' }),
       (e: unknown) => e instanceof ApiError && e.status === 404);
     assert.equal((await db.query('SELECT 1 FROM sessions')).rows.length, 0);
+  } finally { await pool.end(); }
+});
+
+test('start reply persists confirmed capabilities and metadata instead of the provider-wide feature set', async () => {
+  const { pool, context } = await setup([{ kind: 'usb-android', id: 'phone', state: 'free', capabilities: ['video', 'shell'] }]);
+  context.hub.command = async () => ({ capabilities: ['shell', 'screenshot', 'not-a-feature'], sdkLevel: 19, osVersion: '4.4',
+    capabilityReasons: { video: 'android-version-unsupported' }, privateProperty: 'not-stored' });
+  try {
+    const id = await createDeviceSession(context, { id: U1, role: 'user' }, { hostId: 'h1', kind: 'usb-android', deviceId: 'phone' });
+    let row;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      row = (await pool.query('SELECT * FROM sessions WHERE id=$1', [id])).rows[0];
+      if (row.state === 'running') break;
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    const session = sessionJson(row);
+    assert.deepEqual(session.capabilities, ['shell', 'screenshot']);
+    assert.equal(session.sdkLevel, 19);
+    assert.deepEqual(session.capabilityReasons, { video: 'android-version-unsupported' });
+    assert.equal(JSON.stringify(row.device_metadata).includes('not-stored'), false);
+  } finally { await pool.end(); }
+});
+
+test('an unavailable USB provider blocks new leases even if stale inventory still says free', async () => {
+  const { pool, context, commands } = await setup([{ kind: 'usb-android', id: 'phone', state: 'free' }]);
+  try {
+    await pool.query("UPDATE hosts SET provider_status=$1 WHERE id='h1'", [JSON.stringify([{ kind: 'usb-android', platform: 'android', status: 'unavailable', code: 'reconcile-unavailable' }])]);
+    await assert.rejects(createDeviceSession(context, { id: U1, role: 'user' }, { hostId: 'h1', kind: 'usb-android', deviceId: 'phone' }),
+      (error: unknown) => error instanceof ApiError && error.status === 503 && error.code === 'provider_unavailable');
+    assert.equal(commands.length, 0);
+    assert.equal((await pool.query('SELECT * FROM sessions')).rowCount, 0);
   } finally { await pool.end(); }
 });

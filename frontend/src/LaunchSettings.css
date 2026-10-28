@@ -4,7 +4,7 @@
 .admin-launch-settings>summary>svg{flex:none}
 .admin-launch-settings[open]>summary>svg{transform:rotate(180deg)}
 .admin-launch-settings>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px}
-.launch-settings-summary{margin-left:auto;font-size:.75rem;font-weight:400;color:var(--ui-muted)}
+.launch-settings-summary{margin-inline-start:auto;font-size:.75rem;font-weight:400;color:var(--ui-muted)}
 .launch-settings-body{border-top:1px solid var(--ui-border);padding:16px 20px}
 .launch-policy-control{display:flex;align-items:center;gap:24px;justify-content:space-between}
 .launch-policy-control>span{display:grid;gap:6px;min-width:0;max-width:70ch}
@@ -18,4 +18,15 @@
 .launch-policy-control input:disabled{opacity:.55;cursor:not-allowed}
 .launch-settings-error{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;color:var(--error);font-size:.8125rem}
 .launch-settings-status{margin:10px 0 0;font-size:.75rem;color:var(--ui-muted);min-height:1.5em}
-@media(max-width:600px){.admin-launch-settings>summary{flex-wrap:wrap;padding:14px 16px;gap:6px 12px}.admin-launch-settings>summary>span:first-child{flex:1}.launch-settings-summary{order:3;width:100%;margin-left:0}.launch-settings-body{padding:14px 16px}.launch-policy-control{gap:16px}}
+@media(max-width:600px){.admin-launch-settings>summary{flex-wrap:wrap;padding:14px 16px;gap:6px 12px}.admin-launch-settings>summary>span:first-child{flex:1}.launch-settings-summary{order:3;width:100%;margin-inline-start:0}.launch-settings-body{padding:14px 16px}.launch-policy-control{gap:16px}}
+
+
+/* Compact trigger belongs to the profile header; the panel stays inside that header's width. */
+.admin-launch-settings.is-compact{position:static;flex:none;margin:0;border:0;background:transparent}
+.admin-launch-settings.is-compact>summary{width:36px;height:36px;box-sizing:border-box;padding:0;justify-content:center;border:1px solid var(--ui-border);border-radius:7px;background:var(--ui-surface);color:var(--ui-subtle)}
+.admin-launch-settings.is-compact>summary>span,.admin-launch-settings.is-compact>summary>svg:last-child{display:none}
+.admin-launch-settings.is-compact[open]>summary>svg{transform:none}
+.admin-launch-settings.is-compact[open]>summary{background:var(--accent-soft);color:var(--accent)}
+.admin-launch-settings.is-compact>.launch-settings-body{position:absolute;inset-inline-end:0;top:calc(100% + 6px);z-index:20;width:min(30rem,100%);padding:18px;border:1px solid var(--ui-border);border-radius:9px;background:var(--ui-surface);box-shadow:0 10px 28px color-mix(in srgb,var(--ui-text) 10%,transparent)}
+
+.admin-launch-settings.is-compact:not([open])>.launch-settings-body{display:none}

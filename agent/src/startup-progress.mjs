@@ -1,6 +1,7 @@
+import { diagnostic } from './diagnostics.mjs';
 const STAGES = new Set(['checking_image', 'waiting_image', 'downloading', 'creating', 'booting', 'ready']);
 export function normalizeStartupProgress(value) {
-  if (!value || !STAGES.has(value.stage)) throw new Error('Invalid startup progress stage');
+  if (!value || !STAGES.has(value.stage)) throw new Error(diagnostic('startup-progress.5463fe1736'));
   const progress = { stage: value.stage };
   for (const key of ['currentBytes', 'totalBytes']) {
     if (Number.isSafeInteger(value[key]) && value[key] >= 0) progress[key] = value[key];

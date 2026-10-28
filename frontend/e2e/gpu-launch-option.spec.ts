@@ -1,3 +1,4 @@
+import { openLaunchSection } from './launch-controls';
 import { expect, test, type Page } from '@playwright/test';
 
 const profile = {
@@ -48,17 +49,27 @@ test('GPU toggle keeps one image and resource limit and sends the chosen mode', 
   const launch = modal.getByRole('button', { name: 'Запустить', exact: true });
   await expect(gpu).toBeEnabled();
   await expect(gpu).not.toBeChecked();
+  await modal.locator('#create-tab-settings').click();
   await modal.locator('.create-container-details summary').click();
-  await modal.locator('.create-settings > summary').click();
+  await openLaunchSection(modal, 'connection');
   for (const [checked, mode] of [[true, 'nvidia'], [false, 'software']] as const) {
+    await modal.locator('#create-tab-device').click();
     await gpu.setChecked(checked);
+    await modal.locator('#create-tab-settings').click();
     await expect(modal.locator('.create-container-details')).toContainText(profile.image);
     await expect(modal.getByRole('spinbutton', { name: 'Лимит памяти на узле, МБ', exact: true })).toHaveValue('4096');
     await expect(launch).toBeEnabled();
+    if (requests.length) {
+      const notices = modal.locator('.notification-stack-in-modal');
+      await expect(notices).toBeVisible();
+      const feedback = await notices.boundingBox(), footer = await modal.locator('.create-session-footer').boundingBox();
+      expect(feedback!.y + feedback!.height).toBeLessThanOrEqual(footer!.y);
+    }
     await launch.click();
     await expect.poll(() => requests.length).toBe(checked ? 1 : 2);
     expect(requests.at(-1)).toMatchObject({ profileId: profile.id, gpuMode: mode });
   }
+  await modal.locator('#create-tab-device').click();
   await gpu.check();
   await expect(gpu).toHaveCSS('background-color', 'rgb(52, 211, 153)');
   await page.screenshot({ path: testInfo.outputPath('gpu-capability-dark.png') });
@@ -112,7 +123,7 @@ for (const support of ['cuda', 'gpu'] as const) {
       { id: support + '-host', name: 'Узел с GPU', gpuHost: false, gpuCapabilities: [support] },
     ] });
     await modal.getByRole('switch', { name: 'Ускорение GPU' }).check();
-    await expect(modal.locator('#create-gpu-help')).toContainText(support === 'cuda' ? 'NVIDIA / CUDA' : 'GPU готов');
+    await expect(modal.locator('#create-gpu-help')).toContainText(support === 'cuda' ? 'NVIDIA / CUDA' : 'GPU · включено');
     await modal.getByRole('button', { name: 'Запустить', exact: true }).click();
     await expect.poll(() => requests.length).toBe(1);
     expect(requests[0]).toMatchObject({ hostId: support + '-host', gpuMode: 'nvidia' });

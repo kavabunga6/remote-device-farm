@@ -3,13 +3,17 @@ import type { Host } from './api';
 import { t, getLocale, localizeText } from './i18n';
 import { Icon } from './icons';
 import { ActivityIndicator } from './ActivityIndicator';
+import { EmulatorCatalogDialog } from './EmulatorCatalogDialog';
 import { ImageInventorySummary } from './ImageInventorySummary';
+import { HeadingSlot } from './HeadingSlot';
+import { useDisclosureDismiss } from './useDisclosureDismiss';
 import { ManagedImageDetails, ManagedImageUsage, imageDisplay, imageKey, imageReason } from './ManagedImageDetails';
 import { useAccess } from './permissions';
 import { useAdminDialog } from './useAdminDialog';
 import { useNotifications } from './notifications';
 import { imageManagementApi as api, type ManagedImage, type CleanupPolicy, type CleanupPlan, type CleanupJob } from './image-management-api';
 import './ImageManagement.css';
+import { FormSaveActions } from './FormSaveActions';
 const msg = (key: string) => t(key as Parameters<typeof t>[0]);
 const bytes = (value: number) => new Intl.NumberFormat(getLocale(), { style: 'unit', unit: 'gigabyte', maximumFractionDigits: 1 }).format(value / 1024 ** 3);
 const date = (value?: string | null) => value ? new Intl.DateTimeFormat(getLocale(), { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value)) : '—';
@@ -21,7 +25,9 @@ function ImageDate({ value }: { value?: string | null }) {
   return <time dateTime={value} title={date(value)}>{new Intl.DateTimeFormat(getLocale(), { dateStyle: 'short' }).format(parsed)}<small>{new Intl.DateTimeFormat(getLocale(), { timeStyle: 'short' }).format(parsed)}</small></time>;
 }
 export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged: () => void }) {
-  const can = useAccess(), { notify } = useNotifications();
+  const can = useAccess(), { notify, notifyError } = useNotifications();
+  const cleanupMenu = useDisclosureDismiss(), repositoryMenu = useDisclosureDismiss();
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [tab, setTab] = useState<'registry' | 'cache' | 'policy' | 'history'>('registry');
   const [registry, setRegistry] = useState<{ supported: boolean; repository: string | null; items: ManagedImage[]; maintenance: boolean } | null>(null);
   const [cache, setCache] = useState<ManagedImage[]>([]), [policy, setPolicy] = useState<CleanupPolicy | null>(null), [jobs, setJobs] = useState<CleanupJob[]>([]);
@@ -57,7 +63,9 @@ export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged
     return () => { clearTimeout(timer); controller.abort(); };
   }, [jobs, active, tab, hostId]);
   const preview = async (input: Record<string, unknown>, all = false) => {
-    if (busy) return; setBusy(true); setError(''); setDialogError('');
+    if (busy) return;
+    if (cleanupMenu.current) { cleanupMenu.current.open = false; cleanupMenu.current.querySelector('summary')?.focus(); }
+    setBusy(true); setError(''); setDialogError('');
     try {
       const next: CleanupPlan[] = [];
       if (all) { for (const host of hosts.filter(host => host.status === 'online')) next.push((await api.preview({ ...input, hostId: host.id })).plan); }
@@ -84,9 +92,9 @@ export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged
     } finally { setBusy(false); }
   };
   const save = async (event: React.FormEvent) => {
-    event.preventDefault(); if (!policy || busy) return; setBusy(true);
+    event.preventDefault(); if (!policy || busy) return; setBusy(true); setError('');
     try { const clean = { ...policy }; delete (clean as CleanupPolicy & { lastRunAt?: unknown }).lastRunAt; const result = await api.save(clean); setPolicy(result.policy); setSavedPolicy(result.policy); notify({ kind: 'success', title: t('images.policySaved') }); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : t('images.error.unavailable')); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : t('images.error.unavailable')); notifyError(t('ui.8f9c4884b8f9'), cause); }
     finally { setBusy(false); }
   };
   const items = tab === 'cache' ? cache : registry?.items ?? [];
@@ -130,47 +138,51 @@ export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged
     {!history && filtered && <button type="button" className="button outline" onClick={resetFilters}>{t('images.resetFilters')}</button>}
   </div>;
   return <section className="image-management">
+    <HeadingSlot slot="actions"><div className="image-heading-actions">
+      {(tab === 'cache' || tab === 'registry' && registry?.supported) && can('images.cleanup') && <details ref={cleanupMenu} className="image-cleanup-menu">
+        <summary title={t('ui.cad123465b9e')} aria-label={t('ui.cad123465b9e')}><Icon name="more" size={18}/></summary>
+        <div className="image-cleanup-options">
+          <button type="button" disabled={busy || active || loading || tab === 'cache' && !hostId} onClick={() => void preview({ scope: tab, action: 'retention', ...(tab === 'cache' ? { hostId } : {}) })}><Icon name="list" size={16}/>{t('images.previewCleanup')}</button>
+          {tab === 'registry' ? <button type="button" disabled={busy || active || loading} onClick={() => void preview({ scope: 'registry', action: 'gc' })}><Icon name="rotate" size={16}/>{t('images.gc')}</button>
+            : <button type="button" disabled={busy || active || loading || !hosts.some(host => host.status === 'online')} onClick={() => void preview({ scope: 'cache', action: 'retention' }, true)}><Icon name="server" size={16}/>{t('images.allNodes')}</button>}
+        </div>
+      </details>}
+      {can('images.view') && <button type="button" className="button primary small" disabled={busy} onClick={() => setCatalogOpen(true)}><Icon name="grid" size={16}/>{t('ui.0f624ca5f08a')}</button>}
+      <button type="button" className="icon-button image-refresh" aria-label={t('images.refresh')} title={t('images.refresh')} disabled={busy || loading} onClick={() => { setLoading(true); void reload(); }}><Icon name="refresh" size={18}/></button>
+    </div></HeadingSlot>
     <div className="image-toolbar">
       <nav className="image-tabs" aria-label={t('images.title')}>{(['registry', 'cache', 'policy', 'history'] as const).map(value => <button type="button" key={value} aria-current={tab === value ? 'page' : undefined}
         disabled={busy || value === 'cache' && !can('nodes.view')} onClick={() => changeTab(value)}>{msg('images.tab.' + value)}</button>)}</nav>
-      <div className="image-toolbar-end">
-        {registry?.supported && registry.repository && <div className="image-repository"><Icon name="server" size={15} /><code title={registry.repository}>{registry.repository}</code><button type="button" className="icon-button" title={t('images.copyRepository')} aria-label={t('images.copyRepository')} onClick={() => void copy(registry.repository!, true)}><Icon name="copy" size={15} /></button></div>}
-      <button type="button" className="icon-button image-refresh" aria-label={t('images.refresh')} title={t('images.refresh')} disabled={busy || loading} onClick={() => { setLoading(true); void reload(); }}><Icon name="refresh" size={18} /></button></div>
+      {registry?.supported && registry.repository && <details ref={repositoryMenu} className="image-repository">
+        <summary><Icon name="server" size={15}/>{t('images.tab.registry')}<Icon name="chevronDown" size={13}/></summary>
+        <div className="image-repository-panel"><code>{registry.repository}</code><button type="button" className="icon-button" title={t('images.copyRepository')} aria-label={t('images.copyRepository')} onClick={() => void copy(registry.repository!, true)}><Icon name="copy" size={15}/></button></div>
+      </details>}
     </div>
     {(active || busy) && <div className="image-process" role="status"><ActivityIndicator />{busy ? t('images.working') : t('images.active')}</div>}
     {error && <div className="inline-error" role="alert">{localizeText(error)}</div>}
     {loading ? <div className="image-loading" role="status"><ActivityIndicator />{t('images.loading')}</div> : <>
       {(tab === 'registry' || tab === 'cache') && <div className="image-inventory">
-        <div className="image-section-heading">
-          <p className="image-inventory-description">{t(tab === 'registry' ? 'images.registryDescription' : 'images.cacheDescription')}</p>
-          {(tab === 'cache' || registry?.supported) && can('images.cleanup') && <div className="image-control-actions">
-            <button type="button" className="button outline" disabled={busy || active || tab === 'cache' && !hostId} onClick={() => void preview({ scope: tab, action: 'retention', ...(tab === 'cache' ? { hostId } : {}) })}><Icon name="list" size={16} />{t('images.previewCleanup')}</button>
-            {tab === 'registry' ? <button className="button outline" type="button" disabled={busy || active} onClick={() => void preview({ scope: 'registry', action: 'gc' })}><Icon name="rotate" size={16} />{t('images.gc')}</button>
-              : <button className="button outline" type="button" disabled={busy || active || !hosts.some(host => host.status === 'online')} onClick={() => void preview({ scope: 'cache', action: 'retention' }, true)}><Icon name="server" size={16} />{t('images.allNodes')}</button>}
-          </div>}
-        </div>
         {tab === 'registry' && !registry?.supported ? empty(t('images.registryMissing'), t('images.externalDescription')) : <>
           <ImageInventorySummary items={items} usage={usage} onFilter={setUsage} formatBytes={bytes} />
           <div className={'image-controls' + (tab === 'cache' ? ' has-node' : '')}>
-            {tab === 'cache' && <label className="image-node-field"><span>{t('images.node')}</span><select value={hostId} disabled={busy || loading} onChange={event => setHostId(event.target.value)}>{hosts.map(host => <option key={host.id} value={host.id}>{host.name}{host.status === 'offline' ? ' · ' + t('images.offline') : ''}</option>)}</select></label>}
-            <label className="image-search-field"><span>{t('images.search')}</span><div className="image-search-control"><Icon name="search" size={17} /><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={t('images.searchHint')} /></div></label>
-            <label className="image-usage-field"><span>{t('images.state')}</span><select value={usage} onChange={event => setUsage(event.target.value as typeof usage)}>
+            {tab === 'cache' && <label className="image-node-field"><span className="sr-only">{t('images.node')}</span><select value={hostId} disabled={busy || loading} onChange={event => setHostId(event.target.value)}>{hosts.map(host => <option key={host.id} value={host.id}>{host.name}{host.status === 'offline' ? ' · ' + t('images.offline') : ''}</option>)}</select></label>}
+            <label className="image-search-field"><span className="sr-only">{t('images.search')}</span><div className="image-search-control"><Icon name="search" size={17} /><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={t('images.searchHint')} /></div></label>
+            <label className="image-usage-field"><span className="sr-only">{t('images.state')}</span><select value={usage} onChange={event => setUsage(event.target.value as typeof usage)}>
               <option value="all">{t('images.filter.all')}</option><option value="unused">{t('images.filter.unused')}</option><option value="protected">{t('images.filter.protected')}</option>
             </select></label>
-            <label className="image-version-field"><span>{t('images.androidFilter')}</span><select value={androidVersion} onChange={event => setAndroidVersion(event.target.value)}>
+            <label className="image-version-field"><span className="sr-only">{t('images.androidFilter')}</span><select value={androidVersion} onChange={event => setAndroidVersion(event.target.value)}>
               <option value="all">{t('images.filter.allVersions')}</option>{versions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select></label>
           </div>
           <div className="image-inventory-list">
-            {deletionAllowed && <div className={'image-selection' + (selected.length ? ' has-selection' : '')}>
-              <label title={t('images.selectionLimit', { p0: selectionLimit })}><input type="checkbox" disabled={!selection.length || busy || active} checked={Boolean(selection.length && selection.every(id => selected.includes(id)))} ref={input => { if (input) input.indeterminate = selection.some(id => selected.includes(id)) && !selection.every(id => selected.includes(id)); }} onChange={event => setSelected(old => event.target.checked ? [...new Set([...old, ...selection])].slice(0, selectionLimit) : old.filter(id => !selection.includes(id)))} />{t('images.selectAvailable', { p0: selectionLimit })}</label>
+            {deletionAllowed && selected.length > 0 && <div className="image-selection has-selection">
               <div className="image-selection-actions">
-                {selected.length > 0 && <><div className="image-selection-meta"><span className="image-selected-size" role="status">{t('images.selectedLayers', { p0: bytes(selectedBytes) })}</span>{hiddenSelection > 0 && <button type="button" className="image-hidden-selection" onClick={resetFilters} aria-label={t('images.showHiddenSelection', { p0: hiddenSelection })}>{t('images.hiddenSelection', { p0: hiddenSelection })}</button>}</div><button type="button" className="icon-button" title={t('images.clearSelection')} aria-label={t('images.clearSelection')} disabled={busy || active} onClick={() => setSelected([])}><Icon name="close" size={16} /></button></>}
-              <button className={'button ' + (selected.length ? 'danger-outline' : 'outline')} type="button" disabled={!selected.length || busy || active} onClick={() => void preview({ scope: tab, action: 'delete', ...(tab === 'registry' ? { digests: selected } : { hostId, ids: selected }) })}><Icon name="trash" size={16} />{t('images.deleteSelected', { p0: selected.length })}</button></div>
+                <div className="image-selection-meta"><span className="image-selected-size" role="status">{t('images.selectedLayers', { p0: bytes(selectedBytes) })}</span>{hiddenSelection > 0 && <button type="button" className="image-hidden-selection" onClick={resetFilters} aria-label={t('images.showHiddenSelection', { p0: hiddenSelection })}>{t('images.hiddenSelection', { p0: hiddenSelection })}</button>}</div><button type="button" className="icon-button" title={t('images.clearSelection')} aria-label={t('images.clearSelection')} disabled={busy || active} onClick={() => setSelected([])}><Icon name="close" size={16} /></button>
+              <button className="button danger-outline" type="button" disabled={busy || active} onClick={() => void preview({ scope: tab, action: 'delete', ...(tab === 'registry' ? { digests: selected } : { hostId, ids: selected }) })}><Icon name="trash" size={16} />{t('images.deleteSelected', { p0: selected.length })}</button></div>
             </div>}
             {visible.length ? <div className="image-table-wrap"><table className="image-table image-inventory-table"><colgroup>
               {deletionAllowed && <col className="image-select-column" />}<col className="image-name-column" /><col className="image-size-column" /><col className="image-date-column" /><col className="image-usage-column" />{deletionAllowed && <col className="image-action-column" />}
-            </colgroup><thead><tr>{deletionAllowed && <th><span className="sr-only">{t('images.select')}</span></th>}<th>{t('images.image')}</th><th>{t('images.size')}</th><th>{tab === 'registry' ? t('images.created') : t('images.used')}</th><th>{t('images.references')}</th>{deletionAllowed && <th><span className="sr-only">{t('images.delete')}</span></th>}</tr></thead><tbody>{visible.map(item => <tr key={key(item)} className={selected.includes(key(item)) ? 'is-selected' : undefined}>
+            </colgroup><thead><tr>{deletionAllowed && <th scope="col"><label className="image-select-all" title={t('images.selectionLimit', { p0: selectionLimit })}><input type="checkbox" disabled={!selection.length || busy || active} checked={Boolean(selection.length && selection.every(id => selected.includes(id)))} ref={input => { if (input) input.indeterminate = selection.some(id => selected.includes(id)) && !selection.every(id => selected.includes(id)); }} onChange={event => setSelected(old => event.target.checked ? [...new Set([...old, ...selection])].slice(0, selectionLimit) : old.filter(id => !selection.includes(id)))} /><span className="sr-only">{t('images.selectAvailable', { p0: selectionLimit })}</span></label></th>}<th>{t('images.image')}</th><th>{t('images.size')}</th><th>{tab === 'registry' ? t('images.created') : t('images.used')}</th><th>{t('images.references')}</th>{deletionAllowed && <th><span className="sr-only">{t('images.delete')}</span></th>}</tr></thead><tbody>{visible.map(item => <tr key={key(item)} className={selected.includes(key(item)) ? 'is-selected' : undefined}>
               {deletionAllowed && <td className="image-select-cell"><input type="checkbox" aria-label={t('images.selectImage', { p0: item.package ?? key(item) })} disabled={busy || active || Boolean(item.blockers.length) || selected.length >= selectionLimit && !selected.includes(key(item))} checked={selected.includes(key(item))} onChange={event => setSelected(old => event.target.checked ? [...old, key(item)] : old.filter(id => id !== key(item)))} /></td>}
               <td><ManagedImageDetails item={item} onCopy={value => void copy(value)} /></td>
               <td className="image-numeric">{bytes(item.sizeBytes)}</td>
@@ -183,7 +195,7 @@ export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged
           <p className="image-note image-size-note"><Icon name="info" size={14} />{t('images.sizeNote')}</p>
         </>}
       </div>}
-      {tab === 'policy' && policy && <form className="image-policies" onSubmit={save}>
+      {tab === 'policy' && policy && <form id="image-policy-form" className="image-policies" onSubmit={save}>
         <div className="image-section-heading"><div><h2>{t('images.tab.policy')}</h2><p>{t('images.policyDescription')}</p></div></div>
         <div className="image-policy-sections">
           <section className="image-policy-card" aria-labelledby="registry-policy-title">
@@ -205,7 +217,7 @@ export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged
         </div>
         <div className="image-policy-footer">
           <div className="image-policy-grid image-schedule">{field('intervalHours', 1, 720)}</div>
-          <div className="image-policy-save"><span className="image-note" role="status">{dirty ? t('images.unsaved') : t('images.saved')}</span>{can('images.settings') && <button type="submit" className="button primary" disabled={busy || !dirty}>{busy ? <><ActivityIndicator />{t('images.saving')}</> : t('images.save')}</button>}</div>
+          <div className="image-policy-save"><span className="image-note" role="status">{dirty ? t('images.unsaved') : t('images.saved')}</span>{can('images.settings') && <FormSaveActions formId="image-policy-form" dirty={dirty} busy={busy} context={t('images.tab.policy')} label={t('images.save')}/>}</div>
         </div>
       </form>}
       {tab === 'history' && <div className="image-history">
@@ -224,5 +236,6 @@ export function ImageManagement({ hosts, onChanged }: { hosts: Host[]; onChanged
       {profiles.length > 0 && <div className="image-profile-impact"><h3>{t('images.linkedProfiles')}</h3><p>{t('images.profilesDisabled')}</p><ul>{[...new Map(profiles.map(profile => [profile.id, profile])).values()].map(profile => <li key={profile.id}>{profile.name}</li>)}</ul><label className="image-switch"><input type="checkbox" checked={plans[0].removeProfiles === true} disabled={busy} onChange={event => void toggleProfiles(event.target.checked)} />{t('images.removeProfiles')}</label></div>}
       {!hasWork && <p>{t('images.nothingToClean')}</p>}{dialogError && <p className="inline-error" role="alert">{localizeText(dialogError)}</p>}
     </div><footer><button className="button outline" type="button" disabled={busy} onClick={close}>{t('images.cancel')}</button><button className="button danger" type="button" disabled={busy || !hasWork || Boolean(dialogError)} onClick={() => void apply()}>{busy ? t('images.submitting') : t('images.confirmAction')}</button></footer></section></div>}
+    {catalogOpen && <EmulatorCatalogDialog onClose={() => setCatalogOpen(false)} onChanged={() => { void reload(); onChanged(); }} />}
   </section>;
 }

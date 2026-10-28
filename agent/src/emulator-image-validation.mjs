@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import { CONTRACT_ADB_OPTIONS } from './docker.mjs';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -15,7 +16,7 @@ export function imageCheckResult(output) {
   try { result = line && JSON.parse(line.slice('RDF_VALIDATION '.length)); } catch { /* Fail closed below. */ }
   if (result?.version !== IMAGE_CHECK_VERSION || ['bootCompleted', 'adbSecure', 'unauthorizedAdb', 'rendererVerified', 'deviceVerified', 'resourcesVerified'].some(key => result[key] !== true)) {
     const errors = String(output).split(/\r?\n/).filter(line => /image.validation:|ADB authentication gate:|rdf-emulator:.*(?:exited|missing|must)/.test(line));
-    const error = new Error('Image runtime validation failed: ' + redactDiagnostic(errors.slice(-5).join(' | ') || 'no complete validation result').slice(0, 1500));
+    const error = new Error(diagnostic('emulator-image-validation.6a15ada84f', { p0: redactDiagnostic(errors.slice(-5).join(' | ') || 'no complete validation result').slice(0, 1500) }));
     error.code = 'image_invalid'; throw error;
   }
   return result;
@@ -31,7 +32,7 @@ export class EmulatorImageValidator {
     try { details = await this.docker.inspect(id); } catch (error) { if (missing(error)) return; throw error; }
     const labels = details.Config?.Labels || {};
     if (labels[label] !== identity || labels['remote-device-farm.agent'] !== this.agentId || labels['remote-device-farm.role'] !== 'image-validation') {
-      throw new Error('Refusing to remove an unrelated image validation container');
+      throw new Error(diagnostic('emulator-image-validation.d75125277b'));
     }
     const immutableId = details.Id;
     try { await this.docker.request('DELETE', `/containers/${immutableId}?force=1&v=1`, undefined, { timeoutMs: 90_000 }); }
@@ -43,18 +44,18 @@ export class EmulatorImageValidator {
         try { await this.docker.inspect(immutableId); } catch (error) { if (missing(error)) return; throw error; }
         await delay(250);
       }
-      throw new Error('Image validation container cleanup not confirmed');
+      throw new Error(diagnostic('emulator-image-validation.a05e82a682'));
     }
     try { await this.docker.inspect(immutableId); } catch (error) { if (missing(error)) return; throw error; }
-    throw new Error('Image validation container still exists after cleanup');
+    throw new Error(diagnostic('emulator-image-validation.1400d9df7b'));
   }
 
   async cleanupNetwork(id, identity) {
     let network;
     try { network = await this.docker.request('GET', '/networks/' + encodeURIComponent(id)); }
     catch(error) { if(missing(error))return; throw error; }
-    if(network.Labels?.[label]!==identity || network.Labels?.['remote-device-farm.agent']!==this.agentId || network.Labels?.['remote-device-farm.role']!=='image-validation')throw new Error('Refusing to remove an unrelated validation network');
-    if(Object.keys(network.Containers??{}).length)throw new Error('Validation network still has attached containers');
+    if(network.Labels?.[label]!==identity || network.Labels?.['remote-device-farm.agent']!==this.agentId || network.Labels?.['remote-device-farm.role']!=='image-validation')throw new Error(diagnostic('emulator-image-validation.70de94c15e'));
+    if(Object.keys(network.Containers??{}).length)throw new Error(diagnostic('emulator-image-validation.40c9870008'));
     await this.docker.request('DELETE','/networks/'+network.Id);
   }
 
@@ -75,7 +76,7 @@ export class EmulatorImageValidator {
     signal?.throwIfAborted();
     const metadata = await this.docker.request('GET', `/images/${encodeURIComponent(image)}/json`, undefined, { signal });
     if (metadata.Config?.Labels?.['remote-device-farm.contract'] !== 'emulator-v1' || metadata.Config?.Labels?.['remote-device-farm.system-image'] !== entry.package) {
-      const error = new Error('Image runtime validation failed: system-image or emulator contract label mismatch'); error.code='image_invalid'; throw error;
+      const error = new Error(diagnostic('emulator-image-validation.9fc045ace8')); error.code='image_invalid'; throw error;
     }
     const identity = randomUUID(), name = 'rdf-image-check-' + identity, networkName = name + '-net';
     const script = await readFile(new URL('./verify-emulator-image.sh', import.meta.url), 'utf8');
@@ -99,7 +100,7 @@ export class EmulatorImageValidator {
       body.Env.push('NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics,display,video');
       if (this.nvidiaXorgModuleDir) body.HostConfig.Binds = [this.nvidiaXorgModuleDir + ':/opt/nvidia-xorg:ro'];
     } else if (mode === 'dri') {
-      if (!this.driDevice) throw new Error('DRI device is unavailable for image validation');
+      if (!this.driDevice) throw new Error(diagnostic('emulator-image-validation.9f84211fea'));
       body.HostConfig.Devices.push({ PathOnHost: this.driDevice, PathInContainer: this.driDevice, CgroupPermissions: 'rwm' });
     }
     let id, networkId;
@@ -115,7 +116,7 @@ export class EmulatorImageValidator {
       const output = Buffer.isBuffer(bytes) ? bytes.toString('utf8') : String(bytes);
       if(waited?.StatusCode!==0)for(const line of output.split(/\r?\n/).filter(Boolean).slice(-100))onLine(redactDiagnostic(line).slice(0,300));
       if (waited?.StatusCode !== 0) imageCheckResult(output); // Preserve the concrete failure, never accept a marker from an exited checker.
-      if (waited?.StatusCode !== 0) throw new Error('Image validator exited with status ' + waited?.StatusCode);
+      if (waited?.StatusCode !== 0) throw new Error(diagnostic('emulator-image-validation.b5fac0a247', { p0: waited?.StatusCode }));
       const result = imageCheckResult(output);
       return { ...result, imageId: metadata.Id, device, mode, checkedAt: new Date().toISOString() };
     } finally {

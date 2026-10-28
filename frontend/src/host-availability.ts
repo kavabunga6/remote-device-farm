@@ -2,8 +2,8 @@ import { t } from './i18n';
 import type { Host } from './api';
 
 /** Capacity that can accept a new session now. */
-export function availableSlots(host: Pick<Host, 'status' | 'disabled' | 'maxSessions' | 'activeSessions'>): number {
-  if (host.status !== 'online' || host.disabled) return 0;
+export function availableSlots(host: Pick<Host, 'status' | 'disabled' | 'maxSessions' | 'activeSessions' | 'providers'>): number {
+  if (host.status !== 'online' || host.disabled || host.providers?.some(provider => provider.kind === 'emulator' && provider.status === 'unavailable')) return 0;
   return Math.max(0, host.maxSessions - host.activeSessions);
 }
 

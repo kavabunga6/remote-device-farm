@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const bundle = await build({ entryPoints: [fileURLToPath(new URL('./src/launch-readiness.ts', import.meta.url))], bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent' });
 const { profileSettingsHref, profileLaunchIssues, hostLaunchIssues, hostGpuBackend, launchReadiness } = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].contents).toString('base64'));
 const launchBundle = await build({ entryPoints: [fileURLToPath(new URL('./src/launch-options.ts', import.meta.url))], bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent' });
-const { parseLaunchDraft, effectiveLaunchProfile, launchResourceError } = await import('data:text/javascript;base64,' + Buffer.from(launchBundle.outputFiles[0].contents).toString('base64'));
+const { parseLaunchDraft, effectiveLaunchProfile, launchResourceError, hasLaunchDraftChanges } = await import('data:text/javascript;base64,' + Buffer.from(launchBundle.outputFiles[0].contents).toString('base64'));
 const profile = (patch = {}) => ({ id: 'android-29', name: 'Android 10', enabled: true, image: 'emulator:test', cpu: 4, memoryMb: 4096, abi: 'x86_64', ...patch });
 const host = (id = 'node', patch = {}) => ({ id, name: id, status: 'online', disabled: false, maxSessions: 1, activeSessions: 0, slotCpu: 4, slotMemoryMb: 4096, nvidiaGpuAvailable: true, architecture: 'x64', policyPending: false, ...patch });
 const codes = issues => issues.map(issue => issue.code);
@@ -142,4 +142,19 @@ test('host readiness checks requested resources and rejects conflicting Android 
   assert.equal(launchReadiness(profile(), [host('busy', { activeSessions: 1 })], 'software', '', false, { cpu: 2, memoryMb: 2048 }).state, 'busy');
   assert.ok(codes(launchReadiness(p, [host()], 'software', '', false, { cpu: 2, memoryMb: 2048 }).issues).includes('launch_resources_invalid'));
   assert.match(hostLaunchIssues(profile(), host(), 'software', false, { cpu: 8, memoryMb: 8192 })[0].message, /8 CPU.*8 ГБ/);
+});
+
+
+test('reset compares resource and argument values with the selected profile', () => {
+  const p = profile({ guestCores: 2, guestMemoryMb: 2048, emulatorParams: '-no-snapshot -no-audio' });
+  for (const draft of [{}, { cpu: '4' }, { cpu: '004', memoryMb: '4096', guestCores: '2', guestMemoryMb: '2048' },
+    { privileged: false }, { emulatorParams: '  -no-snapshot   -no-audio  ' }]) {
+    assert.equal(hasLaunchDraftChanges(p, draft), false);
+  }
+  for (const draft of [{ cpu: '3' }, { memoryMb: '3072' }, { guestCores: null }, { guestMemoryMb: null },
+    { cpu: '' }, { cpu: 'invalid' }, { privileged: true }, { emulatorParams: '' }]) {
+    assert.equal(hasLaunchDraftChanges(p, draft), true);
+  }
+  assert.equal(hasLaunchDraftChanges(profile(), { guestCores: null, guestMemoryMb: '' }), false);
+  assert.equal(hasLaunchDraftChanges(undefined, { cpu: '1' }), false);
 });

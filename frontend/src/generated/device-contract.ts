@@ -1,0 +1,128 @@
+// Generated from shared/device-contract.schema.json and device-contract-runtime.ts.
+// Run node scripts/sync-device-contract.mjs to update.
+// The generated declarations are inserted by scripts/sync-device-contract.mjs.
+export const DEVICE_CONTRACT_VERSION = 1 as const;
+export const DEVICE_PLATFORMS = ["android"] as const;
+export type DevicePlatform = typeof DEVICE_PLATFORMS[number];
+export const DEVICE_KINDS = ["emulator","usb-android"] as const;
+export type DeviceKind = typeof DEVICE_KINDS[number];
+export const PHYSICAL_DEVICE_KINDS = ["usb-android"] as const;
+export type PhysicalDeviceKind = typeof PHYSICAL_DEVICE_KINDS[number];
+export const DEVICE_CAPABILITIES = ["video","audio","touch","keys","rotate","files","install","shell","logs","device-info","env","network","screenshot","tunnel","ui"] as const;
+export type DeviceCapability = typeof DEVICE_CAPABILITIES[number];
+export const DEVICE_AVAILABILITIES = ["free","busy","cleaning","unverified","quarantined","unauthorized","offline","recovery","bootloader","sideload"] as const;
+export type DeviceAvailability = typeof DEVICE_AVAILABILITIES[number];
+export const DEVICE_CAPABILITY_REASONS = ["not-supported","android-version-unsupported","device-probe-unavailable"] as const;
+export type DeviceCapabilityReason = typeof DEVICE_CAPABILITY_REASONS[number];
+export type DeviceCapabilities = Array<DeviceCapability>;
+export type DeviceCapabilityReasons = Record<string, DeviceCapabilityReason>;
+export type DeviceDescriptor = {
+  kind: PhysicalDeviceKind;
+  platform: DevicePlatform;
+  id: string;
+  model: string | null;
+  state: DeviceAvailability;
+  reason: string | null;
+  osVersion?: string | null;
+  sdkLevel?: number | null;
+  capabilities?: DeviceCapabilities;
+  capabilityReasons?: DeviceCapabilityReasons;
+};
+export const DEVICE_PROVIDER_STATES = ["ready","unavailable","unknown"] as const;
+export type DeviceProviderState = typeof DEVICE_PROVIDER_STATES[number];
+export const DEVICE_PROVIDER_CODES = ["inventory-unavailable","maintenance-unavailable","reconcile-unavailable"] as const;
+export type DeviceProviderCode = typeof DEVICE_PROVIDER_CODES[number];
+export type DeviceProviderStatus = {
+  kind: DeviceKind;
+  platform: DevicePlatform;
+  status: DeviceProviderState;
+  code: "inventory-unavailable" | "maintenance-unavailable" | "reconcile-unavailable" | null;
+};
+const boundedText = (value: unknown, max: number): string | null =>
+  typeof value === 'string' ? value.replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, max) || null : null;
+
+export function devicePlatform(kind: unknown): DevicePlatform | null {
+  return typeof kind === 'string' && (DEVICE_KINDS as readonly string[]).includes(kind) ? 'android' : null;
+}
+export function normalizeCapabilities(value: unknown): DeviceCapability[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.slice(0, 32).filter((item): item is DeviceCapability =>
+    typeof item === 'string' && (DEVICE_CAPABILITIES as readonly string[]).includes(item)))];
+}
+export function normalizeCapabilityReasons(value: unknown): DeviceCapabilityReasons {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const reasons: DeviceCapabilityReasons = {};
+  for (const [key, reason] of Object.entries(value)) {
+    if ((DEVICE_CAPABILITIES as readonly string[]).includes(key) && typeof reason === 'string' &&
+        (DEVICE_CAPABILITY_REASONS as readonly string[]).includes(reason)) reasons[key] = reason as DeviceCapabilityReason;
+  }
+  return reasons;
+}
+/** Normalize stored and incoming inventories; unknown state never makes a device available. */
+export function normalizePhysicalDevices(value: unknown): DeviceDescriptor[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 256).flatMap((item): DeviceDescriptor[] => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const d = item as Record<string, unknown>;
+    if (typeof d.kind !== 'string' || !(PHYSICAL_DEVICE_KINDS as readonly string[]).includes(d.kind) ||
+        (d.platform !== undefined && d.platform !== null && d.platform !== devicePlatform(d.kind)) ||
+        typeof d.id !== 'string' || !d.id.trim() || d.id.length > 100 || /[\x00-\x1f\x7f]/.test(d.id)) return [];
+    const device: DeviceDescriptor = {
+      kind: d.kind as PhysicalDeviceKind, platform: devicePlatform(d.kind)!, id: d.id,
+      model: boundedText(d.model ?? d.name, 100),
+      state: typeof d.state === 'string' && (DEVICE_AVAILABILITIES as readonly string[]).includes(d.state)
+        ? d.state as DeviceAvailability : 'unverified',
+      reason: boundedText(d.reason, 300),
+    };
+    if ('osVersion' in d) device.osVersion = boundedText(d.osVersion, 64);
+    if ('sdkLevel' in d) device.sdkLevel = typeof d.sdkLevel === 'number' && Number.isInteger(d.sdkLevel) &&
+      d.sdkLevel >= 1 && d.sdkLevel <= 1000 ? d.sdkLevel : null;
+    if (Array.isArray(d.capabilities)) device.capabilities = normalizeCapabilities(d.capabilities);
+    if (d.capabilityReasons && typeof d.capabilityReasons === 'object') device.capabilityReasons = normalizeCapabilityReasons(d.capabilityReasons);
+    return [device];
+  });
+}
+export function physicalDevicesFromProviderReports(value: unknown): DeviceDescriptor[] {
+  if (!Array.isArray(value)) return [];
+  return normalizePhysicalDevices(value.slice(0, 8).flatMap(provider => {
+    if (!provider || typeof provider !== 'object' || Array.isArray(provider)) return [];
+    const p = provider as Record<string, unknown>;
+    if (p.status === 'unavailable' || typeof p.kind !== 'string' || !(PHYSICAL_DEVICE_KINDS as readonly string[]).includes(p.kind) ||
+        (p.platform !== undefined && p.platform !== devicePlatform(p.kind)) || !Array.isArray(p.devices)) return [];
+    return p.devices.slice(0, 256).flatMap(device => device && typeof device === 'object' && !Array.isArray(device)
+      ? [{ ...device, kind: p.kind, platform: p.platform ?? devicePlatform(p.kind) }] : []);
+  }));
+}
+
+/** Unknown providers and missing physical-device reports never gain implicit features. */
+export function sessionCapabilities(kind: unknown, value: unknown): DeviceCapability[] {
+  if (!devicePlatform(kind)) return [];
+  if (Array.isArray(value)) return normalizeCapabilities(value);
+  return kind === 'emulator' ? DEVICE_CAPABILITIES.filter(capability => capability !== 'audio') : [];
+}
+export function normalizeDeviceMetadata(value: unknown): Partial<Pick<DeviceDescriptor, 'sdkLevel' | 'osVersion' | 'capabilities' | 'capabilityReasons'>> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const record = value as Record<string, unknown>;
+  return {
+    ...(Array.isArray(record.capabilities) ? { capabilities: normalizeCapabilities(record.capabilities) } : {}),
+    osVersion: boundedText(record.osVersion, 64),
+    sdkLevel: typeof record.sdkLevel === 'number' && Number.isInteger(record.sdkLevel) && record.sdkLevel >= 1 && record.sdkLevel <= 1000 ? record.sdkLevel : null,
+    capabilityReasons: normalizeCapabilityReasons(record.capabilityReasons),
+  };
+}
+
+/** Provider health is independent from the number of attached devices. */
+export function normalizeProviderStatuses(value: unknown): DeviceProviderStatus[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value.slice(0, 8).flatMap((item): DeviceProviderStatus[] => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const record = item as Record<string, unknown>, platform = devicePlatform(record.kind);
+    if (!platform || (record.platform !== undefined && record.platform !== platform) || seen.has(String(record.kind))) return [];
+    seen.add(String(record.kind));
+    const status: DeviceProviderState = record.status === 'ready' || record.status === 'unavailable' ? record.status : 'unknown';
+    return [{ kind: record.kind as DeviceKind, platform, status,
+      code: status === 'unavailable' && typeof record.code === 'string' && (DEVICE_PROVIDER_CODES as readonly string[]).includes(record.code)
+        ? record.code as DeviceProviderCode : null }];
+  });
+}

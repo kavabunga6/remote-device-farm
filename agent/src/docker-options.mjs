@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 // Docker-level options a profile may set. An allowlist, mirrored from the broker (server/src/docker-options.ts): privileged
 // mode, host network/PID/IPC, devices, bind mounts, capabilities and the Docker socket cannot be expressed here at all.
 const NAME = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
@@ -17,10 +18,10 @@ const argv = (value) => Array.isArray(value) && value.length <= 16 &&
 
 export function validateDockerOptions(value, reservedEnv = () => false) {
   if (value === undefined || value === null) return {};
-  const fail = (message) => { throw new Error(`Invalid container options: ${message}`); };
-  if (typeof value !== 'object' || Array.isArray(value)) fail('dockerOptions must be an object');
+  const fail = (message) => { throw new Error(diagnostic('docker-options.6d5d8edd3e', { p0: message })); };
+  if (typeof value !== 'object' || Array.isArray(value)) fail(diagnostic('docker-options.14c6ded2e2'));
   const unknown = Object.keys(value).find((key) => !KEYS.includes(key));
-  if (unknown) fail(`${unknown} is not allowed`);
+  if (unknown) fail(diagnostic('docker-options.3a6f94babe', { p0: unknown }));
   const out = {};
   if (value.shmSizeMb !== undefined) {
     if (!integer(value.shmSizeMb, 64, 8192)) fail('shmSizeMb');
@@ -40,7 +41,7 @@ export function validateDockerOptions(value, reservedEnv = () => false) {
     if (!Array.isArray(value.tmpfs) || value.tmpfs.length > 4) fail('tmpfs');
     out.tmpfs = value.tmpfs.map((item) => {
       if (!item || typeof item !== 'object' || typeof item.path !== 'string' || !TMPFS_PATH.test(item.path) ||
-          item.path.includes('..') || !integer(item.sizeMb, 1, 4096)) fail('tmpfs item');
+          item.path.includes('..') || !integer(item.sizeMb, 1, 4096)) fail(diagnostic('docker-options.521da65d87'));
       return { path: item.path, sizeMb: item.sizeMb };
     });
   }
@@ -69,7 +70,7 @@ export function validateDockerOptions(value, reservedEnv = () => false) {
     if (!Array.isArray(value.farmFlags) || value.farmFlags.some((flag) => !FARM_FLAGS.includes(flag)) || new Set(value.farmFlags).size !== value.farmFlags.length) fail('farmFlags');
     out.farmFlags = value.farmFlags;
   }
-  if (out.emulatorParamsEnv && out.emulatorParamsEnv === out.adbKeyEnv) fail('emulatorParamsEnv and adbKeyEnv must differ');
+  if (out.emulatorParamsEnv && out.emulatorParamsEnv === out.adbKeyEnv) fail(diagnostic('docker-options.b73e1f6171'));
   return out;
 }
 
@@ -84,7 +85,7 @@ export function resolveGpuBackend(profile, host) {
   ];
   const backend = profile.gpuBackend ?? GPU_BACKENDS.find(value => capabilities.includes(value));
   if (!backend || !GPU_BACKENDS.includes(backend) || !capabilities.includes(backend)) {
-    throw new Error('Requested GPU backend is not available on this node');
+    throw new Error(diagnostic('docker-options.8b8db67615'));
   }
   return backend;
 }

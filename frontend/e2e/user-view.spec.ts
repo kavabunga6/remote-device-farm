@@ -13,6 +13,6 @@ test('regular users see sessions without infrastructure statistics or a node pic
   await expect(page.locator('.hosts-page')).toHaveCount(0);
   await page.goto('/');
   await page.getByRole('button', { name: 'Новая сессия' }).first().click();
-  await page.locator('.create-settings > summary').click();
+  await page.locator('#create-tab-settings').click();
   await expect(page.getByLabel('Узел запуска')).toHaveCount(0);
 });

@@ -1,6 +1,6 @@
 # Remote Device Farm
 
-Run Android emulators on your own Linux/KVM servers and use them from a browser, CI or an AI assistant. The interface supports English and Russian.
+Run Android emulators on your own Linux/KVM servers and use them from a browser, CI or an AI assistant. The interface supports [12 languages](docs/guides/localization.md), including English and Russian.
 
 **Alpha.** APIs and deployment settings may change. See the [verification matrix](docs/verification.md).
 
@@ -8,14 +8,16 @@ Run Android emulators on your own Linux/KVM servers and use them from a browser,
 
 | Feature | What it provides |
 | --- | --- |
-| **MCP for AI assistants** | Request a device, install and open an APK, inspect screenshots and Logcat, send input and release it through a [local stdio MCP package](docs/ci/mcp.md). |
+| **MCP for AI assistants** | Request a device, install and open an APK, inspect screenshots, UI trees and Logcat, find or tap elements, wait for UI changes and release it through a [local stdio MCP package](docs/ci/mcp.md). |
 | **Browser device control** | Android screen, tap/swipe/text input, APK installation, screenshots, recording and device settings. [Sessions](docs/guides/sessions.md) |
 | **ADB and session sharing** | Connect local development tools using personal ADB keys; share a session for viewing or control with expiration and revocation. [Access guide](docs/guides/sessions.md) |
 | **CI integrations and Gradle** | Reusable packages for seven CI platforms, a Gradle plugin, and Maestro/Appium examples. [Setup and validation](docs/ci/README.md) |
+| **Managed Appium (experimental)** | A session-scoped WebDriver API with a pinned Linux worker image; live automation remains under validation. [Status and limits](docs/ci/managed-appium.md) |
+| **Virtual camera** | Upload an image to a compatible emulator's virtual scene for camera tests. [Requirements and verification](docs/guides/virtual-camera.md) |
 | **Device pool and automation API** | Multiple worker nodes, resource limits, queues, explicit leases, team profile access and per-member quotas. [API](docs/api/README.md) |
 | **GPU acceleration** | Software rendering or GPU modes using NVIDIA/CUDA and DRI, according to node capabilities. [Agent and GPU](docs/deployment/agent.md) |
 | **Own image registry** | Build emulator images from the SDK catalog; manage versions, node caches, retention policies and cleanup from the UI. [Images](docs/guides/image-management.md) |
-| **Application library and diagnostics** | Store APKs, install them into sessions, inspect Logcat and retain startup/stop diagnostics. [Guides](docs/README.md) |
+| **Application library and diagnostics** | Store APKs and APK sets, select compatible .apks parts, inspect Logcat and WebViews, capture HTTP/HTTPS connection metadata, export HAR and retain startup/stop diagnostics. [Guides](docs/README.md) |
 | **Access administration** | Custom roles and permissions, users, personal API tokens and configurable authentication providers. [Security](SECURITY.md) |
 | **Self-hosted deployment** | Docker Compose for a single host or separate server and Linux/KVM agents, with HTTPS and backup/restore tooling. [Deployment](docs/deployment/server.md) |
 
@@ -54,16 +56,21 @@ Initial image downloads and builds take several minutes. Later sessions use cach
 
 HTTP and registry ports bind to loopback. Remote access and additional nodes require a reachable HTTPS address and trusted certificates. ADB access uses the authenticated server proxy. Backups must include PostgreSQL, `app_store` and `registry_data`; store `SECRETS_KEY` separately.
 
+Additional Linux nodes can [download the agent archive directly](docs/deployment/agent.md#вариант-2-установка-из-архива) without signing in. Issue a separate token in **Nodes → Connect a node**, then set the server address and token on that node.
+
 ## Verification
 
 | Scope | Status |
 | --- | --- |
 | Linux single-host installation, server/agent connection, backup and restore | Tested |
 | Google APIs / API 36.1 phone and tablet boot, ADB authentication; NVIDIA on phone | Tested |
-| Desktop UI in English/Russian, light/dark themes; automated API and lifecycle checks | Tested |
+| Sign-in in all 12 languages and both themes; selected administration screens, language switching, API and lifecycle checks | Tested |
 | Two-account access isolation, screen sharing, revocation and expiration | Tested |
 | Team profile access, per-member quotas, queue assignment and explicit leases | Tested |
 | Bounded image builder: small image, export/import and cleanup | Tested; full SDK builds incomplete |
+| UI-tree MCP, WebView inspection, signed APK sets and virtual-camera QR | Tested on one Android 16 Google APIs phone image |
+| HTTP/CONNECT metadata, HAR, proxy restoration and agent recovery | Tested on the same image |
+| PCAP packet capture | **Not ready** — [known limits](docs/verification.md#ограничения) |
 | Additional deployment scenarios | **Not tested** — [verification matrix](docs/verification.md#not-tested) |
 
 [Verification details and limitations](docs/verification.md). Physical-device rental requires a validated full reset/reprovisioning procedure for each model. Boot snapshots and privileged emulator containers are not available.

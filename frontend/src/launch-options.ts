@@ -47,6 +47,21 @@ export function launchResourceError(profile: Profile | undefined, options: Sessi
   }
   return '';
 }
+const normalizeEmulatorParams = (value: string) => value.trim().replace(/\s+/g, ' ');
+
+/** Reset becomes available only when the editable values differ from this profile. */
+export function hasLaunchDraftChanges(profile: Profile | undefined, draft: LaunchDraft): boolean {
+  if (!profile) return false;
+  const resourcesChanged = RESOURCE_FIELDS.some(field => {
+    const raw = draft[field];
+    if (raw === undefined) return false;
+    const baseline = profile[field] ?? null;
+    return raw === null || raw === '' ? baseline !== null : Number(raw) !== baseline;
+  });
+  return resourcesChanged || draft.privileged === true || (draft.emulatorParams !== undefined &&
+    normalizeEmulatorParams(draft.emulatorParams) !== normalizeEmulatorParams(profile.emulatorParams ?? ''));
+}
+
 export function parseLaunchDraft(draft: LaunchDraft): { options: SessionLaunchOptions; error: string } {
   const options: SessionLaunchOptions = {};
   if (draft.privileged !== undefined) options.privileged = draft.privileged;
@@ -70,7 +85,7 @@ export function parseLaunchDraft(draft: LaunchDraft): { options: SessionLaunchOp
   }
   if (draft.emulatorParams !== undefined) {
     if (draft.emulatorParams.length > 500) return { options, error: t('ui.122cf20817f8') };
-    options.emulatorParams = draft.emulatorParams.trim().replace(/\s+/g, ' ');
+    options.emulatorParams = normalizeEmulatorParams(draft.emulatorParams);
   }
   return { options, error: '' };
 }

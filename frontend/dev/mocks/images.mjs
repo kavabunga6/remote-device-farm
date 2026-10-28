@@ -33,6 +33,7 @@ export default function handle(req, res, path, method, state, send) {
 }
 
 function respond(req, res, path, method, state, send, body) {
+  if (path === '/admin/emulator-images/catalog-status' && method === 'GET') { send(res, 200, { builder: s.builder, phase: s.builder ? 'ready' : 'unconfigured', startedAt: null, updatedAt: null, progress: null }); return true; }
   if (path === '/admin/registry' && method === 'GET') { send(res, 200, { registry: s.registry }); return true; }
   if (path === '/admin/registry' && method === 'PUT') {
     const input = body ?? {};

@@ -12,20 +12,20 @@ export type ManifestProfile = { index: number; input: Obj; issues: ManifestIssue
 
 const isObj = (value: unknown): value is Obj => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 function strict(value: unknown, allowed: string[], path: string, issues: ManifestIssue[]): Obj {
-  if (!isObj(value)) { issues.push({ path, message: 'must be an object' }); return {}; }
-  for (const key of Object.keys(value)) if (!allowed.includes(key)) issues.push({ path: `${path}.${key}`, message: 'unknown field' });
+  if (!isObj(value)) { issues.push({ path, message: uiMessage('manifest.objectExpected', {}, 'en') }); return {}; }
+  for (const key of Object.keys(value)) if (!allowed.includes(key)) issues.push({ path: `${path}.${key}`, message: uiMessage('manifest.unknownField', {}, 'en') });
   return value;
 }
 
 /** Image reference from {repository, tag, digest} or a plain string. */
 function imageReference(value: unknown, path: string, issues: ManifestIssue[], warnings: string[]): string {
-  if (typeof value === 'string') { if (!/@sha256:[0-9a-f]{64}$/.test(value)) warnings.push('The image is not pinned by digest; a tag can be replaced upstream.'); return value; }
+  if (typeof value === 'string') { if (!/@sha256:[0-9a-f]{64}$/.test(value)) warnings.push(uiMessage('manifest.unpinnedImage', {}, 'en')); return value; }
   const image = strict(value, ['repository', 'tag', 'digest'], path, issues);
-  if (typeof image.repository !== 'string' || !image.repository) { issues.push({ path: `${path}.repository`, message: 'is required' }); return ''; }
+  if (typeof image.repository !== 'string' || !image.repository) { issues.push({ path: `${path}.repository`, message: uiMessage('manifest.repositoryRequired', {}, 'en') }); return ''; }
   const tag = typeof image.tag === 'string' && image.tag ? `:${image.tag}` : '';
   const digest = typeof image.digest === 'string' && image.digest ? `@${image.digest}` : '';
-  if (image.digest !== undefined && !/^sha256:[0-9a-f]{64}$/.test(String(image.digest))) issues.push({ path: `${path}.digest`, message: 'must look like sha256:<64 hex characters>' });
-  if (!digest) warnings.push('The image is not pinned by digest; a tag can be replaced upstream.');
+  if (image.digest !== undefined && !/^sha256:[0-9a-f]{64}$/.test(String(image.digest))) issues.push({ path: `${path}.digest`, message: uiMessage('manifest.digestInvalid', {}, 'en') });
+  if (!digest) warnings.push(uiMessage('manifest.unpinnedImage', {}, 'en'));
   return `${image.repository}${tag}${digest}`;
 }
 
@@ -34,7 +34,7 @@ function paramsString(value: unknown, path: string, issues: ManifestIssue[]): st
   if (value === undefined) return '';
   if (typeof value === 'string') return value;
   if (Array.isArray(value) && value.every(item => typeof item === 'string' && !/\s/.test(item))) return value.join(' ');
-  issues.push({ path, message: 'must be a list of strings without spaces (or one string)' });
+  issues.push({ path, message: uiMessage('manifest.paramsInvalid', {}, 'en') });
   return '';
 }
 
@@ -42,7 +42,7 @@ export function parseManifest(body: unknown): { profiles: ManifestProfile[]; iss
   const top: ManifestIssue[] = [];
   if (!isObj(body)) throw new ApiError(400, 'invalid_manifest', uiMessage('ui.5b56ea78213a', {}, 'en'));
   strict(body, ['version', 'profiles'], '$', top);
-  if (body.version !== 1 && body.version !== MANIFEST_VERSION) top.push({ path: '$.version', message: `must be 1 or ${MANIFEST_VERSION}` });
+  if (body.version !== 1 && body.version !== MANIFEST_VERSION) top.push({ path: '$.version', message: uiMessage('manifest.versionUnsupported', { p0: MANIFEST_VERSION }, 'en') });
   if (!Array.isArray(body.profiles) || !body.profiles.length) throw new ApiError(400, 'invalid_manifest', uiMessage('ui.dc6bfb53ffa2', {}, 'en'));
   if (body.profiles.length > MAX_MANIFEST_PROFILES) throw new ApiError(400, 'invalid_manifest', uiMessage('ui.d95a164adf05', { p0: MAX_MANIFEST_PROFILES }, 'en'));
   const profiles = (body.profiles as unknown[]).map((raw, index): ManifestProfile => {
@@ -55,7 +55,7 @@ export function parseManifest(body: unknown): { profiles: ManifestProfile[]; iss
     const container = strict(item.container ?? {}, ['env', 'command', 'entrypoint', 'shmSizeMb', 'ulimits', 'tmpfs', 'sysctls'], `${path}.container`, issues);
     const launch = strict(item.launch ?? {}, ['emulatorParamsEnv', 'adbKeyEnv', 'farmFlags'], `${path}.launch`, issues);
     if (item.gpu !== undefined || item.gpuImage !== undefined) {
-      warnings.push('Legacy GPU settings are ignored. GPU is selected when launching a session and uses the capabilities of the assigned node. The main image is unchanged.');
+      warnings.push(uiMessage('manifest.legacyGpu', {}, 'en'));
     }
     const input: Obj = {
       id: item.id, name: item.name, recommended: item.recommended, allowLaunchOverrides: item.allowLaunchOverrides,
@@ -86,7 +86,7 @@ export function parseManifest(body: unknown): { profiles: ManifestProfile[]; iss
 export function checkManifestProfile(item: ManifestProfile, allowKeepEnv: boolean): { parsed?: ReturnType<typeof parseProfile>; issue?: ManifestIssue } {
   try { return { parsed: parseProfile(item.input, { allowKeepEnv }) }; }
   catch (error) {
-    const message = error instanceof ApiError ? error.message : 'Invalid profile';
+    const message = error instanceof ApiError ? error.message : uiMessage('manifest.invalidProfile', {}, 'en');
     return { issue: { path: `$.profiles[${item.index}]`, message } };
   }
 }

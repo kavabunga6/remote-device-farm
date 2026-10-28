@@ -59,15 +59,15 @@ export function SessionMediaStatus({ status, format, transport, streamError, mod
     {onModeChange ? <details className="session-transport-menu" ref={transportMenu} onKeyDown={event => {
       if (event.key === 'Escape' && transportMenu.current) { transportMenu.current.open = false; transportMenu.current.querySelector('summary')?.focus(); }
     }}>
-      <summary className="session-badge session-media-badge" data-media="video" data-state={status} title={videoDetail + t('ui.b04311ff82e1')} aria-label={t('ui.a9ce28442aea')}>{status === 'connecting' ? <ActivityIndicator /> : <Icon name="chevronDown" size={15}/>}<span>{videoLabel}</span></summary>
+      <summary className="session-badge session-media-badge" data-media="video" data-state={status} title={t('copy.SessionMediaStatus.26e06348', { p0: videoDetail })} aria-label={t('ui.a9ce28442aea')}>{status === 'connecting' ? <ActivityIndicator /> : <Icon name="chevronDown" size={15}/>}<span>{videoLabel}</span></summary>
       <div className="session-transport-popover">
         <label htmlFor="session-transport">{t('ui.bfa2b3807818')}</label>
         <select id="session-transport" value={mode} onChange={event => onModeChange(event.target.value as ConnectionMode)}><option value="websocket">{t('ui.2adc1280d346')}</option><option value="webrtc">{t('ui.cffd062854c1')}</option></select>
         <p role="status">{videoDetail}</p>
         <dl>
-          <div><dt>{t('ui.1bdef5526ac9')}</dt><dd>{metrics?.rttMs == null ? '—' : Math.round(metrics.rttMs) + t('ui.3d28ff50f586')}</dd></div>
-          <div><dt>{t('ui.77986dd22b95')}</dt><dd>{metrics?.fps == null ? '—' : metrics.fps + t('ui.d0fe96463fac')}</dd></div>
-          {mode === 'webrtc' && <><div><dt>{t('ui.c4003078c9fa')}</dt><dd>{metrics?.iceRttMs == null ? '—' : Math.round(metrics.iceRttMs) + t('ui.3d28ff50f586')}</dd></div><div><dt>{t('ui.bd6c2f1e576a')}</dt><dd>{metrics?.packetsLost ?? '—'}</dd></div></>}
+          <div><dt>{t('ui.1bdef5526ac9')}</dt><dd>{metrics?.rttMs == null ? '—' : t('copy.SessionMediaStatus.74fb1d19', { p0: Math.round(metrics.rttMs) })}</dd></div>
+          <div><dt>{t('ui.77986dd22b95')}</dt><dd>{metrics?.fps == null ? '—' : t('copy.SessionMediaStatus.b2a995a0', { p0: metrics.fps })}</dd></div>
+          {mode === 'webrtc' && <><div><dt>{t('ui.c4003078c9fa')}</dt><dd>{metrics?.iceRttMs == null ? '—' : t('copy.SessionMediaStatus.74fb1d19', { p0: Math.round(metrics.iceRttMs) })}</dd></div><div><dt>{t('ui.bd6c2f1e576a')}</dt><dd>{metrics?.packetsLost ?? '—'}</dd></div></>}
         </dl>
         <small>{t('ui.f6621fd37f49')}</small>
       </div>

@@ -1,7 +1,8 @@
+import { diagnostic } from './diagnostics.js';
 import { redactLog, type ApplicationLog } from './application-log.js';
 import type { Pool } from 'pg';
 
-export type ServiceLogCode = `session.${string}` | `container.${string}` | `image_cleanup.${string}` | 'api.internal_error' | 'websocket.upgrade_error' | 'adb.listener_error' | 'emulator_images.reconcile_failed' | 'agent.connected' | 'agent.disconnected' | 'agent.message_failed';
+export type ServiceLogCode = `session.${string}` | `container.${string}` | `image_cleanup.${string}` | 'api.internal_error' | 'websocket.upgrade_error' | 'adb.listener_error' | 'emulator_images.reconcile_failed' | 'emulator_images.catalog_failed' | 'agent.connected' | 'agent.disconnected' | 'agent.message_failed' | 'agent.provider_unavailable' | 'agent.provider_recovered';
 
 export type ServiceLogEvent = {
   service: 'server' | 'agent' | 'emulator';
@@ -41,5 +42,5 @@ export async function sessionLog(pool: Pick<Pool, 'query'>, hostId: string, sess
   code: ServiceLogCode, message: string, severity: 'info' | 'warning' | 'error' = 'info',
   service: 'server' | 'agent' | 'emulator' = 'server'): Promise<void> {
   try { await recordServiceLog(pool, { hostId, sessionId, code, message, severity, service }); }
-  catch (error) { console.error('Cannot persist session diagnostic: ' + (error instanceof Error ? error.message : 'unknown storage error')); }
+  catch (error) { console.error(diagnostic('service-log.e80075a3a8', { p0: (error instanceof Error ? error.message : 'unknown storage error') })); }
 }

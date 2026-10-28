@@ -1,3 +1,5 @@
+import { diagnostic } from './diagnostics.mjs';
+import { agentMessage } from './messages.mjs';
 // Emulator environment tools. The server sends {op, params}; every value is validated here and turned
 // into a fixed adb argv. There is no raw shell passthrough: user data only ever appears as a single,
 // quoted argument of a fixed command template.
@@ -38,16 +40,16 @@ function fail(message) { throw new Error(message); }
 
 function plainObject(value) {
   if (value === undefined || value === null) return {};
-  if (typeof value !== 'object' || Array.isArray(value)) fail('params must be an object');
+  if (typeof value !== 'object' || Array.isArray(value)) fail(diagnostic('env-tools.e20204115c'));
   return value;
 }
 
 function only(params, allowed) {
-  for (const key of Object.keys(params)) if (!allowed.includes(key)) fail('Unknown parameter: ' + key.slice(0, 40));
+  for (const key of Object.keys(params)) if (!allowed.includes(key)) fail(diagnostic('env-tools.a042fd8713', { p0: key.slice(0, 40) }));
 }
 
 function oneOf(value, list, name) {
-  if (typeof value !== 'string' || !list.includes(value)) fail('Invalid ' + name);
+  if (typeof value !== 'string' || !list.includes(value)) fail(diagnostic('env-tools.0e68a3276b', { p0: name }));
   return value;
 }
 
@@ -59,7 +61,7 @@ function boolean(value, name) {
 function number(value, min, max, name, { integer = false } = {}) {
   const n = typeof value === 'string' && /^-?\d{1,6}(\.\d{1,8})?$/.test(value) ? Number(value) : value;
   if (typeof n !== 'number' || !Number.isFinite(n) || n < min || n > max || (integer && !Number.isInteger(n))) {
-    fail(name + ' must be between ' + min + ' and ' + max);
+    fail(diagnostic('env-tools.1d82373cb6', { p0: name + ' must be between ', p1: min, p2: max }));
   }
   return n;
 }
@@ -67,19 +69,19 @@ function number(value, min, max, name, { integer = false } = {}) {
 function trimNumber(n, digits) { return String(Number(n.toFixed(digits))); }
 
 export function validPackage(value, name = 'package') {
-  if (typeof value !== 'string' || value.length > 255 || !PACKAGE_RE.test(value)) fail('Invalid ' + name + ' name');
+  if (typeof value !== 'string' || value.length > 255 || !PACKAGE_RE.test(value)) fail(diagnostic('env-tools.21a817dea2', { p0: name }));
   return value;
 }
 
 export function validDeepLink(value) {
-  if (typeof value !== 'string' || value.length > 2000) fail('Link is too long (2000 characters max)');
+  if (typeof value !== 'string' || value.length > 2000) fail(diagnostic('env-tools.ae247db41c'));
   const colon = value.indexOf(':');
   const scheme = colon > 0 ? value.slice(0, colon) : '';
-  if (!SCHEME_RE.test(scheme) && !['http', 'https'].includes(scheme)) fail('Invalid link scheme');
-  if (BLOCKED_SCHEMES.has(scheme)) fail('This link scheme is not allowed');
+  if (!SCHEME_RE.test(scheme) && !['http', 'https'].includes(scheme)) fail(diagnostic('env-tools.006b7b34cc'));
+  if (BLOCKED_SCHEMES.has(scheme)) fail(diagnostic('env-tools.0a55cca8c4'));
   const rest = value.slice(colon + 1);
-  if (!rest || !URI_BODY_RE.test(rest)) fail('Link contains forbidden characters');
-  if (['http', 'https'].includes(scheme) && !rest.startsWith('//')) fail('Invalid web link');
+  if (!rest || !URI_BODY_RE.test(rest)) fail(diagnostic('env-tools.4c95830244'));
+  if (['http', 'https'].includes(scheme) && !rest.startsWith('//')) fail(diagnostic('env-tools.8a21e20588'));
   return value;
 }
 
@@ -113,8 +115,8 @@ export function buildEnvOp(op, rawParams) {
     case 'network': {
       only(p, ['profile', 'speed', 'delay']);
       if (p.profile !== undefined) {
-        if (p.speed !== undefined || p.delay !== undefined) fail('Use either profile or speed and delay');
-        if (typeof p.profile !== 'string' || !Object.hasOwn(NETWORK_PROFILES, p.profile)) fail('Invalid network profile');
+        if (p.speed !== undefined || p.delay !== undefined) fail(diagnostic('env-tools.1dc12cbd9f'));
+        if (typeof p.profile !== 'string' || !Object.hasOwn(NETWORK_PROFILES, p.profile)) fail(diagnostic('env-tools.8db2b91976'));
         const [speed, delay] = NETWORK_PROFILES[p.profile];
         return { steps: [emu('network', 'speed', speed), emu('network', 'delay', delay)] };
       }
@@ -126,13 +128,13 @@ export function buildEnvOp(op, rawParams) {
       only(p, ['host', 'port', 'reset']);
       let value;
       if (p.reset !== undefined) {
-        if (boolean(p.reset, 'reset') !== true || p.host !== undefined || p.port !== undefined) fail('Invalid proxy reset');
+        if (boolean(p.reset, 'reset') !== true || p.host !== undefined || p.port !== undefined) fail(diagnostic('env-tools.9f007330a5'));
         value = ':0';
       } else {
         const host = p.host;
         if (typeof host !== 'string' || host.length > 253 || host !== host.trim() ||
             !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/.test(host)) {
-          fail('Proxy host must be an IPv4 address or hostname without a URL scheme');
+          fail(diagnostic('env-tools.0c0e4b332b'));
         }
         value = host.toLowerCase() + ':' + number(p.port, 1, 65535, 'port', { integer: true });
       }
@@ -158,7 +160,7 @@ export function buildEnvOp(op, rawParams) {
     case 'display_size': {
       only(p, ['reset', 'width', 'height']);
       if (p.reset !== undefined) {
-        if (boolean(p.reset, 'reset') !== true || p.width !== undefined || p.height !== undefined) fail('Invalid size');
+        if (boolean(p.reset, 'reset') !== true || p.width !== undefined || p.height !== undefined) fail(diagnostic('env-tools.700973f5d6'));
         return { steps: [shell('wm', 'size', 'reset')] };
       }
       const w = number(p.width, 320, 4096, 'width', { integer: true });
@@ -168,7 +170,7 @@ export function buildEnvOp(op, rawParams) {
     case 'display_density': {
       only(p, ['reset', 'dpi']);
       if (p.reset !== undefined) {
-        if (boolean(p.reset, 'reset') !== true || p.dpi !== undefined) fail('Invalid density');
+        if (boolean(p.reset, 'reset') !== true || p.dpi !== undefined) fail(diagnostic('env-tools.caf185c401'));
         return { steps: [shell('wm', 'density', 'reset')] };
       }
       return { steps: [shell('wm', 'density', number(p.dpi, 120, 640, 'dpi', { integer: true }))] };
@@ -188,10 +190,10 @@ export function buildEnvOp(op, rawParams) {
     case 'battery': {
       only(p, ['reset', 'level', 'charging']);
       if (p.reset !== undefined) {
-        if (boolean(p.reset, 'reset') !== true || p.level !== undefined || p.charging !== undefined) fail('Invalid battery request');
+        if (boolean(p.reset, 'reset') !== true || p.level !== undefined || p.charging !== undefined) fail(diagnostic('env-tools.ee18babbd3'));
         return { steps: [shell('dumpsys', 'battery', 'reset')] };
       }
-      if (p.level === undefined && p.charging === undefined) fail('Set level or charging');
+      if (p.level === undefined && p.charging === undefined) fail(diagnostic('env-tools.b007a45f1f'));
       const steps = [];
       if (p.level !== undefined) steps.push(shell('dumpsys', 'battery', 'set', 'level', number(p.level, 0, 100, 'level', { integer: true })));
       if (p.charging !== undefined) {
@@ -203,7 +205,7 @@ export function buildEnvOp(op, rawParams) {
     }
     case 'timezone': {
       only(p, ['zone']);
-      if (typeof p.zone !== 'string' || !TIME_ZONE_SET.has(p.zone)) fail('Unsupported time zone');
+      if (typeof p.zone !== 'string' || !TIME_ZONE_SET.has(p.zone)) fail(diagnostic('env-tools.7b84616a1d'));
       return { steps: [shell('cmd', 'alarm', 'set-timezone', p.zone)] };
     }
     case 'deeplink': {
@@ -223,7 +225,7 @@ export function buildEnvOp(op, rawParams) {
       const permission = validPackage(p.permission, 'permission');
       return { steps: [shell('pm', op === 'app_grant' ? 'grant' : 'revoke', pkg, permission)] };
     }
-    default: fail('Unknown environment operation');
+    default: fail(diagnostic('env-tools.934817024c'));
   }
 }
 
@@ -287,9 +289,9 @@ function consoleReply(result, fallback) {
   if (rejected) throw new Error((rejected[1]?.trim() || err || fallback).slice(0, 240));
   if (result.exitCode !== 0) {
     // adb and emulator images may write connection errors to stdout, with an empty stderr.
-    throw new Error((err || out || `${fallback} (код ${result.exitCode})`).slice(0, 240));
+    throw new Error((err || out || agentMessage('agent.console.exitCode', { p0: fallback, p1: result.exitCode }, 'ru')).slice(0, 240));
   }
-  if (!/^OK\s*$/m.test(out)) throw new Error('Консоль устройства не подтвердила выполнение команды.');
+  if (!/^OK\s*$/m.test(out)) throw new Error(agentMessage('agent.console.unconfirmed', {}, 'ru'));
 }
 
 function shellReply(result) {
@@ -308,7 +310,7 @@ export class EnvTools {
   // AGENT_EMU_CONSOLE: 'control' = only the control container, 'adb' = only `adb emu` (legacy, fails for
   // TCP serials), 'auto' = control first, adb only when the control exec path is unavailable.
   constructor(adb, { control = null, emuMode = 'auto' } = {}) {
-    if (!EMU_MODES.includes(emuMode)) throw new Error('AGENT_EMU_CONSOLE must be auto, control or adb');
+    if (!EMU_MODES.includes(emuMode)) throw new Error(diagnostic('env-tools.b554dbae59'));
     this.adb = adb;
     this.control = control;
     this.emuMode = control ? emuMode : 'adb';
@@ -326,7 +328,7 @@ export class EnvTools {
         const unavailable = message.startsWith(EMU_UNAVAILABLE_PREFIX) || /Invalid control operation|ENOENT|ECONNREFUSED/.test(message);
         if (this.emuMode === 'control' || !unavailable) {
           throw new Error(message.startsWith(EMU_UNAVAILABLE_PREFIX)
-            ? 'Emulator console is unavailable in this emulator image: ' + message.slice(EMU_UNAVAILABLE_PREFIX.length).trim()
+            ? diagnostic('env-tools.db0f1a6292', { p0: message.slice(EMU_UNAVAILABLE_PREFIX.length).trim() })
             : message);
         }
       }
@@ -337,7 +339,7 @@ export class EnvTools {
   async read(serial) {
     await this.adb.connect(serial);
     const info = await this.adb.run(serial, ['shell', ENV_READ_SCRIPT], { timeoutMs: 20000 });
-    if (info.exitCode !== 0 && !String(info.stdout).includes('night=')) throw new Error('Device state is unavailable');
+    if (info.exitCode !== 0 && !String(info.stdout).includes('night=')) throw new Error(diagnostic('env-tools.a089cd5a0f'));
     return parseEnvState(info.stdout);
   }
 
@@ -349,7 +351,7 @@ export class EnvTools {
       const result = step.kind === 'emu'
         ? await this.runEmu(serial, step.argv, timeoutMs, ctx)
         : await this.adb.run(serial, step.argv, { timeoutMs });
-      if (step.kind === 'emu') consoleReply(result, 'Не удалось выполнить команду консоли устройства');
+      if (step.kind === 'emu') consoleReply(result, agentMessage('agent.console.failed', {}, 'ru'));
       else shellReply(result);
     }
     // A successful shell process does not prove that SettingsProvider accepted the
@@ -361,7 +363,7 @@ export class EnvTools {
       const confirmed = typeof check.value === 'number'
         ? /^\d+(?:\.\d+)?$/.test(actual) && Number(actual) === check.value : actual === check.value;
       if (!confirmed) {
-        throw new Error('Android не подтвердил изменение ' + check.key + '. Обновите состояние и повторите.');
+        throw new Error(agentMessage('agent.settings.unconfirmed', { p0: check.key }, 'ru'));
       }
     }
     return { op, applied: true };

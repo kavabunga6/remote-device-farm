@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { uiMessage } from './messages.js';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Pool } from 'pg';
@@ -44,7 +45,7 @@ export async function readRegistrySettings(pool: Pick<Pool, 'query'>): Promise<R
 export async function initializeRegistry(pool: Pool, address?: string): Promise<void> {
   if (!address) return;
   const normalized = address.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
-  if (!HOST.test(normalized)) throw new Error('RDF_BUILTIN_REGISTRY_ADDRESS must be host[:port]');
+  if (!HOST.test(normalized)) throw new Error(diagnostic('registry.41ffc0a2fa'));
   await pool.query('UPDATE registry_settings SET builtin_address=$1, updated_at=now() WHERE id AND builtin_address IS NULL', [normalized]);
 }
 

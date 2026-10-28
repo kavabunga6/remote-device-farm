@@ -17,6 +17,7 @@ npm --prefix frontend run e2e
 npm --prefix server test
 npm --prefix server run build
 npm --prefix agent test
+node scripts/check-locales.mjs
 node scripts/check-public-content.mjs --self-test
 node scripts/check-public-content.mjs
 node scripts/check-repository-privacy.mjs
@@ -30,8 +31,7 @@ State which hardware/runtime you used and what remains unverified.
 ## Pull requests
 
 - Include regression coverage for behavior/security changes.
-- Keep all user-facing RU/EN strings in `shared/messages.json` and update both
-  languages. Check desktop layouts in light/dark themes and larger text sizes.
+- Keep interface copy in the [message catalogs](docs/guides/localization.md). Update all 12 languages with each copy change, preserve placeholders and review phrasing in context. Check desktop layouts in both themes, with larger text and right-to-left languages.
 - Document API/config changes, update OpenAPI and deployment examples.
 - Do not include credentials, private keys, local deployment addresses or APKs.
 - Keep documentation focused on service behavior and configuration. Local task notes, conversation records and one-off deployment reports do not belong in version control.

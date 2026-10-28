@@ -45,9 +45,9 @@ RUN sdkmanager --channel="$SDK_CHANNEL" platform-tools \
 # and patching after SDK downloads so this change reuses their cached layers.
 RUN apt-get update && apt-get install -y --no-install-recommends python3 lz4 \
     && rm -rf /var/lib/apt/lists/*
-COPY secure-ramdisk.py /tmp/secure-ramdisk.py
+COPY secure-ramdisk.py ramdisk.py /tmp/
 RUN python3 /tmp/secure-ramdisk.py "$(find /opt/android/system-images -name ramdisk.img -print -quit)" \
-    && rm /tmp/secure-ramdisk.py
+    && rm /tmp/secure-ramdisk.py /tmp/ramdisk.py
 
 # ---- Stage 3: runtime. No Java or SDK manager; official emulator/platform-tools, system image and launcher ----
 FROM ${BASE_IMAGE}
@@ -56,7 +56,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Libraries the headless emulator links against, socat for the two forwarded ports, Xorg for optional NVIDIA rendering.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       bash coreutils iproute2 socat tini ca-certificates \
+       bash coreutils iproute2 socat tini ca-certificates python3 \
        libpulse0 libnss3 libxcomposite1 libxcursor1 libxi6 libxtst6 libxdamage1 libxrandr2 libxkbfile1 libxkbcommon0 \
        libasound2 libbsd0 libdrm2 libgbm1 libgl1 libegl1 libgles2 libglx0 libvulkan1 libx11-xcb1 libxcb1 \
        xserver-xorg-core xauth mesa-utils \

@@ -51,7 +51,10 @@ if (process.argv.includes('--self-test')) {
     if (rejected.test(text)) failures.push('shared/messages.json: ' + key);
   }
   const manifest = JSON.parse(read('docs/screenshots/manifest.json').toString('utf8'));
-  if (manifest.screens.length !== 8 || manifest.source !== 'Current UI with mock API and demo data') failures.push('Screenshot metadata is incomplete');
+  const screenshotFiles = [...repository.keys()].filter(file => /^docs\/screenshots\/[^/]+\.png$/.test(file)).map(file => file.split('/').at(-1));
+  const listedScreens = manifest.screens.map(screen => screen.file);
+  if (!listedScreens.length || new Set(listedScreens).size !== listedScreens.length || screenshotFiles.length !== listedScreens.length ||
+      !screenshotFiles.every(file => listedScreens.includes(file)) || manifest.source !== 'Current UI with mock API and demo data') failures.push('Screenshot metadata is incomplete');
   let bytes = 0;
   for (const screen of manifest.screens) {
     if (screen.horizontalOverflow || screen.browserErrors.length) failures.push(screen.file + ': invalid capture');
@@ -61,5 +64,5 @@ if (process.argv.includes('--self-test')) {
   }
   if (!read('README.md').toString('utf8').includes('**Not tested**')) failures.push('README has no Not tested statuses');
   if (failures.length) throw new Error(failures.join('\n'));
-  console.log(`${staged ? 'Staged: ' : ''}${files.length} documents, ${links} local links, ${Object.keys(dictionary).length} RU/EN entries, 8 screenshots (${(bytes / 1024 / 1024).toFixed(2)} MiB) checked`);
+  console.log(`${staged ? 'Staged: ' : ''}${files.length} documents, ${links} local links, ${Object.keys(dictionary).length} RU/EN entries, ${manifest.screens.length} screenshots (${(bytes / 1024 / 1024).toFixed(2)} MiB) checked`);
 }

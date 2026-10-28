@@ -13,7 +13,7 @@
 .token-page .token-row-main strong{font-size:.9375rem;color:var(--ui-text);white-space:normal;overflow-wrap:anywhere}
 .token-page .token-row-main small{font-size:.8125rem;line-height:1.6;color:var(--ui-muted)}
 .token-page .token-row>.text-button,.token-page .token-confirm .text-button{min-height:40px;padding:8px;font-size:.8125rem}
-.token-page .token-empty{min-height:100px;display:flex;flex-direction:row;justify-content:flex-start;gap:14px;padding:22px 0;color:var(--ui-muted);font-size:.875rem;text-align:left}
+.token-page .token-empty{min-height:100px;display:flex;flex-direction:row;justify-content:flex-start;gap:14px;padding:22px 0;color:var(--ui-muted);font-size:.875rem;text-align:start}
 .token-page .token-empty>div{display:grid;gap:6px}
 .token-page .token-empty strong{font-size:.9375rem;color:var(--ui-text)}
 .token-page .token-create{order:-1;grid-template-columns:minmax(220px,1fr) minmax(160px,.65fr) auto;align-items:end;gap:16px;padding:22px;border-radius:12px;background:var(--ui-surface);border-color:var(--ui-border)}
@@ -31,7 +31,7 @@
 .token-page .token-secret-done{margin-top:14px;min-height:40px}
 .token-page .token-error{font-size:.875rem;line-height:1.5}
 @media(max-width:760px){.token-page .token-create{grid-template-columns:1fr 1fr}.token-page .token-create>.button{grid-column:1/-1;justify-self:start}.token-page .token-list{padding:0 16px}.token-heading-actions .button{font-size:.8125rem}}
-@media(max-width:520px){.token-page .token-create{grid-template-columns:1fr;padding:18px}.token-page .token-create>.button{width:100%}.token-page .token-heading-actions{width:100%;justify-content:space-between}.token-page .token-empty{align-items:flex-start}.token-page .token-row-main{min-width:calc(100% - 54px)}.token-page .token-row>.text-button,.token-page .token-confirm{margin-left:54px}.token-page .token-row{gap:10px}}
+@media(max-width:520px){.token-page .token-create{grid-template-columns:1fr;padding:18px}.token-page .token-create>.button{width:100%}.token-page .token-heading-actions{width:100%;justify-content:space-between}.token-page .token-empty{align-items:flex-start}.token-page .token-row-main{min-width:calc(100% - 54px)}.token-page .token-row>.text-button,.token-page .token-confirm{margin-inline-start:54px}.token-page .token-row{gap:10px}}
 
 /* ---------- Account page ---------- */
 .user-settings-page{width:100%;max-width:none;font-size:.9375rem}
@@ -72,7 +72,7 @@
 .user-settings-page .account-fingerprint span,.user-settings-page .account-fingerprint small,.user-settings-page .account-path,.user-settings-page .account-key-main small{font-size:.8125rem;color:var(--ui-muted)}
 .user-settings-page .account-fingerprint code,.user-settings-page .account-key-main code{font-size:.75rem;color:var(--ui-subtle);overflow-wrap:anywhere}
 .user-settings-page .account-path code,.user-settings-page .account-upload-card p code,.user-settings-page .account-key-save-help code{background:var(--ui-inset);color:var(--ui-text);font-size:.75rem}
-.user-settings-page .account-farm-action{margin-left:0;font-size:.875rem}
+.user-settings-page .account-farm-action{margin-inline-start:0;font-size:.875rem}
 .user-settings-page .account-confirm{flex-basis:100%;background:var(--error-bg);border-color:transparent;color:var(--error);font-size:.8125rem}
 .user-settings-page .account-key-grid{grid-template-columns:1fr;gap:.75rem}
 .user-settings-page .account-key-list{min-height:0;padding:.25rem 1.25rem}
@@ -117,13 +117,13 @@
 @media(max-width:40rem){
   .user-settings-page .settings-card,.user-settings-page .account-farm-card{padding:1rem}
   .user-settings-page .settings-identity{padding:1rem;flex-wrap:nowrap}
-  .user-settings-page .settings-identity .account-role{margin-left:0}
+  .user-settings-page .settings-identity .account-role{margin-inline-start:0}
   .user-settings-page .settings-form .button,.user-settings-page .account-farm-action{width:100%;justify-self:stretch}
   .user-settings-page .account-farm-card{flex-direction:column}
   .user-settings-page .settings-rental{flex-direction:column;align-items:flex-start;gap:.25rem;padding:.875rem 1rem}
-  .user-settings-page .settings-rental>div:last-child{text-align:left}
+  .user-settings-page .settings-rental>div:last-child{text-align:start}
   .user-settings-page .account-key-row{flex-wrap:wrap}
-  .user-settings-page .account-key-row>.text-button,.user-settings-page .account-delete-confirm{margin-left:0}
+  .user-settings-page .account-key-row>.text-button,.user-settings-page .account-delete-confirm{margin-inline-start:0}
 }
 .user-settings-page .settings-password .settings-form{grid-template-columns:1fr;align-items:start}
 .user-settings-page .settings-password .settings-form .button{grid-column:1/-1}

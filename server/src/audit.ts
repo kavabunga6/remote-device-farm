@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import type { Express, Request } from 'express';
 import type { Pool } from 'pg';
 import type { User } from './auth.js';
@@ -11,10 +12,19 @@ function safeTarget(value: string | undefined): string | undefined {
 function actionFor(req: Request): AuditTarget | null {
   const { method, path } = req;
   const normalized = path.toLowerCase().replace(/\/+$/, '');
+  if (normalized === '/api/admin/registration-settings' && method === 'PATCH')
+    return { action: 'auth.registration_settings_updated', targetType: 'role', targetId: typeof req.body?.roleId === 'string' ? safeTarget(req.body.roleId) : undefined };
   const accessRole = /^\/api\/admin\/roles(?:\/([a-f0-9-]{36}))?$/.exec(normalized);
   if (accessRole && ['POST','PATCH','DELETE'].includes(method)) return { action: method === 'POST' ? 'role.created' : method === 'PATCH' ? 'role.updated' : 'role.deleted', targetType:'role', targetId: accessRole[1] };
   const assignment = /^\/api\/admin\/users\/([a-f0-9-]{36})\/role$/.exec(normalized);
   if (assignment && method === 'PUT') return { action:'user.role_changed',targetType:'user',targetId:assignment[1] };
+  const automation = /^\/api\/sessions\/([a-f0-9-]{36})\/(camera\/(?:image|reset|show)|ui\/tap|appium\/session(?:\/[A-Za-z0-9-]+)?)$/.exec(path);
+  if (automation && ['POST', 'DELETE'].includes(method)) {
+    const op = automation[2]!;
+    const action = op.startsWith('camera/') ? 'session.camera_changed' : op === 'ui/tap' ? 'session.semantic_input' :
+      method === 'DELETE' ? 'session.automation_stopped' : 'session.automation_started';
+    return { action, targetType: 'session', targetId: automation[1] };
+  }
   const session = /^\/api\/sessions\/([a-f0-9-]{36})(?:\/([a-z-]+))?$/i.exec(path);
   if (session) {
     const targetId = session[1]!.toLowerCase();
@@ -120,7 +130,7 @@ export function installAuditTrail(app: Express, pool: Pool): void {
           ? 'denied' : res.statusCode >= 400 ? 'failed' : 'success';
         void recordAuditEvent(pool, { ...target,
           targetId: res.locals.auditTargetId ?? (target.targetType === 'user' && !target.targetId ? actor.id : target.targetId),
-          actor, outcome }).catch(() => console.error('Audit event persistence failed'));
+          actor, outcome }).catch(() => console.error(diagnostic('audit.57acf9a777')));
       });
     }
     next();

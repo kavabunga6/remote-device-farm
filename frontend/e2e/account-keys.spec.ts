@@ -1,3 +1,4 @@
+import { openLaunchSection } from './launch-controls';
 import { expect, test } from '@playwright/test';
 
 for (const language of ['ru', 'en'] as const) for (const theme of ['light', 'dark'] as const) {
@@ -66,7 +67,7 @@ for (const [language, theme] of [['ru', 'light'], ['en', 'dark']] as const) {
       ? { rename: 'Переименовать ключ «Developer laptop»', name: 'Название', save: 'Сохранить название ключа', cancel: 'Отмена', invalid: 'Название должно содержать от 1 до 80 символов', saved: 'Название ключа сохранено', newSession: 'Новая сессия', adb: 'Ключ ADB' }
       : { rename: 'Rename key “Developer laptop”', name: 'Name', save: 'Save key name', cancel: 'Cancel', invalid: 'Name must be 1 to 80 characters', saved: 'Key name saved', newSession: 'New session', adb: 'ADB key' };
     await page.addInitScript(value => localStorage.setItem('rdf.language', value), language);
-    await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: { theme, fontFamily: 'system', fontScale: 1, defaultAdbKeyId: id } } }));
+    await page.route(/\/api\/me\/preferences(?:\?|$)/, route => route.fulfill({ json: { preferences: { theme, fontFamily: 'system', fontScale: 1, defaultAdbKeyId: id } } }));
     await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: [] } }));
     await page.route('**/api/me/adb-public-keys', route => route.fulfill({ json: { keys: [key] } }));
     await page.route('**/api/me/adb-public-keys/' + id, async route => {
@@ -114,7 +115,8 @@ for (const [language, theme] of [['ru', 'light'], ['en', 'dark']] as const) {
     await page.goto('/#/overview');
     await page.getByRole('button', { name: copy.newSession, exact: true }).click();
     const modal = page.getByRole('dialog');
-    await modal.locator('.create-settings > summary').click();
+    await modal.locator('#create-tab-settings').click();
+    await openLaunchSection(modal, 'connection');
     const picker = modal.getByRole('combobox', { name: copy.adb, exact: true });
     await expect(picker).toHaveValue(id);
     await expect(picker.locator(`option[value="${id}"]`)).toHaveText('Personal laptop');
@@ -131,7 +133,7 @@ for (const [language, theme] of [['ru', 'light'], ['en', 'dark']] as const) {
       ? { files: 'Ключи из файла', create: 'Нужен новый ключ?', absent: 'Не создан', personal: 'Личный ключ ADB', generated: 'Созданный ключ ADB', empty: 'Ключи из файла пока не добавлены', default: 'Основной', add: 'Добавить ключ', name: 'Название', cancel: 'Отмена', newSession: 'Новая сессия', adb: 'Ключ ADB' }
       : { files: 'Keys from a file', create: 'Need a new key?', absent: 'Not created', personal: 'Personal ADB key', generated: 'Generated ADB key', empty: 'No keys added from a file yet', default: 'Default', add: 'Add key', name: 'Name', cancel: 'Cancel', newSession: 'New session', adb: 'ADB key' };
     await page.addInitScript(value => localStorage.setItem('rdf.language', value), language);
-    await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: { theme, fontFamily: 'system', fontScale: 1, defaultAdbKeyId: defaultId } } }));
+    await page.route(/\/api\/me\/preferences(?:\?|$)/, route => route.fulfill({ json: { preferences: { theme, fontFamily: 'system', fontScale: 1, defaultAdbKeyId: defaultId } } }));
     await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: [] } }));
     await page.route('**/api/me/adb-key', route => route.fulfill({ json: { key: generated } }));
     await page.route('**/api/me/adb-public-keys', route => route.fulfill({ json: { keys } }));
@@ -151,7 +153,8 @@ for (const [language, theme] of [['ru', 'light'], ['en', 'dark']] as const) {
     await page.goto('/#/overview');
     await page.getByRole('button', { name: copy.newSession, exact: true }).click();
     const modal = page.getByRole('dialog');
-    await modal.locator('.create-settings > summary').click();
+    await modal.locator('#create-tab-settings').click();
+    await openLaunchSection(modal, 'connection');
     await expect(modal.getByRole('combobox', { name: copy.adb, exact: true })).toHaveValue(id);
     await modal.getByRole('button', { name: copy.cancel, exact: true }).click();
 
@@ -166,7 +169,8 @@ for (const [language, theme] of [['ru', 'light'], ['en', 'dark']] as const) {
     await expect(page.getByRole('region', { name: copy.create })).toHaveCount(0);
     await page.goto('/#/overview');
     await page.getByRole('button', { name: copy.newSession, exact: true }).click();
-    await modal.locator('.create-settings > summary').click();
+    await modal.locator('#create-tab-settings').click();
+    await openLaunchSection(modal, 'connection');
     const picker = modal.getByRole('combobox', { name: copy.adb, exact: true });
     await expect(picker).toHaveValue('');
     await expect(picker.locator('option[value=""]')).toHaveText(copy.generated);

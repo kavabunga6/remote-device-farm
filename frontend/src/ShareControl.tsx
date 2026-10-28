@@ -1,5 +1,6 @@
+import { TranslatedText } from './TranslatedText';
 import { getLocale, localizeText, t } from './i18n';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { DeviceSession, User } from './api';
 import { Icon } from './icons';
 import { shareApi, shareLink, type ShareMode } from './share-api';
@@ -27,19 +28,29 @@ export function ShareControl({ session, user, audience }: { session: DeviceSessi
   const [link, setLink] = useState('');
   const [copied, setCopied] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const close = useCallback((restoreFocus = true) => {
     if (busy) return;
     setOpen(false); setLink(''); setCopied(false);
+    if (restoreFocus) triggerRef.current?.focus();
   }, [busy]);
+
+  useLayoutEffect(() => {
+    if (open) closeButtonRef.current?.focus();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (event: PointerEvent) => { if (!rootRef.current?.contains(event.target as Node)) close(); };
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    const onDown = (event: PointerEvent) => { if (!rootRef.current?.contains(event.target as Node)) close(false); };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || busy) return;
+      event.preventDefault(); event.stopPropagation(); close();
+    };
     document.addEventListener('pointerdown', onDown);
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [open, close]);
+  }, [open, close, busy]);
 
   if (!active || !sessionId) return null;
   const shares = audience.shares;
@@ -66,13 +77,13 @@ export function ShareControl({ session, user, audience }: { session: DeviceSessi
   };
 
   return <div className="share-control" ref={rootRef}>
-    <button type="button" className="button outline share-button" aria-expanded={open} aria-haspopup="dialog" onClick={() => { if (open) close(); else { setOpen(true); void audience.refresh(); } }}>
-      <Icon name="user" size={17} />{t('ui.dc120821c212')}{known && (connected > 0 || audience.activeLinks > 0) && <span className="share-count" title={audienceDescription(audience)}>{connected > 0 ? t('ui.6bfac468e8a5') + connected : t('ui.c1500d1211e4') + audience.activeLinks}</span>}{!known && <span className="share-status-unknown" title={audienceDescription(audience)} aria-label={audienceDescription(audience)}>{audience.status === 'loading' ? '…' : '?'}</span>}
+    <button ref={triggerRef} type="button" className="button outline share-button" aria-expanded={open} aria-haspopup="dialog" onClick={() => { if (open) close(); else { setOpen(true); void audience.refresh(); } }}>
+      <Icon name="user" size={17} />{t('ui.dc120821c212')}{known && (connected > 0 || audience.activeLinks > 0) && <span className="share-count" title={audienceDescription(audience)}>{connected > 0 ? t('copy.ShareControl.ce5cf3e4', { p0: connected }) : t('copy.ShareControl.56441386', { p0: audience.activeLinks })}</span>}{!known && <span className="share-status-unknown" title={audienceDescription(audience)} aria-label={audienceDescription(audience)}>{audience.status === 'loading' ? '…' : '?'}</span>}
     </button>
     {open && <div className="share-popover" role="dialog" aria-label={t('ui.c61ec5a31b0d')}>
       <div className="share-head">
         <div><strong>{t('ui.2f9b62797fb3')}</strong><p>{t('ui.84765be25f80')}</p></div>
-        <button type="button" className="icon-button" aria-label={t('ui.a7a4033657e8')} onClick={close} disabled={busy}><Icon name="close" size={16} /></button>
+        <button ref={closeButtonRef} type="button" className="icon-button" aria-label={t('ui.a7a4033657e8')} onClick={() => close()} disabled={busy}><Icon name="close" size={16} /></button>
       </div>
       {link ? <div className="share-link-box">
         <input readOnly value={link} aria-label={t('ui.ad4145b4c7b2')} onFocus={event => event.currentTarget.select()} />
@@ -101,7 +112,7 @@ export function ShareControl({ session, user, audience }: { session: DeviceSessi
         <strong>{t('ui.899798fc541f')}</strong><p className="share-audience-status" role="status">{audienceDescription(audience)}</p>
         {!known ? <div className="share-empty">{audience.error && <p>{audience.error}</p>}<button type="button" className="text-button" onClick={() => void audience.refresh()}>{t('ui.492dbf155f39')}</button></div> : shares.length === 0 ? null : <ul className="share-list">
           {shares.map(share => <li className="share-item" key={share.id}>
-            <div className="share-item-head"><span>{MODE_LABEL[share.mode]} · {(share.maxRecipients ?? 1) > 1 ? t('ui.f6cc568b1357') : t('ui.dad7c0857e1b')} <small>{t('ui.6193c9a62e65')}{share.recipientsUsed ?? share.redeemers.length} {t('ui.e029cc4b39ce')}{share.maxRecipients ?? 1} {t('ui.0afb1c2a3da3')}{timeLabel(share.expiresAt)}</small></span>
+            <div className="share-item-head"><span>{MODE_LABEL[share.mode]} · {(share.maxRecipients ?? 1) > 1 ? t('ui.f6cc568b1357') : t('ui.dad7c0857e1b')} <small><TranslatedText message="copy.ShareControl.d6158878" values={{ p0: share.recipientsUsed ?? share.redeemers.length, p1: share.maxRecipients ?? 1, p2: timeLabel(share.expiresAt) }} /></small></span>
               <button type="button" className="text-button danger-text" disabled={busy} onClick={() => void revoke(() => shareApi.revoke(sessionId, share.id), () => audience.forgetShare(share.id))}>{t('ui.b66927e0fc8e')}</button></div>
             {share.redeemers.length === 0 ? <p className="share-empty">{share.recipientsUsed > 0 ? t('ui.43cf28ae016c') : t('ui.464f749b308c')}</p> : <ul className="share-people">
               {share.redeemers.map(person => <li key={person.grantId}>

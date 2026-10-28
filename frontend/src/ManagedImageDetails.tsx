@@ -30,7 +30,7 @@ export function ManagedImageDetails({ item, onCopy }: { item: ManagedImage; onCo
   const display = imageDisplay(item), id = imageKey(item);
   return <div className="image-identity">
     <div className="image-name-line"><Icon name="layers" size={17} /><strong className="image-display-name">{display.name}</strong></div>
-    <span className="image-metadata">{display.metadata ?? t('images.metadataMissing')}</span>
+    <div className="image-build-line"><span className="image-metadata">{display.metadata ?? t('images.metadataMissing')}</span>
     <div className="image-identifier-line"><details className="image-details">
       <summary><code title={id}>{id.slice(0, 19)}…</code><Icon name="chevronDown" size={14} /><span className="sr-only">{t('images.technicalDetails')}</span></summary>
       <dl>
@@ -40,7 +40,7 @@ export function ManagedImageDetails({ item, onCopy }: { item: ManagedImage; onCo
         <dt>{t('images.tags')}</dt><dd>{item.tags.length ? item.tags.map(tag => <code key={tag}>{tag}</code>) : t('images.untagged')}</dd>
         {Boolean(item.digests?.length) && <><dt>{t('images.imageReferences')}</dt><dd>{item.digests!.map(value => <code key={value}>{value}</code>)}</dd></>}
       </dl>
-    </details><button type="button" className="icon-button image-identifier-copy" title={t('images.copyIdentifier')} aria-label={t('images.copyIdentifier')} onClick={() => onCopy(id)}><Icon name="copy" size={14} /></button></div>
+    </details><button type="button" className="icon-button image-identifier-copy" title={t('images.copyIdentifier')} aria-label={t('images.copyIdentifier')} onClick={() => onCopy(id)}><Icon name="copy" size={14} /></button></div></div>
   </div>;
 }
 
@@ -50,6 +50,7 @@ export function ManagedImageUsage({ item }: { item: ManagedImage }) {
   const profiles = item.uses.filter(use => use.kind === 'profile');
   const latest = item.uses.some(use => use.kind === 'catalog');
   const protectedImage = Boolean(item.blockers.length);
+  const profileLinks = <div className="image-profile-links">{profiles.map(profile => <a href={'#/admin/profiles?profile=' + encodeURIComponent(profile.id)} key={profile.id} title={profile.name}><Icon name="phone" size={13}/><span>{profile.name}</span></a>)}</div>;
   return <div className="image-usage">
     <div className="image-status-line">
       <span className={'image-status ' + (protectedImage ? 'is-protected' : latest ? 'is-current' : item.uses.length ? 'is-linked' : 'is-unused')} title={protectedImage ? item.blockers.map(imageReason).join(' · ') : undefined}>
@@ -58,7 +59,7 @@ export function ManagedImageUsage({ item }: { item: ManagedImage }) {
       </span>
       {protectedImage && latest && <span className="image-current-label">{t('images.latest')}</span>}
     </div>
-    {profiles.length > 0 && <div className="image-profile-links">{profiles.map(profile => <a href={'#/admin/profiles?profile=' + encodeURIComponent(profile.id)} key={profile.id} title={profile.name}><Icon name="phone" size={13} /><span>{profile.name}</span></a>)}</div>}
+    {profiles.length > 1 ? <details className="image-profile-disclosure"><summary>{t('images.linkedProfiles')} ({profiles.length})<Icon name="chevronDown" size={13}/></summary>{profileLinks}</details> : profiles.length > 0 && profileLinks}
     {protectedImage && <details className="image-protection-details"><summary>{t('images.protectionReasons')}<Icon name="chevronDown" size={13} /></summary><ul>{item.blockers.map(value => <li key={value}>{imageReason(value)}</li>)}</ul></details>}
   </div>;
 }

@@ -1,4 +1,6 @@
 import { uiMessage } from '../messages.js';
+import { recordServiceLog } from '../service-log.js';
+import { operationalError } from '../startup.js';
 import { completeImageCheck } from '../image-readiness.js';
 import type { Express } from 'express';
 import type { Pool } from 'pg';
@@ -74,11 +76,25 @@ export function registerImageRoutes(app: Express, context: ServerContext, worker
     return result;
   }
 
+  app.get('/api/admin/emulator-images/catalog-status', requireAuth, requireAdmin, route(async (_req, res) => {
+    const builder = await builderHost(pool, hub, config.autoImageBuilder);
+    const empty = { builder, startedAt: null, updatedAt: null, progress: null };
+    res.setHeader('Cache-Control', 'no-store');
+    if (!builder) { res.json({ ...empty, phase: 'unconfigured' }); return; }
+    if (!hub.hasAgent(builder.id)) { res.json({ ...empty, phase: 'offline' }); return; }
+    const status = await hub.command(builder.id, builder.id, 'emulator-catalog-status', {}, 10_000);
+    res.json({ ...status, builder });
+  }));
+
   app.get('/api/admin/emulator-images', requireAuth, requireAdmin, route(async (req, res) => {
     const registry = await readRegistrySettings(pool);
     const builder = await builderHost(pool, hub, config.autoImageBuilder);
     if (!builder) { res.json({ registry, builder: null, images: [], jobs: [] }); return; }
-    const catalog = await hub.command(builder.id, builder.id, 'emulator-catalog', { refresh: req.query.refresh === '1' }, 15 * 60_000) as { abi?: string; refreshedAt?: string; images?: Array<Record<string, unknown>>; jobs?: AgentJob[] };
+    if (!hub.hasAgent(builder.id)) throw new ApiError(503, 'image_builder_offline', uiMessage('catalog.offline'));
+    const catalog = await hub.command(builder.id, builder.id, 'emulator-catalog', { refresh: req.query.refresh === '1' }, 15 * 60_000).catch(async error => {
+      await recordServiceLog(pool, { service: 'server', severity: 'error', code: 'emulator_images.catalog_failed', hostId: builder.id, message: operationalError(error, 'api') }).catch(() => {});
+      throw new ApiError(502, 'catalog_load_failed', uiMessage('catalog.failedHint'));
+    }) as { abi?: string; refreshedAt?: string; images?: Array<Record<string, unknown>>; jobs?: AgentJob[] };
     await worker.recordJobs(catalog.jobs ?? [], builder.id);
     const address = activeAddress(registry);
     const repository = address ? `${address}/${IMAGE_REPOSITORY}` : null;

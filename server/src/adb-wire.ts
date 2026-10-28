@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { constants, createHash, createPublicKey, publicDecrypt, randomBytes, timingSafeEqual, type KeyObject } from 'node:crypto';
 
 export const ADB_HEADER_BYTES = 24;
@@ -11,19 +12,19 @@ const ADB_PUBLIC_KEY_BYTES = 524;
 export type AdbPublicKey = { key: KeyObject; fingerprint: string };
 
 export function parseAdbPublicKey(input: unknown): AdbPublicKey {
-  if (typeof input !== 'string' || input.length < 690 || input.length > 1024) throw new Error('Invalid ADB public key');
+  if (typeof input !== 'string' || input.length < 690 || input.length > 1024) throw new Error(diagnostic('adb-wire.4e6b492ff5'));
   const base64 = input.trim().split(/\s+/, 1)[0] || '';
-  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) throw new Error('Invalid ADB public key');
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) throw new Error(diagnostic('adb-wire.4e6b492ff5'));
   const bytes = Buffer.from(base64, 'base64');
-  if (bytes.length !== ADB_PUBLIC_KEY_BYTES || bytes.readUInt32LE(0) !== 64) throw new Error('ADB public key must be RSA-2048');
+  if (bytes.length !== ADB_PUBLIC_KEY_BYTES || bytes.readUInt32LE(0) !== 64) throw new Error(diagnostic('adb-wire.6b2af288f6'));
   const exponent = bytes.readUInt32LE(520);
-  if (exponent !== 65537) throw new Error('ADB public key must use the standard RSA exponent');
+  if (exponent !== 65537) throw new Error(diagnostic('adb-wire.06dc4853e3'));
   const modulus = Buffer.from(bytes.subarray(8, 264)).reverse();
-  if (!(modulus[0]! & 0x80) || !(modulus[255]! & 1)) throw new Error('Invalid ADB public key modulus');
+  if (!(modulus[0]! & 0x80) || !(modulus[255]! & 1)) throw new Error(diagnostic('adb-wire.598f17d869'));
   const exponentBytes = Buffer.alloc(4);
   exponentBytes.writeUInt32BE(exponent);
   const key = createPublicKey({ key: { kty: 'RSA', n: modulus.toString('base64url'), e: exponentBytes.subarray(exponentBytes.findIndex(value => value !== 0)).toString('base64url') }, format: 'jwk' });
-  if (key.asymmetricKeyDetails?.modulusLength !== 2048) throw new Error('ADB public key must be RSA-2048');
+  if (key.asymmetricKeyDetails?.modulusLength !== 2048) throw new Error(diagnostic('adb-wire.6b2af288f6'));
   return { key, fingerprint: createHash('sha256').update(bytes).digest('hex') };
 }
 
@@ -43,7 +44,7 @@ export function verifyAdbSignature(key: KeyObject, token: Buffer, signature: Buf
 export type AdbPacket = { command: number; arg0: number; arg1: number; payload: Buffer; frame: Buffer };
 
 export function adbFrame(command: number, arg0: number, arg1: number, payload: Buffer = Buffer.alloc(0)): Buffer {
-  if (payload.length > 4096) throw new Error('ADB handshake payload too large');
+  if (payload.length > 4096) throw new Error(diagnostic('adb-wire.4c114a4ae0'));
   const header = Buffer.alloc(ADB_HEADER_BYTES);
   header.writeUInt32LE(command, 0);
   header.writeUInt32LE(arg0, 4);
@@ -64,12 +65,12 @@ export function readAdbHandshakeFrame(bytes: Buffer): { packet: AdbPacket; rest:
   const length = bytes.readUInt32LE(12);
   const checksum = bytes.readUInt32LE(16);
   const magic = bytes.readUInt32LE(20);
-  if (length > 4096 || magic !== ((command ^ 0xffffffff) >>> 0)) throw new Error('Invalid ADB packet header');
+  if (length > 4096 || magic !== ((command ^ 0xffffffff) >>> 0)) throw new Error(diagnostic('adb-wire.2e2e7bb5ab'));
   if (bytes.length < ADB_HEADER_BYTES + length) return null;
   const payload = bytes.subarray(ADB_HEADER_BYTES, ADB_HEADER_BYTES + length);
   let actual = 0;
   for (const value of payload) actual = (actual + value) >>> 0;
-  if (actual !== checksum) throw new Error('Invalid ADB packet checksum');
+  if (actual !== checksum) throw new Error(diagnostic('adb-wire.1449869f04'));
   const end = ADB_HEADER_BYTES + length;
   return { packet: { command, arg0, arg1, payload, frame: bytes.subarray(0, end) }, rest: bytes.subarray(end) };
 }

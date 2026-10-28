@@ -269,7 +269,7 @@ test.describe('responsive workspace', () => {
   }
 });
 
-test('HD session keeps every control and input visible with a saved tall console', async ({ page }) => {
+test('HD session keeps its workspace bounded and screenshot reachable with a saved tall console', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.addInitScript(() => localStorage.setItem('rdf-console-height', '1000'));
   await openSession(page);
@@ -278,7 +278,10 @@ test('HD session keeps every control and input visible with a saved tall console
     const selectors = ['.device-screen', '.device-controls', '.text-send', '.terminal-input'];
     return Math.ceil(Math.max(...selectors.map(selector => document.querySelector(selector)!.getBoundingClientRect().bottom)));
   })).toBeLessThanOrEqual(760);
-  await expect(page.getByRole('button', { name: 'Скачать PNG-снимок экрана устройства' })).toBeInViewport();
+  const screenshot = page.getByRole('button', { name: 'Скачать PNG-снимок экрана устройства' });
+  await screenshot.scrollIntoViewIfNeeded();
+  await expect(screenshot).toBeInViewport();
+  await expect(page.locator('.device-screen')).toBeInViewport();
   expect(await page.evaluate(() => localStorage.getItem('rdf-console-height'))).toBe('1000');
 });
 
@@ -355,11 +358,11 @@ test.describe('launch profile compatibility', () => {
       await page.getByRole('button', { name: 'Новая сессия' }).click();
       const dialog = page.getByRole('dialog', { name: 'Новая сессия' });
       await expect(dialog).toBeVisible();
-      await expect(dialog.locator('.create-selected-profile h3')).toContainText('Android 13 · Software');
+      await expect(dialog.getByRole('combobox', { name: 'Устройство', exact: true })).toHaveAttribute('title', /Android 13 · Software/);
       const launch = dialog.getByRole('button', { name: 'Запустить' });
       await expect(launch).toBeEnabled();
       await expect(launch).toBeInViewport();
-      const longName = dialog.locator('.create-selected-profile h3');
+      const longName = dialog.getByRole('combobox', { name: 'Устройство', exact: true });
       const widthOverflow = await longName.evaluate(node => node.scrollWidth - node.clientWidth);
       expect(widthOverflow).toBeLessThanOrEqual(1);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
@@ -397,7 +400,7 @@ test('share link supports several recipients with an explicit limit', async ({ p
   const request = page.waitForRequest(item => item.method() === 'POST' && /\/api\/sessions\/[^/]+\/shares$/.test(item.url()));
   await dialog.getByRole('button', { name: 'Создать ссылку' }).click();
   expect((await request).postDataJSON().maxRecipients).toBe(3);
-  await expect(dialog).toContainText('Использовано мест: 0 из 3');
+  await expect(dialog).toContainText('Получателей: 0 из 3');
 });
 test('admin can create and edit company details on a local user', async ({ page }) => {
   await page.goto('/#/admin/users');

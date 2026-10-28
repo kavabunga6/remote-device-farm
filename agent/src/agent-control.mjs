@@ -1,4 +1,9 @@
+import { agentIdentity, agentBrokerUrl } from './connection-config.mjs';
+import { diagnostic } from './diagnostics.mjs';
+import { PacketCapture } from './packet-capture.mjs';
+import { inspectNetwork } from './network-inspector.mjs';
 import { ImageCache } from './image-cache.mjs';
+import { agentMessage } from './messages.mjs';
 import { runKeyed } from './keyed-queue.mjs';
 import os from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -20,22 +25,23 @@ const validId = (value) => typeof value === 'string' && /^[a-zA-Z0-9-]{8,64}$/.t
 const isMissing = (error) => /No such container|not found|404/i.test(String(error?.message));
 
 export function loadControlConfig(env = process.env) {
-  const agentId = env.AGENT_ID;
-  if (typeof agentId !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(agentId)) throw new Error('Invalid AGENT_ID');
+  const agentId = agentIdentity(env);
+  if (typeof agentId !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(agentId)) throw new Error(diagnostic('agent-control.9e88221d7b'));
   const slots = Number(env.AGENT_SLOTS ?? Math.max(1, Math.floor(os.cpus().length / 2)));
-  if (!Number.isInteger(slots) || slots < 1 || slots > 128) throw new Error('AGENT_SLOTS must be 1–128');
+  if (!Number.isInteger(slots) || slots < 1 || slots > 128) throw new Error(diagnostic('agent-control.746bdb70c0'));
   const ioContainerOverride = env.AGENT_IO_CONTAINER_ID || null;
   if (ioContainerOverride && !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(ioContainerOverride)) {
-    throw new Error('Invalid AGENT_IO_CONTAINER_ID');
+    throw new Error(diagnostic('agent-control.e2dd5f48d9'));
   }
   return {
     agentId, slots, ioContainerOverride,
     selfContainerId: os.hostname(),
+    packetCaptureImage: env.RDF_PACKET_CAPTURE_IMAGE || undefined,
     dockerSocket: env.DOCKER_SOCKET || '/var/run/docker.sock',
     imageBuildStateDir: env.AGENT_IMAGE_BUILD_STATE_DIR || '/var/lib/rdf-image-builds',
     imageBuildDiskPath: env.AGENT_IMAGE_BUILD_DISK_PATH || '/',
     allowedPrefixes: (env.AGENT_ALLOWED_IMAGE_PREFIXES || '').split(',').map((x) => x.trim()).filter(Boolean),
-    trustedPrefixes: [farmRegistryPrefix(env.AGENT_BROKER_URL)].filter(Boolean),
+    trustedPrefixes: [farmRegistryPrefix(agentBrokerUrl(env))].filter(Boolean),
     nvidiaXorgModuleDir: validateNvidiaXorgModuleDir(env.AGENT_NVIDIA_XORG_MODULE_DIR),
     driDevice: validateDriDevice(env.AGENT_DRI_DEVICE),
   };
@@ -45,6 +51,7 @@ export class AgentControl {
   constructor(config, docker = new DockerClient(config.dockerSocket)) {
     this.config = config;
     this.docker = docker;
+    this.packets = new PacketCapture(docker, {agentId:config.agentId,selfContainerId:config.selfContainerId,image:config.packetCaptureImage});
     this.reservations = new SlotReservations();
     this.cache = new ImageCache(docker, config.imageBuildStateDir);
     this.cacheCleanup = false;
@@ -66,7 +73,7 @@ export class AgentControl {
     while (true) {
       signal?.throwIfAborted();
       const host = await this.hostInfo();
-      if (!host.kvm) throw new Error('Image runtime validation needs a builder with /dev/kvm');
+      if (!host.kvm) throw new Error(diagnostic('agent-control.60e2d62b90'));
       const capacity = await this.capacity();
       const requiredMb = Math.max(entry.device === 'wear' ? 6144 : 8192,...profiles.map(profile=>Number(profile.resources?.memoryMb||0)+2048));
       if (this.preparing.size || capacity.occupied.length || capacity.host.memoryAvailableMb < requiredMb) {
@@ -117,7 +124,7 @@ export class AgentControl {
       case 'recover': return this.recover(onLog);
       case 'inventory': return this.inventory();
       case 'start': {
-        if (this.preparing.has(request.sessionId)) throw new Error('Session startup is already pending');
+        if (this.preparing.has(request.sessionId)) throw new Error(diagnostic('agent-control.60d7a872e9'));
         const controller = new AbortController();
         const combined = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
         this.preparing.set(request.sessionId, controller);
@@ -127,7 +134,7 @@ export class AgentControl {
         finally { this.preparing.delete(request.sessionId); }
       }
       case 'stop':
-        this.preparing.get(request.sessionId)?.abort(new Error('Session startup cancelled'));
+        this.preparing.get(request.sessionId)?.abort(new Error(diagnostic('agent-control.1af461dcc0')));
         return this.withSessionLock(request.sessionId, () => this.stop(request.sessionId, onLog));
       case 'diagnostics': return this.withSessionLock(request.sessionId, async () => {
         for (const container of await this.sessionContainers(request.sessionId))
@@ -135,8 +142,11 @@ export class AgentControl {
         return { captured: true };
       });
       case 'setEgress': return this.withSessionLock(request.sessionId, () => this.setEgress(request.sessionId, request.enabled));
+      case 'networkInspector': return this.withSessionLock(request.sessionId, () => this.networkInspector(request.sessionId, request.params));
+      case 'cameraImage': return this.withSessionLock(request.sessionId, () => this.cameraImage(request.sessionId, request.params));
       case 'emuConsole': return this.emuConsole(request.sessionId, request.args);
       case 'setPolicy': return this.serialPolicy(request.policy);
+      case 'emulatorCatalogStatus': return this.images.catalogStatus();
       case 'emulatorCatalog': return this.images.catalog({ refresh: request.refresh });
       case 'emulatorBuild':
         if (this.cacheCleanup) throw new Error('image_cache_busy');
@@ -146,7 +156,7 @@ export class AgentControl {
       case 'emulatorJobs': return this.images.acknowledge(request.acknowledged);
       case 'imageCache': return this.cache.list(request.protectedRefs, signal);
       case 'imageCacheRemove': return this.removeCachedImages(request.ids, request.protectedRefs, signal);
-      default: throw new Error('Invalid control operation');
+      default: throw new Error(diagnostic('agent-control.6b12683987'));
     }
   }
 
@@ -180,7 +190,7 @@ export class AgentControl {
   async prewarmImage(image, auth, { signal } = {}) {
     if (this.cacheCleanup) throw new Error('image_cache_busy');
     const checked = validateImage(image, this.config.allowedPrefixes, this.config.trustedPrefixes ?? []);
-    if (!/@sha256:[0-9a-f]{64}$/.test(checked)) throw new Error('Image prewarm requires a pinned digest');
+    if (!/@sha256:[0-9a-f]{64}$/.test(checked)) throw new Error(diagnostic('agent-control.75deb7947f'));
     const credentials = validateRegistryAuth(auth);
     const deadline = AbortSignal.timeout(30 * 60_000);
     const combined = signal ? AbortSignal.any([signal, deadline]) : deadline;
@@ -201,15 +211,18 @@ export class AgentControl {
     const self = await this.docker.inspect(this.config.selfContainerId);
     const labels = self.Config?.Labels || {};
     const project = labels['com.docker.compose.project'];
-    if (labels['com.docker.compose.service'] !== 'agent-control' || !project) {
-      throw new Error('Cannot identify the agent I/O container from Compose labels');
+    if (labels['com.docker.compose.service'] !== 'agent-control' || !project || !/^[1-9]\d*$/.test(labels['com.docker.compose.container-number']??'')) {
+      throw new Error(diagnostic('agent-control.5e475cb31e'));
     }
     const filters = encodeURIComponent(JSON.stringify({ label: [
       'com.docker.compose.project=' + project,
       'com.docker.compose.service=agent',
     ] }));
-    const matches = await this.docker.request('GET', '/containers/json?filters=' + filters);
-    if (matches.length !== 1 || matches[0].State !== 'running') throw new Error('Expected one running agent I/O container');
+    // Compose puts project/service labels on images too. Only actual service
+    // containers receive a replica number; build and maintenance containers do not.
+    const candidates = await this.docker.request('GET', '/containers/json?filters=' + filters);
+    const matches = candidates.filter(c => /^[1-9]\d*$/.test(c.Labels?.['com.docker.compose.container-number']??''));
+    if (matches.length !== 1 || matches[0].State !== 'running') throw new Error(diagnostic('agent-control.1ca5f20c60'));
     return matches[0].Id;
   }
 
@@ -251,16 +264,16 @@ export class AgentControl {
     const existing = await this.docker.listManaged(this.config.agentId);
     const recovered = [];
     const cleanup = async (sessionId, container, reason) => {
-      console.warn('Removing unsafe or stopped emulator ' + sessionId + ': ' + reason);
+      console.warn(diagnostic('agent-control.02e08f4710', { p0: sessionId, p1: reason }));
       try {
         const emit = event => onLog?.({ ...event, sessionId });
-        await emit({ code: 'session.recovery_cleanup', message: 'Восстановление агента: ' + reason, severity: 'warning', service: 'agent' });
+        await emit({ code: 'session.recovery_cleanup', message: agentMessage('agent.recovery.started', { p0: reason }, 'ru'), severity: 'warning', service: 'agent' });
         await this.docker.captureDiagnostics?.(container.Id, sessionId, this.config.agentId, emit);
         await this.docker.removeManaged(container.Id, sessionId, this.config.agentId);
         await this.docker.removeSessionNetworks(sessionId, this.config.agentId, ioContainerId);
-        await onLog?.({ sessionId, code: 'session.recovery_cleanup_complete', message: 'Очистка после восстановления завершена', severity: 'info', service: 'agent' });
+        await onLog?.({ sessionId, code: 'session.recovery_cleanup_complete', message: agentMessage('agent.recovery.cleaned', {}, 'ru'), severity: 'info', service: 'agent' });
       } catch (error) {
-        console.warn('Cleanup pending for emulator ' + sessionId + ': ' + error.message);
+        console.warn(diagnostic('agent-control.896be5ece8', { p0: sessionId, p1: error.message }));
         recovered.push({ sessionId, containerId: container.Id, name: 'rdf-' + sessionId,
           cpu: 0, memoryMb: 0, networkEnabled: false, cleanupPending: true });
       }
@@ -302,7 +315,7 @@ export class AgentControl {
     for (const sessionId of orphans) {
       try { await this.docker.removeSessionNetworks(sessionId, this.config.agentId, ioContainerId); }
       catch (error) {
-        console.warn('Cleanup pending for emulator ' + sessionId + ': ' + error.message);
+        console.warn(diagnostic('agent-control.896be5ece8', { p0: sessionId, p1: error.message }));
         recovered.push({ sessionId, containerId: 'rdf-' + sessionId, name: 'rdf-' + sessionId,
           cpu: 0, memoryMb: 0, networkEnabled: false, cleanupPending: true });
       }
@@ -362,16 +375,16 @@ export class AgentControl {
     const report = progressReporter(onProgress);
     const profile = validateProfile(profileInput, this.config.allowedPrefixes, this.config.trustedPrefixes ?? []);
     assertProfileWithinPolicy(profile, this.policy);
-    onLog?.({ code: 'session.profile_validated', message: 'Профиль и лимиты узла проверены', severity: 'info', service: 'agent' });
+    onLog?.({ code: 'session.profile_validated', message: agentMessage('agent.profile.checked', {}, 'ru'), severity: 'info', service: 'agent' });
     const existing = await this.sessionContainers(sessionId);
     if (existing.length) {
-      if (existing.length !== 1 || existing[0].State !== 'running') throw new Error('Previous session cleanup is pending');
+      if (existing.length !== 1 || existing[0].State !== 'running') throw new Error(diagnostic('agent-control.4a4ef4befd'));
       const detail = await this.docker.inspect(existing[0].Id);
       const networks = sessionNetworks(sessionId);
       const attachments = Object.keys(detail.NetworkSettings?.Networks || {});
       if (!detail.NetworkSettings?.Networks?.[networks.management] ||
           attachments.some((network) => network !== networks.management && network !== networks.egress)) {
-        throw new Error('Existing emulator has unsafe Docker network attachments');
+        throw new Error(diagnostic('agent-control.1695f69cba'));
       }
       await this.docker.ensureNetwork(networks.management, sessionId, this.config.agentId, 'management');
       if (detail.NetworkSettings.Networks[networks.egress]) {
@@ -386,9 +399,9 @@ export class AgentControl {
     if(this.imageCheckCleanupError) { await this.recoverImageChecks();this.imageCheckCleanupError=null; }
     const capacity = await this.capacity();
     const hostInfo = await this.hostInfo();
-    if (!hostInfo.kvm) throw new Error('/dev/kvm is not available to agent control');
+    if (!hostInfo.kvm) throw new Error(diagnostic('agent-control.e79e433d86'));
     profile.gpuBackend = resolveGpuBackend(profile, hostInfo);
-    onLog?.({ code: 'session.gpu_checked', message: 'KVM доступен; GPU backend: ' + (profile.gpuBackend || 'software'), severity: 'info', service: 'agent' });
+    onLog?.({ code: 'session.gpu_checked', message: agentMessage('agent.kvm.available', { p0: profile.gpuBackend || 'software' }, 'ru'), severity: 'info', service: 'agent' });
     return this.reservations.run(sessionId, () => capacity.occupied, capacity.host, profile, async () => {
       await this.docker.ensureImage(profile.image, report, { signal, auth: profile.registryAuth ?? null });
       await this.cache.touch(profile.image);
@@ -410,24 +423,36 @@ export class AgentControl {
     const containers = await this.sessionContainers(sessionId);
     for (const container of containers) {
       await this.docker.captureDiagnostics?.(container.Id, sessionId, this.config.agentId, onLog);
-      onLog?.({ code: 'session.container_removing', message: 'Удаление контейнера ' + container.Id + ' и его томов', severity: 'info', service: 'agent' });
+      onLog?.({ code: 'session.container_removing', message: agentMessage('agent.cleanup.container', { p0: container.Id }, 'ru'), severity: 'info', service: 'agent' });
       await this.docker.removeManaged(container.Id, sessionId, this.config.agentId);
     }
-    onLog?.({ code: 'session.networks_removing', message: 'Удаление сетей сессии', severity: 'info', service: 'agent' });
+    onLog?.({ code: 'session.networks_removing', message: agentMessage('agent.cleanup.networks', {}, 'ru'), severity: 'info', service: 'agent' });
     await this.docker.removeSessionNetworks(sessionId, this.config.agentId, await this.ioContainerId());
-    onLog?.({ code: 'session.cleanup_complete', message: 'Контейнер, тома и сети удалены', severity: 'info', service: 'agent' });
+    onLog?.({ code: 'session.cleanup_complete', message: agentMessage('agent.cleanup.completed', {}, 'ru'), severity: 'info', service: 'agent' });
     return { stopped: true };
   }
 
   async setEgress(sessionId, enabled) {
     const containers = await this.sessionContainers(sessionId);
-    if (containers.length !== 1 || containers[0].State !== 'running') throw new Error('Session is not running on this agent');
+    if (containers.length !== 1 || containers[0].State !== 'running') throw new Error(diagnostic('agent-control.a14b4d584e'));
     return this.docker.setEgress(containers[0].Id, sessionId, this.config.agentId, enabled);
+  }
+
+  async networkInspector(sessionId, params) {
+    const containers = await this.sessionContainers(sessionId);
+    if (containers.length !== 1 || containers[0].State !== 'running') throw new Error(agentMessage('agent.a14b4d584e08'));
+    return inspectNetwork(this.docker, containers[0].Id, sessionId, this.config.agentId, params, this.packets);
+  }
+
+  async cameraImage(sessionId, params) {
+    const containers = await this.sessionContainers(sessionId);
+    if (containers.length !== 1 || containers[0].State !== 'running') throw new Error(agentMessage('agent.a14b4d584e08'));
+    return this.docker.cameraImage(containers[0].Id, sessionId, this.config.agentId, params);
   }
 
   async emuConsole(sessionId, args) {
     const containers = await this.sessionContainers(sessionId);
-    if (containers.length !== 1 || containers[0].State !== 'running') throw new Error('Session is not running on this agent');
+    if (containers.length !== 1 || containers[0].State !== 'running') throw new Error(diagnostic('agent-control.a14b4d584e'));
     return this.docker.emuConsole(containers[0].Id, sessionId, this.config.agentId, args);
   }
 }

@@ -75,7 +75,7 @@ export function pathPattern(path) {
     '^' +
       path
         .split(/(\{[^}]+\}|:[A-Za-z]\w*)/)
-        .map((part) => (/^(\{|:)/.test(part) ? '([^/]+)' : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+        .map((part) => (part === '{command}' ? '(.+)' : /^(\{|:)/.test(part) ? '([^/]+)' : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
         .join('') +
       '$',
   );

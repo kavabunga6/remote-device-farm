@@ -1,5 +1,6 @@
+import examples from '../../shared/interface-examples.json';
 import { localizeText, t } from './i18n';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { containerEnvToText, parseContainerEnvText } from './profile-env';
 import { api, type Profile, type ProfileInput } from './api';
 import { Icon } from './icons';
@@ -16,6 +17,7 @@ export function ProfileModal({ current, onClose, onSaved }: { current: Profile |
   } : blankProfile);
   const [enabled, setEnabled] = useState(current?.enabled !== false);
   const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
   const [error, setError] = useState('');
   const dialogRef = useAdminDialog(true, busy, onClose);
   const set = <K extends keyof ProfileInput>(key: K, value: ProfileInput[K]) => setForm(previous => ({ ...previous, [key]: value }));
@@ -26,7 +28,9 @@ export function ProfileModal({ current, onClose, onSaved }: { current: Profile |
     return Object.keys(options).length ? JSON.stringify(options, null, 2) : '';
   });
   const submit = async (event: React.FormEvent) => {
-    event.preventDefault(); setError('');
+    event.preventDefault();
+    if (pending.current) return;
+    setError('');
     const parsed = parseContainerEnvText(envText);
     if (parsed.error) { setError(parsed.error); return; }
     let dockerOptions: Record<string, unknown> = {};
@@ -38,7 +42,7 @@ export function ProfileModal({ current, onClose, onSaved }: { current: Profile |
       } catch { setError(t('ui.8057bc0272b7')); return; }
     }
     if ('gpu' in dockerOptions) { setError(t('ui.d463d8c447c2')); return; }
-    setBusy(true);
+    pending.current = true; setBusy(true);
     try {
       const payload = { ...form, containerEnv: parsed.env, dockerOptions };
       if (current) {
@@ -47,7 +51,8 @@ export function ProfileModal({ current, onClose, onSaved }: { current: Profile |
         await api.updateProfile(current.id, { ...fields, enabled });
       } else await api.createProfile(payload);
       onSaved();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : t('ui.8f9c4884b8f9')); setBusy(false); }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : t('ui.8f9c4884b8f9')); }
+    finally { pending.current = false; setBusy(false); }
   };
 
   return <div className="modal-backdrop" onMouseDown={event => { if (!busy && event.target === event.currentTarget) onClose(); }}>
@@ -56,8 +61,8 @@ export function ProfileModal({ current, onClose, onSaved }: { current: Profile |
         <div><h2 id="profile-heading">{current ? t('ui.4bc581e8d7c9') : t('ui.aaed1e96af70')}</h2><p id="profile-description">{t('ui.f18bf64f883e')}</p></div>
         <button type="button" className="icon-button" onClick={onClose} disabled={busy} aria-label={t('ui.a7a4033657e8')}><Icon name="close" size={19} /></button>
       </header>
-      <form className="profile-form" onSubmit={submit}>
-        <div className="profile-editor-body">
+      <form className="profile-form" onSubmit={submit} aria-busy={busy}>
+        <fieldset className="profile-editor-body" disabled={busy}>
           <section className="profile-editor-section profile-editor-wide" aria-labelledby="profile-general-heading">
             <h3 id="profile-general-heading">{t('ui.799ccfdf4b03')}</h3>
             <div className="profile-editor-fields">
@@ -108,14 +113,14 @@ export function ProfileModal({ current, onClose, onSaved }: { current: Profile |
             <p className="profile-field-note" id="profile-params-help">{t('ui.4171c94201ad')}</p>
             <label className="profile-launch-field"><span>{t('ui.a60003e96650')}</span><textarea value={envText} onChange={event => setEnvText(event.target.value)} placeholder={t('ui.040ff82edb88')} rows={3} spellCheck={false} aria-describedby="profile-env-help" /></label>
             <p className="profile-field-note" id="profile-env-help">{t('ui.32e9a9b3573f')}</p>
-            <label className="profile-launch-field"><span>{t('ui.99c5cabe9e0b')}</span><textarea value={optionsText} onChange={event => setOptionsText(event.target.value)} placeholder={'{\n  "shmSizeMb": 512,\n  "command": ["--flag"]\n}'} rows={5} spellCheck={false} aria-describedby="profile-docker-help" /></label>
+            <label className="profile-launch-field"><span>{t('ui.99c5cabe9e0b')}</span><textarea value={optionsText} onChange={event => setOptionsText(event.target.value)} placeholder={examples.dockerOptions} rows={5} spellCheck={false} aria-describedby="profile-docker-help" /></label>
             <p className="profile-field-note" id="profile-docker-help">{t('ui.2ec092b8c14b')}</p>
           </section>
-        </div>
+        </fieldset>
         <footer className="profile-editor-footer">
           {error && <div className="inline-error" role="alert">{localizeText(error)}</div>}
           <div className="profile-editor-actions">
-            {current && <label className="checkbox-label"><input type="checkbox" checked={enabled} onChange={event => setEnabled(event.target.checked)} />{t('ui.117858d60be7')}</label>}
+            {current && <label className="checkbox-label"><input type="checkbox" disabled={busy} checked={enabled} onChange={event => setEnabled(event.target.checked)} />{t('ui.117858d60be7')}</label>}
             <div className="modal-actions"><button type="button" className="button outline" onClick={onClose} disabled={busy}>{t('ui.8fbe9b75cbdf')}</button><button className="button primary" type="submit" disabled={busy}>{busy ? t('ui.9c27c381dd8b') : current ? t('ui.b4d30cae5289') : t('ui.355ba97a0f2b')}</button></div>
           </div>
         </footer>

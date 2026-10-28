@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import http2 from 'node:http2';
 
 const SAMPLE_RATE = 48000;
@@ -22,7 +23,7 @@ function varint(bytes, offset) {
     if (!(octet & 0x80)) return [value, offset];
     shift += 7n;
   }
-  throw new Error('Invalid emulator audio protobuf varint');
+  throw new Error(diagnostic('emulator-audio.5df32a758b'));
 }
 
 function fields(bytes) {
@@ -33,23 +34,23 @@ function fields(bytes) {
     [tag, offset] = varint(bytes, offset);
     const field = Number(tag >> 3n);
     const wire = Number(tag & 7n);
-    if (!field) throw new Error('Invalid emulator audio protobuf field');
+    if (!field) throw new Error(diagnostic('emulator-audio.bc2c07ef68'));
     let value;
     if (wire === 0) [value, offset] = varint(bytes, offset);
     else if (wire === 2) {
       let size;
       [size, offset] = varint(bytes, offset);
       if (size > BigInt(MAX_GRPC_MESSAGE) || offset + Number(size) > bytes.length) {
-        throw new Error('Invalid emulator audio protobuf length');
+        throw new Error(diagnostic('emulator-audio.474c50fe5f'));
       }
       value = bytes.subarray(offset, offset + Number(size));
       offset += Number(size);
     } else if (wire === 1 || wire === 5) {
       const size = wire === 1 ? 8 : 4;
-      if (offset + size > bytes.length) throw new Error('Truncated emulator audio protobuf field');
+      if (offset + size > bytes.length) throw new Error(diagnostic('emulator-audio.71491efea9'));
       offset += size;
       continue;
-    } else throw new Error('Unsupported emulator audio protobuf field');
+    } else throw new Error(diagnostic('emulator-audio.2205916527'));
     result.set(field, value);
   }
   return result;
@@ -60,20 +61,20 @@ export function decodeAudioPacket(bytes) {
   const formatBytes = packet.get(1);
   const pcm = packet.get(3);
   if (!Buffer.isBuffer(formatBytes) || !Buffer.isBuffer(pcm) || !pcm.length || pcm.length % 4) {
-    throw new Error('Invalid emulator PCM audio packet');
+    throw new Error(diagnostic('emulator-audio.5a3e966bda'));
   }
   const format = fields(formatBytes);
   if (format.get(1) !== BigInt(SAMPLE_RATE) || format.get(2) !== 1n || format.get(3) !== 1n) {
-    throw new Error('Unsupported emulator PCM audio format');
+    throw new Error(diagnostic('emulator-audio.3c19b297c2'));
   }
   const timestamp = packet.get(2) || 0n;
-  if (timestamp > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Invalid emulator audio timestamp');
+  if (timestamp > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error(diagnostic('emulator-audio.6a4d4add1b'));
   return { pcm, timestamp: Number(timestamp) };
 }
 
 export function emulatorAudioHost(serial) {
   const match = /^rdf-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}):5555$/.exec(serial);
-  if (!match) throw new Error('Invalid managed emulator serial for audio');
+  if (!match) throw new Error(diagnostic('emulator-audio.77651ce1b3'));
   return 'rdf-' + match[1];
 }
 
@@ -92,7 +93,7 @@ export class EmulatorAudioStream {
   }
 
   start() {
-    if (this.closed) return Promise.reject(new Error('Emulator audio stream is closed'));
+    if (this.closed) return Promise.reject(new Error(diagnostic('emulator-audio.b963e0b2a4')));
     if (this.ready) return this.ready;
     const host = emulatorAudioHost(this.serial);
     this.ready = new Promise((resolve, reject) => {
@@ -105,7 +106,7 @@ export class EmulatorAudioStream {
         this.close(error);
         if (started) this.onFailure?.(error);
       };
-      this.startTimer = setTimeout(() => fail(new Error('Emulator audio stream timed out')), this.startTimeoutMs);
+      this.startTimer = setTimeout(() => fail(new Error(diagnostic('emulator-audio.c754b704b0'))), this.startTimeoutMs);
       try {
         this.client = this.connect('http://' + host + ':8554');
         this.client.on('error', fail);
@@ -115,11 +116,11 @@ export class EmulatorAudioStream {
         });
         this.request.on('response', (headers) => {
           if (headers[':status'] !== 200 || !String(headers['content-type'] || '').startsWith('application/grpc')) {
-            fail(new Error('Emulator audio gRPC endpoint rejected the request'));
+            fail(new Error(diagnostic('emulator-audio.b8c3748bfb')));
           }
         });
         this.request.on('trailers', (trailers) => {
-          if (trailers['grpc-status'] !== '0') fail(new Error('Emulator audio gRPC status ' + String(trailers['grpc-status'] || 'unknown')));
+          if (trailers['grpc-status'] !== '0') fail(new Error(diagnostic('emulator-audio.d297fd0a61', { p0: String(trailers['grpc-status'] || 'unknown') })));
         });
         this.request.on('data', (chunk) => {
           try {
@@ -133,8 +134,8 @@ export class EmulatorAudioStream {
             }
           } catch (error) { fail(error); }
         });
-        this.request.on('end', () => fail(new Error('Emulator audio stream ended')));
-        this.request.on('close', () => fail(new Error('Emulator audio stream closed')));
+        this.request.on('end', () => fail(new Error(diagnostic('emulator-audio.a9e5b5e64d'))));
+        this.request.on('close', () => fail(new Error(diagnostic('emulator-audio.2d6f8f6d79'))));
         this.request.on('error', fail);
         this.request.end(grpcFrame(AUDIO_FORMAT));
       } catch (error) { fail(error); }
@@ -145,13 +146,13 @@ export class EmulatorAudioStream {
   consume(chunk) {
     if (this.closed) return;
     if (this.pending.length + chunk.length > MAX_GRPC_MESSAGE + 5) {
-      throw new Error('Emulator audio receive buffer exceeded limit');
+      throw new Error(diagnostic('emulator-audio.7ad22bd7b2'));
     }
     this.pending = this.pending.length ? Buffer.concat([this.pending, chunk]) : chunk;
     while (this.pending.length >= 5) {
       const compressed = this.pending[0];
       const length = this.pending.readUInt32BE(1);
-      if (compressed || length > MAX_GRPC_MESSAGE) throw new Error('Unsupported emulator audio gRPC packet');
+      if (compressed || length > MAX_GRPC_MESSAGE) throw new Error(diagnostic('emulator-audio.99c60194d4'));
       if (this.pending.length < length + 5) break;
       const packet = decodeAudioPacket(this.pending.subarray(5, length + 5));
       this.pending = this.pending.subarray(length + 5);
@@ -164,7 +165,7 @@ export class EmulatorAudioStream {
   }
 
   setEnabled(enabled) {
-    if (this.closed) throw new Error('Emulator audio stream is unavailable');
+    if (this.closed) throw new Error(diagnostic('emulator-audio.a4368c11d7'));
     this.enabled = Boolean(enabled);
     if (this.enabled) this.resendConfig();
   }
@@ -176,7 +177,7 @@ export class EmulatorAudioStream {
     });
   }
 
-  close(error = new Error('Emulator audio stream is closed')) {
+  close(error = new Error(diagnostic('emulator-audio.b963e0b2a4'))) {
     if (this.closed) return;
     this.closed = true;
     clearTimeout(this.startTimer);

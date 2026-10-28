@@ -1,3 +1,5 @@
+import { diagnostic } from './diagnostics.mjs';
+import { agentMessage } from './messages.mjs';
 import { tarArchive } from './tar-archive.mjs';
 import { BoundedImageBuilder } from './bounded-image-builder.mjs';
 export { tarArchive } from './tar-archive.mjs';
@@ -15,7 +17,7 @@ import { emulatorPushDigest } from './emulator-push-digest.mjs';
 export const CONTRACT_LABEL = 'remote-device-farm.contract';
 export const SYSTEM_IMAGE_LABEL = 'remote-device-farm.system-image';
 
-const CONTEXT_FILES = [['Dockerfile', 0o644], ['rdf-emulator.sh', 0o755], ['adb-auth-gate.sh', 0o755], ['secure-ramdisk.py', 0o644], ['xorg.conf', 0o644]];
+const CONTEXT_FILES = [['Dockerfile', 0o644], ['rdf-emulator.sh', 0o755], ['adb-auth-gate.sh', 0o755], ['secure-ramdisk.py', 0o644], ['ramdisk.py', 0o644], ['xorg.conf', 0o644]];
 const CATALOG_TTL_MS = 60 * 60_000;
 const BUILD_TIMEOUT_MS = 2 * 60 * 60_000;
 const MAX_JOBS = 50;
@@ -34,9 +36,11 @@ export function buildProgress(line, previous = { step: 0, steps: 0, percent: nul
 }
 
 export class EmulatorImages {
-  constructor({ docker, verify = async () => { throw new Error('Image runtime validation is not configured'); }, abi = hostAbi(), contextDir = new URL('../emulator-image/', import.meta.url), now = Date.now, stateDir, store = stateDir ? new ImageJobStore(stateDir) : null, builder = new BoundedImageBuilder({ docker, agentId: 'standalone', stateDir: stateDir ?? '/var/lib/rdf-image-builds' }) }) {
+  constructor({ docker, verify = async () => { throw new Error(diagnostic('emulator-images.c5a3271096')); }, abi = hostAbi(), contextDir = new URL('../emulator-image/', import.meta.url), now = Date.now, stateDir, store = stateDir ? new ImageJobStore(stateDir) : null, builder = new BoundedImageBuilder({ docker, agentId: 'standalone', stateDir: stateDir ?? '/var/lib/rdf-image-builds' }) }) {
     Object.assign(this, { docker, verify, abi, contextDir, now, store, builder });
     this.cache = null;
+    this.catalogLoading = null;
+    this.catalogState = { phase: 'idle', startedAt: null, updatedAt: null, progress: null };
     this.jobs = store?.read() ?? [];
     this.running = null;
     this.runningController = null;
@@ -71,40 +75,68 @@ export class EmulatorImages {
   }
 
   /** The tools stage (Java + sdkmanager), rebuilt only when the bundled Dockerfile changes. */
-  async toolsImage() {
+  async toolsImage({ signal } = {}) {
+    this.catalogStage('checking_tools');
     const { hash } = await this.context();
     const tag = `rdf-emulator-tools:${hash}`;
     try { await this.docker.request('GET', `/images/${encodeURIComponent(tag)}/json`); return tag; }
     catch (error) { if (!/No such image|404/.test(String(error.message))) throw error; }
-    await this.build(tag, {}, { target: 'tools' });
+    this.catalogStage('preparing_tools');
+    await this.build(tag, {}, { target: 'tools', signal, onLine: line => {
+      this.catalogStage('preparing_tools', buildProgress(line, this.catalogState.progress ?? undefined));
+    } });
     return tag;
   }
 
   /** `sdkmanager --list` in a short-lived tools container; the network is only used to read Google's repository. */
-  async sdkList() {
-    const image = await this.toolsImage();
+  async sdkList({ signal } = {}) {
+    const image = await this.toolsImage({ signal });
+    this.catalogStage('fetching');
     const created = await this.docker.request('POST', '/containers/create', {
       Image: image, Cmd: ['sdkmanager', '--list', '--channel=0'], Tty: true,
       Labels: { 'remote-device-farm.managed': 'true', 'remote-device-farm.role': 'image-catalog' },
-      HostConfig: { AutoRemove: false, CapDrop: ['ALL'], SecurityOpt: ['no-new-privileges:true'], Memory: 1024 * 1024 * 1024 },
-    });
+      HostConfig: { AutoRemove: false, CapDrop: ['ALL'], SecurityOpt: ['no-new-privileges:true'], Memory: 1024 * 1024 * 1024, NanoCpus: 1000000000, PidsLimit: 128 },
+    }, { signal });
     try {
-      await this.docker.request('POST', `/containers/${created.Id}/start`);
-      const result = await this.docker.request('POST', `/containers/${created.Id}/wait`, undefined, { timeoutMs: 10 * 60_000 });
-      const output = await this.docker.request('GET', `/containers/${created.Id}/logs?stdout=1&stderr=1`, undefined, { raw: true, maxBytes: 4 * 1024 * 1024 });
+      await this.docker.request('POST', `/containers/${created.Id}/start`, undefined, { signal });
+      const result = await this.docker.request('POST', `/containers/${created.Id}/wait`, undefined, { timeoutMs: 10 * 60_000, signal });
+      const output = await this.docker.request('GET', `/containers/${created.Id}/logs?stdout=1&stderr=1`, undefined, { raw: true, maxBytes: 4 * 1024 * 1024, signal });
       const text = Buffer.isBuffer(output) ? output.toString('utf8') : String(output ?? '');
-      if (result?.StatusCode !== 0) throw new Error('sdkmanager --list failed: ' + text.split('\n').slice(-5).join(' ').slice(0, 500));
+      if (result?.StatusCode !== 0) throw new Error(diagnostic('emulator-images.91b9ab5b57', { p0: text.split('\n').slice(-5).join(' ').slice(0, 500) }));
       return text;
     } finally {
       await this.docker.request('DELETE', `/containers/${created.Id}?force=1`).catch(() => {});
     }
   }
 
+  catalogStage(phase, progress = null) {
+    this.catalogState = { ...this.catalogState, phase, progress, updatedAt: new Date(this.now()).toISOString() };
+  }
+
+  catalogStatus() { return { ...this.catalogState, progress: this.catalogState.progress ? { ...this.catalogState.progress } : null }; }
+
   async catalog({ refresh = false } = {}) {
-    if (refresh || !this.cache || this.now() - this.cache.at > CATALOG_TTL_MS) {
-      const entries = selectEntries(parseSdkList(await this.sdkList()), { abi: this.abi });
-      this.cache = { at: this.now(), entries };
-    }
+    if (this.catalogLoading) return this.catalogLoading;
+    if (!refresh && this.cache && this.now() - this.cache.at <= CATALOG_TTL_MS) return this.catalogSnapshot();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(new Error(agentMessage('agent.catalog.timeout'))), 14 * 60_000);
+    this.catalogState = { phase: 'checking_tools', startedAt: new Date(this.now()).toISOString(), updatedAt: new Date(this.now()).toISOString(), progress: null };
+    this.catalogLoading = (async () => {
+      try {
+        const list = await this.sdkList({ signal: controller.signal });
+        this.catalogStage('parsing');
+        const entries = selectEntries(parseSdkList(list), { abi: this.abi });
+        if (!entries.length) throw new Error(agentMessage('agent.catalog.empty'));
+        this.cache = { at: this.now(), entries };
+        this.catalogStage('ready');
+        return this.catalogSnapshot();
+      } catch (error) { this.catalogStage('failed'); throw error; }
+      finally { clearTimeout(timeout); this.catalogLoading = null; }
+    })();
+    return this.catalogLoading;
+  }
+
+  catalogSnapshot() {
     return {
       abi: this.abi, refreshedAt: new Date(this.cache.at).toISOString(),
       images: this.cache.entries.map((entry) => ({
@@ -118,13 +150,13 @@ export class EmulatorImages {
 
   /** Queues builds of catalog entries for one registry repository; anything not in the current catalog is refused. */
   enqueue(packages, target) {
-    if (!target?.repository) throw new Error('Registry target is required');
-    if (!Array.isArray(packages) || !packages.length || packages.length > 50) throw new Error('Choose 1 to 50 system images');
-    if (!this.cache) throw new Error('Load the image catalog first');
+    if (!target?.repository) throw new Error(diagnostic('emulator-images.2c0ca7311b'));
+    if (!Array.isArray(packages) || !packages.length || packages.length > 50) throw new Error(diagnostic('emulator-images.edc4673562'));
+    if (!this.cache) throw new Error(diagnostic('emulator-images.aabd70ad39'));
     if (this.storageError) throw this.storageError;
     const entries = [...new Set(packages)].map(name => {
       const entry = this.cache.entries.find(item => item.package === name);
-      if (!entry) throw new Error('Unknown system image: ' + String(name).slice(0, 100));
+      if (!entry) throw new Error(diagnostic('emulator-images.0b8e63f54c', { p0: String(name).slice(0, 100) }));
       return entry;
     });
     const queued = [];
@@ -143,7 +175,7 @@ export class EmulatorImages {
     }
     // Unacknowledged results must survive until the server imports them, even if the UI is closed.
     const pending = next.filter(job => !job.acknowledged);
-    if (pending.length > MAX_JOBS) throw new Error('Build queue is full. Wait for the server to record completed builds.');
+    if (pending.length > MAX_JOBS) throw new Error(diagnostic('emulator-images.56ef5ec539'));
     let retained = MAX_JOBS - pending.length;
     this.jobs = next.filter(job => !job.acknowledged || retained-- > 0);
     try { this.persist(); }
@@ -162,7 +194,7 @@ export class EmulatorImages {
     signal.throwIfAborted();
     const check = result?.checks?.off;
     if (result?.version !== IMAGE_CHECK_VERSION || ['bootCompleted', 'adbSecure', 'unauthorizedAdb', 'rendererVerified', 'deviceVerified', 'resourcesVerified'].some(key => check?.[key] !== true)) {
-      const error = new Error('Image runtime validation did not return complete boot/authentication evidence');
+      const error = new Error(diagnostic('emulator-images.75d044c7be'));
       error.code = 'image_invalid'; throw error;
     }
     job.validation = result;
@@ -174,7 +206,7 @@ export class EmulatorImages {
   }
 
   acknowledge(ids = []) {
-    if (!Array.isArray(ids) || ids.length > MAX_JOBS || ids.some(id => typeof id !== 'string' || id.length > 64)) throw new Error('Invalid build acknowledgements');
+    if (!Array.isArray(ids) || ids.length > MAX_JOBS || ids.some(id => typeof id !== 'string' || id.length > 64)) throw new Error(diagnostic('emulator-images.bd727c5d26'));
     let changed = false;
     for (const job of this.jobs) {
       if (ids.includes(job.id) && ['done', 'failed', 'cancelled'].includes(job.state) && !job.acknowledged) {
@@ -188,9 +220,9 @@ export class EmulatorImages {
 
   /** Stop only this queued build or its active Docker request, never unrelated containers. */
   cancel(jobId) {
-    if (typeof jobId !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(jobId)) throw new Error('Invalid emulator build job ID');
+    if (typeof jobId !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(jobId)) throw new Error(diagnostic('emulator-images.fbbcc8cdb5'));
     const job = this.jobs.find(item => item.id === jobId);
-    if (!job) throw new Error('Emulator build job not found');
+    if (!job) throw new Error(diagnostic('emulator-images.e568d340e7'));
     if (['queued', 'building', 'validating', 'pushing'].includes(job.state)) {
       const previous = { ...job };
       job.cancelRequestedAt = new Date(this.now()).toISOString();
@@ -210,7 +242,7 @@ export class EmulatorImages {
         Object.assign(job, previous);
         throw error;
       }
-      if (this.running === job) this.runningController.abort(new Error('Emulator image build cancelled'));
+      if (this.running === job) this.runningController.abort(new Error(diagnostic('emulator-images.4f6e390011')));
     }
     return { jobs: this.jobList().filter(item => item.id === jobId) };
   }
@@ -240,7 +272,7 @@ export class EmulatorImages {
         await this.check(job, signal);
         const validatedImage = job.validation.imageId;
         const currentImage = await this.docker.request('GET',`/images/${encodeURIComponent(job.image)}/json`,undefined,{signal});
-        if(typeof validatedImage !== 'string' || currentImage?.Id !== validatedImage)throw new Error('The image tag changed after validation; refusing to publish an unverified artifact');
+        if(typeof validatedImage !== 'string' || currentImage?.Id !== validatedImage)throw new Error(diagnostic('emulator-images.421feec8fd'));
         job.state = 'pushing';
         job.progress = { ...job.progress, percent: null };
         this.persist();
@@ -262,7 +294,7 @@ export class EmulatorImages {
         this.runningController = null;
         try { this.persist(); }
         catch (error) {
-          this.storageError = new Error('Cannot persist emulator builds; restore the state volume before requesting another build');
+          this.storageError = new Error(diagnostic('emulator-images.c1d3330551'));
           console.error(this.storageError.message);
         }
       }
@@ -279,13 +311,13 @@ export class EmulatorImages {
       onJsonEvent: (event) => {
         const nextDigest = emulatorPushDigest(event, image.slice(colon + 1));
         if (nextDigest) {
-          if (digest && digest !== nextDigest) throw new Error('Docker push returned conflicting image digests');
+          if (digest && digest !== nextDigest) throw new Error(diagnostic('emulator-images.b13a27fbe4'));
           digest = nextDigest;
         }
         if (typeof event.status === 'string' && !event.progressDetail?.current) onLine(event.status);
       },
     });
-    if (!/^sha256:[0-9a-f]{64}$/.test(digest ?? '')) throw new Error('The registry did not report an image digest');
+    if (!/^sha256:[0-9a-f]{64}$/.test(digest ?? '')) throw new Error(diagnostic('emulator-images.954d1764b1'));
     return digest;
   }
 

@@ -1,3 +1,5 @@
+import { diagnostic } from './diagnostics.mjs';
+import { agentMessage } from './messages.mjs';
 import { randomInt } from 'node:crypto';
 import { RTCPeerConnection, MediaStreamTrack, RtpPacket, RtpHeader, useH264, useOPUS } from 'werift';
 import { packetizeH264, h264Profile, rtpTimestamp, opusPacketSamples, OpusRtpClock } from './rtc-media.mjs';
@@ -14,32 +16,32 @@ const MEDIA_LIMITS = {
 // DataChannel bypasses the HTTP validator, so accept only the same narrow
 // Android input vocabulary. Nothing on this channel can run a shell command.
 export function rtcInputParams(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid input');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(diagnostic('webrtc.c9bbbe8347'));
   const { kind } = value;
   const coord = key => {
     const n = value[key];
-    if (!Number.isInteger(n) || n < 0 || n > 8192) throw new Error('Invalid coordinates');
+    if (!Number.isInteger(n) || n < 0 || n > 8192) throw new Error(diagnostic('webrtc.e92fb0e920'));
     return n;
   };
   if (kind === 'touch') {
-    if (!['down', 'move', 'up'].includes(value.action) || value.pointerId !== 0) throw new Error('Invalid touch');
+    if (!['down', 'move', 'up'].includes(value.action) || value.pointerId !== 0) throw new Error(diagnostic('webrtc.ec631b525f'));
     return { kind, action: value.action, pointerId: 0, x: coord('x'), y: coord('y') };
   }
   if (kind === 'key') {
-    if (!Number.isInteger(value.keyCode) || value.keyCode < 1 || value.keyCode > 300) throw new Error('Invalid key');
+    if (!Number.isInteger(value.keyCode) || value.keyCode < 1 || value.keyCode > 300) throw new Error(diagnostic('webrtc.ee172faa9c'));
     return { kind, keyCode: value.keyCode };
   }
   if (kind === 'text') {
-    if (typeof value.text !== 'string' || value.text.length > 1000 || /[\r\n\0]/.test(value.text)) throw new Error('Invalid text');
+    if (typeof value.text !== 'string' || value.text.length > 1000 || /[\r\n\0]/.test(value.text)) throw new Error(diagnostic('webrtc.1e33904093'));
     return { kind, text: value.text };
   }
   if (kind === 'tap') return { kind, x: coord('x'), y: coord('y') };
   if (kind === 'swipe') {
     const durationMs = value.durationMs ?? 300;
-    if (!Number.isInteger(durationMs) || durationMs < 50 || durationMs > 5000) throw new Error('Invalid swipe duration');
+    if (!Number.isInteger(durationMs) || durationMs < 50 || durationMs > 5000) throw new Error(diagnostic('webrtc.601d84d1f2'));
     return { kind, x1: coord('x1'), y1: coord('y1'), x2: coord('x2'), y2: coord('y2'), durationMs };
   }
-  throw new Error('Unknown input kind');
+  throw new Error(diagnostic('webrtc.2b3d96e2c5'));
 }
 
 function timeout(promise, ms, message) {
@@ -66,7 +68,7 @@ export class WebRtcManager {
 
   capabilities() {
     return { available: this.config.enabled, iceServers: this.config.enabled ? this.config.iceServers : [],
-      ...(!this.config.enabled ? { reason: 'WebRTC не включён на узле.' } : {}) };
+      ...(!this.config.enabled ? { reason: agentMessage('agent.webrtc.disabled', {}, 'ru') } : {}) };
   }
 
   hasPeers(sessionId) {
@@ -74,15 +76,15 @@ export class WebRtcManager {
   }
 
   async offer(sessionId, serial, { peerId, description, canControl }) {
-    if (!this.config.enabled) throw new Error('WebRTC не включён на узле.');
+    if (!this.config.enabled) throw new Error(agentMessage('agent.webrtc.disabled', {}, 'ru'));
     if (!PEER_ID.test(peerId) || !description || description.type !== 'offer' ||
         typeof description.sdp !== 'string' || description.sdp.length > 128 * 1024 ||
-        !description.sdp.includes('m=video ') || !description.sdp.includes('m=application ')) throw new Error('Invalid WebRTC offer');
-    if (this.peers.has(peerId)) throw new Error('WebRTC peer already exists');
-    if (this.peers.size >= 32 || [...this.peers.values()].filter(p => p.sessionId === sessionId).length >= 8) throw new Error('WebRTC viewer limit reached');
+        !description.sdp.includes('m=video ') || !description.sdp.includes('m=application ')) throw new Error(diagnostic('webrtc.0e8e6404bd'));
+    if (this.peers.has(peerId)) throw new Error(diagnostic('webrtc.061859bec3'));
+    if (this.peers.size >= 32 || [...this.peers.values()].filter(p => p.sessionId === sessionId).length >= 8) throw new Error(diagnostic('webrtc.3eacb4b61e'));
     const stream = this.streams.streams.get(sessionId);
     const videoConfig = this.videoConfigs.get(sessionId) || stream?.videoConfig;
-    if (!videoConfig?.data) throw new Error('Видеопоток ещё не готов. Дождитесь подключения scrcpy.');
+    if (!videoConfig?.data) throw new Error(agentMessage('agent.webrtc.waitForStream', {}, 'ru'));
     const profile = h264Profile(Buffer.from(videoConfig.data, 'base64'));
     const pc = this.createPeer({
       codecs: { video: [useH264({ parameters: `profile-level-id=${profile};packetization-mode=1;level-asymmetry-allowed=1` })], audio: [useOPUS()] },
@@ -106,7 +108,7 @@ export class WebRtcManager {
         peer.inputOpening = Promise.resolve(this.openInput(sessionId, peerId));
         await peer.inputOpening;
       }
-      const assertOpen = () => { if (peer.closed) throw new Error('WebRTC peer closed during negotiation'); };
+      const assertOpen = () => { if (peer.closed) throw new Error(diagnostic('webrtc.e804a2bf79')); };
       assertOpen();
       peer.videoTrack = new MediaStreamTrack({ kind: 'video' });
       peer.audioTrack = new MediaStreamTrack({ kind: 'audio' });
@@ -126,7 +128,7 @@ export class WebRtcManager {
         await pc.setLocalDescription(answer);
         assertOpen();
       })(), 12_000, 'WebRTC negotiation timed out');
-      if (peer.closed || !pc.localDescription?.sdp || !/m=video [1-9]/.test(pc.localDescription.sdp)) throw new Error('WebRTC H.264 negotiation failed');
+      if (peer.closed || !pc.localDescription?.sdp || !/m=video [1-9]/.test(pc.localDescription.sdp)) throw new Error(diagnostic('webrtc.687659daea'));
       return { peerId, description: { type: 'answer', sdp: pc.localDescription.sdp } };
     } catch (error) {
       await this.closePeer(peer);
@@ -157,12 +159,12 @@ export class WebRtcManager {
     if (channel.readyState === 'open') ready();
     channel.onMessage.subscribe(data => {
       if (peer.closed || this.now() - peer.lastLease > LEASE_MS) return;
-      if (Buffer.byteLength(data) > 8192) { this.inputError(peer, new Error('Input message exceeds the limit')); void this.closePeer(peer); return; }
+      if (Buffer.byteLength(data) > 8192) { this.inputError(peer, new Error(diagnostic('webrtc.633eee102a'))); void this.closePeer(peer); return; }
       let message;
-      try { message = JSON.parse(String(data)); } catch { this.inputError(peer, new Error('Invalid input message')); void this.closePeer(peer); return; }
+      try { message = JSON.parse(String(data)); } catch { this.inputError(peer, new Error(diagnostic('webrtc.9213b108a2'))); void this.closePeer(peer); return; }
       if (!message || typeof message !== 'object') return;
       if (this.now() - peer.windowAt >= 1000) { peer.windowAt = this.now(); peer.count = 0; }
-      if (++peer.count > 90) { this.inputError(peer, new Error('Input rate limit exceeded')); void this.closePeer(peer); return; }
+      if (++peer.count > 90) { this.inputError(peer, new Error(diagnostic('webrtc.23c7c1f48b'))); void this.closePeer(peer); return; }
       peer.lastControl = this.now();
       if (message.type === 'ping') {
         if (typeof message.id === 'string' && message.id.length <= 80 || Number.isSafeInteger(message.id)) {
@@ -171,8 +173,8 @@ export class WebRtcManager {
         return;
       }
       if (message.type !== 'input') return;
-      if (message.epoch !== peer.peerId) { this.inputError(peer, Object.assign(new Error('Input connection changed.'), {code: 'input_closed'}), message.seq); return; }
-      if (!peer.canControl) { this.send(peer, { type: 'input-error', code: 'readonly', seq: message.seq, message: 'Доступ только для просмотра.' }); return; }
+      if (message.epoch !== peer.peerId) { this.inputError(peer, Object.assign(new Error(diagnostic('webrtc.b92a8d9872')), {code: 'input_closed'}), message.seq); return; }
+      if (!peer.canControl) { this.send(peer, { type: 'input-error', code: 'readonly', seq: message.seq, message: agentMessage('agent.access.viewOnly', {}, 'ru') }); return; }
       try {
         const params = rtcInputParams(message);
         const meta = { epoch: message.epoch, seq: message.seq, deadline: message.deadline };
@@ -185,7 +187,7 @@ export class WebRtcManager {
   }
 
   inputError(peer, error, seq) {
-    this.send(peer, { type: 'input-error', code: error.code || 'invalid_input', message: error.message || 'Input failed', seq });
+    this.send(peer, { type: 'input-error', code: error.code || 'invalid_input', message: error.message || diagnostic('webrtc.2fcc2653b9'), seq });
     // Validation can fail before InputGate sees an up. Release only this peer's
     // epoch, so a malformed/expired gesture cannot remain down or reset a
     // different viewer's contact. The frontend reconnects after input-error.

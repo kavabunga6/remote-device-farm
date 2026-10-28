@@ -56,7 +56,7 @@ test('heartbeat distinguishes absent, fresh and stale data without negative ages
   const now = Date.parse('2026-10-03T12:00:00Z');
   assert.equal(heartbeatAge(null, now).timestamp, null);
   assert.equal(heartbeatAge('invalid', now).timestamp, null);
-  assert.equal(heartbeatAge(new Date(now - 5000).toISOString(), now).label, 'Ответ 5 с назад');
+  assert.equal(heartbeatAge(new Date(now - 5000).toISOString(), now).label, 'Ответил 5 с назад');
   assert.equal(heartbeatAge(new Date(now - 46000).toISOString(), now).stale, true);
   assert.equal(heartbeatAge(new Date(now + 5000).toISOString(), now).label, 'Ответ только что');
 });

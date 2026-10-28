@@ -1,13 +1,11 @@
+import { normalizePhysicalDevices, type DeviceCapability } from './generated/device-contract';
 import { t } from './i18n';
 import type { DeviceKind, DeviceSession, DeviceState, Host, HostDevice } from './api';
 
-// Capabilities as reported by the agent: video, audio, touch, keys, rotate, files, install, shell, logs,
-// device-info, env, network. A session without a list (all emulators) can do everything.
-export type Capability = 'video' | 'audio' | 'touch' | 'keys' | 'rotate' | 'files' | 'install' | 'shell' | 'logs' | 'device-info' | 'env' | 'network';
+export type Capability = DeviceCapability;
 
 export function hasCapability(session: Pick<DeviceSession, 'capabilities'> | null | undefined, capability: Capability): boolean {
-  const list = session?.capabilities;
-  return !Array.isArray(list) || list.includes(capability);
+  return Array.isArray(session?.capabilities) && session.capabilities.includes(capability);
 }
 
 export const DEVICE_KIND_LABEL: Record<DeviceKind, string> = { get 'usb-android'() { return t('ui.d6371a43262b'); } };
@@ -20,18 +18,7 @@ export const deviceStateLabel = (state: DeviceState): string => DEVICE_STATE_LAB
 
 /** Ignore provider capacity records and normalize the physical-device inventory. */
 export function physicalDevices(value: unknown): HostDevice[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap(item => {
-    if (!item || typeof item !== 'object' || item.kind !== 'usb-android' || typeof item.id !== 'string' || !item.id.trim()) return [];
-    return [{
-      kind: 'usb-android' as const,
-      id: item.id,
-      platform: typeof item.platform === 'string' ? item.platform : null,
-      model: typeof item.model === 'string' ? item.model : null,
-      state: typeof item.state === 'string' && item.state ? item.state : 'unverified',
-      reason: typeof item.reason === 'string' ? item.reason : null,
-    }];
-  });
+  return normalizePhysicalDevices(value);
 }
 
 export interface RentableDevice { host: Host; device: HostDevice }

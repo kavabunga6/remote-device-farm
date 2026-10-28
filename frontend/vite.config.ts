@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(async () => {
@@ -13,6 +13,7 @@ export default defineConfig(async () => {
   return {
     plugins,
     server: {
+      fs: { allow: [searchForWorkspaceRoot(process.cwd()), resolve(process.cwd(), '../shared')] },
       proxy: {
         '/api': {
           target: process.env.VITE_API_PROXY ?? 'http://localhost:8080',

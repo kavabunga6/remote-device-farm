@@ -17,7 +17,7 @@
 :root[data-effective-theme="dark"] .button.danger-outline:not(:disabled):hover,:root[data-effective-theme="dark"] .icon-button.danger-icon:not(:disabled):hover{background:var(--danger);color:#fff}
 
 /* Navigation: items and profile */
-.side-profile{display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:10px;background:transparent;color:inherit;padding:9px 11px;text-align:left}
+.side-profile{display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:10px;background:transparent;color:inherit;padding:9px 11px;text-align:start}
 .side-profile:hover,.side-profile.active{background:#e7f2ed}
 :root[data-effective-theme="dark"] :is(.side-profile:hover,.side-profile.active){background:#1d2a3d}
 .side-profile-name{display:block;min-width:0;font-size:0.8125rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -95,7 +95,7 @@ body{font-size:0.9062rem;line-height:1.5;letter-spacing:-.003em}
 .text-send button{font-size:0.8438rem}
 
 /* Controls: a floating vertical bar on the right edge of the stage */
-.device-controls{grid-column:1;grid-row:1;justify-self:end;align-self:center;z-index:4;flex-direction:column;flex-wrap:nowrap;gap:2px;min-height:0;margin-right:20px;padding:6px;border:1px solid var(--stage-line);border-radius:16px;background:#162320d9;backdrop-filter:blur(8px)}
+.device-controls{grid-column:1;grid-row:1;justify-self:end;align-self:center;z-index:4;flex-direction:column;flex-wrap:nowrap;gap:2px;min-height:0;margin-inline-end:20px;padding:6px;border:1px solid var(--stage-line);border-radius:16px;background:#162320d9;backdrop-filter:blur(8px)}
 .device-controls .control-group{flex-direction:column;gap:2px}
 .device-controls .controls-divider{width:26px;height:1px;background:var(--stage-line);margin:3px auto}
 .device-controls :is(.control-group button,.network-toggle,.upload-control,.capture-control){position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:0;padding:0;border:0;border-radius:11px;background:transparent;color:var(--stage-ink);font-size:0;gap:0}
@@ -211,7 +211,7 @@ body{font-size:0.9062rem;line-height:1.5;letter-spacing:-.003em}
 
 /* Keep the whole device card near the frame width, with room for the vertical controls. */
 .viewer-panel{width:min(100%,var(--viewer-width));justify-self:center}
-@media(min-width:801px){.viewer-stage:not(:fullscreen){padding-left:18px;padding-right:102px}}
+@media(min-width:801px){.viewer-stage:not(:fullscreen){padding-inline-start:18px;padding-inline-end:102px}}
 .viewer-stage:fullscreen{padding:24px}
 @media(max-width:800px){.viewer-panel{width:100%}}
 
@@ -231,20 +231,20 @@ html{font-size:clamp(16px, calc(16px + (100vw - 1440px) * 0.0058), 26px)}
 /* ---------- Errors are red and hard to miss ---------- */
 :root{--error:#c62828;--error-strong:#a31515;--error-bg:#fdeceb;--error-line:#e57373}
 :root[data-effective-theme="dark"]{--error:#ff6b61;--error-strong:#ff8a80;--error-bg:#3d1a1b;--error-line:#c9473f}
-.banner-error,.inline-error,.log-error,.capture-feedback.error,.audio-notice.error{background:var(--error-bg);color:var(--error);border:1px solid var(--error-line);border-left:5px solid var(--error);font-weight:600;border-radius:10px}
+.banner-error,.inline-error,.log-error,.capture-feedback.error,.audio-notice.error{background:var(--error-bg);color:var(--error);border:1px solid var(--error-line);border-inline-start:5px solid var(--error);font-weight:600;border-radius:10px}
 .banner-error svg,.inline-error svg,.log-error svg{color:var(--error)}
-:root[data-effective-theme="dark"] :is(.banner-error,.inline-error,.log-error,.capture-feedback.error){background:var(--error-bg);color:var(--error-strong);border-color:var(--error-line);border-left-color:var(--error)}
+:root[data-effective-theme="dark"] :is(.banner-error,.inline-error,.log-error,.capture-feedback.error){background:var(--error-bg);color:var(--error-strong);border-color:var(--error-line);border-inline-start-color:var(--error)}
 .banner-error button{color:var(--error);font-weight:700}
 .status-badge.status-error{background:var(--error);color:#fff}
 :root[data-effective-theme="dark"] .status-badge.status-error{background:#d9453b;color:#fff}
 .login-form .inline-error{color:var(--error)}
 /* Log: errors and fatal entries stand out from warnings */
-.log-row.level-E,.log-row.level-F{background:#e5534b38;border-left-width:4px;border-left-color:#ff5148}
+.log-row.level-E,.log-row.level-F{background:#e5534b38;border-inline-start-width:4px;border-inline-start-color:#ff5148}
 .log-row.level-E .log-level-badge,.log-row.level-F .log-level-badge{background:#ff5148;color:#fff}
 .log-row.level-E .log-message,.log-row.level-F .log-message,.log-row.level-E .log-tag,.log-row.level-F .log-tag{color:#ff8f87}
 .log-row.level-F{background:#e5534b52}
 .log-row.level-F .log-message{color:#ffb4ac;font-weight:700}
-.tab-alert{display:inline-grid;place-items:center;min-width:1.35em;height:1.35em;padding:0 .4em;margin-left:.45em;border-radius:99px;background:var(--error);color:#fff;font-size:.72rem;font-weight:800;line-height:1}
+.tab-alert{display:inline-grid;place-items:center;min-width:1.35em;height:1.35em;padding:0 .4em;margin-inline-start:.45em;border-radius:99px;background:var(--error);color:#fff;font-size:.72rem;font-weight:800;line-height:1}
 
 /* ---------- Key actions use the accent ---------- */
 .button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;box-shadow:0 2px 8px color-mix(in srgb,var(--accent) 35%,transparent)}
@@ -273,10 +273,10 @@ html{font-size:clamp(16px, calc(16px + (100vw - 1440px) * 0.0058), 26px)}
 .rename-form input{min-width:min(22rem,100%);border:1px solid var(--accent);border-radius:10px;padding:.5rem .75rem;font-size:1.1rem;font-weight:700;background:transparent;color:inherit;outline:none}
 .rename-button{width:2rem;height:2rem;position:relative}
 .rename-button[data-tip]:is(:hover,:focus-visible)::after{content:attr(data-tip);position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);background:#000;color:#fff;font-size:.8rem;font-weight:500;white-space:nowrap;padding:5px 10px;border-radius:7px;pointer-events:none;z-index:8}
-.banner-warning{display:flex;align-items:center;gap:10px;margin:0 0 16px;padding:11px 14px;border-radius:10px;border:1px solid #e0b04f;border-left:5px solid #e0a020;background:#fff6e0;color:#7a5200;font-size:.9rem;font-weight:600;line-height:1.4}
+.banner-warning{display:flex;align-items:center;gap:10px;margin:0 0 16px;padding:11px 14px;border-radius:10px;border:1px solid #e0b04f;border-inline-start:5px solid #e0a020;background:#fff6e0;color:#7a5200;font-size:.9rem;font-weight:600;line-height:1.4}
 .banner-warning svg{flex:none;color:#c78500}
 .banner-warning span{flex:1}
-:root[data-effective-theme="dark"] .banner-warning{background:#3b3428;border-color:#8a6b24;border-left-color:#e0b04f;color:#f2d58f}
+:root[data-effective-theme="dark"] .banner-warning{background:#3b3428;border-color:#8a6b24;border-inline-start-color:#e0b04f;color:#f2d58f}
 :root[data-effective-theme="dark"] .banner-warning svg{color:#e0b04f}
 
 /* Header actions wrap instead of widening the page on narrow screens. */
@@ -319,7 +319,7 @@ html{font-size:clamp(16px, calc(16px + (100vw - 1440px) * 0.0058), 26px)}
 .heading-with-count>.count-pill{display:inline-flex;align-items:center;justify-content:center;flex:none;margin:0;line-height:1;letter-spacing:normal;white-space:nowrap}
 
 .toast>span{min-width:0;overflow-wrap:anywhere}.toast>button{flex:none;min-width:36px;min-height:36px;display:grid;place-items:center}
-.session-confirm-context{display:grid;gap:10px;margin:18px 0;padding:14px;border:1px solid var(--ui-border);border-radius:9px;background:var(--ui-inset);text-align:left}
+.session-confirm-context{display:grid;gap:10px;margin:18px 0;padding:14px;border:1px solid var(--ui-border);border-radius:9px;background:var(--ui-inset);text-align:start}
 .session-confirm-context>div{display:grid;grid-template-columns:6rem minmax(0,1fr);gap:12px;font-size:.8125rem;line-height:1.5}
 .session-confirm-context dt{color:var(--ui-muted)}.session-confirm-context dd{margin:0;color:var(--ui-text);overflow-wrap:anywhere}.session-confirm-context code{font-family:var(--font-mono);font-size:.75rem}
 .confirm-modal .modal-actions{flex-wrap:wrap}.confirm-modal .modal-actions>.button{white-space:normal}

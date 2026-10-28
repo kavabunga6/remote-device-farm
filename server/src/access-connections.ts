@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import type WebSocket from 'ws';
 const connections = new Map<string, Set<() => void>>();
 export function registerAccessResource(userId: string, close: () => void): () => void {
@@ -11,6 +12,6 @@ export function registerAccessConnection(userId: string, ws: WebSocket, beforeCl
 export function revokeAccessConnections(userIds: readonly string[]): void {
  for (const id of userIds) {
   const resources = [...(connections.get(id) ?? [])]; connections.delete(id);
-  for (const close of resources) { try { close(); } catch { console.error('Access resource revocation failed'); } }
+  for (const close of resources) { try { close(); } catch { console.error(diagnostic('access-connections.4c86d65188')); } }
  }
 }

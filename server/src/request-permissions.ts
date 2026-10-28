@@ -2,6 +2,7 @@
 export function requestPermission(method: string, path: string): string | undefined {
  path = path.toLowerCase().replace(/\/+$/, '');
  const read = method === 'GET' || method === 'HEAD';
+ if (path === '/api/admin/registration-settings') return read ? 'roles.view' : 'roles.manage';
  if (/^\/api\/admin\/roles(?:\/|$)/.test(path)) return read ? 'roles.view' : 'roles.manage';
  if (/^\/api\/admin\/users\/[^/]+\/role$/.test(path)) return 'roles.manage';
  if (path.startsWith('/api/admin/users')) return read ? 'users.view' : method === 'DELETE' ? 'users.delete' : path.endsWith('/password') ? 'users.password' : 'users.manage';
@@ -24,9 +25,14 @@ export function requestPermission(method: string, path: string): string | undefi
   if (!action) return read ? 'sessions.view' : method === 'DELETE' ? 'sessions.stop' : 'sessions.control';
   if (action === 'kill') return 'sessions.manageAll';
   if (action === 'shares' || action.startsWith('shares/')) return 'sessions.share';
+  if (action === 'webviews' || action === 'network-inspector' || action.startsWith('network-inspector/')) return 'sessions.console';
+  if (action.startsWith('appium/')) return 'sessions.console';
   if (action === 'adb') return 'sessions.console';
+  if (action === 'ui') return read ? 'sessions.view' : 'sessions.control';
+  if (action.startsWith('ui/')) return 'sessions.control';
   if (action.startsWith('adb-')) return 'sessions.adb';
   if (action === 'files' || action.startsWith('apps/')) return 'sessions.files';
+  if (action === 'camera' || action.startsWith('camera/')) return 'sessions.env';
   if (action === 'env') return 'sessions.env';
   if (action.startsWith('logcat')) return 'sessions.logcat';
   if (action === 'device-info' || action === 'screenshot' || action === 'stream' || action === 'keepalive') return 'sessions.view';

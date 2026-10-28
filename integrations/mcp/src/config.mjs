@@ -1,9 +1,9 @@
 import { readFileSync, realpathSync, statSync } from 'node:fs';
-import { t } from './messages.mjs';
+import { t, supportedLanguages } from './messages.mjs';
 
 export function loadConfig(env = process.env) {
   const language = env.RDF_MCP_LANGUAGE || 'en';
-  if (!['en', 'ru'].includes(language)) throw new Error(t('config', {}, 'en'));
+  if (!supportedLanguages.includes(language)) throw new Error(t('config', {}, 'en'));
   let url;
   try { url = new URL(env.RDF_URL); } catch { throw new Error(t('url', {}, language)); }
   const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);

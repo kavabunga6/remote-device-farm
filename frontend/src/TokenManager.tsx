@@ -1,3 +1,4 @@
+import { TranslatedText } from './TranslatedText';
 import { can } from './permissions';
 import { getLocale, localizeText, t } from './i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -91,7 +92,7 @@ function TokenSection({ kind, onChanged }: { kind: TokenKind; onChanged?: () => 
           const expired = Boolean(token.expiresAt && new Date(token.expiresAt).getTime() <= Date.now());
           return <div className="token-row" key={token.id}>
             <span className="token-row-icon"><Icon name="key" size={18} /></span>
-            <div className="token-row-main"><strong>{token.name}</strong><small>{t('ui.763594e6375d')}{dateLabel(token.createdAt)} <span className="middle-dot">·</span> {expired ? t('ui.85d3fd5f95a2') : token.expiresAt ? t('ui.f0964d893455', { p0: dateLabel(token.expiresAt) }) : t('ui.28c54755b53e')}</small><small>{t('ui.76f7bb3e8607')}{token.lastUsedAt ? dateLabel(token.lastUsedAt) : t('ui.8b13ad14be5f')}</small></div>
+            <div className="token-row-main"><strong>{token.name}</strong><small><TranslatedText message="copy.TokenManager.49254e2d" values={{ p0: dateLabel(token.createdAt), p1: <span className="middle-dot">·</span>, p2: expired ? t('ui.85d3fd5f95a2') : token.expiresAt ? t('ui.f0964d893455', { p0: dateLabel(token.expiresAt) }) : t('ui.28c54755b53e') }} /></small><small><TranslatedText message="copy.TokenManager.5dab447b" values={{ p0: token.lastUsedAt ? dateLabel(token.lastUsedAt) : t('ui.8b13ad14be5f') }} /></small></div>
             {pendingRevoke === token.id ? <div className="token-confirm"><span>{t('ui.5bba006de84c')}</span><button type="button" className="text-button danger-text" onClick={() => void revoke(token.id)} disabled={busy}>{t('ui.93e6073f9005')}</button><button type="button" className="text-button" onClick={() => setPendingRevoke(null)} disabled={busy}>{t('ui.43e5ab70f691')}</button></div> : <button type="button" className="text-button danger-text" onClick={() => setPendingRevoke(token.id)}>{t('ui.b66927e0fc8e')}</button>}
           </div>;
         }) : <div className="token-empty"><span className="token-row-icon"><Icon name="key" size={22} /></span><div><strong><button type="button" className="card-primary-action" aria-label={system ? t('ui.187b776acda5') : t('ui.82b82d5e9d6b')} aria-describedby={`token-empty-${kind}`} aria-expanded={createOpen} aria-controls={`token-create-${kind}`} onClick={openCreate} disabled={busy || Boolean(oneTimeToken)}>{t('ui.687c3849229b')}</button></strong><span id={`token-empty-${kind}`}>{t('ui.97b70fc769cc')}</span></div><Icon name="arrowRight" size={20} className="token-empty-arrow" /></div>}

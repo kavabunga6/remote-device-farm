@@ -53,6 +53,14 @@ export interface RegistrySettings {
   externalPasswordSet: boolean;
 }
 
+export interface CatalogStatus {
+  builder: { id: string; name: string } | null;
+  phase: 'idle' | 'checking_tools' | 'preparing_tools' | 'fetching' | 'parsing' | 'ready' | 'failed' | 'unconfigured' | 'offline';
+  startedAt: string | null;
+  updatedAt: string | null;
+  progress: { step: number; steps: number; percent: number | null } | null;
+}
+
 export interface ImageCatalog {
   registry: RegistrySettings;
   builder: { id: string; name: string } | null;
@@ -65,9 +73,10 @@ export interface ImageCatalog {
 const json = (body: unknown) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
 export const imagesApi = {
-  prewarmJobs: () => apiRequest<{ items: ImagePrewarmJob[] }>('/admin/emulator-images/prewarm'),
+  prewarmJobs: (signal?: AbortSignal) => apiRequest<{ items: ImagePrewarmJob[] }>('/admin/emulator-images/prewarm', { signal }),
   prewarm: () => apiRequest<{ queued: number; skipped: number }>('/admin/emulator-images/prewarm', { method: 'POST', ...json({}) }),
-  catalog: (refresh = false) => apiRequest<ImageCatalog>('/admin/emulator-images' + (refresh ? '?refresh=1' : '')),
+  catalog: (refresh = false, signal?: AbortSignal) => apiRequest<ImageCatalog>('/admin/emulator-images' + (refresh ? '?refresh=1' : ''), { signal, timeoutMs: 15 * 60_000 + 15_000 }),
+  catalogStatus: (signal?: AbortSignal) => apiRequest<CatalogStatus>('/admin/emulator-images/catalog-status', { signal, timeoutMs: 10_000 }),
   build: (packages: string[]) => apiRequest<{ jobs: BuildJob[] }>('/admin/emulator-images/builds', { method: 'POST', ...json({ packages }) }),
   cancelBuild: (jobId: string, builderHostId: string) => apiRequest<{ jobs: BuildJob[] }>(`/admin/emulator-images/builds/${encodeURIComponent(jobId)}/cancel`, { method: 'POST', ...json({ builderHostId }) }),
   apply: (pkg: string) => apiRequest<{ updated: string[] }>('/admin/emulator-images/apply', { method: 'POST', ...json({ package: pkg }) }),

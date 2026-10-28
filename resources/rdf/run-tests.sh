@@ -44,7 +44,7 @@ fi
 CLI="${RDF_CLI_SCRIPT:-$(dirname "$0")/rdf.sh}"
 [ -f "$CLI" ] || fail 'RDF CLI file is missing'
 for tool in bash curl jq adb timeout tee; do command -v "$tool" >/dev/null || fail "$tool is required"; done
-timeout --version | grep -q 'GNU coreutils' || fail 'GNU timeout is required'
+timeout --version | grep 'GNU coreutils' >/dev/null || fail 'GNU timeout is required'
 mkdir -p -- "$RDF_ARTIFACT_DIR"
 RDF_ARTIFACT_DIR="$(cd "$RDF_ARTIFACT_DIR" && pwd)"
 export RDF_ARTIFACT_DIR

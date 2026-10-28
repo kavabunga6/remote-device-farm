@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { uiMessage } from './messages.js';
 import { mergeLaunchStorage, type LaunchOptions } from './launch-options.js';
 import type { Pool } from 'pg';
@@ -41,6 +42,9 @@ export function queuePosition(
   return position;
 }
 
+type AssignState = { starved: Set<string>; overLimit: Set<string> };
+const assignmentState = (): AssignState => ({ starved: new Set(), overLimit: new Set() });
+
 type AssignDecision = { kind: 'assigned'; sessionId: string; hostId: string } | { kind: 'skipped' } | { kind: 'cancel'; code: string };
 
 // One pass over the waiting list in FIFO order. A host that an older entry could not get a slot on stays
@@ -49,9 +53,9 @@ export async function assignWaiting(
   entries: WaitingEntry[], hosts: string[],
   tryCreate: (entry: WaitingEntry, hostId: string) => Promise<string>,
   onResult: (entry: WaitingEntry, decision: AssignDecision) => Promise<void>,
+  state: AssignState = assignmentState(),
 ): Promise<void> {
-  const starved = new Set<string>();
-  const overLimit = new Set<string>();
+  const { starved, overLimit } = state;
   for (const entry of entries) {
     if (overLimit.has(entry.userId)) continue;
     const candidates = (entry.hostId ? [entry.hostId] : hosts).filter(host => hosts.includes(host) && !starved.has(host));
@@ -125,17 +129,19 @@ export async function runQueuePass(deps: DispatcherDeps): Promise<void> {
   await pool.query(
     "UPDATE queue_entries SET state='expired',resolved_at=now() WHERE state='waiting' AND expires_at <= now()",
   );
-  const waiting = await pool.query(
-    `SELECT q.id,q.user_id,q.profile_id,q.host_id,q.label,q.gpu_mode,q.adb_key_id,q.lease_ttl_seconds,q.launch_options,q.disk_gb,q.sdcard_gb,u.role,u.username
-     FROM queue_entries q JOIN users u ON u.id=q.user_id
-     WHERE q.state='waiting' AND u.removed_at IS NULL ORDER BY q.created_at,q.id LIMIT ${MAX_SCAN}`,
-  );
-  if (!waiting.rowCount) { await notifyAssigned(pool); return; }
+  // Bound one pass to its initial queue; continuous arrivals belong to the next pass.
+  const boundary = (await pool.query<{ id: string; created: string }>(
+    `SELECT id,created_at::text AS created FROM queue_entries WHERE state='waiting' ORDER BY created_at DESC,id DESC LIMIT 1`,
+  )).rows[0];
   const hosts = await onlineHosts(pool, deps.hub);
-  if (!hosts.length) { await notifyAssigned(pool); return; }
-  const create = deps.create ?? ((user, input) => createSession(
-    { pool, hub: deps.hub as AgentHub, config: deps.config as Config }, user, input));
-  const entries: WaitingEntry[] = waiting.rows.map(row => ({
+  if (boundary && hosts.length) await dispatchPages(deps, hosts, boundary);
+  await notifyAssigned(pool);
+}
+
+type QueueCursor = { id: string; created: string };
+
+function waitingEntry(row: Record<string, unknown>): WaitingEntry {
+  return {
     id: String(row.id), userId: String(row.user_id), role: String(row.role), username: String(row.username),
     profileId: String(row.profile_id), hostId: row.host_id ? String(row.host_id) : null,
     label: row.label ? String(row.label) : null,
@@ -143,44 +149,71 @@ export async function runQueuePass(deps: DispatcherDeps): Promise<void> {
     adbKeyId: row.adb_key_id == null ? null : String(row.adb_key_id),
     leaseTtlSeconds: row.lease_ttl_seconds == null ? undefined : Number(row.lease_ttl_seconds),
     gpuMode: row.gpu_mode === 'nvidia' ? 'nvidia' : row.gpu_mode === 'software' ? 'software' : undefined,
-  }));
-  // Conditional claim prevents two dispatchers from assigning the same entry.
-  await assignWaiting(entries, hosts, async (entry, hostId) => {
-    const claim = await pool.query(
-      "UPDATE queue_entries SET state='assigned',session_id=id,claimed_at=now() WHERE id=$1 AND state='waiting' RETURNING id",
+  };
+}
+
+async function dispatchPages(deps: DispatcherDeps, hosts: string[], boundary: QueueCursor): Promise<void> {
+  const state = assignmentState();
+  const create = deps.create ?? ((user, input) => createSession(
+    { pool: deps.pool, hub: deps.hub as AgentHub, config: deps.config as Config }, user, input));
+  let after: QueueCursor | undefined;
+  do {
+    const waiting = await deps.pool.query(
+      `SELECT q.*,q.created_at::text AS cursor_created_at,u.role,u.username
+       FROM queue_entries q JOIN users u ON u.id=q.user_id
+       WHERE q.state='waiting' AND u.removed_at IS NULL
+         AND ($1::timestamptz IS NULL OR (q.created_at,q.id)>($1::timestamptz,$2::uuid))
+         AND (q.created_at,q.id)<=($3::timestamptz,$4::uuid)
+       ORDER BY q.created_at,q.id LIMIT ${MAX_SCAN}`,
+      [after?.created ?? null, after?.id ?? null, boundary.created, boundary.id],
+    );
+    if (!waiting.rows.length) return;
+    await assignWaiting(waiting.rows.map(waitingEntry), hosts,
+      (entry, hostId) => createQueuedSession(deps.pool, create, entry, hostId),
+      (entry, decision) => resolveQueueEntry(deps.pool, entry, decision), state);
+    if (waiting.rows.length < MAX_SCAN || state.starved.size === hosts.length) return;
+    // Text preserves PostgreSQL microseconds that a JavaScript Date would truncate.
+    const last = waiting.rows.at(-1)!;
+    after = { id: String(last.id), created: String(last.cursor_created_at) };
+  } while (true);
+}
+
+async function createQueuedSession(pool: Pool, create: NonNullable<DispatcherDeps['create']>, entry: WaitingEntry, hostId: string): Promise<string> {
+  const claim = await pool.query(
+    "UPDATE queue_entries SET state='assigned',session_id=id,claimed_at=now() WHERE id=$1 AND state='waiting' RETURNING id",
+    [entry.id],
+  );
+  if (!claim.rowCount) throw new ApiError(409, 'queue_entry_gone', uiMessage('ui.a575eeaa6cc5', {}, 'en'));
+  try {
+    return await create({ id: entry.userId, role: entry.role },
+      { hostId, profileId: entry.profileId, launchOptions: entry.launchOptions, gpuMode: entry.gpuMode, adbKeyId: entry.adbKeyId, leaseTtlSeconds: entry.leaseTtlSeconds, label: entry.label, sessionId: entry.id });
+  } catch (error) {
+    // A synchronous error after the session transaction committed must not free this claim.
+    const existing = await pool.query('SELECT id FROM sessions WHERE id=$1 UNION ALL SELECT session_id AS id FROM rental_history WHERE session_id=$1', [entry.id]);
+    if (existing.rowCount) return entry.id;
+    await pool.query(
+      "UPDATE queue_entries SET state='waiting',session_id=NULL,claimed_at=NULL WHERE id=$1 AND state='assigned' AND session_id=$1",
       [entry.id],
     );
-    if (!claim.rowCount) throw new ApiError(409, 'queue_entry_gone', uiMessage('ui.a575eeaa6cc5', {}, 'en'));
-    try {
-      return await create({ id: entry.userId, role: entry.role },
-        { hostId, profileId: entry.profileId, launchOptions: entry.launchOptions, gpuMode: entry.gpuMode, adbKeyId: entry.adbKeyId, leaseTtlSeconds: entry.leaseTtlSeconds, label: entry.label, sessionId: entry.id });
-    } catch (error) {
-      // A synchronous error after the session transaction committed must not free this claim.
-      const existing = await pool.query('SELECT id FROM sessions WHERE id=$1 UNION ALL SELECT session_id AS id FROM rental_history WHERE session_id=$1', [entry.id]);
-      if (existing.rowCount) return entry.id;
-      await pool.query(
-        "UPDATE queue_entries SET state='waiting',session_id=NULL,claimed_at=NULL WHERE id=$1 AND state='assigned' AND session_id=$1",
-        [entry.id],
-      );
-      throw error;
-    }
-  }, async (entry, decision) => {
-    if (decision.kind === 'assigned') {
-      await pool.query(
-        "UPDATE queue_entries SET session_id=$2,resolved_at=now() WHERE id=$1 AND state='assigned'",
-        [entry.id, decision.sessionId],
-      );
-      await recordAuditEvent(pool, {
-        action: 'queue.assigned', actor: { id: entry.userId, username: entry.username }, targetType: 'queue', targetId: entry.id,
-      }).catch(() => {});
-    } else if (decision.kind === 'cancel') {
-      await pool.query("UPDATE queue_entries SET state='cancelled',resolved_at=now(),error_code=$2 WHERE id=$1 AND state='waiting'", [entry.id, decision.code]);
-      await recordAuditEvent(pool, {
-        action: 'queue.cancelled', actor: { id: entry.userId, username: entry.username }, targetType: 'queue', targetId: entry.id, outcome: 'failed',
-      }).catch(() => {});
-    }
-  });
-  await notifyAssigned(pool);
+    throw error;
+  }
+}
+
+async function resolveQueueEntry(pool: Pool, entry: WaitingEntry, decision: AssignDecision): Promise<void> {
+  if (decision.kind === 'assigned') {
+    await pool.query(
+      "UPDATE queue_entries SET session_id=$2,resolved_at=now() WHERE id=$1 AND state='assigned'",
+      [entry.id, decision.sessionId],
+    );
+    await recordAuditEvent(pool, {
+      action: 'queue.assigned', actor: { id: entry.userId, username: entry.username }, targetType: 'queue', targetId: entry.id,
+    }).catch(() => {});
+  } else if (decision.kind === 'cancel') {
+    await pool.query("UPDATE queue_entries SET state='cancelled',resolved_at=now(),error_code=$2 WHERE id=$1 AND state='waiting'", [entry.id, decision.code]);
+    await recordAuditEvent(pool, {
+      action: 'queue.cancelled', actor: { id: entry.userId, username: entry.username }, targetType: 'queue', targetId: entry.id, outcome: 'failed',
+    }).catch(() => {});
+  }
 }
 
 // Notifications derived from session state: ready and about to be released. Deduplicated through the notifications table.
@@ -232,9 +265,9 @@ export function startQueueDispatcher(deps: DispatcherDeps, everyMs = 5_000): Que
     running = (async () => {
       do {
         again = false;
-        await runQueuePass(deps).catch(() => console.error('Queue pass failed'));
+        await runQueuePass(deps).catch(() => console.error(diagnostic('queue-dispatcher.9eeab180c1')));
         if (stopped) break;
-        await runNotificationPass(deps.pool, deps.policy).catch(() => console.error('Notification pass failed'));
+        await runNotificationPass(deps.pool, deps.policy).catch(() => console.error(diagnostic('queue-dispatcher.ab0a2b5884')));
         if (Date.now() - pruned > 3_600_000) {
           pruned = Date.now();
           await pruneNotifications(deps.pool).catch(() => {});

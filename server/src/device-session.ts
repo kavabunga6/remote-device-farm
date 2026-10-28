@@ -1,3 +1,4 @@
+import { normalizeProviderStatuses, PHYSICAL_DEVICE_KINDS, normalizeCapabilities, type PhysicalDeviceKind } from './generated/device-contract.js';
 import { assertStoredPermission } from './permissions.js';
 import { uiMessage } from './messages.js';
 import { assertUserActive } from './user-removal.js';
@@ -10,8 +11,8 @@ import { STANDARD_START_TIMEOUT_MS } from './startup-progress.js';
 import type { ServerContext } from './server-context.js';
 import { assertProfileAllowed, sessionLimitFor } from './session-policy.js';
 
-export const DEVICE_KINDS = ['usb-android'] as const;
-export type DeviceKind = typeof DEVICE_KINDS[number];
+export const DEVICE_KINDS = PHYSICAL_DEVICE_KINDS;
+export type DeviceKind = PhysicalDeviceKind;
 export const devicePlaceholderProfile = (kind: DeviceKind): string => `device-${kind}`;
 
 export type NewDeviceSession = { hostId: string; kind: DeviceKind; deviceId: string; label?: string | null; leaseTtlSeconds?: number };
@@ -56,12 +57,16 @@ export async function createDeviceSession(
     if (!row || row.status !== 'online' || !row.last_seen_at || Date.now() - new Date(row.last_seen_at).getTime() > 45_000) {
       throw new ApiError(503, 'agent_offline', uiMessage('ui.75aecf4c8ac3', {}, 'en'));
     }
+    if (normalizeProviderStatuses(row.provider_status).some(provider => provider.kind === kind && provider.status === 'unavailable')) {
+      throw new ApiError(503, 'provider_unavailable', uiMessage('api.provider_unavailable', {}, 'en'));
+    }
     if (row.disabled || row.removed_at) throw new ApiError(409, 'host_unavailable', uiMessage('ui.1276b6393eea', {}, 'en'));
     const devices: Array<Record<string, unknown>> = Array.isArray(row.devices) ? row.devices : [];
     const device = devices.find(item => item.kind === kind && item.id === deviceId);
     if (!device) throw new ApiError(404, 'device_not_found', uiMessage('ui.9b7b0a1e3a84', {}, 'en'));
     if (device.state !== 'free') throw new ApiError(409, 'device_unavailable', uiMessage('ui.3ee4153300d6', { p0: String(device.state) }, 'en'));
-    const capabilities = (row.provider_capabilities as Record<string, string[]> | null)?.[kind] ?? [];
+    const available = normalizeCapabilities((row.provider_capabilities as Record<string, string[]> | null)?.[kind]);
+    const capabilities = normalizeCapabilities(device.capabilities).filter(capability => available.includes(capability));
     try {
       await client.query(
         `INSERT INTO sessions(id,owner_user_id,host_id,profile_id,label,device_kind,device_id,capabilities,state,startup_deadline_at)

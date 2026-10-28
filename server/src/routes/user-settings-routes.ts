@@ -93,6 +93,10 @@ function auditJson(row: Record<string, unknown>) {
   };
 }
 
+function assertPreferencesAccount(expected: unknown, actual: string): void {
+  if (expected !== undefined && expected !== actual) throw new ApiError(409, 'account_changed', uiMessage('account.changed', {}, 'en'));
+}
+
 export function registerUserSettingsRoutes(app: Express, context: ServerContext): void {
   const { pool, config, auth, requireAuth, requireAdmin, current } = context;
 
@@ -135,7 +139,8 @@ export function registerUserSettingsRoutes(app: Express, context: ServerContext)
     res.json({ profile: profileJson(rows[0]) });
   }));
 
-  app.get('/api/me/preferences', requireAuth, route(async (_req, res) => {
+  app.get('/api/me/preferences', requireAuth, route(async (req, res) => {
+    assertPreferencesAccount(req.query.expectedUserId, current(res).user.id);
     const { rows } = await pool.query('SELECT * FROM user_preferences WHERE user_id=$1', [current(res).user.id]);
     res.json({ preferences: preferencesJson(rows[0]) });
   }));
@@ -144,10 +149,11 @@ export function registerUserSettingsRoutes(app: Express, context: ServerContext)
     const body = req.body;
     if (!body || typeof body !== 'object' || Array.isArray(body) ||
         !Object.keys(body).length ||
-        Object.keys(body).some(key => !['theme', 'fontFamily', 'fontScale', 'defaultAdbKeyId'].includes(key))) {
+        Object.keys(body).some(key => !['theme', 'fontFamily', 'fontScale', 'defaultAdbKeyId', 'expectedUserId'].includes(key))) {
       throw new ApiError(400, 'invalid_preferences', uiMessage('ui.bc6b57fe6352', {}, 'en'));
     }
     const userId = current(res).user.id;
+    assertPreferencesAccount(body.expectedUserId, userId);
     const result = await transaction(pool, async client => {
       const existing = await client.query('SELECT * FROM user_preferences WHERE user_id=$1 FOR UPDATE', [userId]);
       const previous = preferencesJson(existing.rows[0]);

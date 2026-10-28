@@ -1,7 +1,8 @@
+import { devicePlatform, normalizeCapabilities, normalizeDeviceMetadata, type DeviceDescriptor } from './generated/device-contract.js';
 import { cleanLiveTelemetry } from './live-telemetry.js';
 
 // Untrusted agent payload normalization; transport and persistence belong to AgentHub.
-export type ActiveSessionReport = { containerId: string; networkEnabled: boolean | null; preparing: boolean; bootReady: boolean };
+export type ActiveSessionReport = { containerId: string; networkEnabled: boolean | null; preparing: boolean; bootReady: boolean; details?: Partial<DeviceDescriptor> };
 
 export function parseActiveSessions(input: unknown[]): Map<string, ActiveSessionReport> {
   const sessions = new Map<string, ActiveSessionReport>();
@@ -12,6 +13,7 @@ export function parseActiveSessions(input: unknown[]): Map<string, ActiveSession
     const containerId = String(record.containerId || '');
     if (/^[a-f0-9-]{36}$/i.test(sessionId) && containerId.length <= 128) sessions.set(sessionId, {
       containerId, preparing: record.preparing === true, bootReady: record.bootReady === true,
+      ...(Array.isArray(record.capabilities) ? { details: normalizeDeviceMetadata(record) } : {}),
       networkEnabled: typeof record.networkEnabled === 'boolean' ? record.networkEnabled : null,
     });
   }
@@ -24,8 +26,8 @@ export function cleanProviderCapabilities(input: unknown): Record<string, string
   if (!Array.isArray(input)) return result;
   for (const provider of input.slice(0, 8)) {
     const record = provider as Record<string, unknown> | null;
-    if (!record || typeof record.kind !== 'string' || !/^[a-z-]{1,32}$/.test(record.kind) || !Array.isArray(record.capabilities)) continue;
-    result[record.kind] = record.capabilities.filter((c): c is string => typeof c === 'string' && /^[a-z-]{1,32}$/.test(c)).slice(0, 32);
+    if (!record || record.status === 'unavailable' || !devicePlatform(record.kind) || typeof record.kind !== 'string' || !Array.isArray(record.capabilities)) continue;
+    result[record.kind] = normalizeCapabilities(record.capabilities);
   }
   return result;
 }

@@ -1,3 +1,4 @@
+import { diagnostic } from '../diagnostics.js';
 import { uiMessage } from '../messages.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir, open, readdir, rm } from 'node:fs/promises';
@@ -9,8 +10,8 @@ import type { Session } from '../http-common.js';
 import { ApiError, boundedString, isUuid, route, safeUploadName } from '../http-common.js';
 import { recordAuditEvent } from '../audit.js';
 import {
-  DEFAULT_APP_STORE, DownloadError, appFilePath, downloadToFile, ensureUserDir, hasZipMagic, inspectApk,
-  parseDownloadUrl, readHead, sha256File, urlHostLabel,
+  DEFAULT_APP_STORE, DownloadError, appFilePath, downloadToFile, ensureUserDir, hasZipMagic,
+  parseDownloadUrl, readHead, sha256File, urlHostLabel, inspectApplication,
 } from '../app-store.js';
 
 const SINGLE_COMMAND_LIMIT = 50 * 1024 * 1024;
@@ -48,7 +49,7 @@ export function registerAppRoutes(app: Express, context: ServerContext): void {
   const tmpDir = path.join(store.dir, '_tmp');
   void readdir(tmpDir).then(names => Promise.all(names.map(name => rm(path.join(tmpDir, name), { force: true }))), () => undefined);
   const audit = (event: Parameters<typeof recordAuditEvent>[1]) =>
-    void recordAuditEvent(pool, event).catch(() => console.error('Audit event persistence failed'));
+    void recordAuditEvent(pool, event).catch(() => console.error(diagnostic('app-routes.57acf9a777')));
 
   async function usage(userId: string) {
     const { rows } = await pool.query('SELECT COUNT(*)::int AS count, COALESCE(SUM(size_bytes),0)::bigint AS used FROM stored_apps WHERE owner_user_id=$1', [userId]);
@@ -92,7 +93,7 @@ export function registerAppRoutes(app: Express, context: ServerContext): void {
 
   app.post('/api/apps', requireAuth, route(async (req, res) => {
     const user = current(res).user;
-    if (uploading.has(user.id)) throw new ApiError(429, 'upload_busy', uiMessage('ui.68185b022a6e', {}, 'en'));
+    if (uploading.size >= 4 || uploading.has(user.id)) throw new ApiError(429, 'upload_busy', uiMessage('ui.68185b022a6e', {}, 'en'));
     const declared = Number(req.headers['content-length']);
     if (Number.isFinite(declared) && declared > store.maxFileBytes + 64 * 1024) throw new ApiError(413, 'app_too_large', uiMessage('ui.7ca24428a99c', { p0: Math.floor(store.maxFileBytes / 1048576) }, 'en'));
     const before = await usage(user.id);
@@ -108,10 +109,10 @@ export function registerAppRoutes(app: Express, context: ServerContext): void {
       const file = appFilePath(store.dir, user.id, appId);
       try {
         const name = safeUploadName(decodeName(received.originalname));
-        if (!name.toLowerCase().endsWith('.apk')) throw new ApiError(400, 'not_apk', uiMessage('ui.7d37b3461df4', {}, 'en'));
-        if (!hasZipMagic(await readHead(file))) throw new ApiError(400, 'not_apk', uiMessage('ui.dad367f8355c', {}, 'en'));
-        const info = await inspectApk(file);
-        if (!info) throw new ApiError(400, 'not_apk', uiMessage('ui.dad367f8355c', {}, 'en'));
+        if (!/\.(apk|apks|zip)$/i.test(name)) throw new ApiError(400, 'not_apk', uiMessage('apps.invalidSet', {}, 'en'));
+        if (!hasZipMagic(await readHead(file))) throw new ApiError(400, 'not_apk', uiMessage('apps.invalidSet', {}, 'en'));
+        const info = await inspectApplication(file, name);
+        if (!info) throw new ApiError(400, 'not_apk', uiMessage('apps.invalidSet', {}, 'en'));
         const noteRaw = req.body?.note;
         if (noteRaw !== undefined && noteRaw !== '' && !boundedString(noteRaw, 200)) throw new ApiError(400, 'invalid_note', uiMessage('ui.775b482987e7', {}, 'en'));
         const note = noteRaw ? boundedString(noteRaw, 200) : null;
@@ -170,10 +171,10 @@ export function registerAppRoutes(app: Express, context: ServerContext): void {
     }).catch(next);
   };
 
-  async function sendApk(session: Session, file: string, size: number, sha256: string): Promise<string> {
-    const name = `app-${sha256.slice(0, 8)}.apk`;
+  async function sendApk(session: Session, file: string, size: number, sha256: string, extension = 'apk'): Promise<string> {
+    const name = `app-${sha256.slice(0, 8)}.${extension}`;
     try {
-      if (size <= SINGLE_COMMAND_LIMIT) {
+      if (extension === 'apk' && size <= SINGLE_COMMAND_LIMIT) {
         const handle = await open(file, 'r');
         let content: Buffer;
         try { content = Buffer.alloc(size); await handle.read(content, 0, size, 0); } finally { await handle.close(); }
@@ -188,7 +189,7 @@ export function registerAppRoutes(app: Express, context: ServerContext): void {
           const buffer = Buffer.alloc(CHUNK_BYTES);
           for (let index = 0, offset = 0; offset < size; index++) {
             const { bytesRead } = await handle.read(buffer, 0, CHUNK_BYTES, offset);
-            if (bytesRead === 0) throw new Error('file ended early');
+            if (bytesRead === 0) throw new Error(diagnostic('app-routes.b64783de50'));
             await hub.command(session.hostId, session.id, 'app-chunk',
               { transferId, index, contentBase64: buffer.toString('base64', 0, bytesRead) }, 60_000);
             offset += bytesRead;
@@ -204,7 +205,7 @@ export function registerAppRoutes(app: Express, context: ServerContext): void {
       const message = error instanceof Error ? error.message : String(error);
       if (message === 'agent offline') throw new ApiError(503, 'agent_offline', uiMessage('ui.c5dec6d573c6', {}, 'en'));
       if (message === 'agent command timed out') throw new ApiError(504, 'install_timeout', uiMessage('ui.b7589c12394d', {}, 'en'));
-      throw new ApiError(502, 'install_failed', message.replace(/\s+/g, ' ').slice(0, 300) || 'Installation failed');
+      throw new ApiError(502, 'install_failed', message.replace(/\s+/g, ' ').slice(0, 300) || diagnostic('app-routes.d472ecf6a0'));
     }
   }
 
@@ -220,7 +221,7 @@ export function registerAppRoutes(app: Express, context: ServerContext): void {
     const release = acquire(session.hostId);
     try {
       activity.touch(session.id);
-      const output = await sendApk(session, appFilePath(store.dir, user.id, row.id), Number(row.size_bytes), row.sha256);
+      const output = await sendApk(session, appFilePath(store.dir, user.id, row.id), Number(row.size_bytes), row.sha256, row.name.toLowerCase().split('.').at(-1));
       audit({ action: 'session.app_installed', actor: user, targetType: 'app', targetId: row.id });
       res.json({ ok: true, output, app: appJson(row) });
     } finally { release(); }
@@ -240,8 +241,9 @@ export function registerAppRoutes(app: Express, context: ServerContext): void {
       let size: number;
       try { ({ size } = await downloadToFile(url.toString(), file, store)); }
       catch (error) { throw error instanceof DownloadError ? downloadStatus(error) : new ApiError(502, 'download_failed', uiMessage('ui.4f9adb2b15c1', {}, 'en')); }
-      if (!hasZipMagic(await readHead(file)) || !(await inspectApk(file))) throw new ApiError(400, 'not_apk', uiMessage('ui.1b2b04a52bcc', {}, 'en'));
-      const output = await sendApk(session, file, size, await sha256File(file));
+      const name = /\.(apks|zip)$/i.test(url.pathname) ? safeUploadName(path.posix.basename(url.pathname)) : 'download.apk';
+      if (!hasZipMagic(await readHead(file)) || !(await inspectApplication(file, name))) throw new ApiError(400, 'not_apk', uiMessage('ui.1b2b04a52bcc', {}, 'en'));
+      const output = await sendApk(session, file, size, await sha256File(file), name.toLowerCase().split('.').at(-1));
       audit({ action: 'session.app_installed', actor: user, targetType: 'host', targetId: urlHostLabel(url) });
       res.json({ ok: true, output });
     } finally {

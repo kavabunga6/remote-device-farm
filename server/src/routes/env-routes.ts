@@ -1,3 +1,4 @@
+import { diagnostic } from '../diagnostics.js';
 import { uiMessage } from '../messages.js';
 import type { Express } from 'express';
 import type { ServerContext } from '../server-context.js';
@@ -19,7 +20,7 @@ export function envParams(value: unknown): Record<string, string | number | bool
     if (typeof item === 'string' && item.length <= 2000) out[key] = item;
     else if (typeof item === 'number' && Number.isFinite(item)) out[key] = item;
     else if (typeof item === 'boolean') out[key] = item;
-    else throw new ApiError(400, 'invalid_env', 'Invalid value for ' + key);
+    else throw new ApiError(400, 'invalid_env', diagnostic('env-routes.bbb3925356', { p0: key }));
   }
   return out;
 }

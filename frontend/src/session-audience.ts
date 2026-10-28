@@ -48,5 +48,5 @@ export function audienceDescription(audience: SessionAudience): string {
   if (audience.status === 'unavailable') return t('ui.70c0ad73d60e');
   if (audience.status === 'error') return t('ui.fee2d444aa71');
   if (audience.activeLinks === 0) return t('ui.9a8443c5af2c');
-  return t('ui.5af9a33f6dc6') + audience.activeLinks + (audience.recipientUnit === 'people' ? t('ui.30c6e52611e3') : t('ui.414c957a78ff')) + audience.recipients + t('ui.eb6cdb56fc3a') + audience.connected + '.' + (audience.recipientUnit === 'grants' ? t('ui.00cc1ff461bb') : '');
+  return t('copy.session-audience.2c6f0df8', { p0: audience.activeLinks, p1: (audience.recipientUnit === 'people' ? t('ui.30c6e52611e3') : t('ui.414c957a78ff')), p2: audience.recipients, p3: audience.connected, p4: (audience.recipientUnit === 'grants' ? t('ui.00cc1ff461bb') : '') });
 }

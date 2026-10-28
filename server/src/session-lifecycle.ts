@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { uiMessage } from './messages.js';
 import type { Pool } from 'pg';
 import type { Config } from './config.js';
@@ -119,7 +120,7 @@ export function startSessionReaper(
         if (stopped) break;
         await releaseExpired(pool, hub, expired);
       }
-    })().catch(() => console.error('Session reaper failed')).finally(() => { running = null; });
+    })().catch(() => console.error(diagnostic('session-lifecycle.0308002137'))).finally(() => { running = null; });
   }, everyMs);
   timer.unref();
   return () => {

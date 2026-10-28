@@ -1,3 +1,4 @@
+import { normalizeProviderStatuses, normalizeDeviceMetadata } from './generated/device-contract.js';
 import { assertPermission, roleForUser } from './permissions.js';
 import { uiMessage } from './messages.js';
 import { assertUserActive } from './user-removal.js';
@@ -85,6 +86,9 @@ export async function createSession(
     if (!host.rows[0] || host.rows[0].status !== 'online' ||
         !host.rows[0].last_seen_at || Date.now() - new Date(host.rows[0].last_seen_at).getTime() > 45_000) {
       throw new ApiError(503, 'agent_offline', uiMessage('ui.75aecf4c8ac3', {}, 'en'));
+    }
+    if (normalizeProviderStatuses(host.rows[0].provider_status).some(provider => provider.kind === 'emulator' && provider.status === 'unavailable')) {
+      throw new ApiError(503, 'provider_unavailable', uiMessage('api.provider_unavailable', {}, 'en'));
     }
     if (host.rows[0].disabled || host.rows[0].removed_at) {
       throw new ApiError(409, 'host_unavailable', uiMessage('ui.1276b6393eea', {}, 'en'));
@@ -197,9 +201,11 @@ export function launchSession(
   })();
   return start.then(async data => {
     await requestedLog;
+    const details = normalizeDeviceMetadata(data);
     const updated = await pool.query(
-      `UPDATE sessions SET state='running',container_id=$2,started_at=now(),last_activity_at=now(),startup_progress=$3
-       WHERE id=$1 AND state='starting' RETURNING id`, [id, data.containerId || null, { stage: 'ready', percent: 100, updatedAt: new Date().toISOString() }],
+      `UPDATE sessions SET state='running',container_id=$2,started_at=now(),last_activity_at=now(),startup_progress=$3,
+       capabilities=COALESCE($4::text[],capabilities),device_metadata=COALESCE($5::jsonb,device_metadata)
+       WHERE id=$1 AND state='starting' RETURNING id`, [id, data.containerId || null, { stage: 'ready', percent: 100, updatedAt: new Date().toISOString() }, details.capabilities ?? null, details.capabilities ? details : null],
     );
     if (updated.rowCount) {
       await notifySessionReady(pool, id);

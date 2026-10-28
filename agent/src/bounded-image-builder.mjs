@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { tarArchive } from './tar-archive.mjs';
@@ -28,7 +29,7 @@ exec /usr/bin/unshare --cgroup --mount /usr/bin/with-cgroupfs-remount /usr/bin/b
 
 export class BoundedImageBuilder {
   constructor({ docker, agentId, stateDir, diskPath = '/', guard = () => new BuildResourceGuard({ path: diskPath }), image = BUILDKIT_IMAGE, cpu = 4, memory = 6 * 1024 ** 3 }) {
-    if (!/^[A-Za-z0-9_-]{1,64}$/.test(agentId)) throw new Error('Invalid builder agent identity');
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(agentId)) throw new Error(diagnostic('bounded-image-builder.d748efa9df'));
     Object.assign(this, { docker, agentId, stateDir, diskPath, guard, image, cpu, memory });
     this.active = null; this.cleanupBlocked = false;
   }

@@ -1,3 +1,6 @@
+import { diagnostic } from './diagnostics.mjs';
+import { agentMessage } from './messages.mjs';
+import { removePacketCaptures } from './packet-capture.mjs';
 import { diagnosticReporter, diagnosticSecrets, diagnosticSeverity, dockerLogLines } from './session-diagnostics.mjs';
 import { DEFAULT_NVIDIA_CAPABILITIES, FARM_FLAGS, gpuKind } from './docker-options.mjs';
 
@@ -37,6 +40,7 @@ import { createHash } from 'node:crypto';
 import http from 'node:http';
 import { Readable } from 'node:stream';
 import { archiveFile } from './docker-archive.mjs';
+import { applyCameraImage } from './camera-image.mjs';
 import { validateNvidiaXorgModuleDir } from './config.mjs';
 import { runEmuConsole, validateEmuConsoleArgs } from './emu-console.mjs';
 
@@ -71,7 +75,7 @@ export class DockerClient {
     this.apiVersionPromise ??= this._request('GET', '/version').then((version) => {
       const match = /^1\.(\d+)$/.exec(String(version?.ApiVersion || ''));
       if (!match || Number(match[1]) < MIN_API_MINOR) {
-        throw new Error('Docker Engine API 1.44 or newer is required');
+        throw new Error(diagnostic('docker.e4797a8dd7'));
       }
       this.apiPrefix = `/v${version.ApiVersion}`;
     });
@@ -104,28 +108,28 @@ export class DockerClient {
         const responseLimit = res.statusCode >= 400 ? Math.min(maxBytes, MAX_ERROR_RESPONSE_BYTES) : maxBytes;
         const event = line => {
           if (!line.toString('utf8').trim()) return;
-          if (line.length > 256 * 1024) throw new Error('Docker progress event exceeds limit');
+          if (line.length > 256 * 1024) throw new Error(diagnostic('docker.7b2d1aae8a'));
           let value;
-          try { value = JSON.parse(line.toString('utf8')); } catch { throw new Error('Invalid Docker progress JSON'); }
-          if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid Docker progress event');
+          try { value = JSON.parse(line.toString('utf8')); } catch { throw new Error(diagnostic('docker.fcd3467b8d')); }
+          if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(diagnostic('docker.538c23e181'));
           if (value.error || value.errorDetail?.message) throw new Error(String(value.errorDetail?.message || value.error).slice(0, 1024));
           onJsonEvent(value);
         };
         res.on('data', chunk => {
           size += chunk.length;
           if (size > responseLimit) return req.destroy(new Error(res.statusCode >= 400
-            ? `Docker API HTTP ${res.statusCode} error response too large`
-            : 'Docker API response too large'));
+            ? diagnostic('docker.1828cbdd54', { p0: res.statusCode })
+            : diagnostic('docker.73e623976a')));
           if (!onJsonEvent || res.statusCode >= 400) { chunks.push(chunk); return; }
           try {
             pending = Buffer.concat([pending, chunk]);
             let newline;
             while ((newline = pending.indexOf(10)) >= 0) { event(pending.subarray(0, newline)); pending = pending.subarray(newline + 1); }
-            if (pending.length > 256 * 1024) throw new Error('Docker progress event exceeds limit');
+            if (pending.length > 256 * 1024) throw new Error(diagnostic('docker.7b2d1aae8a'));
           } catch (error) { req.destroy(error); }
         });
         res.on('error', error => finish(error));
-        res.on('aborted', () => finish(new Error('Docker API response aborted')));
+        res.on('aborted', () => finish(new Error(diagnostic('docker.20656b0e63'))));
         res.on('end', () => {
           if (onJsonEvent && res.statusCode < 400) {
             try { if (pending.length) event(pending); finish(null, null); } catch (error) { finish(error); }
@@ -134,14 +138,14 @@ export class DockerClient {
           if (raw && res.statusCode < 400) { finish(null, Buffer.concat(chunks)); return; }
           const text = Buffer.concat(chunks).toString('utf8'); let result = text;
           try { result = text ? JSON.parse(text) : null; } catch { /* Docker may return text. */ }
-          if (res.statusCode >= 400) finish(new Error(result?.message || `Docker API HTTP ${res.statusCode}`));
+          if (res.statusCode >= 400) finish(new Error(result?.message || diagnostic('docker.8d7292b059', { p0: res.statusCode })));
           else finish(null, result);
         });
       });
-      const abort = () => req.destroy(signal.reason instanceof Error ? signal.reason : new Error('Image preparation cancelled'));
+      const abort = () => req.destroy(signal.reason instanceof Error ? signal.reason : new Error(diagnostic('docker.2fae1954b6')));
       signal?.addEventListener('abort', abort, { once: true });
       req.on('error', error => finish(error));
-      timer = setTimeout(() => req.destroy(new Error('Docker API request timed out')), timeoutMs);
+      timer = setTimeout(() => req.destroy(new Error(diagnostic('docker.41e03f9255'))), timeoutMs);
       if (signal?.aborted) { abort(); return; }
       if (payload instanceof Readable) { payload.once('error', error => req.destroy(error)); payload.pipe(req); }
       else { if (payload) req.write(payload); req.end(); }
@@ -155,7 +159,7 @@ export class DockerClient {
       const request = http.get({ socketPath: this.socketPath, path: `${this.apiPrefix}/containers/${encodeURIComponent(containerId)}/archive?path=/tmp/rdf-image.tar` }, resolve);
       const abort = () => request.destroy(signal?.reason instanceof Error ? signal.reason : new Error('build_cancelled'));
       signal?.addEventListener('abort', abort, { once: true });
-      request.setTimeout(30_000, () => request.destroy(new Error('Docker API request timed out')));
+      request.setTimeout(30_000, () => request.destroy(new Error(diagnostic('docker.41e03f9255'))));
       request.once('error', reject);
       request.once('close', () => signal?.removeEventListener('abort', abort));
       if (signal?.aborted) abort();
@@ -178,7 +182,7 @@ export class DockerClient {
       if (typeof value.id === 'string' && value.id.length < 256 && value.status === 'Downloading') {
         const current = value.progressDetail?.current, total = value.progressDetail?.total;
         if (Number.isSafeInteger(current) && current >= 0 && Number.isSafeInteger(total) && total > 0 && current <= total) {
-          if (layers.size >= 4096 && !layers.has(value.id)) throw new Error('Too many image layers');
+          if (layers.size >= 4096 && !layers.has(value.id)) throw new Error(diagnostic('docker.09bb030f22'));
           layers.set(value.id, { current, total });
         }
       }
@@ -244,14 +248,14 @@ export class DockerClient {
         labels['remote-device-farm.agent'] !== agentId ||
         labels['remote-device-farm.session'] !== sessionId ||
         labels['remote-device-farm.purpose'] !== purpose) {
-      throw new Error(`Refusing to use unrelated Docker network ${name}`);
+      throw new Error(diagnostic('docker.4ceddd1f74', { p0: name }));
     }
     if (current.Driver !== 'bridge' || current.EnableIPv6 ||
         (purpose === 'management' &&
           (!current.Internal || current.Options?.['com.docker.network.bridge.gateway_mode_ipv4'] !== 'isolated')) ||
         (purpose === 'egress' && (current.Internal ||
           current.Options?.['com.docker.network.bridge.name'] !== egressBridgeName(sessionId)))) {
-      throw new Error(`Docker ${purpose} network has unsafe settings; Docker Engine 28+ is required`);
+      throw new Error(diagnostic('docker.39674334a3', { p0: purpose }));
     }
     return current;
   }
@@ -276,9 +280,9 @@ export class DockerClient {
     let networks;
     const accelerated = profile.gpuMode === 'nvidia';
     const kind = gpuKind(profile);
-    if (accelerated && !kind) throw new Error('GPU backend must be selected from the node capabilities');
+    if (accelerated && !kind) throw new Error(diagnostic('docker.5473964582'));
     const xorgModuleSource = accelerated && kind === 'nvidia' ? validateNvidiaXorgModuleDir(nvidiaXorgModuleDir) : null;
-    if (accelerated && kind === 'dri' && !driDevice) throw new Error('GPU mode requires AGENT_DRI_DEVICE');
+    if (accelerated && kind === 'dri' && !driDevice) throw new Error(diagnostic('docker.8d0954c490'));
     const options = profile.dockerOptions ?? {};
     // Flags the farm adds itself; an image that already passes some of them lists only the rest in farmFlags.
     const farm = new Set(options.farmFlags ?? FARM_FLAGS);
@@ -298,7 +302,7 @@ export class DockerClient {
       if (value == null || contract) continue;
       const declared = !launchEnvNames.has(name) && (Object.hasOwn(containerEnv, name) || imageEnvNames.has(name));
       if (declared) containerEnv[name] = String(value);
-      else if (!farm.has(flag)) throw new Error(`Guest ${flag} cannot be applied by this image profile; enable the ${flag} farm flag or declare ${name}`);
+      else if (!farm.has(flag)) throw new Error(diagnostic('docker.027193017e', { p0: flag, p1: flag, p2: name }));
     }
     const diskMb = profile.diskGb * 1024;
     const sdCardMb = profile.sdCardMb ?? (profile.sdcardGb == null ? null : profile.sdcardGb * 1024);
@@ -345,7 +349,7 @@ export class DockerClient {
         AutoRemove: false,
         ...(options.shmSizeMb ? { ShmSize: options.shmSizeMb * 1024 * 1024 } : {}),
         ...(options.ulimits ? { Ulimits: options.ulimits.map((item) => ({ Name: item.name, Soft: item.soft, Hard: item.hard })) } : {}),
-        ...(options.tmpfs ? { Tmpfs: Object.fromEntries(options.tmpfs.map((item) => [item.path, `rw,noexec,nosuid,size=${item.sizeMb}m`])) } : {}),
+        Tmpfs: { ...Object.fromEntries((options.tmpfs ?? []).map((item) => [item.path, `rw,noexec,nosuid,size=${item.sizeMb}m`])), '/rdf-network': 'rw,noexec,nosuid,size=40m,mode=0700' },
         ...(options.sysctls ? { Sysctls: options.sysctls } : {}),
       },
       NetworkingConfig: { EndpointsConfig: {} },
@@ -395,7 +399,7 @@ export class DockerClient {
   async addSdcardEntrypoint(body, profile, sdCardMb) {
     const image = await this.request('GET', `/images/${encodeURIComponent(profile.image)}/json`);
     const original = [...(body.Entrypoint ?? image.Config?.Entrypoint ?? []), ...(body.Cmd ?? image.Config?.Cmd ?? [])];
-    if (!original.length) throw new Error('Image has no entrypoint; cannot attach an SD card');
+    if (!original.length) throw new Error(diagnostic('docker.ad6bacb5c1'));
     body.Env.push(`RDF_SD_CARD_MB=${sdCardMb}`);
     body.Entrypoint = ['/bin/sh', '-ec', SD_CARD_LAUNCH_SCRIPT, 'rdf-sdcard', ...original];
     body.Cmd = [];
@@ -411,14 +415,14 @@ export class DockerClient {
     if (labels['remote-device-farm.managed'] !== 'true' ||
         labels['remote-device-farm.agent'] !== agentId ||
         labels['remote-device-farm.session'] !== sessionId) {
-      throw new Error('Refusing to change network of a container not owned by this session');
+      throw new Error(diagnostic('docker.f6c74c53ac'));
     }
     const egressNetwork = sessionNetworks(sessionId).egress;
     const managementNetwork = sessionNetworks(sessionId).management;
     const attachedNetworks = Object.keys(current.NetworkSettings?.Networks || {});
     if (!attachedNetworks.includes(managementNetwork) ||
         attachedNetworks.some((name) => name !== managementNetwork && name !== egressNetwork)) {
-      throw new Error('Emulator network attachments differ from the isolated session networks');
+      throw new Error(diagnostic('docker.8234d1b2a9'));
     }
     const attached = attachedNetworks.includes(egressNetwork);
     await this.ensureNetwork(managementNetwork, sessionId, agentId, 'management');
@@ -432,7 +436,7 @@ export class DockerClient {
       const after = await this.inspect(containerId);
       const remaining = Object.keys(after.NetworkSettings?.Networks || {});
       if (remaining.length !== 1 || remaining[0] !== managementNetwork) {
-        throw new Error('Could not confirm network isolation after disabling egress');
+        throw new Error(diagnostic('docker.1bfdb965d4'));
       }
     }
     return { enabled };
@@ -446,13 +450,16 @@ export class DockerClient {
     if (labels['remote-device-farm.managed'] !== 'true' ||
         labels['remote-device-farm.agent'] !== agentId ||
         labels['remote-device-farm.session'] !== sessionId) {
-      throw new Error('Refusing to run a console command in a container not owned by this session');
+      throw new Error(diagnostic('docker.ceaadf1e6b'));
     }
-    if (current.State?.Running === false) throw new Error('Emulator container is not running');
+    if (current.State?.Running === false) throw new Error(diagnostic('docker.fd94cd4a7f'));
     return runEmuConsole(this, containerId, valid);
   }
 
+  cameraImage(containerId, sessionId, agentId, params) { return applyCameraImage(this, containerId, sessionId, agentId, params); }
+
   async removeSessionNetworks(sessionId, agentId, selfContainerId) {
+    await removePacketCaptures(this,sessionId,agentId);
     const names = sessionNetworks(sessionId);
     for (const [purpose, name] of [['egress', names.egress], ['management', names.management]]) {
       let network;
@@ -466,7 +473,7 @@ export class DockerClient {
           labels['remote-device-farm.agent'] !== agentId ||
           labels['remote-device-farm.session'] !== sessionId ||
           labels['remote-device-farm.purpose'] !== purpose) {
-        throw new Error(`Refusing to remove unrelated Docker network ${name}`);
+        throw new Error(diagnostic('docker.7a2574cbb6', { p0: name }));
       }
       if (purpose === 'management') {
         const self = await this.inspect(selfContainerId);
@@ -493,7 +500,7 @@ export class DockerClient {
     try {
       const detail = await this.inspect(containerId);
       if (detail.Config?.Labels?.['remote-device-farm.session'] !== sessionId ||
-          detail.Config?.Labels?.['remote-device-farm.agent'] !== agentId) throw new Error('Container ownership mismatch');
+          detail.Config?.Labels?.['remote-device-farm.agent'] !== agentId) throw new Error(diagnostic('docker.837d6b37ec'));
       const state = detail.State || {};
       const secrets = diagnosticSecrets(detail.Config?.Env);
       const emit = diagnosticReporter(onLog, secrets);
@@ -506,8 +513,8 @@ export class DockerClient {
         const lines = text.replace(/-----BEGIN [\s\S]*?-----END [^\n]+-----/g, '[redacted key]').split(/\r?\n/).filter(Boolean);
         for (const line of lines) await emit('container.' + stream, line, diagnosticSeverity(line, stream), 'emulator');
       }
-      await emit('container.output_captured', 'Снимок stdout/stderr контейнера: последние 2000 строк.', 'info', 'emulator');
-    } catch (error) { report('container.diagnostics_failed', 'Не удалось получить диагностику контейнера: ' + error.message, 'warning'); }
+      await emit('container.output_captured', agentMessage('agent.diagnostics.snapshot', {}, 'ru'), 'info', 'emulator');
+    } catch (error) { report('container.diagnostics_failed', agentMessage('agent.diagnostics.failed', { p0: error.message }, 'ru'), 'warning'); }
   }
 
   async removeManaged(containerId, sessionId, agentId, { timeoutMs = 90_000 } = {}) {
@@ -522,8 +529,9 @@ export class DockerClient {
     if (labels['remote-device-farm.managed'] !== 'true' ||
         labels['remote-device-farm.agent'] !== agentId ||
         labels['remote-device-farm.session'] !== sessionId) {
-      throw new Error('Refusing to remove a container not owned by this session');
+      throw new Error(diagnostic('docker.72a60ce6d9'));
     }
+    await removePacketCaptures(this,sessionId,agentId);
     // Removal of a large writable layer can outlive the ordinary API timeout.
     // Pin retries to the inspected ID so reusing a name cannot remove another container.
     const id = encodeURIComponent(current.Id || containerId);
@@ -547,10 +555,10 @@ export class DockerClient {
       const owner = remaining.Config?.Labels || {};
       if (owner['remote-device-farm.managed'] !== 'true' ||
           owner['remote-device-farm.agent'] !== agentId || owner['remote-device-farm.session'] !== sessionId) {
-        throw new Error('Container ownership changed during removal');
+        throw new Error(diagnostic('docker.3cc6ad0f8b'));
       }
       const left = deadline - Date.now();
-      if (left <= 0) throw new Error('Container removal was not confirmed before the cleanup deadline');
+      if (left <= 0) throw new Error(diagnostic('docker.8ac5fbcb52'));
       await new Promise(resolve => setTimeout(resolve, Math.min(250, left)));
     }
   }

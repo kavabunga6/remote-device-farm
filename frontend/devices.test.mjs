@@ -7,10 +7,10 @@ const entry = fileURLToPath(new URL('./src/devices.ts', import.meta.url));
 const bundle = await build({ entryPoints: [entry], bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent' });
 const m = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].contents).toString('base64'));
 
-test('a session without a capability list (emulator) can do everything; physical devices only what they report', () => {
-  assert.equal(m.hasCapability({ capabilities: null }, 'shell'), true);
-  assert.equal(m.hasCapability({}, 'rotate'), true);
-  assert.equal(m.hasCapability(null, 'audio'), true);
+test('only explicit device capabilities enable controls', () => {
+  assert.equal(m.hasCapability({ capabilities: null }, 'shell'), false);
+  assert.equal(m.hasCapability({}, 'rotate'), false);
+  assert.equal(m.hasCapability(null, 'audio'), false);
   const phone = { capabilities: ['video', 'logs', 'device-info'] };
   assert.equal(m.hasCapability(phone, 'logs'), true);
   assert.equal(m.hasCapability(phone, 'shell'), false);

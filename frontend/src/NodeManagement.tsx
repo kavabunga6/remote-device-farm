@@ -1,3 +1,4 @@
+import { TranslatedText } from './TranslatedText';
 import { useAccess } from './permissions';
 import { getLocale, localizeText, t } from './i18n';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -118,7 +119,7 @@ function NodeDialog({ host, profiles, onClose, onRefresh }: { host: Host; profil
                 <label className="node-field" htmlFor="node-slot-memory"><span>{t('ui.0560101c6a19')}</span><input id="node-slot-memory" type="number" min={1024} max={65536} step={256} value={form.slotMemoryMb} onChange={event => set('slotMemoryMb', Number(event.target.value))} required disabled={busy} /></label>
               </div>
               {!!incompatible.length ? <details className="node-profile-fit">
-                <summary>{t('ui.ff216ade8ff3')}{incompatible.length}</summary>
+                <summary><TranslatedText message="copy.NodeManagement.757095ca" values={{ p0: incompatible.length }} /></summary>
                 <ul>{incompatible.map(({ profile, reasons }) => <li key={profile.id}><span>{profile.name}</span><small>{reasons.join(' · ')}</small></li>)}</ul>
               </details> : capacity && profiles.length > 0 && <p className="node-field-note node-profile-compatible"><Icon name="check" size={15} />{t('ui.8658603e0a79')}</p>}
             </section>
@@ -127,15 +128,15 @@ function NodeDialog({ host, profiles, onClose, onRefresh }: { host: Host; profil
                 <h3>{t('ui.60320b58a2f1')}</h3>
                 {capacity ? <>
                   <dl className="node-capacity-stats"><div><dt>{t('ui.b2daabc8bfe9')}</dt><dd>{capacity.slots}</dd></div><div><dt>{t('ui.2fdd1b255ecf')}</dt><dd>{capacity.free}</dd></div><div><dt>{t('ui.c4b638cf68ad')}</dt><dd>{active}</dd></div></dl>
-                  {capacity.disabled ? <p>{t('ui.48e636cbd905')}{capacity.capacity}.</p> : host.status !== 'online' ? <p>{t('ui.3a3dc00b7274')}</p> : null}
+                  {capacity.disabled ? <p><TranslatedText message="copy.NodeManagement.674be55c" values={{ p0: capacity.capacity }} /></p> : host.status !== 'online' ? <p>{t('ui.3a3dc00b7274')}</p> : null}
                 </> : <p>{t('ui.7ee78b3580de')}</p>}
               </div>
               {capacity?.dynamic && <details className="node-capacity-details">
                 <summary>{t('ui.98b4eedc5eb2')}</summary>
-                <p>{t('ui.a7418a533422')}{capacity.limit.join(', ')}.</p>
-                <dl><div><dt>{t('ui.64de5bc5d912')}</dt><dd>{capacity.cpuBudget} {t('ui.0afb1c2a3da3')}{capacity.cpuSlots} {t('ui.46d980c9a8d0')}</dd></div><div><dt>{t('ui.be4c791fb09c')}</dt><dd>{(capacity.memoryBudgetMb / 1024).toLocaleString(getLocale(), { maximumFractionDigits: 2 })} {t('ui.35b00143d254')}{capacity.memorySlots} {t('ui.46d980c9a8d0')}</dd></div></dl>
+                <p><TranslatedText message="copy.NodeManagement.467daa98" values={{ p0: capacity.limit.join(', ') }} /></p>
+                <dl><div><dt>{t('ui.64de5bc5d912')}</dt><dd><TranslatedText message="copy.NodeManagement.949e8e40" values={{ p0: capacity.cpuBudget, p1: capacity.cpuSlots }} /></dd></div><div><dt>{t('ui.be4c791fb09c')}</dt><dd><TranslatedText message="copy.NodeManagement.5b0ff58e" values={{ p0: (capacity.memoryBudgetMb / 1024).toLocaleString(getLocale(), { maximumFractionDigits: 2 }), p1: capacity.memorySlots }} /></dd></div></dl>
               </details>}
-              {capacity && !host.policySupported && <p className="node-field-note">{t('ui.f16ca1aad770')}{Math.min(host.reportedSlots, host.slotCap ?? host.reportedSlots)} {t('ui.49b6715c0129')}</p>}
+              {capacity && !host.policySupported && <p className="node-field-note"><TranslatedText message="copy.NodeManagement.7f38fc35" values={{ p0: Math.min(host.reportedSlots, host.slotCap ?? host.reportedSlots) }} /></p>}
             </section>
             {!host.policySupported && <div className="inline-warning">{t('ui.c52da62f79fd')}</div>}
             {host.policyPending && <div className="inline-warning">{t('ui.cdb80d7563b3')}</div>}
@@ -153,13 +154,13 @@ function NodeDialog({ host, profiles, onClose, onRefresh }: { host: Host; profil
               <div className="node-side-heading"><h3>{t('ui.80384178a7df')}</h3><span className="count-pill">{active}</span></div>
               {occupancyError && <p className="inline-error" role="alert">{localizeText(occupancyError)}</p>}
               {occupancyLoading ? <p>{t('ui.f416ed081b69')}</p> : occupants.length ? <ul>{occupants.map(item => <li className="interactive-card" key={item.slotIndex}>
-                <span>#{item.slotIndex + 1}</span><div><strong><a className="card-primary-action" href={'#/session/' + encodeURIComponent(item.sessionId)} aria-label={t('ui.442b925f50d7') + item.profileName} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) onClose(); }}>{item.profileName}</a></strong><small>{item.ownerName} · {stateLabels[item.state]}</small></div>
+                <span>#{item.slotIndex + 1}</span><div><strong><a className="card-primary-action" href={'#/session/' + encodeURIComponent(item.sessionId)} aria-label={t('copy.NodeManagement.e973c6b1', { p0: item.profileName })} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) onClose(); }}>{item.profileName}</a></strong><small>{item.ownerName} · {stateLabels[item.state]}</small></div>
               </li>)}</ul> : !occupancyError && <p>{active > 0 ? t('ui.254edcbcdd2a') : t('ui.4d0a2d856df5')}</p>}
             </section>
             <NodeDiagnostics host={host} />
             {credential && credential.source !== 'environment' && credential.canRevoke !== false && <section className="node-token">
               <details><summary>{t('ui.ea7ba3379efe')}</summary><div className="node-token-body">
-                <p>{t('ui.a17072a9f4da')}{new Date(credential.createdAt).toLocaleDateString(getLocale())}{t('ui.2e3915e0f29a')}</p>
+                <p><TranslatedText message="copy.NodeManagement.6703e34b" values={{ p0: new Date(credential.createdAt).toLocaleDateString(getLocale()) }} /></p>
                 {can('nodes.credentials') && (revokeAsk ? <div className="token-confirm"><span>{t('ui.14db8088262d')}</span><button type="button" className="text-button danger-text" onClick={() => void revokeToken()} disabled={busy}>{t('ui.bc744ce9e1a8')}</button><button type="button" className="text-button" onClick={() => setRevokeAsk(false)} disabled={busy}>{t('ui.8fbe9b75cbdf')}</button></div> : <button type="button" className="text-button danger-text" onClick={() => setRevokeAsk(true)} disabled={busy}>{t('ui.c723810d8222')}</button>)}
               </div></details>
             </section>}
@@ -187,9 +188,9 @@ function NodePoolSummary({ hosts }: { hosts: Host[] }) {
   const cuda = online.filter(host => hostSupportsGpu(host, 'cuda')).length;
   const plain = online.filter(host => hostSupportsGpu(host, 'gpu')).length;
   return <div className="node-pool-summary" aria-label={t('ui.5e90eda56e75')}>
-    <div className="node-pool-card"><span className="cap">{t('ui.5e90eda56e75')}</span><strong>{online.length} {t('ui.803a0dc0c70d')}</strong><small>{disabled} {t('ui.eef3a9f50e41')}{hosts.length} {t('ui.7df1979c2188')}</small></div>
+    <div className="node-pool-card"><span className="cap">{t('ui.5e90eda56e75')}</span><strong><TranslatedText message="copy.NodeManagement.15ae7f7d" values={{ p0: online.length }} /></strong><small><TranslatedText message="copy.NodeManagement.a673c0c6" values={{ p0: disabled, p1: hosts.length }} /></small></div>
     <div className="node-pool-card slot-occupancy" data-occupancy={slotOccupancyLevel(busySlots, totalSlots)}><span className="cap">{t('ui.43ad61e9ff10')}</span><strong>{totalSlots - busySlots} / {totalSlots}</strong><small>{totalSlots ? Math.round((totalSlots - busySlots) / totalSlots * 100) + t('ui.d041472ab23e') : t('ui.563932f8be14')}</small></div>
-    <div className="node-pool-card"><span className="cap">{t('ui.ea49523d744c')}</span><strong className={cuda + plain ? 'accent' : ''}>{cuda ? 'CUDA' : plain ? 'GPU' : t('ui.43e5ab70f691')}</strong><small>{cuda || plain ? [cuda ? t('ui.cd8a16c2ff42') + cuda : '', plain ? t('ui.eff26e0f2f4c') + plain : ''].filter(Boolean).join(' · ') : t('ui.efe166566939')}</small></div>
+    <div className="node-pool-card"><span className="cap">{t('ui.ea49523d744c')}</span><strong className={cuda + plain ? 'accent' : ''}>{cuda ? t('technical.cuda') : plain ? t('ui.ea49523d744c') : t('ui.43e5ab70f691')}</strong><small>{cuda || plain ? [cuda ? t('copy.NodeManagement.c0fe325b', { p0: cuda }) : '', plain ? t('copy.NodeManagement.265933bf', { p0: plain }) : ''].filter(Boolean).join(' · ') : t('ui.efe166566939')}</small></div>
   </div>;
 }
 
@@ -221,6 +222,6 @@ export function NodeManagement({ hosts, profiles = [], onRefresh }: { hosts: Hos
 
 
     {can('nodes.manage') && selected && <NodeDialog key={selected.id} host={selected} profiles={profiles} onClose={closeNode} onRefresh={onRefresh} />}
-    {selectedId && !selected && <p className="inline-warning">{t('ui.c8092b965a4c')}{selectedId} {t('ui.06e86425ae4c')}</p>}
+    {selectedId && !selected && <p className="inline-warning"><TranslatedText message="copy.NodeManagement.6595a07c" values={{ p0: selectedId }} /></p>}
   {connectOpen && <AgentOnboardingDialog onClose={() => setConnectOpen(false)} onChanged={onRefresh} />}</section>;
 }

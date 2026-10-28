@@ -14,7 +14,7 @@
 }
 
 .user-record-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; flex: none; }
-.user-reset-trigger { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; }
+.user-reset-trigger { display: inline-flex; align-items: center; gap: 8px; margin-inline-end: auto; }
 .modal.user-password-dialog { width: min(100%, 36rem); }
 .user-password-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .user-password-fields > label { display: grid; grid-template-rows: subgrid; grid-row: span 2; min-width: 0; }
@@ -31,12 +31,12 @@
   .admin-workspace .user-record-actions { grid-column: 3; grid-row: 1 / span 2; }
 }
 @media (max-width: 760px) {
-  .admin-workspace .user-record-registration { flex-basis: calc(100% - 54px); margin-left: 54px; }
-  .admin-workspace .user-record-actions { flex-basis: calc(100% - 54px); margin-left: 54px; justify-content: flex-start; }
+  .admin-workspace .user-record-registration { flex-basis: calc(100% - 54px); margin-inline-start: 54px; }
+  .admin-workspace .user-record-actions { flex-basis: calc(100% - 54px); margin-inline-start: 54px; justify-content: flex-start; }
 }
 @media (max-width: 600px) {
   .user-password-fields { grid-template-columns: 1fr; }
-  .user-reset-trigger { flex-basis: 100%; margin-right: 0; }
+  .user-reset-trigger { flex-basis: 100%; margin-inline-end: 0; }
 }
 
 .modal.user-delete-dialog { width: min(100%, 36rem); }

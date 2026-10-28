@@ -171,3 +171,42 @@ test('an early image frame is discarded when its session unmounts', () => {
   stream.flushLayout();
   assert.equal(stream.hook.imageRef.current.src, undefined);
 });
+
+
+test('audio reconfiguration closes the old decoder and discards its queued samples', () => {
+  const stream = mountStream();
+  stream.socket.message(audioConfig);
+  stream.socket.message(audioConfig);
+  assert.equal(stream.audios[0].closeCalls, 1);
+  const pending = frame();
+  const updatesBefore = stream.updates.length;
+  stream.audios[0].callbacks.output(pending);
+  assert.equal(pending.closeCalls, 1);
+  assert.equal(stream.updates.length, updatesBefore);
+  stream.unmount();
+  assert.equal(stream.audios[1].closeCalls, 1);
+});
+
+test('a rejected audio codec releases its decoder and leaves video recoverable', () => {
+  const stream = mountStream();
+  stream.socket.message({ ...audioConfig, codec: 'unsupported' });
+  assert.equal(stream.audios[0].closeCalls, 1);
+  assert.equal(stream.socket.readyState, 1);
+  stream.socket.message(videoConfig);
+  assert.equal(stream.videos[0].state, 'configured');
+  stream.unmount();
+});
+
+test('audio output queued before disconnect or unmount closes without publishing state', () => {
+  for (const disconnect of [stream => stream.socket.finishClose(), stream => stream.unmount()]) {
+    const stream = mountStream();
+    stream.socket.message(audioConfig);
+    disconnect(stream);
+    const updatesBefore = stream.updates.length;
+    const pending = frame();
+    stream.audios[0].callbacks.output(pending);
+    assert.equal(pending.closeCalls, 1);
+    assert.equal(stream.updates.length, updatesBefore);
+    stream.unmount();
+  }
+});

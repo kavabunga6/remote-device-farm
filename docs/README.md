@@ -15,6 +15,8 @@
 ## Для пользователей
 
 - [Сессии, файлы, консоль, запись экрана и ADB](guides/sessions.md).
+- [Сетевой инспектор и WebView](guides/device-debugging.md).
+- [Установка наборов APK](guides/apk-sets.md).
 - [Какие образы можно запускать](guides/images.md).
 - [Если что-то не работает](troubleshooting.md).
 

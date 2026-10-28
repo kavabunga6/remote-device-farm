@@ -1,3 +1,5 @@
+import examples from '../../shared/interface-examples.json';
+import { TranslatedText } from './TranslatedText';
 import { getLanguage, getLocale, localizeText, t } from './i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from './icons';
@@ -5,8 +7,8 @@ import './ApplicationLogStream.css';
 
 type Entry = { id: string; occurredAt: string; level: 'debug' | 'info' | 'warning' | 'error'; source?: 'server' | 'agent' | 'emulator'; message: string };
 const CAPACITY = 2000;
-const levelLabel = { debug: 'DEBUG', info: 'INFO', warning: 'WARN', error: 'ERROR' };
-const textLine = (entry: Entry) => `${entry.occurredAt} ${levelLabel[entry.level]} [${entry.source ?? 'server'}] ${entry.message}`;
+const levelLabel = examples.logLevels;
+const textLine = (entry: Entry) => `${entry.occurredAt} ${levelLabel[entry.level]} [${entry.source ?? examples.serverLogSource}] ${entry.message}`;
 
 export function ApplicationLogStream() {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -65,7 +67,7 @@ export function ApplicationLogStream() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   return <section className="application-log" aria-label={t('ui.400d4bb34893')}>
-    <div className="application-log-intro"><div><h3>{t('ui.400d4bb34893')}</h3><p>{t('ui.9dc322c63fa2')}{CAPACITY.toLocaleString(getLocale())} {t('ui.f105b20e3c88')}</p></div>
+    <div className="application-log-intro"><div><h3>{t('ui.400d4bb34893')}</h3><p><TranslatedText message="copy.ApplicationLogStream.9678e694" values={{ p0: CAPACITY.toLocaleString(getLocale()) }} /></p></div>
       <span className={'application-log-connection is-' + connection} role="status"><span aria-hidden="true" />{connection === 'live' ? t('ui.128f434e8bf8') : connection === 'connecting' ? t('ui.752829a478a6') : connection === 'denied' ? t('ui.5f124a9d0609') : t('ui.275cb49eede9')}</span>
     </div>
     <div className="application-log-toolbar">
@@ -85,11 +87,11 @@ export function ApplicationLogStream() {
       const box = event.currentTarget;
       setFollowing(box.scrollHeight - box.scrollTop - box.clientHeight < 32);
     }}>
-      {visible.length ? <pre>{visible.map(entry => <span className={'application-log-line is-' + entry.level} key={entry.id}><span className="application-log-time">{entry.occurredAt}</span>{' '}<span className="application-log-level">{levelLabel[entry.level].padEnd(5)}</span>{' [' + (entry.source ?? 'server') + '] '}{entry.message}{'\n'}</span>)}</pre> :
+      {visible.length ? <pre>{visible.map(entry => <span className={'application-log-line is-' + entry.level} key={entry.id}><span className="application-log-time">{entry.occurredAt}</span>{' '}<span className="application-log-level">{levelLabel[entry.level].padEnd(5)}</span>{' [' + (entry.source ?? examples.serverLogSource) + '] '}{entry.message}{'\n'}</span>)}</pre> :
         <p className="application-log-empty">{connection === 'connecting' ? t('ui.48e8674821e6') : entries.length ? t('ui.cf85a43c3b76') : t('ui.c8ba28053344')}</p>}
     </div>
     <div className="application-log-footer">
-      <span>{t('ui.5ac780ba11a5')}{visible.length.toLocaleString(getLocale())}{paused && t('ui.1f7cd169c3de') + (unread ? t('ui.f8a40f8ec8e7') + unread : '')}</span>
+      <span><TranslatedText message="copy.ApplicationLogStream.63ab2190" values={{ p0: visible.length.toLocaleString(getLocale()), p1: paused && t('copy.ApplicationLogStream.a4ae9007', { p0: (unread ? t('ui.f8a40f8ec8e7') + unread : '') }) }} /></span>
       <span role="status">{localizeText(copyState)}</span>
       <button className="text-button" type="button" disabled={!visible.length || following} onClick={() => { setFollowing(true); if (viewport.current) viewport.current.scrollTop = viewport.current.scrollHeight; }}><Icon name="arrowDown" size={16} />{t('ui.33da185d65d6')}</button>
     </div>

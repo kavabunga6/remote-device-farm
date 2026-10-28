@@ -51,7 +51,7 @@ export function formatAppSize(bytes: number): string {
 
 // Quick client-side checks before a file is sent; the server repeats them.
 export function checkUploadFile(file: { name: string; size: number }, usage: AppUsage | null): string | null {
-  if (!file.name.toLowerCase().endsWith('.apk')) return t('ui.0e439a7ac922');
+  if (!/\.(apk|apks|zip)$/i.test(file.name)) return t('apps.invalidSet');
   if (file.size === 0) return t('ui.f4d7c310e609');
   if (usage) {
     if (file.size > usage.maxFileBytes) return t('ui.3b766b022e94', { p0: formatMb(usage.maxFileBytes) });

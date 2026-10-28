@@ -1,0 +1,18 @@
+ .registration-settings{border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface);margin-bottom:1.25rem}
+.registration-settings>summary{cursor:pointer;padding:1rem 1.25rem;font-weight:650;color:var(--ui-text)}
+.registration-settings form{display:grid;gap:1rem;padding:0 1.25rem 1.25rem;max-width:44rem}
+.registration-settings p{margin:0;color:var(--ui-subtle);line-height:1.5}
+.registration-toggle{display:flex;gap:1rem;align-items:center;justify-content:space-between;min-height:2.75rem}
+.registration-toggle input{appearance:none;position:relative;flex:none;width:2.5rem;height:1.5rem;min-height:0;margin:0;padding:0;border:1px solid var(--ui-border);border-radius:999px;background:var(--ui-inset);cursor:pointer}
+.registration-toggle input::before{content:"";position:absolute;left:3px;top:3px;width:1rem;height:1rem;border-radius:50%;background:var(--ui-subtle)}
+.registration-toggle input:checked{background:var(--accent);border-color:var(--accent)}
+.registration-toggle input:checked::before{left:calc(100% - 1rem - 3px);background:var(--ui-surface)}
+.registration-toggle input:disabled{opacity:.55;cursor:not-allowed}
+.registration-role{display:grid;gap:.5rem;font-size:.875rem;font-weight:600;color:var(--ui-text)}
+.registration-role select{box-sizing:border-box;width:100%;min-height:2.75rem;padding:.625rem 2.5rem .625rem .75rem;border:1px solid var(--ui-border);border-radius:8px;background-color:var(--ui-inset);color:var(--ui-text);font:inherit;font-weight:500;line-height:1.5}
+.registration-role small{color:var(--ui-subtle);font-weight:400;line-height:1.5}
+.registration-settings .form-save-actions{justify-content:flex-start}
+.registration-settings .form-save-actions .button{min-height:2.75rem}
+.registration-settings .registration-settings-saved{color:var(--accent)}
+
+.registration-settings :is(input,select,button,summary):focus-visible{outline:2px solid var(--accent);outline-offset:2px}

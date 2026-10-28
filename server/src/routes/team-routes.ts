@@ -1,3 +1,4 @@
+import { diagnostic } from '../diagnostics.js';
 import { uiMessage } from '../messages.js';
 import { randomUUID } from 'node:crypto';
 import type { Express, Response } from 'express';
@@ -51,7 +52,7 @@ export function registerTeamRoutes(app: Express, context: ServerContext): void {
   }
   const audit = (res: Response, action: string, id: string) =>
     recordAuditEvent(pool, { action, actor: current(res).user, targetType: 'team', targetId: id }).catch(() => {
-      console.error('Audit event persistence failed');
+      console.error(diagnostic('team-routes.57acf9a777'));
     });
 
   app.get('/api/admin/teams', requireAuth, requireAdmin, route(async (_req, res) => {

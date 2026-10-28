@@ -60,6 +60,9 @@ function architectureMatches(profile: Profile, host: Host): boolean {
 /** Compatibility and availability; occupied slots are handled separately so a valid request can queue. */
 export function hostLaunchIssues(profile: Profile | undefined, host: Host, mode: LaunchMode, privileged = false, options: SessionLaunchOptions = {}): LaunchIssue[] {
   const issues: LaunchIssue[] = [];
+  if (host.providers?.some(provider => provider.kind === 'emulator' && provider.status === 'unavailable')) {
+    issues.push(nodeIssue(host, 'provider_unavailable', t('api.provider_unavailable'), t('providers.unavailableHint')));
+  }
   if (host.disabled) issues.push(nodeIssue(host, 'host_disabled', t('ui.da96a62f49ba'),
     t('ui.6c3bb15db73e')));
   if (host.status !== 'online') issues.push(nodeIssue(host, 'host_offline', t('ui.e97506a30a79'),
@@ -73,7 +76,7 @@ export function hostLaunchIssues(profile: Profile | undefined, host: Host, mode:
   if (host.status === 'online' && !host.disabled && host.maxSessions <= 0) issues.push(nodeIssue(host, 'host_no_capacity',
     t('ui.c9ea189dc21c'), t('ui.04657fbe0f52')));
   if (profile && !architectureMatches(profile, host)) issues.push(nodeIssue(host, 'host_architecture',
-    'ABI ' + profile.abi + t('ui.5505b34233f8') + host.architecture + '.',
+    t('copy.launch-readiness.b5b64f92', { p0: profile.abi, p1: host.architecture }),
     t('ui.532ef516e6e1')));
   if (mode === 'nvidia' && !hostGpuBackend(host)) issues.push(nodeIssue(host, 'host_gpu_unavailable',
     t('ui.b50c5958d488'),

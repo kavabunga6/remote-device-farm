@@ -84,7 +84,7 @@ export function parseConsoleCommand(value: string): string[] {
     return ['shell', argumentsText];
   }
   if (NO_ARGUMENT_COMMANDS.has(operation)) {
-    if (argumentsText) throw new Error(t('ui.b0bfb51ebd1f') + operation + t('ui.6b7e1fd923d6'));
+    if (argumentsText) throw new Error(t('copy.console-commands.658b8cac', { p0: operation }));
     return [operation];
   }
   const args = splitArgs(argumentsText);
@@ -149,7 +149,7 @@ export function dynamicConsoleHints(query: string, services: { cmd: string[]; du
   else if (prefix) kind = 'packages';
   if (!kind) return [];
   return services[kind].slice(0, 256).map(name => {
-    const command = kind === 'cmd' ? 'cmd ' + name + t('ui.44ec792cdb00')
+    const command = kind === 'cmd' ? t('copy.console-commands.c9a90302', { p0: name })
       : kind === 'dumpsys' ? 'dumpsys ' + name : prefix + ' ' + name;
     return {
       command, syntax: command, label: name,

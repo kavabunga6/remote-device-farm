@@ -1,3 +1,5 @@
+import { normalizeProviderStatuses, sessionCapabilities } from './generated/device-contract';
+import type { DeviceProviderStatus, DeviceDescriptor, DevicePlatform, PhysicalDeviceKind, DeviceAvailability } from './generated/device-contract';
 import { withRequestDeadline, RequestTimeoutError } from './request-deadline';
 import { knownErrorMessages, errorMessage, t } from './i18n';
 import { physicalDevices } from './devices';
@@ -7,6 +9,7 @@ export type AuthMethod = 'local' | 'ldap' | 'oidc' | 'none';
 export interface SessionLimits { maxSessionsPerUser: number; idleTimeoutMinutes: number; maxSessionHours: number }
 
 export interface AppConfig {
+  registrationEnabled?: boolean;
   authMethods: AuthMethod[];
   oidcLoginUrl?: string;
   limits?: SessionLimits;
@@ -48,11 +51,12 @@ export interface LiveHostTelemetry {
   gpuTelemetry?: GpuTelemetry[];
 }
 
-export type DeviceKind = 'usb-android';
-export type DeviceState = 'free' | 'busy' | 'cleaning' | 'quarantined' | 'unauthorized' | 'offline' | string;
-export interface HostDevice { kind: DeviceKind; platform?: string | null; id: string; model: string | null; state: DeviceState; reason: string | null }
+export type DeviceKind = PhysicalDeviceKind;
+export type DeviceState = DeviceAvailability | string;
+export type HostDevice = DeviceDescriptor;
 
 export interface Host extends LiveHostTelemetry {
+  providers?: DeviceProviderStatus[];
   privilegedEmulatorsAllowed?: boolean;
   devices: HostDevice[];
   id: string;
@@ -101,6 +105,7 @@ export interface Host extends LiveHostTelemetry {
 }
 
 interface HostPayload {
+  providers?: unknown;
   devices?: unknown;
   id: string;
   name: string;
@@ -151,7 +156,7 @@ interface HostPayload {
 
 function hostFromPayload(host: HostPayload): Host {
   return {
-    id: host.id, name: host.name, agentName: host.agentName, devices: physicalDevices(host.devices),
+    id: host.id, name: host.name, agentName: host.agentName, devices: physicalDevices(host.devices), providers: normalizeProviderStatuses(host.providers),
     displayName: host.displayName, status: host.status,
     cpuCores: host.metrics?.cpuCores ?? 0,
     cpuPhysicalCores: host.metrics?.cpuPhysicalCores, cpuThreads: host.metrics?.cpuThreads,
@@ -299,6 +304,8 @@ export interface ProfileImportResult {
 }
 
 export interface DeviceSession {
+  platform?: DevicePlatform;
+  sdkLevel?: number | null; osVersion?: string | null; capabilityReasons?: DeviceDescriptor['capabilityReasons'];
   /** Effective launch settings retained for recreating the same session. */
   launchOptions?: SessionLaunchOptions;
   gpuMode?: 'software' | 'nvidia';
@@ -412,7 +419,9 @@ const API_BASE = '/api';
 // Server messages are English; people see these instead for the cases they can act on.
 export const KNOWN_ERRORS: Record<string, string> = knownErrorMessages();
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+type RequestOptions = RequestInit & { timeoutMs?: number };
+async function request<T>(path: string, input: RequestOptions = {}): Promise<T> {
+  const { timeoutMs, ...options } = input;
   try {
     return await withRequestDeadline(async signal => {
       const response = await fetch(`${API_BASE}${path}`, {
@@ -447,7 +456,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       }
 
       return body as T;
-    }, { signal: options.signal });
+    }, { signal: options.signal, timeoutMs });
   } catch (cause) {
     if (cause instanceof RequestTimeoutError) throw new ApiError(t('error.timeout'), 408);
     throw cause;
@@ -455,7 +464,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 // Feature modules (queue, sharing, apps...) call the API through these instead of editing this file.
-export const apiRequest = <T,>(path: string, options: RequestInit = {}): Promise<T> => request<T>(path, options);
+export const apiRequest = <T,>(path: string, options: RequestOptions = {}): Promise<T> => request<T>(path, options);
 export const jsonBody = (value: unknown): string => JSON.stringify(value);
 
 function json(value: unknown): string {
@@ -472,6 +481,7 @@ export const api = {
     if (result.oidcEnabled && !modes.includes('oidc')) modes.push('oidc');
     return {
       authMethods: modes,
+      registrationEnabled: result.registrationEnabled === true,
       oidcLoginUrl: result.oidcLoginUrl,
       limits: result.limits,
     };
@@ -485,8 +495,8 @@ export const api = {
     return result.user;
   },
   logout: () => request<void>('/logout', { method: 'POST' }),
-  async hosts(): Promise<Host[]> {
-    const result = await request<{ hosts: HostPayload[] }>('/hosts');
+  async hosts(signal?: AbortSignal): Promise<Host[]> {
+    const result = await request<{ hosts: HostPayload[] }>('/hosts', { signal });
     return result.hosts.map(hostFromPayload);
   },
   async profiles(): Promise<Profile[]> {
@@ -499,19 +509,19 @@ export const api = {
   },
   async sessions(): Promise<DeviceSession[]> {
     const result = await request<{ sessions: Array<Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' }> }>('/sessions');
-    return result.sessions.map(session => ({ ...session, status: session.state === 'failed' ? 'error' : session.state }));
+    return result.sessions.map(session => ({ ...session, capabilities: sessionCapabilities(session.deviceKind ?? 'emulator', session.capabilities), status: session.state === 'failed' ? 'error' : session.state }));
   },
   async session(id: string): Promise<DeviceSession> {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>(`/sessions/${encodeURIComponent(id)}`);
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   async createSession(hostId: string, profileId: string, adbKeyId: string | null = null, gpuMode?: 'software' | 'nvidia', storage: { diskGb?: number; sdcardGb?: number } = {}, launchOptions?: SessionLaunchOptions): Promise<DeviceSession> {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>('/sessions', { method: 'POST', body: json({ hostId, profileId, adbKeyId, gpuMode, ...storage, launchOptions }) });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   async rentDevice(hostId: string, deviceKind: DeviceKind, deviceId: string): Promise<DeviceSession> {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>('/sessions', { method: 'POST', body: json({ hostId, deviceKind, deviceId }) });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   sanitizeDevice: (hostId: string, kind: DeviceKind, deviceId: string) =>
     request<{ clean: boolean }>('/admin/hosts/' + encodeURIComponent(hostId) + '/devices/sanitize', { method: 'POST', body: json({ kind, deviceId }) }),
@@ -519,15 +529,15 @@ export const api = {
   killSession: (id: string) => request<{ ok: boolean; released?: boolean }>(`/sessions/${encodeURIComponent(id)}/kill`, { method: 'POST' }),
   async rotate(id: string, orientation: 'portrait' | 'landscape'): Promise<DeviceSession> {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>(`/sessions/${encodeURIComponent(id)}/rotate`, { method: 'POST', body: json({ orientation }) });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   async setAudio(id: string, enabled: boolean): Promise<DeviceSession> {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>(`/sessions/${encodeURIComponent(id)}/audio`, { method: 'POST', body: json({ enabled }) });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   async setNetwork(id: string, enabled: boolean): Promise<DeviceSession> {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>(`/sessions/${encodeURIComponent(id)}/network`, { method: 'POST', body: json({ enabled }) });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   uploadFile: (id: string, file: File) => {
     const body = new FormData();
@@ -548,11 +558,11 @@ export const api = {
   },
   keepAlive: async (id: string): Promise<DeviceSession> => {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>(`/sessions/${encodeURIComponent(id)}/keepalive`, { method: 'POST' });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   renameSession: async (id: string, label: string | null): Promise<DeviceSession> => {
     const result = await request<{ session: Omit<DeviceSession, 'status'> & { state: DeviceSession['status'] | 'failed' } }>(`/sessions/${encodeURIComponent(id)}`, { method: 'PATCH', body: json({ label }) });
-    return { ...result.session, status: result.session.state === 'failed' ? 'error' : result.session.state };
+    return { ...result.session, capabilities: sessionCapabilities(result.session.deviceKind ?? 'emulator', result.session.capabilities), status: result.session.state === 'failed' ? 'error' : result.session.state };
   },
   clearLogcat: (id: string) => request<{ ok: boolean }>(`/sessions/${encodeURIComponent(id)}/logcat/clear`, { method: 'POST' }),
   deviceInfo: (id: string) => request<DeviceInfo>(`/sessions/${encodeURIComponent(id)}/device-info`),
@@ -601,13 +611,13 @@ export const api = {
     return result.occupants;
   },
   async agentBundleInfo(): Promise<AgentBundleInfo> {
-    return request<AgentBundleInfo>('/admin/agent-bundle/info');
+    return request<AgentBundleInfo>('/downloads/agent/info');
   },
   async agents(): Promise<AgentCredential[]> {
     const result = await request<{ agents: AgentCredential[] }>('/admin/agents');
     return result.agents;
   },
-  createAgent: (hostId: string) => request<{ token: string; agent: AgentCredential }>('/admin/agents', { method: 'POST', body: json({ hostId }) }),
+  createAgent: (hostId?: string) => request<{ token: string; agent: AgentCredential }>('/admin/agents', { method: 'POST', body: json(hostId === undefined ? {} : { hostId }) }),
   revokeAgent: (hostId: string) => request<void>(`/admin/agents/${encodeURIComponent(hostId)}`, { method: 'DELETE' }),
   async users(): Promise<AdminUser[]> {
     const result = await request<{ users: AdminUser[] }>('/admin/users');

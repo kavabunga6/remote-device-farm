@@ -1,0 +1,27 @@
+.device-debug-panel { display:flex; flex-direction:column; gap:16px; padding:20px; min-width:0; }
+.device-debug-panel[hidden] { display:none; }
+.device-debug-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.device-debug-head h2 { margin:0 0 6px; font-size:1.15rem; }
+.device-debug-head p, .device-debug-hint { margin:0; color:var(--ui-muted); line-height:1.55; font-size:.9rem; }
+.device-debug-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.device-debug-actions .button, .device-debug-head .button { min-height:40px; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+.device-debug-panel :is(input[type="search"], select, textarea) { border:1px solid var(--ui-border); border-radius:10px; background-color:var(--ui-inset); color:var(--ui-text); padding:10px 12px; }
+.device-debug-panel select { padding-inline-end:40px; }
+.device-debug-panel .button:not(.primary) { background:var(--ui-inset); border-color:var(--ui-border); color:var(--ui-text); }
+.device-debug-panel .button[aria-disabled="true"] { opacity:.48; cursor:not-allowed; }
+.device-debug-state { display:flex; align-items:center; gap:8px; font-weight:650; color:var(--ui-muted); }
+.device-debug-state[data-recording="true"] { color:var(--accent); }
+.device-debug-field { display:grid; gap:8px; min-width:0; }
+.device-debug-field input, .device-debug-field select, .device-debug-panel textarea { width:100%; box-sizing:border-box; min-height:40px; }
+.device-debug-panel textarea { resize:vertical; min-height:100px; font-family:var(--font-mono, monospace); }
+.device-debug-code { overflow:auto; max-height:50vh; min-height:70px; margin:0; padding:14px; background:var(--ui-inset); border:1px solid var(--ui-border); border-radius:10px; font: .85rem/1.6 var(--font-mono, monospace); white-space:pre-wrap; overflow-wrap:anywhere; tab-size:2; }
+.device-debug-table { overflow:auto; max-height:55vh; border:1px solid var(--ui-border); border-radius:10px; }
+.device-debug-table table { width:100%; border-collapse:collapse; font-size:.85rem; }
+.device-debug-table th { position:sticky; top:0; background:var(--ui-surface); color:var(--ui-muted); text-align:start; padding:10px; white-space:nowrap; z-index:1; }
+.device-debug-table td { border-top:1px solid var(--ui-border); padding:10px; vertical-align:top; font-variant-numeric:tabular-nums; }
+.device-debug-table td:not(:first-child) { white-space:nowrap; }
+.device-debug-table .debug-url { padding:0; border:0; background:none; color:var(--ui-text); cursor:pointer; text-align:start; font:inherit; overflow-wrap:anywhere; min-width:140px; }
+.device-debug-table .debug-url:hover { color:var(--accent); }
+.debug-url small { display:block; font-family:var(--font-mono, monospace); color:var(--ui-muted); margin-top:5px; }
+.device-debug-check { display:flex; align-items:center; gap:8px; }
+.device-debug-endpoint { overflow-wrap:anywhere; font-size:.85rem; }

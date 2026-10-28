@@ -41,7 +41,7 @@ test('node card whitespace opens the same settings as its native link', async ({
 
 test('profile and local user cards support whitespace and native keyboard buttons', async ({ page }) => {
   await page.goto('/#/admin/profiles');
-  const profile = page.locator('.profile-card').first();
+  const profile = page.locator('.admin-profile-row').first();
   await whitespace(profile);
   await expect(page.getByRole('dialog', { name: 'Изменить профиль' })).toBeVisible();
   await closeDialog(page);
@@ -51,8 +51,9 @@ test('profile and local user cards support whitespace and native keyboard button
     await expect(page.getByRole('dialog', { name: 'Изменить профиль' })).toBeVisible();
     await closeDialog(page);
   }
-  await profile.getByText('Образ и параметры', { exact: true }).click();
-  await expect(profile.locator('details')).toHaveAttribute('open', '');
+  const details = profile.getByRole('button', { name: /^Образ и параметры:/ });
+  await details.click();
+  await expect(details).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await profile.getByRole('button', { name: 'Отключить', exact: true }).click();
   await expect(page.getByRole('alertdialog')).toContainText('Отключить профиль?');

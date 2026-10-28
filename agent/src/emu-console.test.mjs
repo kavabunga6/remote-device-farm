@@ -261,3 +261,12 @@ test('standard 5554-style console is reached when the Google internal port is cl
   assert.equal(result.exitCode, 0, result.stderr);
   assert.deepEqual(lab.received, [[], ['network status']]);
 });
+
+
+test('packet capture accepts only the confined bare filename', () => {
+  assert.deepEqual(validateEmuConsoleArgs(['network', 'capture', 'start', 'rdf-capture.pcap']),
+    ['network', 'capture', 'start', 'rdf-capture.pcap']);
+  for (const file of ['/rdf-network/capture.pcap', '../rdf-capture.pcap', 'other.pcap', '/etc/passwd']) {
+    assert.throws(() => validateEmuConsoleArgs(['network', 'capture', 'start', file]));
+  }
+});

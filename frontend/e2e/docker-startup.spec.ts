@@ -1,3 +1,4 @@
+import { openLaunchSection } from './launch-controls';
 import { expect, test, type Page } from '@playwright/test';
 import type { StartupProgress } from '../src/api';
 
@@ -30,9 +31,11 @@ test('published Docker image reports download, creation and connection without a
   const { state, modal } = await fixture(page);
   await expect(modal.locator('.create-launch-status')).toContainText('Готов к запуску');
   await expect(modal.getByRole('combobox', { name: 'Устройство', exact: true })).toBeEnabled();
-  await modal.locator('.create-settings > summary').click();
+  await modal.locator('#create-tab-settings').click();
+  await openLaunchSection(modal, 'connection');
+  await modal.locator('#create-tab-device').click();
   await expect(modal.getByRole('switch', { name: 'Ускорение GPU' })).toBeEnabled();
-  await expect(modal.locator('#create-gpu-help')).toContainText('можно включить');
+  await expect(modal.locator('#create-gpu-help')).toHaveText('Выключено');
   await expect(modal.getByRole('button', { name: 'Запустить', exact: true })).toBeEnabled();
   await modal.getByRole('button', { name: 'Запустить', exact: true }).click();
   const progress = page.locator('.session-startup-progress');

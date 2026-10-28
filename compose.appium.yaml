@@ -1,0 +1,19 @@
+# Optional managed Appium worker. Requires an operator-installed Android SDK.
+services:
+  agent:
+    image: remote-device-farm-agent-appium:local
+    build:
+      context: ./examples/appium
+      dockerfile: ../../agent/Dockerfile.appium
+      args:
+        AGENT_IMAGE: ${RDF_BASE_AGENT_IMAGE:-remote-device-farm-agent:local}
+    mem_limit: 2g
+    environment:
+      RDF_APPIUM_MAX_WORKERS: 2
+      RDF_APPIUM_TMPDIR: /var/run/rdf-appium
+      RDF_APPIUM_ENTRY: /opt/rdf-appium/node_modules/appium/index.js
+      ANDROID_HOME: /opt/android-sdk
+    tmpfs:
+      - /var/run/rdf-appium:rw,nosuid,nodev,exec,mode=0700,uid=10001,gid=10001,size=384m
+    volumes:
+      - ${RDF_ANDROID_SDK_DIR:?Set RDF_ANDROID_SDK_DIR to the Android SDK directory}:/opt/android-sdk:ro

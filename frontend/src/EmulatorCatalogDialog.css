@@ -1,14 +1,14 @@
 .modal.emulator-catalog{width:min(64rem,calc(100vw / var(--user-font-scale,1) - 48px));max-height:calc(100dvh / var(--user-font-scale,1) - 48px);padding:0;display:flex;flex-direction:column;overflow:hidden}
 .emulator-catalog .modal-top{padding:22px 28px 18px;border-bottom:1px solid var(--ui-border);gap:16px}
 .emulator-catalog .modal-top h2{margin:0;font-size:1.375rem}
-.emulator-catalog .modal-description{margin:6px 0 0;color:var(--ui-subtle);font-size:.875rem;line-height:1.5;max-width:46rem}
+.emulator-catalog .modal-description{margin:6px 0 0;color:var(--ui-subtle);font-size:.875rem;line-height:1.5;max-width:none;text-wrap:pretty}
 .emulator-catalog-visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 .emulator-catalog-body{flex:1;min-height:0;overflow-y:auto;padding:18px 28px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-content:start}
 .emulator-catalog-settings{border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-inset)}
 .emulator-catalog-settings>summary{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 18px;cursor:pointer;list-style:none}
 .emulator-catalog-settings>summary::-webkit-details-marker{display:none}
 .emulator-catalog-settings>summary strong{font-size:.9375rem;color:var(--ui-text)}
-.emulator-catalog-settings>summary span{margin-left:auto;font-size:.8125rem;color:var(--ui-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.emulator-catalog-settings>summary span{margin-inline-start:auto;font-size:.8125rem;color:var(--ui-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .emulator-catalog-settings[open]>summary>svg{transform:rotate(180deg)}
 /* Named sections keep labels, controls and help in a predictable reading order. */
 .emulator-catalog-settings-content{display:grid;gap:16px;padding:4px 18px 16px}
@@ -51,7 +51,7 @@
 .emulator-catalog-progress{height:6px;border-radius:99px;background:color-mix(in srgb,var(--ui-text) 12%,transparent);overflow:hidden}
 .emulator-catalog-progress>span{display:block;height:100%;border-radius:99px;background:#60a5fa}
 .emulator-catalog-error{margin:0;color:var(--error,#dc2626);font-size:.75rem;line-height:1.5;overflow-wrap:anywhere}
-.emulator-catalog-status{display:grid;min-width:0;gap:8px;justify-items:end;text-align:right}
+.emulator-catalog-status{display:grid;min-width:0;gap:8px;justify-items:end;text-align:end}
 .emulator-catalog-state{font-size:.8125rem;font-weight:700;color:var(--ui-subtle)}
 .emulator-catalog-item[data-state=built] .emulator-catalog-state{color:var(--accent)}
 .emulator-catalog-item[data-state=building] .emulator-catalog-state{color:#3b82f6}
@@ -84,7 +84,7 @@
   .emulator-catalog-item{grid-template-columns:auto minmax(0,1fr);padding:12px;gap:8px}
   .emulator-catalog-check{align-self:start}
   .emulator-catalog-package>.icon-button{width:44px;height:44px;min-height:44px}
-  .emulator-catalog-status{grid-column:2;justify-items:start;text-align:left}
+  .emulator-catalog-status{grid-column:2;justify-items:start;text-align:start}
   .emulator-catalog-body{padding:16px}
   .emulator-catalog-footer{flex-wrap:wrap;padding:12px 16px}
 }
@@ -96,20 +96,20 @@
 .emulator-catalog-prewarm>summary{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;list-style:none}
 .emulator-catalog-prewarm>summary::-webkit-details-marker{display:none}
 .emulator-catalog-prewarm>summary strong{font-size:.875rem;color:var(--ui-text)}
-.emulator-catalog-prewarm>summary span{margin-left:auto;font-size:.75rem;color:var(--ui-subtle)}
+.emulator-catalog-prewarm>summary span{margin-inline-start:auto;font-size:.75rem;color:var(--ui-subtle)}
 .emulator-catalog-prewarm>summary svg{flex:none}
 .emulator-catalog-prewarm[open]>summary>svg{transform:rotate(180deg)}
 .emulator-catalog-prewarm ul{list-style:none;padding:0 16px 12px;margin:0;max-height:20rem;overflow:auto}
 .emulator-catalog-prewarm li{display:grid;grid-template-columns:minmax(6rem,1fr) minmax(0,3fr) minmax(7rem,auto);gap:12px;padding:12px 0;border-top:1px solid var(--ui-border);align-items:start;font-size:.8125rem}
 .emulator-catalog-prewarm li>strong,.emulator-catalog-prewarm-image{min-width:0;overflow-wrap:anywhere}
 .emulator-catalog-prewarm code{font-family:var(--font-mono);font-size:.75rem;color:var(--ui-subtle);overflow-wrap:anywhere}
-.emulator-catalog-prewarm-state{text-align:right;color:var(--ui-subtle)}
+.emulator-catalog-prewarm-state{text-align:end;color:var(--ui-subtle)}
 .emulator-catalog-prewarm-state[data-state=done]{color:var(--accent)}
 .emulator-catalog-prewarm-state[data-state=failed]{color:var(--error,#dc2626)}
 @media(max-width:760px){
   .emulator-catalog-prewarm-actions{align-items:stretch;flex-direction:column;gap:10px}
   .emulator-catalog-prewarm>summary{flex-wrap:wrap;gap:8px}
-  .emulator-catalog-prewarm>summary span{margin-left:0;flex:1}
+  .emulator-catalog-prewarm>summary span{margin-inline-start:0;flex:1}
   .emulator-catalog-prewarm li{grid-template-columns:minmax(0,1fr) auto}
   .emulator-catalog-prewarm-image{grid-column:1/-1;grid-row:2}
 }
@@ -128,3 +128,16 @@
 
 .emulator-catalog-state{display:inline-flex;align-items:center;gap:6px;min-width:0}
 .emulator-catalog-state .activity-indicator{align-self:center}
+
+.emulator-catalog-filters{border:0;margin:0;padding:0;min-width:0}
+.catalog-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;min-height:22rem;padding:2rem 1.5rem;text-align:center}
+.catalog-loading-symbol{display:grid;place-items:center;width:3rem;height:3rem;color:var(--accent)}
+.catalog-loading-symbol .activity-indicator{width:2rem;height:2rem}
+.catalog-loading-symbol.is-warning{color:var(--ui-warning,#c58b25)}
+.catalog-loading h3{margin:0;color:var(--ui-text);font-size:1.125rem;line-height:1.4}
+.catalog-loading>p{max-width:40rem;margin:0;color:var(--ui-subtle);font-size:.875rem;line-height:1.65;text-wrap:pretty}
+.catalog-loading-metrics{display:flex;flex-wrap:wrap;justify-content:center;gap:.5rem 1.25rem;margin:.5rem 0 0;color:var(--ui-muted);font-size:.75rem;line-height:1.5}
+.catalog-loading-metrics>div{display:flex}
+.catalog-loading-progress{display:flex;flex-wrap:wrap;justify-content:center;gap:.5rem 1rem;color:var(--ui-text);font-size:.8125rem}
+.catalog-load-failure>button{margin-top:.5rem;min-height:2.75rem}
+@media(max-height:650px){.catalog-loading{min-height:15rem}}

@@ -91,8 +91,8 @@
 .side-nav-heading{font-size:.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
 .side-nav a{border:1px solid transparent;border-radius:10px}
 .side-nav a[aria-current=page]{border-color:color-mix(in srgb,var(--accent) 26%,transparent);background:color-mix(in srgb,var(--accent) 11%,transparent)}
-.side-nav a[aria-current=page]::after{content:'';margin-left:auto;width:6px;height:6px;border-radius:99px;background:var(--accent)}
-.side-nav a[aria-current=page] .side-nav-count{margin-left:0}
+.side-nav a[aria-current=page]::after{content:'';margin-inline-start:auto;width:6px;height:6px;border-radius:99px;background:var(--accent)}
+.side-nav a[aria-current=page] .side-nav-count{margin-inline-start:0}
 .side-nav-count{border-radius:99px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font-family:var(--font-mono)}
 .sidebar-bottom{padding-top:12px;border-top:1px solid var(--ui-border)}
 .side-profile{border:1px solid var(--stitch-border-subtle,var(--ui-border));border-radius:12px;background:color-mix(in srgb,var(--ui-surface) 70%,transparent)}

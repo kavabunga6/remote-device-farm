@@ -1,3 +1,4 @@
+import { TranslatedText } from '../TranslatedText';
 import { localizeText, getLocale, t } from '../i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { appsApi, checkUploadFile, formatAppSize, formatMb, uploadApp, type AppUsage, type StoredApp } from '../apps-api';
@@ -11,7 +12,7 @@ const message = (error: unknown): string => error instanceof Error ? error.messa
 const day = (value: string): string => new Date(value).toLocaleDateString(getLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 
 // Apps: upload an APK once, install it into any of your sessions, or install from a URL.
-export function AppsPanel({ sessionId, active, running }: { sessionId: string; active: boolean; running: boolean }) {
+export function AppsPanel({ sessionId, active, running, panelId }: { sessionId: string; active: boolean; running: boolean; panelId?: string }) {
   const [apps, setApps] = useState<StoredApp[]>([]);
   const [usage, setUsage] = useState<AppUsage | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -92,18 +93,18 @@ export function AppsPanel({ sessionId, active, running }: { sessionId: string; a
   const canInstall = running && installing === null;
 
   return (
-    <div className="apps-panel" hidden={!active}
+    <div className="apps-panel" id={panelId} role={panelId ? 'tabpanel' : undefined} aria-labelledby={panelId ? 'tool-tab-apps' : undefined} hidden={!active}
       onDragOver={event => { event.preventDefault(); setDragging(true); }}
       onDragLeave={event => { if (event.currentTarget === event.target) setDragging(false); }}
       onDrop={event => { event.preventDefault(); setDragging(false); void addFiles([...event.dataTransfer.files]); }}>
       <div className="apps-head">
         <div>
           <h2>{t('ui.39c4b42c8d11')}</h2>
-          <p>{t('ui.f59e007e0f3e')}</p>
+          <p>{t('apps.setHint')}</p>
         </div>
         <button type="button" className="button primary" onClick={() => picker.current?.click()}>
           <Icon name="upload" size={16} /> {t('ui.b5d0b38f9faf')}</button>
-        <input ref={picker} type="file" accept=".apk" multiple hidden
+        <input ref={picker} type="file" accept=".apk,.apks,.zip" multiple hidden
           onChange={event => { void addFiles([...(event.target.files ?? [])]); event.target.value = ''; }} />
       </div>
 
@@ -114,7 +115,7 @@ export function AppsPanel({ sessionId, active, running }: { sessionId: string; a
           <div className="apps-meter" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(ratio * 100)}>
             <span className={ratio > 0.9 ? 'warn' : ''} style={{ width: `${ratio * 100}%` }} />
           </div>
-          <span>{t('ui.fc41b279299c')}{formatMb(usage.usedBytes)} {t('ui.e029cc4b39ce')}{formatMb(usage.maxBytes)} {t('ui.883817f1999f')}</span>
+          <span><TranslatedText message="copy.AppsPanel.c1f6cca8" values={{ p0: formatMb(usage.usedBytes), p1: formatMb(usage.maxBytes) }} /></span>
         </div>
       )}
 
@@ -147,7 +148,7 @@ export function AppsPanel({ sessionId, active, running }: { sessionId: string; a
                 <strong title={app.name}>{app.name}</strong>
                 <span className="apps-meta">
                   {app.packageName && <span className="mono">{app.packageName}</span>}
-                  {app.versionName && <span>{t('ui.d9ae8e2e1567')}{app.versionName}</span>}
+                  {app.versionName && <span><TranslatedText message="copy.AppsPanel.1cdae72f" values={{ p0: app.versionName }} /></span>}
                   <span>{formatAppSize(app.size)}</span>
                   <span>{day(app.uploadedAt)}</span>
                 </span>

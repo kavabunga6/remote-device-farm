@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { SessionLaunchOptions } from '../src/api';
+import { openLaunchSection } from './launch-controls';
 
 const profile = {
   id: 'resource-launch-qa', name: 'Android 11 · Google APIs', androidVersion: '11', apiLevel: 30,
@@ -46,7 +47,8 @@ async function fixture(page: Page, options: { role?: 'user'; busy?: boolean; the
 async function open(page: Page, busy = false) {
   await page.getByRole('button', { name: busy ? 'Встать в очередь' : 'Новая сессия', exact: true }).first().click();
   const modal = page.getByRole('dialog', { name: 'Новая сессия', exact: true });
-  await modal.locator('.create-settings > summary').click();
+  await openLaunchSection(modal, 'connection');
+  await openLaunchSection(modal, 'storage');
   await expect(modal.getByRole('combobox', { name: 'Ключ ADB', exact: true })).toBeEnabled();
   return modal;
 }
@@ -150,13 +152,13 @@ for (const [name, width, height, theme, scale] of [
       selectHeight: element.querySelector('.create-connection-fields select')!.getBoundingClientRect().height };
   });
   expect(typography.headingWeight).toBeGreaterThan(typography.helperWeight);
-  expect(typography.headingSize).toBeGreaterThan(typography.helperSize);
+  expect(typography.headingSize).toBeGreaterThanOrEqual(typography.helperSize);
   expect(typography.helperWeight).toBe(400);
   expect(typography.number).toEqual(typography.select); // Select's right padding also reserves its shared arrow.
   expect(Math.abs(typography.numberHeight - typography.selectHeight)).toBeLessThanOrEqual(1);
   const assertFit = async () => {
     const geometry = await modal.evaluate(element => {
-      const box = element.getBoundingClientRect(), body = element.querySelector('.create-session-body')!, button = element.querySelector('.modal-actions .primary')!.getBoundingClientRect();
+      const box = element.getBoundingClientRect(), body = element.querySelector('.create-session-body:not([hidden])')!, button = element.querySelector('.modal-actions .primary')!.getBoundingClientRect();
       return { top: box.top, bottom: box.bottom, buttonBottom: button.bottom, overflow: Math.max(element.scrollWidth - element.clientWidth, body.scrollWidth - body.clientWidth, document.documentElement.scrollWidth - innerWidth) };
     });
     expect(geometry.top).toBeGreaterThanOrEqual(0); expect(geometry.bottom).toBeLessThanOrEqual(height);

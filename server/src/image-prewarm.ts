@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { uiMessage } from './messages.js';
 import { randomUUID } from 'node:crypto';
 import type { Express } from 'express';
@@ -101,7 +102,7 @@ export class ImagePrewarmWorker {
     try {
       const auth = await registryAuthFor(this.pool, await getSecretBox(this.pool, this.secretsKey), job.image, 'pull', job.host_id);
       const result = await this.hub.command(job.host_id, job.host_id, 'image-prewarm', { image: job.image, auth }, PULL_TIMEOUT_MS);
-      if (result.ready !== true || result.image !== job.image) throw new Error('Node did not confirm the requested image digest');
+      if (result.ready !== true || result.image !== job.image) throw new Error(diagnostic('image-prewarm.f5a6d3e46b'));
     } catch {
       // Never put registry credentials or arbitrary agent diagnostics in status responses.
       state = 'failed'; error = 'Image download failed. Check node connectivity, registry access and free disk space; request prewarm again to retry.';

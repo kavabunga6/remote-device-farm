@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.mjs';
 // Input is ephemeral: epochs are explicitly opened, sequences never replay, and
 // deadlines are checked both on arrival and immediately before device execution.
 export const INPUT_MAX_AGE_MS = 1500;
@@ -16,38 +17,38 @@ export class InputGate {
   }
 
   open(sessionId, epoch) {
-    if (typeof epoch !== 'string' || !/^[a-f0-9-]{36}$/i.test(epoch)) throw new InputError('invalid_epoch', 'Invalid input connection');
+    if (typeof epoch !== 'string' || !/^[a-f0-9-]{36}$/i.test(epoch)) throw new InputError('invalid_epoch', diagnostic('input-gate.b3765d5713'));
     let state = this.sessions.get(sessionId);
     if (!state) { state = { peers: new Map(), tail: Promise.resolve(), pending: 0, owner: null, executing: null, reset: Promise.resolve() }; this.sessions.set(sessionId, state); }
     if (!state.peers.has(epoch)) state.peers.set(epoch, { seq: 0, active: true, generation: 0 });
-    else if (!state.peers.get(epoch).active) throw new InputError('input_closed', 'Input connection has closed');
+    else if (!state.peers.get(epoch).active) throw new InputError('input_closed', diagnostic('input-gate.0456f05b87'));
     return { epoch, agentTime: this.now(), inputMaxAgeMs: INPUT_MAX_AGE_MS };
   }
 
   dispatch(sessionId, meta, params, operation) {
     const state = this.sessions.get(sessionId);
     const peer = state?.peers.get(meta?.epoch);
-    if (!peer?.active) throw new InputError('input_closed', 'Input connection has closed');
-    if (!Number.isSafeInteger(meta.seq) || meta.seq <= peer.seq) throw new InputError('input_sequence', 'Input was already received');
+    if (!peer?.active) throw new InputError('input_closed', diagnostic('input-gate.0456f05b87'));
+    if (!Number.isSafeInteger(meta.seq) || meta.seq <= peer.seq) throw new InputError('input_sequence', diagnostic('input-gate.022c2a071f'));
     peer.seq = meta.seq;
     const generation = peer.generation;
     const receivedAt = this.now();
     if (!Number.isFinite(meta.deadline) || meta.deadline <= receivedAt || meta.deadline > receivedAt + INPUT_MAX_AGE_MS + 100) {
       if (params?.kind === 'touch' && params.action === 'up') void this.cancelGesture(sessionId, state, meta.epoch).catch(() => {});
-      throw new InputError('input_expired', 'Input expired before delivery');
+      throw new InputError('input_expired', diagnostic('input-gate.b2e4849545'));
     }
     const releasing = params?.kind === 'touch' && params.action === 'up';
-    if (state.pending >= this.maxPending && !releasing) throw new InputError('input_backlog', 'Input queue is full');
+    if (state.pending >= this.maxPending && !releasing) throw new InputError('input_backlog', diagnostic('input-gate.c974019482'));
     // One release per peer may exceed the regular limit, never an unlimited queue.
     if (state.pending >= this.maxPending + 1) {
       if (releasing) void this.cancelGesture(sessionId, state, meta.epoch).catch(() => {});
-      throw new InputError('input_backlog', 'Input queue is full');
+      throw new InputError('input_backlog', diagnostic('input-gate.c974019482'));
     }
     state.pending++;
     const assertFresh = () => {
-      if (!peer.active || peer.generation !== generation || this.sessions.get(sessionId) !== state) throw new InputError('input_closed', 'Input connection has closed');
-      if (this.now() >= meta.deadline) throw new InputError('input_expired', 'Input expired before execution');
-      if (state.owner && state.owner !== meta.epoch) throw new InputError('input_busy', 'Another viewer is holding the device screen');
+      if (!peer.active || peer.generation !== generation || this.sessions.get(sessionId) !== state) throw new InputError('input_closed', diagnostic('input-gate.0456f05b87'));
+      if (this.now() >= meta.deadline) throw new InputError('input_expired', diagnostic('input-gate.6de971ea49'));
+      if (state.owner && state.owner !== meta.epoch) throw new InputError('input_busy', diagnostic('input-gate.a34bd37dca'));
     };
     const run = state.tail.catch(() => {}).then(async () => {
       await state.reset;

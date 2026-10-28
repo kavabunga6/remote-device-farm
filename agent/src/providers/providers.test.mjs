@@ -388,3 +388,51 @@ test('Android providers capture the selected serial without starting an unrelate
   assert.equal(await ops.screenshot({ serial: 'owned-device' }), frame);
   assert.deepEqual(calls, ['owned-device']);
 });
+
+test('USB capability cache is refreshed for a restored lease and removed when the phone goes offline', async () => {
+  let online = true;
+  const usb = await usbWith({
+    adb: { run: async () => ({ exitCode: 0, stdout: '[ro.build.version.sdk]: [29]\n[ro.build.version.release]: [10]' }) },
+    execute: async () => ({ exitCode: 0, stdout: online ? ADB_LIST : ADB_LIST.replace('device usb:1-2', 'offline usb:1-2') }),
+  });
+  const reply = await usb.start('s-00000001', {});
+  assert.equal(reply.capabilities.includes('audio'), false);
+  assert.equal(reply.capabilities.includes('video'), true);
+  assert.equal(reply.sdkLevel, 29);
+  usb.sessions.get('s-00000001').details = undefined;
+  await usb.maintain();
+  assert.equal(usb.describe(usb.sessions.get('s-00000001')).sdkLevel, 29);
+  online = false;
+  const inventory = await usb.inventory();
+  assert.equal(inventory[0].state, 'offline');
+  assert.equal(inventory[0].capabilities.includes('video'), false);
+  assert.equal(usb.deviceDetails.size, 0);
+});
+
+test('provider failures stay distinct from an empty inventory and do not revoke live sessions', async () => {
+  class Probe extends DeviceProvider {
+    constructor(kind) { super({ kind, platform: 'android' }); this.phase = ''; this.sessions.set('live', {}); }
+    async inventory() { if (this.phase === 'inventory') throw Error('token=synthetic-private-value'); return []; }
+    async reconcile() { if (this.phase === 'reconcile') throw Error('disconnected'); return []; }
+    async maintain() { if (this.phase === 'maintenance') throw Error('storage unavailable'); }
+  }
+  const usb = new Probe('usb-android'), emulator = new Probe('emulator');
+  const registry = new ProviderRegistry([usb, emulator]);
+  for (const phase of ['inventory', 'reconcile', 'maintenance']) {
+    usb.phase = phase;
+    await registry.reconcile(usb.kind); await registry.maintainAll();
+    const failed = await registry.describeProviders();
+    assert.equal(failed[0].status, 'unavailable');
+    assert.equal(failed[0].code, phase + '-unavailable');
+    assert.deepEqual(failed[0].devices, []);
+    assert.equal(JSON.stringify(failed).includes('synthetic-private-value'), false);
+    assert.equal(failed[1].status, 'ready');
+    assert.ok(usb.sessions.has('live'));
+    usb.phase = '';
+    await registry.reconcile(usb.kind); await registry.maintainAll();
+    const recovered = await registry.describeProviders();
+    assert.equal(recovered[0].status, 'ready');
+    assert.equal(recovered[0].code, null);
+    assert.deepEqual(recovered[0].devices, []);
+  }
+});

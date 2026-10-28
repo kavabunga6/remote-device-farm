@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { uiMessage } from './messages.js';
 import { createHmac } from 'node:crypto';
 import dns from 'node:dns';
@@ -106,7 +107,7 @@ export function safeLookup(policy: WebhookPolicy, resolver: Lookup = dns.lookup 
   return ((hostname: string, options: { all?: boolean }, callback: (...args: unknown[]) => void) => {
     resolver(hostname, { all: true } as dns.LookupAllOptions, (error, addresses) => {
       if (error) return callback(error);
-      if (!addresses.length) return callback(new Error('DNS returned no addresses'));
+      if (!addresses.length) return callback(new Error(diagnostic('webhooks.9cc2f768ac')));
       if (!policy.allowPrivate && addresses.some(item => isBlockedAddress(item.address))) {
         return callback(new Error('blocked_address'));
       }

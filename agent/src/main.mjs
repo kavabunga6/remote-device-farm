@@ -1,3 +1,5 @@
+import { diagnostic } from './diagnostics.mjs';
+import { agentMessage } from './messages.mjs';
 import { runKeyed } from './keyed-queue.mjs';
 import { redactDiagnostic } from './session-diagnostics.mjs';
 import WebSocket from 'ws';
@@ -12,6 +14,7 @@ import { ControlClient } from './control-ipc.mjs';
 import { AdbClient, runProcess } from './adb.mjs';
 import { EnvTools } from './env-tools.mjs';
 import { AppTransfers } from './app-transfer.mjs';
+import { ManagedAppium, assertAppiumAndroid } from './managed-appium.mjs';
 import { AdbServerFilter, adbFailure } from './adb-proxy.mjs';
 import { AdbDeviceAuth } from './adb-device-auth.mjs';
 import { StreamManager } from './scrcpy.mjs';
@@ -31,6 +34,7 @@ const hostMetrics = new HostMetricsCollector(control);
 const adb = new AdbClient();
 const envTools = new EnvTools(adb, { control, emuMode: config.emuConsole });
 const appTransfers = new AppTransfers(adb);
+const managedAppium = new ManagedAppium();
 const tunnels = new Map();
 const locks = new Map();
 const startups = new Map();
@@ -67,7 +71,7 @@ rtc = new WebRtcManager({ streams, config: loadRtcConfig(),
 const alerts = new Map();
 function raiseAlert(alert) {
   alerts.set(alert.id, alert);
-  console.error(`ALERT ${alert.event} ${alert.kind}/${alert.deviceId}: ${alert.reason}`);
+  console.error(diagnostic('main.32f13d1a2f', { p0: alert.event, p1: alert.kind, p2: alert.deviceId, p3: alert.reason }));
   send({ type: 'device-alert', ...alert });
 }
 const resendAlerts = () => { for (const alert of alerts.values()) send({ type: 'device-alert', ...alert }); };
@@ -134,25 +138,25 @@ function runMaintenance() {
   if (maintenanceTask) return maintenanceTask;
   maintenanceTask = (async () => {
     await reconcileStoppedSessions();
-    for (const provider of providers) await provider.maintain?.({
+    await registry.maintainAll({
       onLog: event => send({ type: 'session-log', sessionId: event.sessionId, event }),
-    }).catch((error) => console.warn(`${provider.kind} maintenance failed: ${error.message}`));
-  })().catch(error => console.warn(`Agent maintenance failed: ${error.message}`))
+    });
+  })().catch(error => console.warn(diagnostic('main.8a5781451e', { p0: error.message })))
     .finally(() => { maintenanceTask = undefined; });
   return maintenanceTask;
 }
 
 async function reconcileStoppedSessions() {
   for (const provider of providers) {
-    for (const sessionId of await provider.reconcile().catch((error) => { console.warn(`${provider.kind} reconcile failed: ${error.message}`); return []; })) {
+    for (const sessionId of await registry.reconcile(provider.kind)) {
       await withSessionLock(sessionId, async () => {
         const current = provider.sessions.get(sessionId);
         if (!current) return;
-        console.warn(`${provider.kind} session ${sessionId} lost its device; cleaning up`);
+        console.warn(diagnostic('main.f56dfc76bb', { p0: provider.kind, p1: sessionId }));
         const onLog = event => send({ type: 'session-log', sessionId, event });
-        onLog({ code: 'session.unexpected_stop', message: 'РЈСЃС‚СЂРѕР№СЃС‚РІРѕ РїСЂРѕРїР°Р»Рѕ РёР»Рё РѕС‡РёСЃС‚РєР° РЅРµ Р±С‹Р»Р° Р·Р°РІРµСЂС€РµРЅР°; РЅР°С‡РёРЅР°РµС‚СЃСЏ РїРѕРІС‚РѕСЂРЅР°СЏ РѕС‡РёСЃС‚РєР°', severity: 'error', service: 'agent' });
+        onLog({ code: 'session.unexpected_stop', message: agentMessage('agent.unexpectedStop'), severity: 'error', service: 'agent' });
         try { await stop(sessionId, { onLog }); }
-        catch (error) { onLog({ code: 'session.cleanup_deferred', message: error.message, severity: 'error', service: 'agent' }); console.warn(`Cleanup pending for ${sessionId}: ${error.message}`); }
+        catch (error) { onLog({ code: 'session.cleanup_deferred', message: error.message, severity: 'error', service: 'agent' }); console.warn(diagnostic('main.de47bde201', { p0: sessionId, p1: error.message })); }
       });
     }
   }
@@ -164,7 +168,7 @@ async function recoverContainers() {
 }
 
 function validSessionId(sessionId) {
-  if (typeof sessionId !== 'string' || !/^[a-zA-Z0-9-]{8,64}$/.test(sessionId)) throw new Error('Invalid session ID');
+  if (typeof sessionId !== 'string' || !/^[a-zA-Z0-9-]{8,64}$/.test(sessionId)) throw new Error(diagnostic('main.2aa56153a9'));
   return sessionId;
 }
 
@@ -179,6 +183,10 @@ async function start(sessionId, params, options) {
 
 async function stop(sessionId, options) {
   validSessionId(sessionId);
+  const entry = registry.owner(sessionId)?.sessions.get(sessionId);
+  entry?.uiAbort?.abort();
+  entry?.automationAbort?.abort();
+  await managedAppium.stop(sessionId);
   relayMedia.delete(sessionId);
   relayNeedsKeyframe.delete(sessionId);
   await rtc.closeSession(sessionId);
@@ -199,6 +207,12 @@ async function command(message, options) {
   const sessionId = validSessionId(message.sessionId);
   const params = message.params || {};
   switch (message.action) {
+    case 'appium': {
+      const { provider, session } = registry.require(sessionId);
+      assertAppiumAndroid(provider.describe(session).sdkLevel);
+      session.automationAbort ??= new AbortController();
+      return managedAppium.request(sessionId, session.serial, params, { signal: session.automationAbort.signal });
+    }
     case 'input-open': registry.require(sessionId); return inputGate.open(sessionId, params.epoch);
     case 'input-release': return inputGate.release(sessionId, params.epoch);
     case 'rtc-capabilities': return rtc.capabilities();
@@ -216,7 +230,7 @@ async function command(message, options) {
 async function dispatchInput(message) {
   validSessionId(message.sessionId);
   const ephemeral = !message.input;
-  if (ephemeral && message.params?.kind === 'touch') throw new Error('Live touch requires an active input connection');
+  if (ephemeral && message.params?.kind === 'touch') throw new Error(diagnostic('main.467e4fc3ec'));
   const meta = message.input || { epoch: randomUUID(), seq: 1, deadline: Date.now() + INPUT_MAX_AGE_MS };
   if (ephemeral) inputGate.open(message.sessionId, meta.epoch);
   try {
@@ -237,7 +251,7 @@ async function handleCommand(message) {
     if (startups.has(message.sessionId)) { send({ type: 'result', id, ok: false, error: 'Session startup is already pending' }); return; }
     startups.set(message.sessionId, startup);
   }
-  if (['stop', 'kill'].includes(message.action)) startups.get(message.sessionId)?.abort(new Error('Session startup cancelled'));
+  if (['stop', 'kill'].includes(message.action)) startups.get(message.sessionId)?.abort(new Error(agentMessage('agent.1af461dcc07c')));
   const options = startup ? { signal: AbortSignal.any([startup.signal, AbortSignal.timeout(60 * 60_000)]), onProgress: progressReporter(progress =>
     send({ type: 'startup-progress', requestId: id, sessionId: message.sessionId, progress })) } : {};
   if (['start', 'stop', 'kill'].includes(message.action)) options.onLog = event => send({ type: 'session-log', requestId: id, sessionId: message.sessionId, event });
@@ -247,7 +261,7 @@ async function handleCommand(message) {
     });
     send({ type: 'result', id, ok: true, data });
   } catch (error) {
-    send({ type: 'result', id, ok: false, error: ['start', 'stop', 'kill'].includes(message.action) ? redactDiagnostic(error.message || 'Agent command failed', [...Object.values(message.params?.profile?.containerEnv || {}), message.params?.profile?.registryAuth?.password]) : error.message || 'Agent command failed', ...(typeof error.code === 'string' && error.code.startsWith('input_') ? { code: error.code } : {}) });
+    send({ type: 'result', id, ok: false, error: ['start', 'stop', 'kill'].includes(message.action) ? redactDiagnostic(error.message || 'Agent command failed', [...Object.values(message.params?.profile?.containerEnv || {}), message.params?.profile?.registryAuth?.password]) : error.message || 'Agent command failed', ...(typeof error.code === 'string' && (error.code.startsWith('input_') || error.code === 'device_capability_unavailable') ? { code: error.code } : {}) });
   } finally { if (startup && startups.get(message.sessionId) === startup) startups.delete(message.sessionId); }
 }
 
@@ -278,7 +292,7 @@ function processTunnelData(tunnelId, tunnel, bytes) {
       for (const chunk of tunnel.auth.fromClient(bytes)) {
         if (!tunnel.socket || tunnel.socket.destroyed ||
             tunnel.socket.writableLength + chunk.length > 4 * 1024 * 1024) {
-          throw new Error('ADB device tunnel write buffer exceeded limit');
+          throw new Error(diagnostic('main.dc635f2bd1'));
         }
         tunnel.socket.write(chunk);
       }
@@ -287,7 +301,7 @@ function processTunnelData(tunnelId, tunnel, bytes) {
     for (const chunk of tunnel.filter.transform(bytes)) {
       if (!tunnel.socket || tunnel.socket.destroyed ||
           tunnel.socket.writableLength + chunk.length > 4 * 1024 * 1024) {
-        throw new Error('ADB tunnel write buffer exceeded limit');
+        throw new Error(diagnostic('main.bc283d8723'));
       }
       tunnel.socket.write(chunk);
     }
@@ -304,7 +318,7 @@ function processTunnelData(tunnelId, tunnel, bytes) {
 async function connectIsolatedAdb(tunnelId, tunnel, port, serial) {
   tunnel.adbPort = port;
   const started = await runProcess('adb', ['-P', String(port), 'start-server'], { timeoutMs: 10000 });
-  if (started.exitCode !== 0) throw new Error(started.stderr || 'Could not start isolated ADB server');
+  if (started.exitCode !== 0) throw new Error(started.stderr || diagnostic('main.a9fdf936fa'));
   let connected = false;
   for (let attempt = 0; attempt < 15 && tunnels.get(tunnelId) === tunnel; attempt++) {
     const result = await runProcess('adb', ['-P', String(port), 'connect', serial], { timeoutMs: 5000 }).catch(() => null);
@@ -315,7 +329,7 @@ async function connectIsolatedAdb(tunnelId, tunnel, port, serial) {
     await runProcess('adb', ['-P', String(port), 'kill-server'], { timeoutMs: 5000 }).catch(() => {});
     return;
   }
-  if (!connected) throw new Error('Emulator ADB is not ready');
+  if (!connected) throw new Error(diagnostic('main.3b2aa8195d'));
 }
 
 async function handleTunnelOpen(message) {
@@ -329,7 +343,7 @@ async function handleTunnelOpen(message) {
     const found = registry.require(sessionId);
     session = found.session;
     target = found.provider.tunnelTarget(session);
-    if (!target || (mode === 'device' && !target.deviceTcp)) throw new Error('No tunnel');
+    if (!target || (mode === 'device' && !target.deviceTcp)) throw new Error(diagnostic('main.d09ed996af'));
   } catch { send({ type: 'tunnel-close', tunnelId }); return; }
   if (tunnels.size >= MAX_TUNNELS ||
       [...tunnels.values()].filter((entry) => entry.sessionId === sessionId).length >= MAX_TUNNELS_PER_SESSION) {
@@ -346,7 +360,7 @@ async function handleTunnelOpen(message) {
       if (tunnels.get(tunnelId) !== tunnel) return;
       tunnel.authTimer = setTimeout(() => {
         send({ type: 'session-log', sessionId, event: { service: 'agent', severity: 'error',
-          code: 'session.adb_device_auth_failed', message: 'Timed out authorizing the agent ADB connection to Android' } });
+          code: 'session.adb_device_auth_failed', message: diagnostic('main.ff44989e5d') } });
         closeTunnel(tunnelId, true);
       }, 12_000);
       tunnel.authTimer.unref();
@@ -437,12 +451,12 @@ function connect() {
     clearTimeout(streamDisconnectTimer);
     streamDisconnectTimer = undefined;
     resendAlerts();
-    try { await announce('hello', connection); } catch (error) { console.warn(`Agent hello failed: ${error.message}`); }
+    try { await announce('hello', connection); } catch (error) { console.warn(diagnostic('main.478a7b14c6', { p0: error.message })); }
     // Host probes may outlive this connection; only the current socket owns a heartbeat.
     if (closing || socket !== connection || connection.readyState !== WebSocket.OPEN) return;
     clearInterval(heartbeatTimer);
     heartbeatTimer = setInterval(() => announce('heartbeat', connection).catch((error) => console.warn(error.message)), 10000);
-    console.log(`Connected to broker as ${config.agentId}`);
+    console.log(diagnostic('main.416be1e93a', { p0: config.agentId }));
   });
   socket.on('message', (raw) => {
     let message;
@@ -469,7 +483,7 @@ function connect() {
       reconnectDelayMs = Math.min(reconnectDelayMs * 2, 30000);
     }
   });
-  socket.on('error', (error) => console.warn(`Broker connection error: ${error.message}`));
+  socket.on('error', (error) => console.warn(diagnostic('main.4db48f5b05', { p0: error.message })));
 }
 
 async function shutdown() {
@@ -481,6 +495,7 @@ async function shutdown() {
   await rtc.closeAll();
   socket?.close();
   for (const id of [...tunnels.keys()]) closeTunnel(id);
+  await managedAppium.close();
   await Promise.allSettled([...streams.streams.keys()].map((id) => streams.stop(id)));
   process.exit(0);
 }

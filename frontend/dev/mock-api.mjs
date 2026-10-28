@@ -1,3 +1,6 @@
+import { gzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
+import { agentIdForToken } from '../../shared/agent-identity.mjs';
 import { readFileSync } from 'node:fs';
 const messages = JSON.parse(readFileSync(new URL('../../shared/messages.json', import.meta.url), 'utf8'));
 import { pageLogcat, parseLogcat, validateLogcatParams } from '../../agent/src/logcat.mjs';
@@ -7,6 +10,8 @@ import { setMockRole } from './mocks/roles.mjs';
 
 // Dev-only mock of the backend API so the UI can be developed without the server stack.
 // Enable with: npm run dev:mock
+const demoAgentBundle = gzipSync('Demo agent package for UI development only.');
+const registration = { enabled: false, roleId: '00000000-0000-4000-8000-000000000002', available: true };
 const now = Date.now();
 const iso = (minAgo) => new Date(now - minAgo * 60000).toISOString();
 const user = { id: 'u1', username: 'admin', displayName: 'admin', role: 'admin' };
@@ -26,7 +31,7 @@ const profiles = [
   { id: 'a11-gpu', name: 'Android 11 · NVIDIA GPU', androidVersion: '11', apiLevel: 30, abi: 'x86_64', image: 'budtmo/docker-android:emulator_11.0', cpu: 4, memoryMb: 6144, guestMemoryMb: 4096, guestCores: 4, diskGb: 16, emulatorParams: '', enabled: true, deviceModel: 'Pixel 5', resolution: '720x1280' },
   { id: 'a13', name: 'Android 13 · Software', androidVersion: '13', apiLevel: 33, abi: 'x86_64', image: 'budtmo/docker-android:emulator_13.0', cpu: 4, memoryMb: 6144, guestMemoryMb: 4096, guestCores: 4, diskGb: 16, diskMaxGb: 64, sdcardGb: 2, sdcardMaxGb: 8, emulatorParams: '', enabled: true, deviceModel: 'Pixel 6', resolution: '1080x2400' },
 ];
-const sessions = [{ id: 'cbd55091-aaaa-bbbb-cccc-000000000001', ownerId: 'u1', ownerName: 'worker-01', hostId: 'h1', hostName: 'worker-01', profileId: 'a11-gpu', profileName: 'Android 11 · NVIDIA GPU', state: 'running', gpuMode: 'nvidia', orientation: 'portrait', audioEnabled: false, networkEnabled: true, createdAt: iso(27), label: null, lastActivityAt: iso(56), idleExpiresAt: new Date(now + 4 * 60000).toISOString(), expiresAt: new Date(now + 6 * 3600000).toISOString() }];
+const sessions = [{ deviceKind: 'emulator', platform: 'android', sdkLevel: 30, osVersion: '11', capabilities: ['video','audio','touch','keys','rotate','files','install','shell','logs','device-info','env','network','screenshot','tunnel'], id: 'cbd55091-aaaa-bbbb-cccc-000000000001', ownerId: 'u1', ownerName: 'worker-01', hostId: 'h1', hostName: 'worker-01', profileId: 'a11-gpu', profileName: 'Android 11 · NVIDIA GPU', state: 'running', gpuMode: 'nvidia', orientation: 'portrait', audioEnabled: false, networkEnabled: true, createdAt: iso(27), label: null, lastActivityAt: iso(56), idleExpiresAt: new Date(now + 4 * 60000).toISOString(), expiresAt: new Date(now + 6 * 3600000).toISOString() }];
 const tokens = [
   { id: 't1', name: 'CI pipeline', kind: 'personal', createdAt: iso(60 * 24 * 12), expiresAt: new Date(now + 86400000 * 48).toISOString(), lastUsedAt: iso(35) },
   { id: 't2', name: 'Локальные тесты', kind: 'personal', createdAt: iso(60 * 24 * 40), expiresAt: null, lastUsedAt: null },
@@ -118,7 +123,9 @@ export default function mockApi() {
         for (const handler of featureMocks) if (handler(req, res, path, m, state, send)) return;
         if (path === '/admin/launch-settings' && m === 'GET') return send(res, 200, { allowLaunchOverrides });
         if (path === '/admin/launch-settings' && m === 'PATCH') { let body=''; req.on('data', chunk => body+=chunk); req.on('end', () => { allowLaunchOverrides = JSON.parse(body).allowLaunchOverrides === true; send(res, 200, { allowLaunchOverrides }); }); return; }
-        if (path === '/config') return send(res, 200, { authMethods: ['local'], limits: { maxSessionsPerUser: 3, idleTimeoutMinutes: 60, maxSessionHours: 8 } });
+        if (path === '/admin/registration-settings' && m === 'GET') return send(res, 200, { settings: registration });
+        if (path === '/admin/registration-settings' && m === 'PATCH') { let body=''; req.on('data', chunk => body+=chunk); req.on('end', () => { Object.assign(registration, JSON.parse(body)); send(res, 200, { settings: registration }); }); return; }
+        if (path === '/config') return send(res, 200, { authMethods: ['local'], registrationEnabled: registration.enabled, limits: { maxSessionsPerUser: 3, idleTimeoutMinutes: 60, maxSessionHours: 8 } });
         if (path === '/me') return send(res, 200, { user: loggedIn ? user : null });
         if (path === '/login') { loggedIn = true; return send(res, 200, { user }); }
         if (path === '/logout') { loggedIn = false; return send(res, 200, {}); }
@@ -207,8 +214,18 @@ export default function mockApi() {
           return;
         }
         if (path === '/admin/logs') return send(res, 200, { events: [{ id: 'l1', occurredAt: iso(9), service: 'agent', severity: 'warning', code: 'dns_timeout', hostId: 'h1', sessionId: null }], nextCursor: null });
+        if (path === '/admin/agents' && m === 'POST') {
+          let body = ''; req.on('data', chunk => body += chunk); req.on('end', () => {
+            const token = 'rdfagent_demo-connection-token-for-layout-only';
+            send(res, 201, { token, agent: { hostId: JSON.parse(body).hostId || agentIdForToken(token), createdAt: new Date().toISOString() } });
+          }); return;
+        }
         if (path === '/admin/agents') return send(res, 200, { agents: [{ hostId: 'h1', createdAt: iso(60 * 24 * 30), name: 'worker-01', status: 'active', source: 'environment', canRevoke: false, lastSeenAt: iso(1) }] });
-        if (path === '/admin/agent-bundle/info') return send(res, 200, { version: '0.4.2', filename: 'agent.tar.gz', sha256: 'ab12cd34ef56', sizeBytes: 18200000 });
+        if (path === '/downloads/agent') {
+          res.statusCode = 200; res.setHeader('Content-Type', 'application/gzip');
+          res.setHeader('Content-Disposition', 'attachment; filename="rdf-linux-agent-demo.tar.gz"'); res.end(demoAgentBundle); return;
+        }
+        if (path === '/admin/agent-bundle/info' || path === '/downloads/agent/info') return send(res, 200, { version: 'demo', filename: 'rdf-linux-agent-demo.tar.gz', sha256: createHash('sha256').update(demoAgentBundle).digest('hex'), sizeBytes: demoAgentBundle.length });
         if (path === '/admin/users' && m === 'GET') return send(res, 200, { users: adminUsers });
         if (path === '/admin/users' && m === 'POST') {
           let raw = '';

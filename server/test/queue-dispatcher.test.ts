@@ -381,3 +381,33 @@ test('queued storage snapshots preserve defaults and cancel when profile limits 
     assert.equal((saved?.launch_options as { sdCardMb: number }).sdCardMb, 129);
   } finally { await f.close(); }
 });
+
+test('later pages reach a free host while preserving reservations for older requests', async () => {
+  for (const offline of [true, false]) {
+    const db = await database();
+    try {
+      await seed(db);
+      await db.exec(`INSERT INTO users(id,provider,subject,username,display_name)
+        SELECT md5('queued-user-'||n)::uuid,'local','queued-user-'||n,'queued-user-'||n,'queued-user-'||n FROM generate_series(1,67)n;
+        INSERT INTO queue_entries(id,user_id,profile_id,host_id,created_at,expires_at)
+        SELECT md5('waiting-'||n)::uuid,md5('queued-user-'||ceil(n/3.0)::integer)::uuid,'android-30','h1',
+        now()-interval '10 minutes'+n*interval '1 microsecond',now()+interval '20 minutes' FROM generate_series(1,200)n;
+        INSERT INTO queue_entries(id,user_id,profile_id,host_id,created_at,expires_at)
+        VALUES(md5('available')::uuid,'${U3}','android-30','h2',now(),now()+interval '20 minutes');`);
+      const calls: string[] = [];
+      await runQueuePass({
+        pool: { query: db.query.bind(db) } as unknown as Pool,
+        hub: { hasAgent: id => id !== 'h1' || !offline, onSessionClosed: () => {} },
+        config: { queueTtlMinutes: 30, maxSessionsPerUser: 3 }, policy: { idleMinutes: 0, maxHours: 0 },
+        create: async (_user, input) => {
+          calls.push(input.hostId);
+          if (input.hostId === 'h1') throw new ApiError(409, 'no_free_slots', 'full');
+          return input.sessionId;
+        },
+      });
+      assert.deepEqual(calls, offline ? ['h2'] : ['h1', 'h2']);
+      assert.equal((await db.query("SELECT state FROM queue_entries WHERE id=md5('available')::uuid")).rows[0]?.state, 'assigned');
+      assert.equal((await db.query("SELECT count(*)::integer AS count FROM queue_entries WHERE state='waiting'")).rows[0]?.count, 200);
+    } finally { await db.close(); }
+  }
+});

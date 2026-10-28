@@ -19,7 +19,9 @@ test('sizes are shown in megabytes with a decimal comma for small values', () =>
 
 test('upload checks catch wrong type, empty and oversize files before sending', () => {
   assert.equal(checkUploadFile({ name: 'a.APK', size: 10 * 1048576 }, usage), null);
-  assert.match(checkUploadFile({ name: 'a.zip', size: 5 }, usage), /apk/);
+  assert.equal(checkUploadFile({ name: 'a.zip', size: 5 }, usage), null);
+  assert.equal(checkUploadFile({ name: 'a.apks', size: 5 }, usage), null);
+  assert.match(checkUploadFile({ name: 'a.aab', size: 5 }, usage), /APK/i);
   assert.match(checkUploadFile({ name: 'a.apk', size: 0 }, usage), /пустой/);
   assert.match(checkUploadFile({ name: 'a.apk', size: 61 * 1048576 }, usage), /больше 60/);
   assert.match(checkUploadFile({ name: 'a.apk', size: 55 * 1048576 }, usage), /не хватает места/);

@@ -1,3 +1,4 @@
+import { diagnostic } from './diagnostics.js';
 import { registerAccessResource } from './access-connections.js';
 import { recordServiceLog } from './service-log.js';
 import net, { type Server, type Socket } from 'node:net';
@@ -37,7 +38,7 @@ export class AdbPortBroker {
       for (let port = ports.start; port < ports.start + ports.count; port++) {
         const server = net.createServer(socket => { void this.handle(port, socket); });
         server.on('error', () => {
-          console.error('ADB broker listener error');
+          console.error(diagnostic('adb-port.24bb25e0fc'));
           void recordServiceLog(this.pool, {
             service: 'server', severity: 'error', code: 'adb.listener_error',
           }).catch(() => {});

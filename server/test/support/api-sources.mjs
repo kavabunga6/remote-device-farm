@@ -5,7 +5,7 @@ import ts from 'typescript';
 
 export const root = fileURLToPath(new URL('../../../', import.meta.url));
 export const operationKey = (method, route) =>
-  `${method.toUpperCase()} ${route.replace(/:[A-Za-z]\w*|\{[^}]+\}/g, '{}')}`;
+  `${method.toUpperCase()} ${route.replace(/:[A-Za-z]\w*|\{[^}]+\}|\*/g, '{}')}`;
 function files(dir) {
   return fs
     .readdirSync(dir, { withFileTypes: true })

@@ -23,7 +23,7 @@ const HOST = 'host-1';
 const ready = { sessionId: ID, containerId: 'container-1', preparing: false, bootReady: true, networkEnabled: false };
 async function fixture() {
   const db = new PGlite();
-  for (const file of ['001_init', '005_host_settings', '011_node_management', '012_session_lifecycle', '013_queue_notifications', '048_user_removal']) {
+  for (const file of ['001_init', '005_host_settings', '011_node_management', '012_session_lifecycle', '013_queue_notifications', '048_user_removal', '025_physical_devices', '052_session_device_metadata', '053_device_provider_status']) {
     await db.exec(await readFile(new URL('../migrations/' + file + '.sql', import.meta.url), 'utf8'));
   }
   await db.exec("CREATE TABLE service_logs(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,occurred_at timestamptz DEFAULT now(), service text,severity text,code text,host_id text,session_id uuid,message text DEFAULT '')");

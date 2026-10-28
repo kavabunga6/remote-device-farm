@@ -1,4 +1,5 @@
 import './LanguageControl.css';
+import { initializeLanguage } from './i18n';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
@@ -20,10 +21,12 @@ import './stitch-theme.css';
 import './SessionsPage.css';
 import './SessionBadge.css';
 import './AuthScreens.css';
+import './localization.css';
 import { restoreUserPreferences } from './user-preferences';
 
 restoreUserPreferences();
 
+void initializeLanguage();
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <NotificationsProvider><App /></NotificationsProvider>

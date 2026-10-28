@@ -105,7 +105,7 @@ test('browser login, selected launch resources, environment proxy and asynchrono
   await page.getByRole('button', { name: 'New session', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'New session', exact: true });
   await expect(dialog).toBeVisible();
-  await dialog.locator('.create-settings > summary').click();
+  await dialog.getByRole('tab', { name: 'Launch options', exact: true }).click();
   await dialog.getByLabel('Android cores', { exact: true }).fill('1');
   await dialog.getByLabel('Node CPU limit', { exact: true }).fill('3');
   await dialog.getByLabel('Android memory, MB', { exact: true }).fill('1536');

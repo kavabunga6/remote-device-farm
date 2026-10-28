@@ -19,7 +19,7 @@ import { ActivityTracker, findExpiredSessions, releaseExpired, sessionDeadlines 
 
 const MIGRATIONS = ['001_init', '002_gpu_mode', '003_default_profile_resources', '004_guest_resources', '005_host_settings',
   '006_adb_port_access', '008_user_adb_keys', '009_uploaded_adb_public_keys', '010_user_settings_audit', '011_node_management',
-  '012_session_lifecycle', '013_queue_notifications', '018_teams', '021_profile_gpu_variants', '022_profile_gpu_memory', '026_session_startup_progress', '029_storage_limits', '038_profile_secrets_docker_options', '025_physical_devices', '031_client_leases', '023_user_profile_presets', '030_preset_storage', '033_launch_options', '040_emulator_image_registry', '046_session_diagnostics', '048_user_removal', '049_access_roles'];
+  '012_session_lifecycle', '013_queue_notifications', '018_teams', '021_profile_gpu_variants', '022_profile_gpu_memory', '026_session_startup_progress', '029_storage_limits', '038_profile_secrets_docker_options', '025_physical_devices', '031_client_leases', '023_user_profile_presets', '030_preset_storage', '033_launch_options', '040_emulator_image_registry', '046_session_diagnostics', '048_user_removal', '049_access_roles', '052_session_device_metadata', '053_device_provider_status'];
 
 async function database(): Promise<PGlite> {
   const db = new PGlite();

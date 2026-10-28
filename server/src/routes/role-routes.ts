@@ -74,6 +74,8 @@ export function registerRoleRoutes(app: Express, context: ServerContext): void {
    const previous = (await client.query('SELECT * FROM access_roles WHERE id=$1 FOR UPDATE', [id])).rows[0];
    if (!previous) throw new ApiError(404, 'not_found', uiMessage('roles.notFound'));
    if (previous.builtin) throw new ApiError(409, 'protected_role', uiMessage('roles.protected'));
+   if ((await client.query('SELECT 1 FROM registration_settings WHERE role_id=$1', [id])).rows.length)
+    throw new ApiError(409, 'registration_role_in_use', uiMessage('registration.roleInUse'));
    await client.query("UPDATE users SET access_role_id='00000000-0000-4000-8000-000000000002' WHERE access_role_id=$1 AND removed_at IS NOT NULL", [id]);
    if ((await client.query('SELECT 1 FROM users WHERE access_role_id=$1 LIMIT 1', [id])).rows.length)
     throw new ApiError(409, 'role_in_use', uiMessage('roles.inUse'));

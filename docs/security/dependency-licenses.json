@@ -4,7 +4,7 @@
   "components": [
     {
       "component": "server",
-      "lockSha256": "1a2c6feffd6adf0b2f457596fd075516580269706104249c5408fe4fd6b378e1",
+      "lockSha256": "a55464e65260abe880333aa8f893775b81cbd518a96c6a24629f807efa350faf",
       "packages": [
         {
           "name": "accepts",
@@ -23,7 +23,7 @@
         },
         {
           "name": "body-parser",
-          "version": "1.20.8",
+          "version": "1.20.9",
           "license": "MIT"
         },
         {
@@ -248,7 +248,7 @@
         },
         {
           "name": "multer",
-          "version": "2.4.0",
+          "version": "2.5.0",
           "license": "MIT"
         },
         {
@@ -343,7 +343,7 @@
         },
         {
           "name": "qs",
-          "version": "6.16.0",
+          "version": "6.16.2",
           "license": "BSD-3-Clause"
         },
         {
@@ -712,7 +712,7 @@
     },
     {
       "component": "examples/appium",
-      "lockSha256": "0631747ac670e4cd1590d5b99c978ba8d92c066da323af7042ff53e0acba126f",
+      "lockSha256": "11da05a09463f575b4ef31f20cb4c95e4e29b0d08972ab5abc657155c4b4517c",
       "packages": [
         {
           "name": "@appium/base-driver",
@@ -736,11 +736,6 @@
         },
         {
           "name": "@appium/logger",
-          "version": "2.0.11",
-          "license": "ISC"
-        },
-        {
-          "name": "@appium/logger",
           "version": "2.0.12",
           "license": "ISC"
         },
@@ -752,6 +747,11 @@
         {
           "name": "@appium/support",
           "version": "7.2.8",
+          "license": "Apache-2.0"
+        },
+        {
+          "name": "@appium/tsconfig",
+          "version": "1.2.0",
           "license": "Apache-2.0"
         },
         {
@@ -925,8 +925,38 @@
           "license": "MIT"
         },
         {
+          "name": "@tsconfig/node20",
+          "version": "20.1.9",
+          "license": "MIT"
+        },
+        {
+          "name": "@types/node",
+          "version": "24.19.0",
+          "license": "MIT"
+        },
+        {
+          "name": "@types/portscanner",
+          "version": "2.1.1",
+          "license": "MIT"
+        },
+        {
+          "name": "@types/semver",
+          "version": "7.7.1",
+          "license": "MIT"
+        },
+        {
           "name": "@types/triple-beam",
           "version": "1.3.5",
+          "license": "MIT"
+        },
+        {
+          "name": "@types/unzipper",
+          "version": "0.10.11",
+          "license": "MIT"
+        },
+        {
+          "name": "@types/ws",
+          "version": "8.18.2",
           "license": "MIT"
         },
         {
@@ -1116,7 +1146,7 @@
         },
         {
           "name": "body-parser",
-          "version": "2.3.0",
+          "version": "2.4.0",
           "license": "MIT"
         },
         {
@@ -1441,7 +1471,7 @@
         },
         {
           "name": "fast-uri",
-          "version": "3.1.8",
+          "version": "4.2.3",
           "license": "BSD-3-Clause"
         },
         {
@@ -1731,11 +1761,6 @@
         },
         {
           "name": "lru-cache",
-          "version": "11.5.2",
-          "license": "BlueOak-1.0.0"
-        },
-        {
-          "name": "lru-cache",
           "version": "11.5.3",
           "license": "BlueOak-1.0.0"
         },
@@ -1946,7 +1971,7 @@
         },
         {
           "name": "qs",
-          "version": "6.16.0",
+          "version": "6.16.1",
           "license": "BSD-3-Clause"
         },
         {
@@ -2295,6 +2320,21 @@
           "license": "MIT"
         },
         {
+          "name": "typescript",
+          "version": "5.9.3",
+          "license": "Apache-2.0"
+        },
+        {
+          "name": "typescript",
+          "version": "6.0.3",
+          "license": "Apache-2.0"
+        },
+        {
+          "name": "undici-types",
+          "version": "7.24.6",
+          "license": "MIT"
+        },
+        {
           "name": "unorm",
           "version": "1.6.0",
           "license": "MIT or GPL-2.0"
@@ -2418,7 +2458,7 @@
     },
     {
       "component": "integrations/mcp",
-      "lockSha256": "41d60fc00e08c1e628c0efaaedc3b5d00778f43673e80ca8158ab1d593cbc53f",
+      "lockSha256": "fe801bb37b4af81c4b5096901aff47124b471c8126cd079914dac42eecc57c8c",
       "packages": [
         {
           "name": "@hono/node-server",
@@ -2447,7 +2487,7 @@
         },
         {
           "name": "body-parser",
-          "version": "2.3.0",
+          "version": "2.4.0",
           "license": "MIT"
         },
         {
@@ -2592,7 +2632,7 @@
         },
         {
           "name": "fast-uri",
-          "version": "3.1.8",
+          "version": "3.1.9",
           "license": "BSD-3-Clause"
         },
         {

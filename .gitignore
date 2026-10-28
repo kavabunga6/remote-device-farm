@@ -1,6 +1,7 @@
 # Local tool and editor settings.
 .claude/
 .codex/
+.codex-remote-attachments/
 .agents/
 .idea/
 .vscode/
@@ -24,6 +25,7 @@ playwright-report/
 blob-report/
 .tmp-ui/
 .tmp-i18n/
+/.tmp-*
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

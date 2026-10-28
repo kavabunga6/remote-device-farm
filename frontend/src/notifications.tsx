@@ -146,7 +146,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     }}>
       {visible.map(item => <AppToast key={item.id} notification={item} onClose={() => dismiss(item.id)} />)}
-    </section>, modalTarget ?? document.body)}
+    </section>, modalTarget?.querySelector('[data-dialog-notifications]') ?? modalTarget ?? document.body)}
   </NotificationsContext.Provider>;
 }
 

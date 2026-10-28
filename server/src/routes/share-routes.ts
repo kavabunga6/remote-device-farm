@@ -1,3 +1,4 @@
+import { diagnostic } from '../diagnostics.js';
 import { uiMessage } from '../messages.js';
 import { randomUUID } from 'node:crypto';
 import type { Express } from 'express';
@@ -32,7 +33,7 @@ export function registerShareRoutes(app: Express, context: ServerContext): void 
   const { pool, hub, requireAuth, current, ownedSession } = context;
   const redeemAttempts = new Map<string, number[]>();
   const audit = (event: Parameters<typeof recordAuditEvent>[1]) =>
-    void recordAuditEvent(pool, event).catch(() => console.error('Audit event persistence failed'));
+    void recordAuditEvent(pool, event).catch(() => console.error(diagnostic('share-routes.57acf9a777')));
 
   async function ownSession(id: string, res: Parameters<typeof current>[0], active = false) {
     // ownedSession answers 404 to strangers and grant holders; admins who are not owners get 403 below.

@@ -1,1 +1,1 @@
-# No detection exceptions. Runtime credentials and local reports are not tracked.
+# No fingerprint exceptions. Generated message identifiers are scoped in .gitleaks.toml.

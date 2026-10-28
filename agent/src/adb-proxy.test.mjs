@@ -78,3 +78,54 @@ test('a tunnel to a shared adb server cannot see or select any other phone', () 
   const other = new AdbServerFilter('R58M');
   assert.deepEqual(other.transform(request('host:transport:OTHER')), [request('host:transport:R58M')]);
 });
+
+test('every transport selector and safe serial query stays pinned to the leased device', () => {
+  for (const selector of ['host:transport-any', 'host:transport-local', 'host:transport-usb', 'host:transport:elsewhere']) {
+    const filter = new AdbServerFilter('owned');
+    assert.deepEqual(filter.transform(request(selector)), [request('host:transport:owned')]);
+    assert.deepEqual(filter.fromServer(Buffer.from('OK')), { toClient: [], toServer: [] });
+    assert.deepEqual(filter.fromServer(Buffer.from('AY')), { toClient: [Buffer.from('OKAY')], toServer: [] });
+  }
+  for (const serial of ['R', 'other:5555']) for (const action of ['get-state', 'get-serialno', 'features']) {
+    const filter = new AdbServerFilter('owned');
+    assert.deepEqual(filter.transform(request(`host-serial:${serial}:${action}`)), [request(`host-serial:owned:${action}`)]);
+    assert.throws(() => filter.transform(request('host:version')));
+  }
+  assert.throws(() => new AdbServerFilter('owned').transform(request('host-serial::get-state')));
+});
+
+test('framing accepts its exact limits and refuses empty, malformed and oversized service names', () => {
+  for (const bytes of [Buffer.from('0000'), Buffer.from('zzzz'), request('x'.repeat(4097))]) {
+    assert.throws(() => new AdbServerFilter('owned').transform(bytes));
+  }
+  for (const header of ['0000', '1001']) {
+    const selected = new AdbServerFilter('owned');
+    selected.transform(request('host:transport-any')); selected.fromServer(Buffer.from('OKAY'));
+    assert.throws(() => selected.transform(Buffer.from(header)));
+  }
+  for (const service of ['x', 'shell:' + 'x'.repeat(4090)]) {
+    const filter = new AdbServerFilter('owned');
+    filter.transform(request('host:transport-any')); filter.fromServer(Buffer.from('OKAY'));
+    const bytes = request(service);
+    assert.deepEqual(filter.transform(bytes.subarray(0, 4)), []);
+    assert.deepEqual(filter.transform(bytes.subarray(4, -1)), []);
+    assert.deepEqual(filter.transform(bytes.subarray(-1)), [bytes]);
+    assert.deepEqual(filter.fromServer(Buffer.from('OKAY')), { toClient: [Buffer.from('OKAY')], toServer: [] });
+  }
+});
+
+test('a pending device service bounds raw data and releases it only after the device acknowledgement', () => {
+  const filter = new AdbServerFilter('owned');
+  filter.transform(request('host:transport-any')); filter.fromServer(Buffer.from('OKAY'));
+  filter.transform(request('shell:cat'));
+  const bytes = Buffer.alloc(1024 * 1024, 7);
+  assert.deepEqual(filter.transform(bytes), []);
+  const forwarded = filter.fromServer(Buffer.from('OKAY'));
+  assert.deepEqual(forwarded.toClient, [Buffer.from('OKAY')]);
+  assert.equal(forwarded.toServer.length, 1);
+  assert.ok(forwarded.toServer[0].equals(bytes));
+  const oversized = new AdbServerFilter('owned');
+  oversized.transform(request('host:transport-any')); oversized.fromServer(Buffer.from('OKAY'));
+  oversized.transform(request('shell:cat'));
+  assert.throws(() => oversized.transform(Buffer.alloc(bytes.length + 1)));
+});

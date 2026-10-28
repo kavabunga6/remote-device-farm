@@ -28,7 +28,7 @@ async function mockProfiles(page: Page, inUse = false) {
   });
   return { mutations, reads: () => inventoryReads };
 }
-const cardFor = (page: Page, name: string) => page.locator('.device-profile-card').filter({ has: page.getByRole('button', { name: `Изменить профиль «${name}»`, exact: true }) });
+const cardFor = (page: Page, name: string) => page.locator('.admin-profile-row').filter({ has: page.getByRole('button', { name: `Изменить профиль «${name}»`, exact: true }) });
 const deleteDialog = (page: Page) => page.getByRole('alertdialog', { name: 'Удалить профиль?', exact: true });
 
 for (const profile of fixtures) {
@@ -48,7 +48,7 @@ for (const profile of fixtures) {
     await expect(card).toHaveCount(0);
     await expect.poll(state.reads).toBeGreaterThan(reads);
     expect(state.mutations).toEqual([`/api/admin/profiles/${profile.id}/permanent`]);
-    await expect(page.locator('.device-profile-card')).toHaveCount(fixtures.length - 1);
+    await expect(page.locator('.admin-profile-row')).toHaveCount(fixtures.length - 1);
   });
 }
 
@@ -89,21 +89,21 @@ test('in-use deletion shows a localized explanation and leaves confirmation open
 for (const [scenario, theme, width, fontScale] of [
   ['light', 'light', 1280, 1], ['dark', 'dark', 1280, 1], ['narrow', 'light', 390, 1], ['zoom', 'light', 1280, 1.25],
 ] as const) {
-  test(`delete confirmation and card actions are aligned in ${scenario}`, async ({ page }) => {
+  test(`delete confirmation and row actions are aligned in ${scenario}`, async ({ page }) => {
     const state = await mockProfiles(page);
     await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: { theme, fontFamily: 'system', fontScale, defaultAdbKeyId: null } } }));
     await page.setViewportSize({ width, height: 800 });
     await page.emulateMedia({ colorScheme: theme });
     await page.goto('/#/admin/profiles');
-    await expect(page.locator('.device-profile-card')).toHaveCount(fixtures.length);
+    await expect(page.locator('.admin-profile-row')).toHaveCount(fixtures.length);
     await page.evaluate(() => document.fonts.ready);
     for (const profile of fixtures) {
       const card = cardFor(page, profile.name);
-      const bounds = await card.locator('.profile-actions button').evaluateAll(buttons => buttons.map(button => {
+      const bounds = await card.locator('.admin-profile-actions button').evaluateAll(buttons => buttons.map(button => {
         const box = button.getBoundingClientRect();
         return { y: box.y, bottom: box.bottom, right: box.right, left: box.left };
       }));
-      expect(bounds).toHaveLength(2);
+      expect(bounds).toHaveLength(3);
       expect(Math.abs(bounds[0]!.y - bounds[1]!.y)).toBeLessThanOrEqual(1);
       expect(Math.abs(bounds[0]!.bottom - bounds[1]!.bottom)).toBeLessThanOrEqual(1);
       expect(bounds[0]!.right).toBeLessThanOrEqual(bounds[1]!.left);
@@ -137,6 +137,6 @@ for (const [scenario, theme, width, fontScale] of [
     await expect(dialog).toHaveCount(0);
     await expect(opener).toBeFocused();
     expect(state.mutations).toEqual([]);
-    await expect(page.locator('.device-profile-card')).toHaveCount(fixtures.length);
+    await expect(page.locator('.admin-profile-row')).toHaveCount(fixtures.length);
   });
 }

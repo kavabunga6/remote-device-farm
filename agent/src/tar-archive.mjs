@@ -1,8 +1,9 @@
+import { diagnostic } from './diagnostics.mjs';
 /** Minimal POSIX ustar archive for the Docker build context (a few small regular files). */
 export function tarArchive(files) {
   const blocks = [];
   for (const { name, mode, data } of files) {
-    if (!/^[A-Za-z0-9._-]{1,99}$/.test(name)) throw new Error('Invalid build context file name');
+    if (!/^[A-Za-z0-9._-]{1,99}$/.test(name)) throw new Error(diagnostic('tar-archive.4d3d6eb96d'));
     const header = Buffer.alloc(512);
     const field = (value, offset, length) => header.write(value, offset, length, 'ascii');
     const octal = (value, length) => value.toString(8).padStart(length - 1, '0') + '\0';

@@ -7,7 +7,7 @@ for (const [width, height, theme, scale] of [[1366, 768, 'light', 1], [1920, 108
   test(`compact session header keeps every layout within ${width}x${height} ${theme} ${scale}`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.emulateMedia({ colorScheme: theme });
-    await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: { theme, fontFamily: 'system', fontScale: scale, defaultAdbKeyId: null } } }));
+    await page.route('**/api/me/preferences*', route => route.fulfill({ json: { preferences: { theme, fontFamily: 'system', fontScale: scale, defaultAdbKeyId: null } } }));
     await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: [] } }));
     await page.route('**/api/sessions/' + sessionId, async route => {
       const response = await route.fetch();
@@ -55,7 +55,11 @@ for (const [width, height, theme, scale] of [[1366, 768, 'light', 1], [1920, 108
         const toolbar = await page.locator('.device-controls').evaluate(el => ({ bottom: el.getBoundingClientRect().bottom, overflow: el.scrollWidth - el.clientWidth }));
         const screenTop = await page.locator('.device-screen').evaluate(el => el.getBoundingClientRect().top);
         expect(toolbar.bottom).toBeLessThanOrEqual(screenTop);
-        if (width > 650 && scale === 1) expect(toolbar.overflow).toBeLessThanOrEqual(1);
+        // A narrow portrait viewer intentionally keeps its toolbar in one scrollable row.
+        const controls = page.locator('.device-controls');
+        await expect(controls).toHaveCSS('overflow-x', 'auto');
+        await controls.getByRole('button').last().scrollIntoViewIfNeeded();
+        await expect(controls.getByRole('button').last()).toBeInViewport();
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     }
