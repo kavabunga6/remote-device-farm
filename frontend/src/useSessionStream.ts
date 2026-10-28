@@ -1,3 +1,6 @@
+import { SessionVideo } from './session-video';
+import { type StreamMessage } from './session-media';
+import { SessionAudio } from './session-audio';
 import { t } from './i18n';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { sessionSocketUrl } from './api';
@@ -9,62 +12,10 @@ export type StreamTransport = 'scrcpy' | 'mjpeg' | 'images' | 'webrtc' | null;
 export type ConnectionMode = 'websocket' | 'webrtc';
 export type StreamMetrics = { rttMs: number | null; fps: number | null; iceRttMs: number | null; packetsLost: number | null };
 export type SessionAudioState = 'disabled' | 'connecting' | 'waiting' | 'unlock' | 'receiving' | 'unavailable';
-type StreamMessage = {
-  type: string;
-  data?: string;
-  mime?: string;
-  width?: number;
-  height?: number;
-  rotation?: number;
-  codec?: string;
-  timestamp?: number;
-  keyframe?: boolean;
-  sampleRate?: number;
-  channels?: number;
-  nativeTouches?: boolean;
-  inputEpoch?: string;
-  serverTime?: number;
-  inputMaxAgeMs?: number;
-  id?: string;
-  rtc?: RtcConfiguration;
-  available?: boolean;
-  iceServers?: RTCIceServer[];
-  reason?: string;
-  description?: RTCSessionDescriptionInit;
-  message?: string;
-};
-
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : t('ui.b9f61453dd3f');
 }
 
-function decodeBase64(encoded: string): Uint8Array {
-  const binary = atob(encoded);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return bytes;
-}
-
-function h264Codec(config: Uint8Array): string {
-  for (let index = 0; index < config.length - 7; index += 1) {
-    const start = config[index] === 0 && config[index + 1] === 0 &&
-      (config[index + 2] === 1 || (config[index + 2] === 0 && config[index + 3] === 1));
-    if (!start) continue;
-    const nal = index + (config[index + 2] === 1 ? 3 : 4);
-    if ((config[nal] & 0x1f) !== 7) continue;
-    const profile = [config[nal + 1], config[nal + 2], config[nal + 3]]
-      .map(value => value.toString(16).padStart(2, '0')).join('');
-    return `avc1.${profile}`;
-  }
-  return 'avc1.42e01e';
-}
-
-function joinBytes(first: Uint8Array, second: Uint8Array): Uint8Array {
-  const joined = new Uint8Array(first.length + second.length);
-  joined.set(first);
-  joined.set(second, first.length);
-  return joined;
-}
 export function useSessionStream(id: string, audioEnabled: boolean, mode: ConnectionMode = 'websocket') {
   const imageRef = useRef<HTMLImageElement>(null);
   const pendingImage = useRef<string | null>(null);
@@ -168,18 +119,6 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
     let disconnected = false;
     let unsupportedVideo = false;
     let reconnectTimer: number | undefined;
-    let videoDecoder: VideoDecoder | null = null;
-    let audioDecoder: AudioDecoder | null = null;
-    let videoConfigBytes: Uint8Array | null = null;
-    let videoConfigBase64: string | null = null;
-    let videoDecoderConfig: VideoDecoderConfig | null = null;
-    let videoConfigured = false;
-    let waitingForKeyframe = true;
-    let droppingVideo = false;
-    let audioConfigured = false;
-    let pcmConfigured = false;
-    let pcmSampleRate = 48000;
-    let pcmChannels = 2;
     const control = new StreamControl();
     let ready = false;
     let frameCount = 0;
@@ -261,24 +200,29 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
       finishConnection();
     };
 
-    const resetVideo = () => {
-      if (videoDecoder && videoDecoder.state !== 'closed') videoDecoder.close();
-      videoDecoder = null;
-      videoConfigBytes = null;
-      videoConfigBase64 = null;
-      videoDecoderConfig = null;
-      videoConfigured = false;
-      waitingForKeyframe = true;
-      droppingVideo = false;
+    const releaseDecoders = () => {
+      video.reset();
+      audio.reset();
     };
 
-    const releaseDecoders = () => {
-      resetVideo();
-      if (audioDecoder && audioDecoder.state !== 'closed') audioDecoder.close();
-      audioDecoder = null;
-      audioConfigured = false;
-      pcmConfigured = false;
-    };
+    const video = new SessionVideo({
+      closed: () => closed, canvas: () => canvasRef.current, image: () => imageRef.current, pendingImage,
+      frame: (format, width, height, transport) => {
+        markFrame();
+        if (width && height) setSize(previous => previous.width === width && previous.height === height ? previous : { width, height });
+        setFormat(format); if (transport) setTransport(transport); setStatus('live');
+      },
+      connecting: () => { setTransport('scrcpy'); setStatus('connecting'); }, fail: failVideo,
+      requestKeyframe: () => socket.send(JSON.stringify({ type: 'request-keyframe' })),
+    });
+
+    const audio = new SessionAudio({
+      closed: () => closed,
+      enabled: () => audioEnabledRef.current,
+      context: audioContextRef, clock: audioClockRef,
+      active: setAudioActive, needsGesture: setAudioNeedsGesture, notice: setAudioNotice,
+      playback: markAudioPlayback, transport: setAudioTransport,
+    }, Boolean(rtc));
 
     socket.onmessage = event => {
       if (closed || socket.readyState !== WebSocket.OPEN) return;
@@ -318,16 +262,7 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
       if (rtc && message.type === 'video-config' && message.data) { rtcVideoConfigured = true; maybeStartRtc(); }
       if (rtc && (message.type === 'frame' || message.type === 'video-config' || message.type === 'video-frame')) return;
 
-      if (message.type === 'frame' && message.data) {
-        markFrame();
-        resetVideo();
-        const mime = message.mime === 'image/jpeg' || message.mime === 'image/webp' ? message.mime : 'image/png';
-        const source = `data:${mime};base64,${message.data}`;
-        if (imageRef.current) imageRef.current.src = source;
-        else pendingImage.current = source;
-        if (message.width && message.height) setSize(previous => previous.width === message.width && previous.height === message.height ? previous : { width: message.width!, height: message.height! });
-        setFormat('image'); setTransport(mime === 'image/jpeg' ? 'mjpeg' : 'images'); setStatus('live');
-      }
+      video.handle(message);
 
       if (message.type === 'error') {
         setStreamError(t('ui.f0a6f67a351c'));
@@ -339,197 +274,7 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
         setAudioUnavailableCount(value => value + 1);
       }
 
-      if (message.type === 'video-config') {
-        // A rotation may announce itself before the next SPS/PPS. Keep showing
-        // the current video until a new codec configuration arrives.
-        if (!message.data) return;
-        // The agent may resend identical SPS/PPS to refresh a viewer. Recreating
-        // WebCodecs here drops frames until the next keyframe.
-        if (videoDecoder?.state === 'configured' && videoConfigBase64 === message.data) return;
-        resetVideo();
-        setTransport('scrcpy');
-        setStatus('connecting');
-        if (!('VideoDecoder' in window)) { failVideo(globalThis.isSecureContext ? t('ui.6afd1f9a6d5d') : t('ui.5857f8195393'), true); return; }
-        try {
-          videoConfigBytes = decodeBase64(message.data);
-          videoConfigBase64 = message.data;
-          videoDecoderConfig = { codec: h264Codec(videoConfigBytes), optimizeForLatency: true };
-          let decoder: VideoDecoder;
-          decoder = new VideoDecoder({
-            output: frame => {
-              if (closed || videoDecoder !== decoder || droppingVideo) { frame.close(); return; }
-              try {
-                const canvas = canvasRef.current;
-                if (canvas) {
-                  const width = frame.displayWidth || frame.codedWidth;
-                  const height = frame.displayHeight || frame.codedHeight;
-                  if (canvas.width !== width) canvas.width = width;
-                  if (canvas.height !== height) canvas.height = height;
-                  canvas.getContext('2d')?.drawImage(frame, 0, 0, width, height);
-                  setSize(previous => previous.width === width && previous.height === height ? previous : { width, height });
-                  markFrame(); setFormat('video'); setStatus('live');
-                }
-              } catch (error) {
-                failVideo(t('ui.ae3ad8b3eccc') + errorText(error));
-              } finally {
-                frame.close();
-              }
-            },
-            error: error => {
-              if (videoDecoder === decoder) failVideo(t('ui.ed5e458d7bc8', { p0: error.message }));
-            },
-          });
-          videoDecoder = decoder;
-          decoder.configure(videoDecoderConfig);
-          videoConfigured = true;
-        } catch (error) { failVideo(t('ui.c1302697e98f', { p0: errorText(error) }), true); }
-      }
-
-      if (message.type === 'video-frame' && message.data && videoConfigured && videoDecoder?.state === 'configured') {
-        try {
-          if (videoDecoder.decodeQueueSize >= 8 && !droppingVideo) {
-            droppingVideo = true;
-            socket.send(JSON.stringify({ type: 'request-keyframe' }));
-          }
-          if (droppingVideo) {
-            if (!message.keyframe) return;
-            if (!videoDecoderConfig) return;
-            videoDecoder.reset();
-            videoDecoder.configure(videoDecoderConfig);
-            droppingVideo = false;
-            waitingForKeyframe = true;
-          }
-          if (waitingForKeyframe && !message.keyframe) return;
-          const packet = decodeBase64(message.data);
-          videoDecoder.decode(new EncodedVideoChunk({ type: message.keyframe ? 'key' : 'delta', timestamp: message.timestamp ?? 0, data: message.keyframe && videoConfigBytes ? joinBytes(videoConfigBytes, packet) : packet }));
-          waitingForKeyframe = false;
-        } catch (error) { failVideo(t('ui.400595b4a03f', { p0: errorText(error) })); }
-      }
-
-      if (message.type === 'audio-config') {
-        pcmConfigured = false;
-        if (rtc && message.codec === 'opus') { audioConfigured = false; setAudioTransport('webrtc'); return; }
-        setAudioTransport('websocket');
-        setAudioActive(false);
-        audioClockRef.current = 0;
-        if (message.codec === 'pcm-s16le') {
-          if (audioDecoder && audioDecoder.state !== 'closed') audioDecoder.close();
-          audioDecoder = null;
-          audioConfigured = false;
-          pcmSampleRate = message.sampleRate || 48000;
-          pcmChannels = message.channels || 2;
-          pcmConfigured = pcmSampleRate > 0 && pcmChannels >= 1 && pcmChannels <= 2;
-          if (!pcmConfigured && audioEnabledRef.current) setAudioNotice(t('ui.457a252ec013'));
-          return;
-        }
-        if (!('AudioDecoder' in window)) {
-          if (audioEnabledRef.current) setAudioNotice(t('ui.67a53ec39aa4'));
-          return;
-        }
-        if (!message.data) return;
-        try {
-          if (audioDecoder && audioDecoder.state !== 'closed') audioDecoder.close();
-          let decoder: AudioDecoder;
-          decoder = new AudioDecoder({
-            output: audio => {
-              if (closed || audioDecoder !== decoder || !audioEnabledRef.current) { audio.close(); return; }
-              try {
-                const context = audioContextRef.current ?? new AudioContext({ sampleRate: audio.sampleRate, latencyHint: 'interactive' });
-                audioContextRef.current = context;
-                if (context.state !== 'running') {
-                  setAudioNeedsGesture(true);
-                  setAudioActive(false);
-                  setAudioNotice(t('ui.3b0cbc5e4cdc'));
-                  audio.close();
-                  return;
-                }
-                if (audioClockRef.current - context.currentTime > 0.25) { audio.close(); return; }
-                const buffer = context.createBuffer(audio.numberOfChannels, audio.numberOfFrames, audio.sampleRate);
-                for (let channel = 0; channel < audio.numberOfChannels; channel += 1) {
-                  const samples = new Float32Array(audio.numberOfFrames);
-                  audio.copyTo(samples, { planeIndex: channel, format: 'f32-planar' });
-                  buffer.copyToChannel(samples, channel);
-                }
-                const source = context.createBufferSource();
-                source.buffer = buffer;
-                source.connect(context.destination);
-                const startAt = Math.max(context.currentTime + 0.025, audioClockRef.current);
-                source.start(startAt);
-                audioClockRef.current = startAt + buffer.duration;
-                setAudioNeedsGesture(false);
-                setAudioNotice('');
-                markAudioPlayback();
-              } catch (error) { setAudioActive(false); setAudioNotice(t('ui.93f3de906b00', { p0: errorText(error) })); }
-              audio.close();
-            },
-            error: error => {
-              if (audioDecoder === decoder) {
-                audioConfigured = false;
-                setAudioActive(false);
-                if (audioEnabledRef.current) setAudioNotice(t('ui.d101328a6215', { p0: error.message }));
-              }
-            },
-          });
-          audioDecoder = decoder;
-          const codec = message.codec === 'aac' ? 'mp4a.40.2' : message.codec === 'opus' ? 'opus' : null;
-          if (!codec) throw new Error(t('ui.68f6fac0e28a'));
-          audioClockRef.current = 0;
-          decoder.configure({ codec, sampleRate: message.sampleRate || 48000, numberOfChannels: message.channels || 2, description: decodeBase64(message.data) });
-          audioConfigured = true;
-        } catch (error) {
-          audioConfigured = false;
-          setAudioActive(false);
-          if (audioEnabledRef.current) setAudioNotice(t('ui.04b49ea56cd6', { p0: errorText(error) }));
-        }
-      }
-
-      if (message.type === 'audio-frame' && message.data && pcmConfigured && audioEnabledRef.current) {
-        try {
-          const bytes = decodeBase64(message.data);
-          const frameBytes = pcmChannels * 2;
-          if (bytes.byteLength < frameBytes || bytes.byteLength % frameBytes !== 0) return;
-          const context = audioContextRef.current ?? new AudioContext({ sampleRate: pcmSampleRate, latencyHint: 'interactive' });
-          audioContextRef.current = context;
-          if (context.state !== 'running') {
-            setAudioActive(false);
-            setAudioNeedsGesture(true);
-            setAudioNotice(t('ui.3b0cbc5e4cdc'));
-            return;
-          }
-          if (audioClockRef.current - context.currentTime > 0.25) return;
-          const frames = bytes.byteLength / frameBytes;
-          const buffer = context.createBuffer(pcmChannels, frames, pcmSampleRate);
-          const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-          for (let channel = 0; channel < pcmChannels; channel += 1) {
-            const samples = new Float32Array(frames);
-            for (let frame = 0; frame < frames; frame += 1) samples[frame] = view.getInt16((frame * pcmChannels + channel) * 2, true) / 32768;
-            buffer.copyToChannel(samples, channel);
-          }
-          const source = context.createBufferSource();
-          source.buffer = buffer;
-          source.connect(context.destination);
-          const startAt = Math.max(context.currentTime + 0.02, audioClockRef.current);
-          source.start(startAt);
-          audioClockRef.current = startAt + buffer.duration;
-          markAudioPlayback();
-          setAudioNeedsGesture(false);
-          setAudioNotice('');
-        } catch (error) {
-          setAudioActive(false);
-          setAudioNotice(t('ui.93f3de906b00', { p0: errorText(error) }));
-        }
-        return;
-      }
-
-      if (message.type === 'audio-frame' && message.data && audioConfigured && audioDecoder?.state === 'configured') {
-        try {
-          if (audioDecoder.decodeQueueSize < 16) audioDecoder.decode(new EncodedAudioChunk({ type: 'key', timestamp: message.timestamp ?? 0, data: decodeBase64(message.data) }));
-        } catch (error) {
-          audioConfigured = false;
-          setAudioActive(false);
-          if (audioEnabledRef.current) setAudioNotice(t('ui.0d3affb22351', { p0: errorText(error) }));
-        }
-      }
+      audio.handle(message);
     };
     // Native WebSocket.close() may wait for a half-open TCP connection for tens of
     // seconds. Abandon it locally and retry independently of its close handshake.
