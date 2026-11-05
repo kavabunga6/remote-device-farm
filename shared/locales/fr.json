@@ -3692,5 +3692,6 @@
   "agentSetup.accessTitle": "Obtenir un jeton",
   "agentSetup.accessHint": "Chaque jeton est destiné à un seul nœud. Le nœud apparaît dans la liste dès sa connexion ; inutile de saisir son ID ou son adresse IP ici.",
   "agentSetup.serverAddress": "Adresse du serveur pour l’agent",
-  "agentSetup.configHint": "Téléchargez .env.agent et placez-le à côté de compose.agent.yaml. Ces paramètres s’appliquent sur le nœud Linux."
+  "agentSetup.configHint": "Téléchargez .env.agent et placez-le à côté de compose.agent.yaml. Ces paramètres s’appliquent sur le nœud Linux.",
+  "agent.connections.serverOnly": "La connexion à ce nœud doit passer par le serveur."
 }

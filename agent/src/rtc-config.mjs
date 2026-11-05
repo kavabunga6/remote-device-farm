@@ -2,7 +2,10 @@ import { diagnostic } from './diagnostics.mjs';
 import { isIP } from 'node:net';
 
 export function loadRtcConfig(env = process.env) {
-  const enabled = env.AGENT_WEBRTC_ENABLED === '1';
+  const directPolicy = env.AGENT_ALLOW_DIRECT_CONNECTIONS || '0';
+  if (!['0', '1'].includes(directPolicy)) throw new Error(diagnostic('rtc-config.direct_connections'));
+  const directConnectionsAllowed = directPolicy === '1';
+  const enabled = directConnectionsAllowed && env.AGENT_WEBRTC_ENABLED === '1';
   const min = Number(env.AGENT_WEBRTC_PORT_MIN || 50000);
   const max = Number(env.AGENT_WEBRTC_PORT_MAX || 50100);
   if (![min, max].every(p => Number.isInteger(p) && p >= 1024 && p <= 65535) || min >= max) {
@@ -25,5 +28,5 @@ export function loadRtcConfig(env = process.env) {
     return { urls, ...(server.username === undefined ? {} : { username: server.username }),
       ...(server.credential === undefined ? {} : { credential: server.credential }) };
   });
-  return { enabled, iceServers, icePortRange: [min, max], addresses };
+  return { enabled, directConnectionsAllowed, iceServers, icePortRange: [min, max], addresses };
 }

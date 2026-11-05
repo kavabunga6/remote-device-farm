@@ -1,10 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+const messages = JSON.parse(readFileSync(new URL('../../shared/messages.json', import.meta.url), 'utf8')) as Record<string, { ru: string; en: string }>;
+const languages = JSON.parse(readFileSync(new URL('../../shared/languages.json', import.meta.url), 'utf8')) as Array<{ id: string; direction: string }>;
+const copy = (id: string, key: string): string => id === 'ru' || id === 'en' ? messages[key][id]
+  : JSON.parse(readFileSync(new URL('../../shared/locales/' + id + '.json', import.meta.url), 'utf8'))[key];
 
 const sessionId = 'cbd55091-aaaa-bbbb-cccc-000000000001';
-async function transportFixture(page: Page, options: { rtc?: boolean } = {}) {
+async function transportFixture(page: Page, options: { rtc?: boolean; reason?: string; language?: string } = {}) {
   const httpInputs: string[] = [];
   await page.route('**/api/sessions/*/input', route => { httpInputs.push(route.request().postData() || ''); return route.fulfill({ json: { ok: true } }); });
-  await page.addInitScript(({ rtcAvailable }) => {
+  await page.addInitScript(({ rtcAvailable, reason, language }) => {
+    if (language) localStorage.setItem('rdf.language', language);
     const state = window as any;
     const RealSocket = window.WebSocket;
     const clockStart = Date.now(), monotonicStart = performance.now();
@@ -33,7 +40,7 @@ async function transportFixture(page: Page, options: { rtc?: boolean } = {}) {
           if (this.rtc) {
             this.message({ type: 'video-config', data: 'AAAAAWdCAAk=', nativeTouches: true });
             // Capability intentionally arrives separately, after codec metadata.
-            this.message({ type: 'rtc-capabilities', available: rtcAvailable, iceServers: [], reason: 'WebRTC недоступен на узле теста.' });
+            this.message({ type: 'rtc-capabilities', available: rtcAvailable, iceServers: [], reason });
           } else {
             this.message(frame);
             this.timer = setInterval(() => this.message(frame), 100);
@@ -76,10 +83,10 @@ async function transportFixture(page: Page, options: { rtc?: boolean } = {}) {
     };
     Object.assign(ControlledSocket, { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 });
     Object.defineProperty(window, 'WebSocket', { configurable: true, get: () => ControlledSocket, set: () => {} });
-  }, { rtcAvailable: options.rtc ?? true });
+  }, { rtcAvailable: options.rtc ?? true, reason: options.reason ?? 'WebRTC недоступен на узле теста.', language: options.language });
   await page.goto('/#/session/' + sessionId);
   await expect.poll(() => page.evaluate(() => (window as any).__transport.sockets.at(-1)?.readyState)).toBe(1);
-  await expect(page.getByRole('button', { name: 'Домой', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: copy(options.language ?? 'ru', 'ui.f6e01d413ff6'), exact: true })).toBeEnabled();
   return { httpInputs };
 }
 async function selectTransport(page: Page, mode: 'websocket' | 'webrtc') {
@@ -157,6 +164,33 @@ test('unsupported WebRTC is explicit and switching back restores WebSocket witho
   await expect(page.getByRole('button', { name: 'Домой', exact: true })).toBeEnabled();
   expect(fixture.httpInputs).toEqual([]);
 });
+
+for (const language of languages) for (const theme of ['light', 'dark']) {
+  test(`server-only connection policy: ${language.id} / ${theme}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.emulateMedia({ colorScheme: theme as 'light' | 'dark' });
+    await page.route('**/api/me/preferences', route => route.fulfill({ json: {
+      preferences: { theme, fontScale: 1.25, fontFamily: 'system', defaultAdbKeyId: null },
+    } }));
+    await transportFixture(page, { rtc: false, language: language.id, reason: messages['agent.connections.serverOnly'].ru });
+    await expect(page.locator('html')).toHaveAttribute('lang', language.id);
+    await expect(page.locator('html')).toHaveAttribute('dir', language.direction);
+    await page.getByLabel(copy(language.id, 'ui.a9ce28442aea'), { exact: true }).click();
+    const selector = page.getByLabel(copy(language.id, 'ui.bfa2b3807818'), { exact: true });
+    await selector.selectOption('webrtc');
+    const placeholder = page.locator('.stream-placeholder');
+    await expect(placeholder).toContainText(copy(language.id, 'agent.connections.serverOnly'));
+    expect(await page.evaluate(() => {
+      const state = (window as any).__transport;
+      return { peers: state.allPeers.length, offers: state.sockets.flatMap((socket: any) => socket.sent).filter((message: any) => message.type === 'rtc-offer').length };
+    })).toEqual({ peers: 0, offers: 0 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    expect(await placeholder.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    if (['ru', 'en', 'ar', 'de'].includes(language.id)) await page.screenshot({ path: testInfo.outputPath('server-only.png') });
+    await selector.selectOption('websocket');
+    await expect(page.getByRole('button', { name: copy(language.id, 'ui.f6e01d413ff6'), exact: true })).toBeEnabled();
+  });
+}
 
 
 test('a silent RTC control channel times out even while signaling still answers pings', async ({ page }) => {

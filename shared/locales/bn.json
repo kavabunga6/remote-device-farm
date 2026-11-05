@@ -3692,5 +3692,6 @@
   "agentSetup.accessTitle": "টোকেন নিন",
   "agentSetup.accessHint": "প্রতিটি টোকেন একটি নোডের জন্য। সংযুক্ত হলেই নোডটি তালিকায় দেখা যাবে; এখানে তার ID বা IP ঠিকানা দেওয়ার দরকার নেই।",
   "agentSetup.serverAddress": "এজেন্টের জন্য সার্ভারের ঠিকানা",
-  "agentSetup.configHint": ".env.agent ডাউনলোড করে compose.agent.yaml-এর পাশে রাখুন। এই সেটিংস Linux নোডে প্রযোজ্য হবে।"
+  "agentSetup.configHint": ".env.agent ডাউনলোড করে compose.agent.yaml-এর পাশে রাখুন। এই সেটিংস Linux নোডে প্রযোজ্য হবে।",
+  "agent.connections.serverOnly": "এই নোডে কেবল সার্ভারের মাধ্যমে সংযোগ করা যায়।"
 }

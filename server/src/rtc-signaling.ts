@@ -12,6 +12,7 @@ type Options = {
 // browser never chooses its agent, session, peer ID or permission level.
 export function attachRtcSignaling({ socket, hub, sessionId, hostId, canControl, activity, enabled }: Options) {
   let closed = false;
+  let available = false;
   let peerId: string | null = null;
   let pending = false;
   let lastOfferAt = 0;
@@ -22,8 +23,9 @@ export function attachRtcSignaling({ socket, hub, sessionId, hostId, canControl,
   };
   if (enabled) hub.setViewerTransport(socket, 'webrtc');
   void hub.command(hostId, sessionId, 'rtc-capabilities', {}, 5000).then(data => {
-    send({ type: 'rtc-capabilities', available: data.available === true,
-      iceServers: Array.isArray(data.iceServers) ? data.iceServers : [],
+    available = data.available === true;
+    send({ type: 'rtc-capabilities', available,
+      iceServers: available && Array.isArray(data.iceServers) ? data.iceServers : [],
       ...(typeof data.reason === 'string' ? { reason: data.reason } : {}) });
   }, () => send({ type: 'rtc-capabilities', available: false, iceServers: [], reason: uiMessage('ui.95f3870528cc') }));
 
@@ -58,7 +60,7 @@ export function attachRtcSignaling({ socket, hub, sessionId, hostId, canControl,
       return true;
     }
     if (!['rtc-offer', 'rtc-close'].includes(String(message.type))) return false;
-    if (!enabled) { send({ type: 'rtc-error', message: uiMessage('ui.e35053b5e05a') }); return true; }
+    if (!enabled || !available) { send({ type: 'rtc-error', message: uiMessage('ui.e35053b5e05a') }); return true; }
     if (message.type === 'rtc-close') {
       const id = peerId; peerId = null;
       if (id) void closePeer(id);
@@ -80,10 +82,10 @@ export function attachRtcSignaling({ socket, hub, sessionId, hostId, canControl,
     }, 15_000).then(data => {
       if (closed || peerId !== id) { void closePeer(id); return; }
       send({ type: 'rtc-answer', peerId: id, description: data.description });
-    }, error => {
+    }, () => {
       void closePeer(id);
       if (peerId === id) peerId = null;
-      send({ type: 'rtc-error', message: error instanceof Error ? error.message : uiMessage('ui.eba53be90b65') });
+      send({ type: 'rtc-error', message: uiMessage('ui.eba53be90b65') });
     }).finally(() => { pending = false; });
     return true;
   };

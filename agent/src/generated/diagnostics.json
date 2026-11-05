@@ -338,6 +338,7 @@
   "rtc-config.bfcd1dcd13": "Invalid ICE credential",
   "rtc-config.cb00aae66d": "Invalid AGENT_WEBRTC_PORT_MIN/MAX",
   "rtc-config.d5b54494e9": "AGENT_WEBRTC_HOST_IP must contain IP addresses",
+  "rtc-config.direct_connections": "AGENT_ALLOW_DIRECT_CONNECTIONS must be 0 or 1",
   "rtc-media.276449a8b3": "H.264 stream has no SPS",
   "rtc-media.54207a1285": "Invalid RTP payload size",
   "rtc-media.94b7e95e77": "Invalid Opus clock input",

@@ -34,7 +34,8 @@ test('WebRTC config is explicit, bounded and never accepts arbitrary server sche
   assert.throws(() => loadRtcConfig({ AGENT_WEBRTC_PORT_MIN: '60000', AGENT_WEBRTC_PORT_MAX: '50000' }));
   assert.throws(() => loadRtcConfig({ AGENT_WEBRTC_HOST_IP: 'evil\naddress' }));
   assert.throws(() => loadRtcConfig({ AGENT_WEBRTC_ICE_SERVERS: '[{"urls":"https://example.test"}]' }));
-  const config = loadRtcConfig({ AGENT_WEBRTC_ENABLED: '1', AGENT_WEBRTC_HOST_IP: '192.0.2.20', AGENT_WEBRTC_ICE_SERVERS: '[{"urls":"turn:relay.example:3478","username":"u","credential":"p"}]' });
+  const config = loadRtcConfig({ AGENT_ALLOW_DIRECT_CONNECTIONS: '1', AGENT_WEBRTC_ENABLED: '1', AGENT_WEBRTC_HOST_IP: '192.0.2.20', AGENT_WEBRTC_ICE_SERVERS: '[{"urls":"turn:relay.example:3478","username":"u","credential":"p"}]' });
+  assert.equal(config.enabled, true);
   assert.deepEqual(config.addresses, ['192.0.2.20']);
   assert.equal(config.iceServers[0].urls[0], 'turn:relay.example:3478');
 });

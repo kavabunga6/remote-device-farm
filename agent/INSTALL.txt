@@ -47,11 +47,21 @@ agent-control; interrupted jobs are reported explicitly after a restart and can 
 
 ADB access
 ----------
+Clients use the server address and an assigned server TCP port for adb connect.
+The agent carries that connection over its outbound connection to the server.
+Do not publish the emulator's port 5555 or the agent's local ADB server.
 The farm TCP broker authenticates the user key selected for the session. The agent
 authenticates its internal Android connection with its own RSA-2048 ADB key. Keep
 that private key in the agent ADB keys volume; it is never returned to clients.
 If ADB_PUBLIC_KEY_FILE is set, use a .pub path with its private half beside it
 (the same filename without .pub). No device-side user approval is required.
+
+Direct connections are disabled by default (AGENT_ALLOW_DIRECT_CONNECTIONS=0).
+Browser video and input use WebSocket through the server. WebRTC requires both
+AGENT_ALLOW_DIRECT_CONNECTIONS=1 and AGENT_WEBRTC_ENABLED=1, and can reveal node
+network addresses to authorized viewers. Keep direct connections disabled when
+these addresses must remain private. Node IP telemetry is restricted to accounts
+with the nodes.view permission; ordinary users receive the node name.
 
 Headless SDK helper ADB is disabled for emulator-v1 images via -adb-path /bin/false.
 All device commands use the authorized I/O agent connection. This prevents the

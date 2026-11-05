@@ -219,6 +219,10 @@
     "ru": "Неожиданный аудиокодек scrcpy: {p0}",
     "en": "Unexpected scrcpy audio codec {p0}"
   },
+  "agent.connections.serverOnly": {
+    "ru": "На этом узле можно подключаться только через сервер.",
+    "en": "Connections to this node must go through the server."
+  },
   "agent.console.exitCode": {
     "ru": "{p0} (код {p1})",
     "en": "{p0} (exit code {p1})"

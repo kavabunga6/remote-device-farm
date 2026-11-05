@@ -44,14 +44,14 @@ test('ADB key API returns the secret once, revokes old port on rotation, and acc
       "INSERT INTO users(id,provider,subject,username,display_name) VALUES($1,'local','other','other','Other')",
       [otherUserId],
     );
-    await database.query("INSERT INTO hosts(id,name,slots) VALUES('host-1','Host',1)");
+    await database.query("INSERT INTO hosts(id,name,slots,metrics) VALUES('host-1','Worker 1',1,'{\"hostIp\":\"192.0.2.20\"}')");
     await database.query(
       "INSERT INTO sessions(id,owner_user_id,host_id,profile_id,state) VALUES($1,$2,'host-1','android-30','running')",
       [sessionId, userId],
     );
     const client = { query: database.query.bind(database), release: () => {} };
     const pool = { query: database.query.bind(database), connect: async () => client } as unknown as Pool;
-    const config = { adbPorts: { host: '127.0.0.1', start: 15555, count: 2 } } as Config;
+    const config = { adbPorts: { host: 'farm.example.test', start: 15555, count: 2 } } as Config;
     const auth = { authenticate: async () => ({ user: {
       id: actorId, username: 'owner', displayName: 'Owner', role: 'user', provider: 'local',
     }, via: 'cookie' }) } as unknown as AuthService;
@@ -73,9 +73,9 @@ test('ADB key API returns the secret once, revokes old port on rotation, and acc
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const base = 'http://127.0.0.1:' + address.port;
-    const request = (path: string, method = 'GET') => fetch(base + path, {
+    const request = (path: string, method = 'GET', body = {}) => fetch(base + path, {
       method, headers: method === 'GET' ? undefined : { 'Content-Type': 'application/json' },
-      body: method === 'GET' ? undefined : '{}',
+      body: method === 'GET' ? undefined : JSON.stringify(body),
     });
 
     const missing = await request('/api/me/adb-key');
@@ -94,12 +94,19 @@ test('ADB key API returns the secret once, revokes old port on rotation, and acc
     assert.equal(duplicate.status, 409);
     const opened = await request('/api/sessions/' + sessionId + '/adb-port-access', 'POST');
     assert.equal(opened.status, 201);
-    const firstPort = await opened.json() as { port: number; expiresAt: string | null; fingerprint: string };
+    const firstPort = await opened.json() as { host: string; port: number; expiresAt: string | null; fingerprint: string };
+    assert.equal(firstPort.host, 'farm.example.test');
+    assert.doesNotMatch(JSON.stringify(firstPort), /192\.0\.2\.20/);
     assert.equal(firstPort.port, 15555);
     assert.equal(firstPort.expiresAt, null);
     assert.equal(firstPort.fingerprint, first.fingerprint);
-    const repeated = await request('/api/sessions/' + sessionId + '/adb-port-access', 'POST');
-    assert.equal((await repeated.json() as { port: number }).port, 15555);
+    const repeated = await request('/api/sessions/' + sessionId + '/adb-port-access', 'POST', { host: '192.0.2.20', port: 5555 });
+    const repeatedPort = await repeated.json() as { host: string; port: number };
+    assert.equal(repeatedPort.port, 15555);
+    assert.equal(repeatedPort.host, 'farm.example.test');
+    const saved = await (await request('/api/sessions/' + sessionId + '/adb-port-access')).json() as { access: { host: string; port: number } };
+    assert.equal(saved.access.host, firstPort.host);
+    assert.equal(saved.access.port, firstPort.port);
     assert.deepEqual(closed, [sessionId]);
 
     const rotated = await request('/api/me/adb-key/rotate', 'POST');
@@ -130,6 +137,14 @@ test('ADB key API returns the secret once, revokes old port on rotation, and acc
     assert.equal(autoLease.rows[0]?.owner_user_id, userId);
     assert.equal(autoLease.rows[0]?.fingerprint, replacement.fingerprint);
     assert.equal(autoLease.rows[0]?.expires_at, null);
+    const configuredPorts = config.adbPorts;
+    config.adbPorts = undefined;
+    for (const method of ['GET', 'POST']) {
+      const disabled = await request('/api/sessions/' + sessionId + '/adb-port-access', method);
+      assert.equal(disabled.status, 503);
+      assert.equal((await disabled.json() as { code: string }).code, 'adb_port_disabled');
+    }
+    config.adbPorts = configuredPorts;
     actorId = otherUserId;
     const hidden = await request('/api/sessions/' + sessionId + '/adb-port-access');
     assert.equal(hidden.status, 404);

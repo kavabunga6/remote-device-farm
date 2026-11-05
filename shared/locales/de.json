@@ -3692,5 +3692,6 @@
   "agentSetup.accessTitle": "Token erstellen",
   "agentSetup.accessHint": "Jeder Token ist für einen einzelnen Knoten bestimmt. Der Knoten erscheint nach dem Verbindungsaufbau in der Liste; seine ID und IP-Adresse müssen hier nicht eingegeben werden.",
   "agentSetup.serverAddress": "Serveradresse für den Agenten",
-  "agentSetup.configHint": "Laden Sie .env.agent herunter und legen Sie die Datei neben compose.agent.yaml ab. Diese Einstellungen werden auf dem Linux-Knoten angewendet."
+  "agentSetup.configHint": "Laden Sie .env.agent herunter und legen Sie die Datei neben compose.agent.yaml ab. Diese Einstellungen werden auf dem Linux-Knoten angewendet.",
+  "agent.connections.serverOnly": "Verbindungen zu diesem Knoten sind nur über den Server erlaubt."
 }

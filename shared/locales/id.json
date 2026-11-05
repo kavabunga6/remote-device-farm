@@ -3692,5 +3692,6 @@
   "agentSetup.accessTitle": "Dapatkan token",
   "agentSetup.accessHint": "Setiap token digunakan untuk satu node. Node akan muncul dalam daftar setelah terhubung; Anda tidak perlu memasukkan ID atau alamat IP-nya di sini.",
   "agentSetup.serverAddress": "Alamat server untuk agen",
-  "agentSetup.configHint": "Unduh .env.agent dan letakkan di samping compose.agent.yaml. Pengaturan ini diterapkan pada node Linux."
+  "agentSetup.configHint": "Unduh .env.agent dan letakkan di samping compose.agent.yaml. Pengaturan ini diterapkan pada node Linux.",
+  "agent.connections.serverOnly": "Koneksi ke node ini hanya diizinkan melalui server."
 }

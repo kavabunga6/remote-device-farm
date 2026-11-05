@@ -3692,5 +3692,6 @@
   "agentSetup.accessTitle": "टोकन पाएँ",
   "agentSetup.accessHint": "हर टोकन एक नोड के लिए है। कनेक्ट होते ही नोड सूची में दिखने लगेगा; यहाँ उसका ID या IP पता भरने की ज़रूरत नहीं है।",
   "agentSetup.serverAddress": "एजेंट के लिए सर्वर का पता",
-  "agentSetup.configHint": ".env.agent डाउनलोड करके compose.agent.yaml के साथ रखें। ये सेटिंग्स Linux नोड पर लागू होती हैं।"
+  "agentSetup.configHint": ".env.agent डाउनलोड करके compose.agent.yaml के साथ रखें। ये सेटिंग्स Linux नोड पर लागू होती हैं।",
+  "agent.connections.serverOnly": "इस नोड से केवल सर्वर के ज़रिए कनेक्ट किया जा सकता है।"
 }

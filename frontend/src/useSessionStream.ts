@@ -1,7 +1,7 @@
 import { SessionVideo } from './session-video';
 import { type StreamMessage } from './session-media';
 import { SessionAudio } from './session-audio';
-import { t } from './i18n';
+import { localizeText, t } from './i18n';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { sessionSocketUrl } from './api';
 import { HEARTBEAT_INTERVAL_MS, HEARTBEAT_TIMEOUT_MS, INPUT_BUFFER_LIMIT, reconnectDelay, StreamControl } from './stream-control';
@@ -333,7 +333,7 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
   };
   unlockAudioRef.current = unlockAudio;
   return {
-    imageRef, canvasRef, status, size, format, transport, nativeTouches, streamError, connected, inputReady, connectionGeneration, metrics, audioTransport, mode, audioUnavailableCount, audioNeedsGesture, audioNotice, audioActive, audioState,
+    imageRef, canvasRef, status, size, format, transport, nativeTouches, streamError: localizeText(streamError), connected, inputReady, connectionGeneration, metrics, audioTransport, mode, audioUnavailableCount, audioNeedsGesture, audioNotice, audioActive, audioState,
     reconnect: () => { retryAttemptRef.current = 0; setRetry(value => value + 1); },
     send: (payload: Record<string, unknown>) => sendInputRef.current(payload),
     unlockAudio,

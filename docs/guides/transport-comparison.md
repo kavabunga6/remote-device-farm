@@ -21,12 +21,14 @@ WebSocket остаётся начальным режимом; ошибка WebRT
 
 ## Включение на узле
 
-WebRTC выключен по умолчанию. Нужны `AGENT_WEBRTC_ENABLED=1`, доступный браузеру IP в `AGENT_WEBRTC_HOST_IP` и опубликованный UDP диапазон 50000–50100 (переопределяется `AGENT_WEBRTC_PORT_MIN/MAX`).
+Прямые подключения запрещены по умолчанию (`AGENT_ALLOW_DIRECT_CONNECTIONS=0`). В этом режиме доступен WebSocket через сервер; агент не передаёт ICE-адреса и параметры STUN/TURN. Одного `AGENT_WEBRTC_ENABLED=1` недостаточно, в том числе после обновления ранее настроенного узла.
+
+Для WebRTC явно разрешите прямые подключения: `AGENT_ALLOW_DIRECT_CONNECTIONS=1`. Также нужны `AGENT_WEBRTC_ENABLED=1`, доступный браузеру IP в `AGENT_WEBRTC_HOST_IP` и опубликованный UDP диапазон 50000–50100 (переопределяется `AGENT_WEBRTC_PORT_MIN/MAX`). WebRTC может раскрывать адреса узла авторизованным зрителям, даже при настроенном TURN. Если адреса должны оставаться закрытыми, используйте WebSocket.
 
 Дополнительный файл `compose.webrtc.yaml` включает эти параметры для сервиса `agent`:
 
 ```sh
-AGENT_WEBRTC_HOST_IP=192.0.2.20 docker compose --env-file .env.agent -f compose.agent.yaml -f compose.webrtc.yaml up -d agent
+AGENT_ALLOW_DIRECT_CONNECTIONS=1 AGENT_WEBRTC_HOST_IP=192.0.2.20 docker compose --env-file .env.agent -f compose.agent.yaml -f compose.webrtc.yaml up -d agent
 ```
 
 Для NAT и ограниченных сетей задайте `AGENT_WEBRTC_ICE_SERVERS` как JSON-массив стандартных RTCIceServer, например свой TURN. Параметры выдаются авторизованному зрителю; используйте ограниченные TURN-учётные данные. Без доступного ICE-маршрута WebRTC не подключится — выберите WebSocket. Прямое UDP-подключение и TURN проверяются для сети конкретной установки.

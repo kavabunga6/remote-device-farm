@@ -45,13 +45,15 @@ test('hosts hide addresses, hardware and telemetry from non-administrators', asy
   const f = await fixture();
   try {
     await f.db.query(`INSERT INTO hosts(id,name,status,slots,metrics,last_seen_at) VALUES('h1','worker-01','online',2,$1::jsonb,now())`,
-      [JSON.stringify({ hostIp: '192.0.2.20', cpuModel: 'Example CPU', memoryTotalMb: 65536, diskTotalGb: 1024, gpuModel: 'Example GPU', architecture: 'x86_64', gpuCapabilities: ['cuda'], nvidiaGpuAvailable: true })]);
+      [JSON.stringify({ hostIp: '192.0.2.20', addresses: ['2001:db8::20'], managementUrl: 'http://worker.internal:5037', cpuModel: 'Example CPU', memoryTotalMb: 65536, diskTotalGb: 1024, gpuModel: 'Example GPU', architecture: 'x86_64', gpuCapabilities: ['cuda'], nvidiaGpuAvailable: true })]);
     await f.db.query(`INSERT INTO hosts(id,name,status,slots,metrics,last_seen_at) VALUES('h2','sleepy','offline',1,'{}'::jsonb,now())`);
     f.actor(OWNER);
     const listed = (await (await f.request()).json() as { hosts: unknown[] }).hosts;
     assert.equal(listed.length, 1);
     const user = (await (await f.request()).json() as { hosts: Array<Record<string, unknown>> }).hosts[0]!;
     assert.deepEqual(user.metrics, { architecture: 'x86_64', gpuCapabilities: ['cuda'], nvidiaGpuAvailable: true, driGpuAvailable: false });
+    assert.equal(user.name, 'worker-01');
+    assert.doesNotMatch(JSON.stringify(user), /192\.0\.2\.20|2001:db8::20|worker\.internal/);
     assert.ok(!JSON.stringify(user).includes('192.0.2.20') && !JSON.stringify(user).includes('Example CPU'));
     f.actor(ADMIN);
     const admin = (await (await f.request()).json() as { hosts: Array<{ id: string; metrics: Record<string, unknown> }> }).hosts.find(host => host.id === 'h1')!;

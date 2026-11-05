@@ -68,7 +68,13 @@ export class WebRtcManager {
 
   capabilities() {
     return { available: this.config.enabled, iceServers: this.config.enabled ? this.config.iceServers : [],
-      ...(!this.config.enabled ? { reason: agentMessage('agent.webrtc.disabled', {}, 'ru') } : {}) };
+      ...(!this.config.enabled ? { reason: this.unavailableReason() } : {}) };
+  }
+
+  unavailableReason() {
+    return this.config.directConnectionsAllowed === false
+      ? agentMessage('agent.connections.serverOnly', {}, 'ru')
+      : agentMessage('agent.webrtc.disabled', {}, 'ru');
   }
 
   hasPeers(sessionId) {
@@ -76,7 +82,7 @@ export class WebRtcManager {
   }
 
   async offer(sessionId, serial, { peerId, description, canControl }) {
-    if (!this.config.enabled) throw new Error(agentMessage('agent.webrtc.disabled', {}, 'ru'));
+    if (!this.config.enabled) throw new Error(this.unavailableReason());
     if (!PEER_ID.test(peerId) || !description || description.type !== 'offer' ||
         typeof description.sdp !== 'string' || description.sdp.length > 128 * 1024 ||
         !description.sdp.includes('m=video ') || !description.sdp.includes('m=application ')) throw new Error(diagnostic('webrtc.0e8e6404bd'));

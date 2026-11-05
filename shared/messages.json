@@ -14774,5 +14774,9 @@
   "agentSetup.configHint": {
     "ru": "Скачайте .env.agent и положите рядом с compose.agent.yaml. Настройки применяются на Linux-узле.",
     "en": "Download .env.agent and place it next to compose.agent.yaml. These settings are applied on the Linux node."
+  },
+  "agent.connections.serverOnly": {
+    "ru": "На этом узле можно подключаться только через сервер.",
+    "en": "Connections to this node must go through the server."
   }
 }
