@@ -712,7 +712,7 @@
     },
     {
       "component": "examples/appium",
-      "lockSha256": "11da05a09463f575b4ef31f20cb4c95e4e29b0d08972ab5abc657155c4b4517c",
+      "lockSha256": "7da0b7df9126191ec5ae9561176e1d8300f8fb701ca02fe32db231750d5df9ab",
       "packages": [
         {
           "name": "@appium/base-driver",
@@ -1496,7 +1496,7 @@
         },
         {
           "name": "follow-redirects",
-          "version": "1.16.1",
+          "version": "1.16.2",
           "license": "MIT"
         },
         {
