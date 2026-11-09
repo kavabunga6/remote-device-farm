@@ -107,9 +107,9 @@ test('browser login, selected launch resources, environment proxy and asynchrono
   await expect(dialog).toBeVisible();
   await dialog.getByRole('tab', { name: 'Launch options', exact: true }).click();
   await dialog.getByLabel('Android cores', { exact: true }).fill('1');
-  await dialog.getByLabel('Node CPU limit', { exact: true }).fill('3');
+  await dialog.getByLabel('Container CPU', { exact: true }).fill('3');
   await dialog.getByLabel('Android memory, MB', { exact: true }).fill('1536');
-  await dialog.getByLabel('Node memory limit, MB', { exact: true }).fill('3072');
+  await dialog.getByLabel('Container memory, MB', { exact: true }).fill('3072');
   await dialog.getByRole('button', { name: 'Launch', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Contract Android', exact: true })).toBeVisible();
   await expect(page.locator('.session-heading')).toContainText('Running');
