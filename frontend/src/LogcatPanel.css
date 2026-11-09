@@ -1,7 +1,6 @@
 /* The log itself owns scrolling; controls never shrink into its viewport. */
 .session-layout .tool-panel .log-panel{display:flex;flex:1 1 0;flex-direction:column;min-height:0;min-width:0;overflow:hidden;gap:8px;padding:12px;--log-control-height:32px}
 .session-layout .tool-panel .log-panel[hidden]{display:none}
-.tool-panel[data-active-tool=logs]>.text-send{display:none}
 .log-panel>:not(.log-viewport){flex:none}
 .log-panel .log-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 .log-panel .log-head{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}

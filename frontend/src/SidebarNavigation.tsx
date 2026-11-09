@@ -28,9 +28,9 @@ export function SidebarNavigation({ page, section, user, counts, onNavigate }: P
     profiles: { value: counts?.profiles, description: t('ui.d0acee5d717b') },
     users: { value: counts?.users, description: t('ui.b3d19f2fed0f') },
   };
-  return <div className="sidebar-navigation">
+  return <div className="sidebar-navigation" id="app-sidebar-navigation">
     <nav className="side-nav" aria-label={t('ui.5135f064dea4')}>
-      {can(user, 'sessions.view') && <a href="#/overview" aria-label={t('ui.6b8377e0a6fa')} data-counted aria-current={page === 'overview' ? 'page' : undefined} onClick={onNavigate}>
+      {can(user, 'sessions.view') && <a href="#/overview" aria-label={t('ui.6b8377e0a6fa')} title={t('ui.6b8377e0a6fa')} data-counted aria-current={page === 'overview' ? 'page' : undefined} onClick={onNavigate}>
         <Icon name="phone" size={20} /><span>{t('ui.6b8377e0a6fa')}</span>
         <NavigationCount value={counts?.sessions} description={t('ui.d24bff1da366')} />
       </a>}
@@ -43,7 +43,7 @@ export function SidebarNavigation({ page, section, user, counts, onNavigate }: P
       <h2 id="admin-navigation-heading" className="side-nav-heading">{t('ui.eff775aa4e8c')}</h2>
       {adminSections.filter(item => can(user, sectionPermission[item.id])).map(item => {
         const count = item.id in adminCounts ? adminCounts[item.id as keyof typeof adminCounts] : undefined;
-        return <a key={item.id} href={'#/admin/' + item.id} aria-label={item.label} data-counted={count ? true : undefined}
+        return <a key={item.id} href={'#/admin/' + item.id} aria-label={item.label} title={item.label} data-counted={count ? true : undefined}
           aria-current={(page === 'admin' && section === item.id) || (page === 'hosts' && item.id === 'nodes') ? 'page' : undefined}
           onClick={onNavigate}>
           <Icon name={item.icon} size={20} /><span>{item.label}</span>

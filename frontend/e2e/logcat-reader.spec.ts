@@ -96,7 +96,7 @@ for (const [width, height, theme, scale] of [[1366,768,'light',1],[1440,900,'dar
     expect(Math.max(...geometry.header)-Math.min(...geometry.header)).toBeLessThanOrEqual(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
     await expect(panel.locator('.log-stats,.log-foot')).toHaveCount(0);
-    await expect(page.locator('.text-send')).not.toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Текст для устройства', exact: true })).toHaveCount(0);
     await page.screenshot({ path: `../.tmp-ui/logcat/reader-${width}-${theme}.png` });
     for (let n=0;n<2;n++) await page.getByRole('button', { name: 'Увеличить шрифт Логката' }).click();
     expect(await page.locator('.log-viewport').evaluate(e => getComputedStyle(e).fontSize)).toBe('15px');

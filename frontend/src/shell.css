@@ -87,28 +87,9 @@ body{font-size:0.9062rem;line-height:1.5;letter-spacing:-.003em}
 .session-title-row p{font-size:0.8438rem;margin-top:6px}
 .adb-title-badge{font-size:0.8125rem}
 
-.viewer-panel{display:grid;grid-template-columns:minmax(0,1fr);position:relative;border-radius:16px}
-.viewer-stage{grid-column:1;grid-row:1}
-.text-send,.upload-feedback,.capture-feedback,.audio-notice{grid-column:1/-1}
-.text-send{min-height:52px}
-.text-send input{font-size:0.875rem}
-.text-send button{font-size:0.8438rem}
-
-/* Controls: a floating vertical bar on the right edge of the stage */
-.device-controls{grid-column:1;grid-row:1;justify-self:end;align-self:center;z-index:4;flex-direction:column;flex-wrap:nowrap;gap:2px;min-height:0;margin-inline-end:20px;padding:6px;border:1px solid var(--stage-line);border-radius:16px;background:#162320d9;backdrop-filter:blur(8px)}
-.device-controls .control-group{flex-direction:column;gap:2px}
-.device-controls .controls-divider{width:26px;height:1px;background:var(--stage-line);margin:3px auto}
-.device-controls :is(.control-group button,.network-toggle,.upload-control,.capture-control){position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:0;padding:0;border:0;border-radius:11px;background:transparent;color:var(--stage-ink);font-size:0;gap:0}
-.device-controls :is(.control-group button,.network-toggle,.upload-control,.capture-control):hover:not(:disabled){background:#ffffff1c;color:#fff}
-.device-controls :is(.control-group button,.network-toggle,.upload-control,.capture-control):disabled{opacity:.35}
-.device-controls svg{width:20px;height:20px}
-.device-controls .network-toggle.enabled{background:#35c79a2e;color:#7ff0c9}
-.device-controls .network-toggle:not(.enabled){color:#f0a79f}
-.device-controls .capture-control.recording{background:#d9534a40;color:#ffb1a9;width:auto;min-width:44px;padding:0 8px;font-size:0.75rem;gap:6px}
-.device-controls .capture-control.recording span{font-size:0.75rem;font-family:var(--font-mono)}
-.device-controls .upload-control span:not(.mini-spinner){display:none}
-.device-controls [title]:hover::after{content:attr(title);position:absolute;right:calc(100% + 10px);top:50%;transform:translateY(-50%);background:#000;color:#fff;font-size:0.7812rem;font-weight:500;white-space:nowrap;padding:5px 10px;border-radius:7px;pointer-events:none;z-index:6}
-:root[data-effective-theme="dark"] .device-controls{background:#0d1614d9}
+.viewer-panel{display:grid;grid-template-columns:64px minmax(0,1fr);position:relative;border-radius:16px}
+.viewer-stage{grid-column:2;grid-row:1;min-width:0}
+.upload-feedback,.capture-feedback,.audio-notice{grid-column:1/-1}
 
 /* Console */
 .tool-panel{border-radius:16px}
@@ -118,14 +99,6 @@ body{font-size:0.9062rem;line-height:1.5;letter-spacing:-.003em}
 .terminal-input{border-radius:12px;min-height:44px;font-size:0.8125rem}
 .terminal-input input{font-size:0.8125rem}
 .console-catalog-toggle{font-size:0.8125rem;padding:7px 11px;border-radius:9px}
-
-@media(max-width:800px){
-  .device-controls{grid-row:2;grid-column:1;justify-self:center;align-self:auto;flex-direction:row;margin:10px;position:static}
-  .device-controls .control-group{flex-direction:row}
-  .device-controls .controls-divider{width:1px;height:26px;margin:auto 3px}
-  .device-controls [title]:hover::after{display:none}
-  .text-send{grid-row:3}
-}
 
 /* ---------- Administration: section jump bar ---------- */
 #adm-sessions,#adm-nodes,#adm-profiles,#adm-agents,#adm-users,#adm-journal{scroll-margin-top:110px}
@@ -173,28 +146,6 @@ body{font-size:0.9062rem;line-height:1.5;letter-spacing:-.003em}
 :root[data-effective-theme="dark"] :is(.side-logout,.side-profile-name small){color:var(--ui-subtle)}
 :root[data-effective-theme="dark"] .breadcrumbs,:root[data-effective-theme="dark"] .breadcrumbs span{color:var(--ui-muted)}
 
-/* ---------- Spacing of icons and hints ---------- */
-/* Hints use data-tip so the browser's own tooltip does not appear on top of ours. */
-.device-controls [title]:hover::after{content:none}
-.device-controls [data-tip]:is(:hover,:focus-visible)::after{content:attr(data-tip);position:absolute;right:calc(100% + 12px);top:50%;transform:translateY(-50%);background:#000;color:#fff;font-size:0.8125rem;font-weight:500;line-height:1.2;white-space:nowrap;padding:6px 11px;border-radius:8px;pointer-events:none;z-index:8}
-/* Every control in the bar is the same square, whatever it contains. */
-.device-controls{gap:4px;padding:8px}
-.device-controls>*{flex:none}
-.device-controls :is(.control-group button,.network-toggle,.upload-control,.capture-control){box-sizing:border-box;width:44px;height:44px;min-width:44px;min-height:44px;margin:0;padding:0;line-height:0;display:flex;align-items:center;justify-content:center;gap:0;overflow:visible}
-.device-controls .capture-control.recording{width:auto;line-height:1.2}
-.device-controls .control-group{gap:4px}
-.device-controls .controls-divider{margin:4px auto}
-.device-controls svg{flex:none;display:block}
-.device-controls>[hidden]{display:none}
-/* Status chips above the screen */
-/* Text-to-device row */
-.text-send{gap:12px;padding:8px 16px}
-.text-send input{background:transparent;border:0;box-shadow:none;padding:10px 4px;color:inherit}
-.text-send input::placeholder{color:#8fa19b}
-.text-send input:-webkit-autofill{-webkit-box-shadow:0 0 0 40px transparent inset}
-.text-send button{gap:8px;padding:8px 10px;border-radius:8px}
-:root[data-effective-theme="dark"] .text-send input{color:var(--ui-text)}
-:root[data-effective-theme="dark"] .text-send button{color:var(--accent)}
 /* Console helper text and header actions */
 .terminal-empty,.terminal-entry small{font-size:0.8125rem;line-height:1.6}
 .terminal-empty p{margin:8px 0 0}
@@ -202,16 +153,8 @@ body{font-size:0.9062rem;line-height:1.5;letter-spacing:-.003em}
 .terminal-topline{gap:14px}
 .session-title-top{gap:10px 12px}
 .adb-title-badge{gap:10px;padding:6px 8px 6px 12px}
-@media(max-width:800px){.device-controls [data-tip]::after{display:none!important}}
-
-/* The control bar never outgrows the screen area: it wraps into a second column instead of spilling over the header. */
-.device-controls{max-height:calc(100% - 28px);flex-wrap:wrap;align-content:center;justify-content:center;overflow:visible;column-gap:6px}
-.device-controls .control-group{flex-wrap:nowrap}
-@media(max-width:800px){.device-controls{max-height:none;flex-wrap:wrap;max-width:calc(100% - 20px);row-gap:4px}.device-controls .control-group{flex-wrap:wrap;justify-content:center}}
-
 /* Keep the whole device card near the frame width, with room for the vertical controls. */
 .viewer-panel{width:min(100%,var(--viewer-width));justify-self:center}
-@media(min-width:801px){.viewer-stage:not(:fullscreen){padding-inline-start:18px;padding-inline-end:102px}}
 .viewer-stage:fullscreen{padding:24px}
 @media(max-width:800px){.viewer-panel{width:100%}}
 
@@ -225,7 +168,7 @@ body{font-size:0.9062rem;line-height:1.5;letter-spacing:-.003em}
    Everything sized in rem grows with it; no CSS zoom, so pointer maths stays exact. The user's "Масштаб интерфейса" setting replaces this rule with a fixed size (or leaves it: "Авто"). */
 html{font-size:clamp(16px, calc(16px + (100vw - 1440px) * 0.0058), 26px)}
 @media(min-width:1441px){
-  .sidebar svg,.topbar svg,.button svg,.icon-button svg,.text-button svg,.stat-icon svg,.session-card-icon svg,.tool-tabs svg,.log-actions svg,.device-controls svg,.banner-error svg,.banner-warning svg,.side-profile svg,.side-logout svg{width:1.15rem;height:1.15rem}
+  .sidebar svg,.topbar svg,.button svg,.icon-button svg,.text-button svg,.stat-icon svg,.session-card-icon svg,.tool-tabs svg,.log-actions svg,.banner-error svg,.banner-warning svg,.side-profile svg,.side-logout svg{width:1.15rem;height:1.15rem}
 }
 
 /* ---------- Errors are red and hard to miss ---------- */
@@ -250,10 +193,6 @@ html{font-size:clamp(16px, calc(16px + (100vw - 1440px) * 0.0058), 26px)}
 .button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;box-shadow:0 2px 8px color-mix(in srgb,var(--accent) 35%,transparent)}
 :root[data-effective-theme="dark"] .button.primary{color:#06231a}
 .button.primary:not(:disabled):hover,.button.accent:not(:disabled):hover{background:var(--accent-strong)}
-.text-send button{background:var(--accent);color:#fff;border-radius:9px;padding:.5rem .9rem;font-weight:700}
-.text-send button:not(:disabled):hover{background:var(--accent-strong)}
-:root[data-effective-theme="dark"] .text-send button{background:var(--accent);color:#06231a}
-.text-send button:disabled{background:transparent;color:#8fa19b}
 .terminal-input button{background:var(--accent);color:#fff;border-radius:8px}
 :root[data-effective-theme="dark"] .terminal-input button{color:#06231a}
 .console-catalog-toggle{border-color:var(--accent);color:var(--accent);background:transparent;font-weight:700}
@@ -302,14 +241,6 @@ html{font-size:clamp(16px, calc(16px + (100vw - 1440px) * 0.0058), 26px)}
   .session-title-row p{margin-top:3px}
   .banner-warning{margin-bottom:8px;padding:7px 10px}
   .workspace-grid .viewer-stage:not(:fullscreen){padding-inline:18px}
-  .workspace-grid .device-controls{grid-column:1;grid-row:2;justify-self:stretch;align-self:stretch;width:auto;max-width:none;max-height:none;min-height:0;margin:0;padding:3px 6px;flex-direction:row;flex-wrap:wrap;align-content:center;justify-content:center;overflow:visible;gap:2px;border-radius:0}
-  .workspace-grid .device-controls .control-group{flex-direction:row;gap:1px}
-  .workspace-grid .device-controls .controls-divider{width:1px;height:22px;margin:0 1px}
-  .workspace-grid .device-controls :is(.control-group button,.network-toggle,.upload-control,.capture-control){width:34px;min-width:34px;height:34px;min-height:34px}
-  .workspace-grid .device-controls svg{width:17px;height:17px}
-  .workspace-grid .text-send{grid-column:1;grid-row:3;min-height:42px;padding:3px 10px}
-  .workspace-grid .text-send input{padding:5px 4px}
-  .workspace-grid .text-send button{padding:6px 8px}
   .terminal-panel .tool-content{padding:10px 12px}
   .terminal-topline .tool-header p{margin-bottom:8px}
 }

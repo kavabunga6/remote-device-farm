@@ -1,0 +1,48 @@
+.session-layout .terminal-panel .performance-panel {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.performance-section {
+  display: grid;
+  align-content: start;
+  gap: .65rem;
+  min-inline-size: 0;
+  padding-block-end: 1rem;
+  border-block-end: 1px solid var(--ui-border);
+}
+
+.performance-section:last-child { border-block-end: 0; }
+
+.performance-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem .75rem;
+}
+
+.performance-section h3 { margin: 0; font-size: 1rem; }
+.performance-section p { margin: 0; max-inline-size: 68ch; }
+.performance-section time { color: var(--ui-muted); font-size: .85em; }
+.performance-section .button { justify-self: start; max-inline-size: 100%; white-space: normal; }
+.performance-section .performance-error { color: var(--danger); }
+
+.performance-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: .6rem 1rem;
+  margin: 0;
+}
+
+.performance-values dt { color: var(--ui-muted); font-size: .875em; overflow-wrap: anywhere; }
+.performance-values dd { margin: .15rem 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.performance-section pre { white-space: pre-wrap; overflow-wrap: anywhere; max-block-size: 14rem; overflow: auto; }
+
+.performance-crash-dialog { max-inline-size: 36rem; padding: 1.25rem; }
+.performance-crash-dialog > header { margin-block-end: 1rem; }
+.performance-crash-dialog h2 { margin: 0; }
+.performance-crash-dialog .performance-section { padding-block-end: 0; }

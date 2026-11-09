@@ -419,9 +419,9 @@ const API_BASE = '/api';
 // Server messages are English; people see these instead for the cases they can act on.
 export const KNOWN_ERRORS: Record<string, string> = knownErrorMessages();
 
-type RequestOptions = RequestInit & { timeoutMs?: number };
+type RequestOptions = RequestInit & { timeoutMs?: number; responseType?: 'blob' };
 async function request<T>(path: string, input: RequestOptions = {}): Promise<T> {
-  const { timeoutMs, ...options } = input;
+  const { timeoutMs, responseType, ...options } = input;
   try {
     return await withRequestDeadline(async signal => {
       const response = await fetch(`${API_BASE}${path}`, {
@@ -434,6 +434,7 @@ async function request<T>(path: string, input: RequestOptions = {}): Promise<T> 
           ...options.headers,
         },
       });
+      if (response.ok && responseType === 'blob') return await response.blob() as T;
       const contentType = response.headers.get('Content-Type') ?? '';
       const body: unknown = contentType.includes('application/json')
         ? await response.json()

@@ -1,5 +1,5 @@
 import { TranslatedText } from './TranslatedText';
-import { localizeText, getLanguage, t } from './i18n';
+import { localizeText, getLanguage, getLocale, t, type MessageKey } from './i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, KNOWN_ERRORS, type AdbPublicKey, type Host, type Profile, type SessionLaunchOptions } from './api';
 import { notifyQueueChanged, queueApi } from './queue-api';
@@ -24,6 +24,11 @@ function profileFacts(environment: ReturnType<typeof profileEnvironment>): Array
   return facts.filter(([, value]) => !isUnset(value));
 }
 
+function argumentExample(message: MessageKey) {
+  const parts = t(message).split(/( +)/);
+  return <code dir="ltr">{parts.map((part, index) => index % 2 ? part : <span key={index}>{part}</span>)}</code>;
+}
+
 const LAST_LAUNCH_KEY = 'rdf.lastLaunch';
 export function rememberLaunch(profileId: string, gpuMode: GpuMode) {
   try { localStorage.setItem(LAST_LAUNCH_KEY, JSON.stringify({ profileId, gpuMode })); } catch { /* storage may be unavailable */ }
@@ -34,7 +39,7 @@ export function lastLaunch(): { profileId?: string; gpuMode?: GpuMode } {
 
 export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfileIds = null, onClose, onCreate, onQueued, canConfigureContainer = false }: {
   canConfigureContainer?: boolean; hosts: Host[]; profiles: Profile[]; allowedProfileIds?: string[] | null;
-  onClose: () => void; onCreate: (hostId: string, profileId: string, adbKeyId: string | null, gpuMode: GpuMode, storage?: { diskGb?: number; sdcardGb?: number }, launchOptions?: SessionLaunchOptions, count?: number) => Promise<void>; onQueued?: () => void;
+  onClose: () => void; onCreate: (dialog: HTMLElement, hostId: string, profileId: string, adbKeyId: string | null, gpuMode: GpuMode, storage?: { diskGb?: number; sdcardGb?: number }, launchOptions?: SessionLaunchOptions, count?: number) => Promise<void>; onQueued?: () => void;
 }) {
   const can = useAccess(), canUseAdb = can('sessions.adb');
   const profiles = useMemo(() => allowedProfileIds === null ? allProfiles : allProfiles.filter(profile => allowedProfileIds.includes(profile.id)), [allProfiles, allowedProfileIds, getLanguage()]);
@@ -59,18 +64,24 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
   const [keyLoadAttempt, setKeyLoadAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'device' | 'settings'>('device');
+  const [animateTab, setAnimateTab] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const revealReadiness = useRef(false);
   const selectedProfile = profiles.find(profile => profile.id === profileId);
   const canEditLaunch = canConfigureContainer || selectedProfile?.launchOverridesAllowed === true;
   const extraOptions = canEditLaunch ? parsedDraft.options : {};
   const draftError = canEditLaunch ? parsedDraft.error : '';
+  const argumentError = parsedDraft.field === 'emulatorParams' ? draftError : '';
   const effectiveProfile = selectedProfile ? effectiveLaunchProfile(selectedProfile, extraOptions) : undefined;
   const environment = effectiveProfile ? profileEnvironment(effectiveProfile) : null;
-  const launchError = draftError || launchResourceError(selectedProfile, extraOptions, canConfigureContainer) || (extraOptions.privileged && !canConfigureContainer ? t('ui.ab4d9e952621') : '');
   const manualHost = hosts.find(host => host.id === hostId);
+  const privilegedAllowed = hosts.some(host => (!hostId || host.id === hostId) && host.privilegedEmulatorsAllowed === true);
+  const privilegedHint = privilegedAllowed ? t('ui.805f8cecc58e') : extraOptions.privileged ? t('ui.bfd5b7899496') : t('ui.7323446f47d6');
   const readiness = launchReadiness(selectedProfile, hosts, gpuMode, hostId, extraOptions.privileged, extraOptions);
+  const blockingIssue = readiness.state === 'blocked' ? readiness.issues[0] : undefined;
   const selectedHost = readiness.state === 'ready' ? readiness.host : undefined;
+  const slotLimitHost = manualHost ?? selectedHost ?? (hosts.length === 1 ? readiness.host : undefined);
   const profileFitsHost = readiness.state === 'ready';
   const gpuReadiness = launchReadiness(selectedProfile, hosts, 'nvidia', hostId, extraOptions.privileged, extraOptions);
   const autoReadiness = hostId ? launchReadiness(selectedProfile, hosts, gpuMode, '', extraOptions.privileged, extraOptions) : readiness;
@@ -97,10 +108,10 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
     }
   }, [profiles, profileId]);
   useEffect(() => {
-    if (!revealReadiness.current) return;
+    if (!revealReadiness.current || activeTab !== 'device') return;
     revealReadiness.current = false;
     dialogRef.current?.querySelector('.launch-readiness')?.scrollIntoView({ block: 'nearest' });
-  }, [gpuMode, profileId, extraOptions.privileged]);
+  }, [gpuMode, profileId, activeTab]);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null; dialogRef.current?.focus(); return () => previous?.focus();
   }, []);
@@ -128,27 +139,40 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
   const diskGb = ownChoice?.diskGb ?? diskDefault;
   const sdcardGb = ownChoice?.sdcardGb ?? sdcardDefault;
   const showStorage = Boolean(selectedProfile) && (diskMax > diskDefault || sdcardMax > 0);
-  const storageValid = !showStorage || (Number.isInteger(diskGb) && diskGb >= Math.min(2, diskDefault) && diskGb <= diskMax && Number.isInteger(sdcardGb * 1024) && (sdcardGb === 0 || sdcardGb >= 0.125) && sdcardGb <= sdcardMax);
+  const diskMin = Math.min(2, diskDefault);
+  const storageNumber = new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 10 });
+  const diskError = showStorage && (!Number.isInteger(diskGb) || diskGb < diskMin || diskGb > diskMax)
+    ? t('launch.diskSizeInvalid', { min: storageNumber.format(diskMin), max: storageNumber.format(diskMax) }) : '';
+  const cardError = showStorage && sdcardGb !== 0 && (!Number.isInteger(sdcardGb * 1024) || sdcardGb < 0.125 || sdcardGb > sdcardMax)
+    ? t('launch.sdCardSizeInvalid', { min: storageNumber.format(0.125), max: storageNumber.format(sdcardMax) }) : '';
+  const launchError = diskError || cardError || draftError || launchResourceError(selectedProfile, extraOptions, canConfigureContainer) ||
+    (extraOptions.privileged && !canConfigureContainer ? t('ui.ab4d9e952621') : '');
   const launchOptions: SessionLaunchOptions = { ...extraOptions, ...(canEditLaunch && ownChoice ? { diskGb, sdCardMb: sdcardGb * 1024 } : {}) };
   const launchSettingsChanged = canEditLaunch && (hasLaunchDraftChanges(selectedProfile, draft) || diskGb !== diskDefault || sdcardGb !== sdcardDefault);
-  const [activeTab, setActiveTab] = useState<'device' | 'settings'>('device');
-  const [animateTab, setAnimateTab] = useState(false);
   const selectTab = (tab: 'device' | 'settings', animate = false) => {
     setAnimateTab(animate);
     setActiveTab(tab);
+  };
+  const showLaunchReadiness = () => {
+    revealReadiness.current = true;
+    selectTab('device');
+    dialogRef.current?.querySelector<HTMLButtonElement>('#create-tab-device')?.focus();
   };
   useEffect(() => { if (keyError) { setAnimateTab(false); setActiveTab('settings'); } }, [keyError]);
   const [connectionOpen, setConnectionOpen] = useState(!canEditLaunch);
   const [count, setCount] = useState(1);
   const joinQueue = async () => {
-    if (busy || keyLoading || launchError || !(queueCompatible || noSlots) || !storageValid || !selectedProfile || selectedProfile.enabled === false) return;
+    if (busy || keyLoading || launchError || !(queueCompatible || noSlots) || !selectedProfile || selectedProfile.enabled === false) return;
     setBusy(true); setError('');
     try { await queueApi.join({ profileId, hostId: hostId || null, gpuMode, adbKeyId: adbKeyId || null, launchOptions }); notifyQueueChanged(); onQueued?.(); }
     catch (cause) { setError(cause instanceof Error ? cause.message : t('ui.e19c87d5666e')); setBusy(false); }
   };
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); if (busy || keyLoading || Boolean(launchError) || !selectedHost || !profileFitsHost || !storageValid) return; setBusy(true); setError('');
-    try { rememberLaunch(profileId, gpuMode); await onCreate(selectedHost.id, profileId, adbKeyId || null, gpuMode, undefined, launchOptions, count); }
+    event.preventDefault();
+    const dialog = dialogRef.current;
+    if (!dialog || busy || keyLoading || launchError || !selectedHost || !profileFitsHost) return;
+    setBusy(true); setError('');
+    try { rememberLaunch(profileId, gpuMode); await onCreate(dialog, selectedHost.id, profileId, adbKeyId || null, gpuMode, undefined, launchOptions, count); }
     catch (cause) { setError(cause instanceof Error ? cause.message : t('ui.16bb1217be82')); setBusy(false); }
   };
   return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose(); }}>
@@ -185,7 +209,7 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
               {environment && <>
                 <dl className="create-summary-resources">
                   <div><dt><Icon name="phone" size={18}/>{t('ui.6ee4b2429634')}</dt><dd>{[isUnset(environment.cores) ? '' : t('copy.CreateSessionModal.c301bee9', { p0: environment.cores }), isUnset(environment.memory) ? '' : environment.memory].filter(Boolean).map((value, index) => <span key={index}>{index > 0 && ' · '}<bdi>{value}</bdi></span>)}{isUnset(environment.cores) && isUnset(environment.memory) && t('ui.95807be9fda9')}</dd></div>
-                  <div><dt><Icon name="server" size={18}/>{t('ui.d7638391d8f0')}</dt><dd><bdi dir="ltr"><TranslatedText message="copy.CreateSessionModal.c640bd31" values={{ p0: effectiveProfile?.cpu ?? '—', p1: <bdi>{memoryLabel(effectiveProfile?.memoryMb)}</bdi> }} /></bdi></dd></div>
+                  <div><dt><Icon name="server" size={18}/>{t('ui.b0cedecc718e')}</dt><dd><bdi dir="ltr"><TranslatedText message="copy.CreateSessionModal.c640bd31" values={{ p0: effectiveProfile?.cpu ?? '—', p1: <bdi>{memoryLabel(effectiveProfile?.memoryMb)}</bdi> }} /></bdi></dd></div>
                 </dl>
               </>}
             </div>
@@ -202,19 +226,42 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
           <div className="create-launch-settings">
             {canEditLaunch && <section className="create-settings-section" aria-labelledby="create-resources-title">
               <h4 id="create-resources-title">{t('ui.eba267d9f828')}</h4>
-              <p className="create-field-hint" id="create-resources-hint">{t('ui.b549c7b74964')}</p>
+              <p className="create-field-hint" id="create-resources-hint">{t('ui.518763865297')}</p>
               <div className="create-resource-fields">
-                <h5>{t('ui.6ee4b2429634')}</h5><h5>{t('ui.04fba521d85b')}</h5>
+                <h5>{t('ui.6ee4b2429634')}</h5><h5>{t('ui.b0cedecc718e')}</h5>
                 <label className="create-field"><span>{t('ui.6987f2403413')}</span><input type="number" aria-label={t('ui.849635da03ef')} aria-describedby="create-resources-hint" min={1} max={Math.min(16, effectiveProfile?.cpu ?? 16)} value={draft.guestCores === null ? '' : draft.guestCores ?? selectedProfile?.guestCores ?? ''} placeholder={t('ui.8dca2f783130')} disabled={busy || !selectedProfile} onChange={event => setLaunchField('guestCores', event.target.value || null)}/></label>
-                <label className="create-field"><span>{t('ui.db9a4c7d4c19')}</span><input type="number" aria-label={t('ui.e62f9de2a503')} min={1} max={canConfigureContainer ? 16 : selectedProfile?.cpu ?? 16} value={draft.cpu ?? selectedProfile?.cpu ?? ''} disabled={busy || !selectedProfile} onChange={event => setLaunchField('cpu', event.target.value)}/></label>
+                <label className="create-field"><span>{t('ui.db9a4c7d4c19')}</span><input type="number" aria-label={t('ui.8ae6d0b53b58')} min={1} max={canConfigureContainer ? 16 : selectedProfile?.cpu ?? 16} value={draft.cpu ?? selectedProfile?.cpu ?? ''} disabled={busy || !selectedProfile} onChange={event => setLaunchField('cpu', event.target.value)}/></label>
                 <label className="create-field"><span>{t('ui.e5011b9e7ecd')}</span><input type="number" aria-label={t('ui.43ec81e4a9a8')} aria-describedby="create-resources-hint" min={1024} max={Math.min(64512, (effectiveProfile?.memoryMb ?? 65536) - 1024)} step={1} value={draft.guestMemoryMb === null ? '' : draft.guestMemoryMb ?? selectedProfile?.guestMemoryMb ?? ''} placeholder={t('ui.8dca2f783130')} disabled={busy || !selectedProfile} onChange={event => setLaunchField('guestMemoryMb', event.target.value || null)}/></label>
-                <label className="create-field"><span>{t('ui.e5011b9e7ecd')}</span><input type="number" aria-label={t('ui.27ed0bc1e3f8')} min={1024} max={canConfigureContainer ? 65536 : selectedProfile?.memoryMb ?? 65536} step={1} value={draft.memoryMb ?? selectedProfile?.memoryMb ?? ''} disabled={busy || !selectedProfile} onChange={event => setLaunchField('memoryMb', event.target.value)}/></label>
+                <label className="create-field"><span>{t('ui.e5011b9e7ecd')}</span><input type="number" aria-label={t('ui.01e4c4609286')} min={1024} max={canConfigureContainer ? 65536 : selectedProfile?.memoryMb ?? 65536} step={1} value={draft.memoryMb ?? selectedProfile?.memoryMb ?? ''} disabled={busy || !selectedProfile} onChange={event => setLaunchField('memoryMb', event.target.value)}/></label>
               </div>
-              <p className="create-field-hint">{t('ui.e902c734b6f5')}{!canConfigureContainer && t('ui.9bdf2827ed33')}</p>
+              {slotLimitHost && <p className="create-field-hint" id="create-slot-limit">
+                <TranslatedText message="launch.slotLimit" values={{
+                  node: <bdi>{slotLimitHost.name}</bdi>,
+                  cpu: slotLimitHost.slotCpu.toLocaleString(getLocale()),
+                  memory: <bdi>{t('copy.profile-metadata.dd02835c', { p0: slotLimitHost.slotMemoryMb.toLocaleString(getLocale()) })}</bdi>,
+                }}/>
+              </p>}
+              <p className="create-field-hint">{t('ui.e902c734b6f5')}{!canConfigureContainer && (' ' + t('ui.2904bb387496'))}</p>
             </section>}
             {canEditLaunch && showStorage && <details className="create-setting-group create-storage-section create-disclosure"><summary><span id="create-storage-title">{t('ui.f8f37144a47b')}</span><Icon name="arrowDown" size={16}/></summary><div className="create-settings-section"><div className="create-storage-fields">
-              <label className="create-field"><span>{t('ui.d4e8e3a8c9c0')}</span><input type="number" aria-label={t('ui.d4e8e3a8c9c0')} min={Math.min(2, diskDefault)} max={diskMax} value={diskGb} disabled={busy || diskMax <= diskDefault} onChange={event => setStorageChoice({ profileId, diskGb: Number(event.target.value), sdcardGb })}/><small className="create-field-hint"><TranslatedText message="copy.CreateSessionModal.2ab9468e" values={{ p0: diskMax }} /></small></label>
-              {sdcardMax > 0 && <label className="create-field"><span>{t('ui.bc1e3fa107d5')}</span><input type="number" aria-label={t('ui.bc1e3fa107d5')} min={0} max={sdcardMax} step="any" value={sdcardGb} disabled={busy} onChange={event => setStorageChoice({ profileId, diskGb, sdcardGb: Number(event.target.value) })}/><small className="create-field-hint"><TranslatedText message="copy.CreateSessionModal.57a5b291" values={{ p0: sdcardMax }} /></small></label>}
+              <label className="create-field">
+                <span>{t('ui.d4e8e3a8c9c0')}</span>
+                <input type="number" aria-label={t('ui.d4e8e3a8c9c0')} aria-invalid={Boolean(diskError)} aria-describedby="create-disk-size-hint"
+                  min={diskMin} max={diskMax} value={diskGb} disabled={busy || diskMax <= diskDefault}
+                  onChange={event => setStorageChoice({ profileId, diskGb: Number(event.target.value), sdcardGb })}/>
+                <small id="create-disk-size-hint" className={diskError ? 'create-error' : 'create-field-hint'}>
+                  {diskError || <TranslatedText message="copy.CreateSessionModal.2ab9468e" values={{ p0: diskMax }} />}
+                </small>
+              </label>
+              {sdcardMax > 0 && <label className="create-field">
+                <span>{t('ui.bc1e3fa107d5')}</span>
+                <input type="number" aria-label={t('ui.bc1e3fa107d5')} aria-invalid={Boolean(cardError)} aria-describedby="create-card-size-hint"
+                  min={0} max={sdcardMax} step="any" value={sdcardGb} disabled={busy}
+                  onChange={event => setStorageChoice({ profileId, diskGb, sdcardGb: Number(event.target.value) })}/>
+                <small id="create-card-size-hint" className={cardError ? 'create-error' : 'create-field-hint'}>
+                  {cardError || <TranslatedText message="copy.CreateSessionModal.57a5b291" values={{ p0: sdcardMax }} />}
+                </small>
+              </label>}
             </div></div></details>}
             <details className="create-setting-group create-connection-section create-disclosure" open={connectionOpen || Boolean(keyError)} onToggle={event => setConnectionOpen(event.currentTarget.open)}>
               <summary><span id="create-session-options-title">{t('ui.c02a7c1a6d73')}</span><Icon name="arrowDown" size={16}/></summary>
@@ -233,19 +280,21 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
               <summary>{t('ui.0b6042b8b114')}<Icon name="arrowDown" size={16}/></summary>
               <div className="create-advanced-body">
                 <div className="create-settings-section">
-                  <label htmlFor="launch-params" className="create-params-field create-field"><span>{t('ui.6945fd170daa')}</span><textarea id="launch-params" aria-label={t('ui.6945fd170daa')} rows={3} maxLength={500} value={draft.emulatorParams ?? selectedProfile?.emulatorParams ?? ''} placeholder={t('ui.1504db0723a1')} disabled={busy || !selectedProfile} onChange={event => setLaunchField('emulatorParams', event.target.value)} aria-describedby="launch-params-hint"/><small id="launch-params-hint" className="create-field-hint">{t('ui.3f5799d1dc38')}</small></label>
+                  <label htmlFor="launch-params" className="create-params-field create-field"><span>{t('ui.6945fd170daa')}</span><textarea id="launch-params" dir="ltr" aria-label={t('ui.6945fd170daa')} rows={3} maxLength={500} value={draft.emulatorParams ?? selectedProfile?.emulatorParams ?? ''} placeholder={t('ui.1504db0723a1')} disabled={busy || !selectedProfile} onChange={event => setLaunchField('emulatorParams', event.target.value)} aria-invalid={Boolean(argumentError)} aria-describedby={argumentError ? 'launch-params-hint launch-params-error' : 'launch-params-hint'}/><small id="launch-params-hint" className="create-field-hint">{t('ui.3f5799d1dc38')}</small>
+                    {argumentError && <small id="launch-params-error" className="create-field-hint create-argument-error">{argumentError}</small>}
+                  </label>
                   <details className="create-argument-help"><summary>{t('ui.f0bc889de07c')}<Icon name="arrowDown" size={16}/></summary><ul>
-                    <li><TranslatedText message="copy.CreateSessionModal.dfe339a9" values={{ p0: <code>{t('ui.317224f219c8')}</code>, p1: <code>{t('ui.9ff835086160')}</code>, p2: <code>{t('ui.cef9a4c31524')}</code>, p3: <code>{t('ui.5d15206a3c5f')}</code>, p4: <code>{t('ui.c39c54f4d476')}</code> }} /></li>
-                    <li><TranslatedText message="copy.CreateSessionModal.fcd5d8bb" values={{ p0: <code>{t('ui.6659290e34e8')}</code>, p1: <code>{t('ui.cf18e3c28158')}</code>, p2: <code>{t('ui.8528ddedb2c4')}</code>, p3: <code>{t('ui.327bd37cfb2c')}</code>, p4: <code>{t('ui.d2e9c2f9b08f')}</code> }} /></li>
-                    <li><TranslatedText message="copy.CreateSessionModal.ccb388e1" values={{ p0: <code>{t('ui.589f50aa053f')}</code>, p1: <code>{t('ui.f7ba33858706')}</code> }} /></li>
-                    <li><TranslatedText message="copy.CreateSessionModal.b9257f27" values={{ p0: <code>{t('ui.bc568c0b9c57')}</code>, p1: <code>{t('ui.a1c45afd0759')}</code>, p2: <code>{t('ui.b5e27df7955c')}</code> }} /></li>
-                    <li><TranslatedText message="copy.CreateSessionModal.2a446b24" values={{ p0: <code>{t('ui.5614f179026b')}</code> }} /></li>
+                    <li><TranslatedText message="copy.CreateSessionModal.dfe339a9" values={{ p0: argumentExample('ui.317224f219c8'), p1: argumentExample('ui.9ff835086160'), p2: argumentExample('ui.cef9a4c31524'), p3: argumentExample('ui.5d15206a3c5f'), p4: argumentExample('ui.c39c54f4d476') }} /></li>
+                    <li><TranslatedText message="copy.CreateSessionModal.fcd5d8bb" values={{ p0: argumentExample('ui.6659290e34e8'), p1: argumentExample('ui.cf18e3c28158'), p2: argumentExample('ui.8528ddedb2c4'), p3: argumentExample('ui.327bd37cfb2c'), p4: argumentExample('ui.d2e9c2f9b08f') }} /></li>
+                    <li><TranslatedText message="copy.CreateSessionModal.ccb388e1" values={{ p0: argumentExample('ui.589f50aa053f'), p1: argumentExample('ui.f7ba33858706') }} /></li>
+                    <li><TranslatedText message="copy.CreateSessionModal.b9257f27" values={{ p0: argumentExample('ui.bc568c0b9c57'), p1: argumentExample('ui.a1c45afd0759'), p2: argumentExample('ui.b5e27df7955c') }} /></li>
+                    <li><TranslatedText message="copy.CreateSessionModal.2a446b24" values={{ p0: argumentExample('ui.5614f179026b') }} /></li>
                   </ul></details>
                 </div>
                 <section className="create-settings-section" aria-labelledby="create-access-title">
                   <h4 id="create-access-title">{t('ui.a17a08ac1c86')}</h4>
                   <dl className="create-container-access"><div><dt>{t('ui.5cb3715e29e0')}</dt><dd>{t('ui.1f9bedeb6728')}</dd></div><div><dt>{t('ui.e63574b998c7')}</dt><dd>{gpuMode === 'nvidia' ? (gpuBackend === 'gpu' ? t('ui.95a47a2e8021') : t('ui.dcc000ca42a8')) : t('ui.20494f41aba3')}</dd></div></dl>
-                  {canConfigureContainer && <div className="create-gpu-setting"><label className="create-gpu-switch"><span><strong>{t('ui.9a1ce9bbfff6')}</strong><small>{t('ui.805f8cecc58e')}</small></span><input type="checkbox" role="switch" aria-label={t('ui.9a1ce9bbfff6')} checked={launchOptions.privileged === true} disabled={busy || !selectedProfile} onChange={event => { revealReadiness.current = true; setDraft(current => ({ ...current, privileged: event.target.checked })); setError(''); }}/></label></div>}
+                  {canConfigureContainer && <div className="create-gpu-setting"><label className="create-gpu-switch"><span><strong>{t('ui.9a1ce9bbfff6')}</strong><small id="create-privileged-hint">{privilegedHint}</small></span><input type="checkbox" role="switch" aria-label={t('ui.9a1ce9bbfff6')} aria-describedby="create-privileged-hint" checked={launchOptions.privileged === true} disabled={busy || !selectedProfile || (!privilegedAllowed && launchOptions.privileged !== true)} onChange={event => { setDraft(current => ({ ...current, privileged: event.target.checked })); setError(''); }}/></label></div>}
                   <p className="create-field-hint">{t('ui.df250ffc8e87')}</p>
                 </section>
               </div>
@@ -255,7 +304,20 @@ export function CreateSessionModal({ hosts, profiles: allProfiles, allowedProfil
         </div>
         <div className="create-session-notifications" data-dialog-notifications/>
         </div>
-        <div className="create-session-footer"><div className="create-launch-status" data-state={error || launchError ? 'error' : keyLoading ? 'loading' : readiness.state} aria-live="polite">{error || launchError ? <span className="create-error" role="alert">{error || launchError}</span> : readiness.state !== 'ready' ? <span>{readiness.state === 'busy' ? t('ui.e893e50ad3d3') : t('ui.bb03b92faded')}</span> : keyLoading ? <span>{t('ui.8f22f5917af0')}</span> : selectedProfile ? <span><Icon name="check" size={15}/>{t('ui.023f3b8f41eb')}{gpuMode === 'nvidia' ? t('ui.bbc2d74cef73') : t('ui.da6ace803ef6')}</span> : <span>{t('ui.62975899f715')}</span>}</div><div className="modal-actions">{canEditLaunch && <button type="button" className="button outline create-reset" title={t('ui.8c1ad85ab600')} disabled={busy || !launchSettingsChanged} onClick={() => { setDraft({}); setStorageChoice(null); setError(''); }}>{t('ui.407f871778d3')}</button>}<button type="button" className="button outline" onClick={onClose} disabled={busy}>{t('ui.8fbe9b75cbdf')}</button>{noSlots && profiles.length > 0 ? <button type="button" className="button primary" onClick={() => void joinQueue()} disabled={busy || keyLoading || Boolean(launchError) || !(queueCompatible || noSlots) || !storageValid || !selectedProfile || selectedProfile.enabled === false}>{t('ui.41c64fd5c674')}</button> : <button className="button primary" type="submit" disabled={busy || keyLoading || Boolean(launchError) || !selectedHost || !profileFitsHost || !storageValid}>{busy ? t('ui.2f6c41f7dfb1') : count > 1 ? t('ui.6a5418bb1355') + count : t('ui.c9d2fdd1623c')}<Icon name="arrowRight" size={17}/></button>}</div></div>
+        <div className="create-session-footer">
+          <div className="create-launch-status" data-state={error || launchError ? 'error' : keyLoading ? 'loading' : readiness.state} aria-live="polite">
+            {error || launchError ? <span className="create-error" role="alert">{error || launchError}</span>
+              : blockingIssue && activeTab === 'settings' ? <div className="create-launch-blocker">
+                <span className="create-error">{blockingIssue.message}</span>
+                <button type="button" className="text-button" onClick={showLaunchReadiness}>{t('ui.9613e0f712c0')}</button>
+              </div>
+              : readiness.state !== 'ready' ? <span>{readiness.state === 'busy' ? t('ui.e893e50ad3d3') : t('ui.bb03b92faded')}</span>
+              : keyLoading ? <span>{t('ui.8f22f5917af0')}</span>
+              : selectedProfile ? <span><Icon name="check" size={15}/>{t('ui.023f3b8f41eb')}{gpuMode === 'nvidia' ? t('ui.bbc2d74cef73') : t('ui.da6ace803ef6')}</span>
+              : <span>{t('ui.62975899f715')}</span>}
+          </div>
+          <div className="modal-actions">{canEditLaunch && <button type="button" className="button outline create-reset" title={t('ui.8c1ad85ab600')} disabled={busy || !launchSettingsChanged} onClick={() => { setDraft({}); setStorageChoice(null); setError(''); }}>{t('ui.407f871778d3')}</button>}<button type="button" className="button outline" onClick={onClose} disabled={busy}>{t('ui.8fbe9b75cbdf')}</button>{noSlots && profiles.length > 0 ? <button type="button" className="button primary" onClick={() => void joinQueue()} disabled={busy || keyLoading || Boolean(launchError) || !(queueCompatible || noSlots) || !selectedProfile || selectedProfile.enabled === false}>{t('ui.41c64fd5c674')}</button> : <button className="button primary" type="submit" disabled={busy || keyLoading || Boolean(launchError) || !selectedHost || !profileFitsHost}>{busy ? t('ui.2f6c41f7dfb1') : count > 1 ? t('ui.6a5418bb1355') + count : t('ui.c9d2fdd1623c')}<Icon name="arrowRight" size={17}/></button>}</div>
+        </div>
       </form>
     </div>
   </div>;

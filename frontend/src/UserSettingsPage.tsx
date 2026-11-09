@@ -14,6 +14,7 @@ import { loadUserPreferences, saveUserPreferences } from './preferences-autosave
 import './UserSettingsPage.css';
 import { FormSaveActions } from './FormSaveActions';
 import { useNotifications } from './notifications';
+import { CrashSnapshotDialog } from './tools/PerformancePanel';
 
 type SettingsSection = 'profile' | 'appearance' | 'security' | 'keys' | 'notifications' | 'history';
 function settingsSections(): ReadonlyArray<readonly [SettingsSection, string]> { return [['profile', t('ui.359497aff53e')], ['appearance', t('ui.1731619efa3a')], ['security', t('ui.64e2a7500e34')], ['keys', t('ui.cc48c41eb523')], ['notifications', t('ui.d4baf8f6b173')], ['history', t('ui.d9603f333a4a')]]; }
@@ -71,6 +72,7 @@ export function UserSettingsPage({ user }: { user: User }) {
     return () => window.removeEventListener('hashchange', sync);
   }, []);
   const [rentals, setRentals] = useState<RentalRecord[]>([]);
+  const [crashSession, setCrashSession] = useState<string | null>(null);
   const [rentalCursor, setRentalCursor] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [preferencesLoading, setPreferencesLoading] = useState(true);
@@ -336,10 +338,14 @@ export function UserSettingsPage({ user }: { user: User }) {
         {rentalsLoading ? <div className="settings-history-empty">{t('ui.efb18c179df6')}</div> : rentals.length === 0 ? !rentalsError && <div className="settings-history-empty">{t('ui.74e2bc5eb86a')}</div> :
           rentals.map(rental => <article className="settings-rental" key={rental.id}>
             <div><strong>{rental.profileName}</strong><small>#{rental.sessionId.slice(0, 8)} · {rental.hostName}</small></div>
-            <div><span><TranslatedText message="copy.UserSettingsPage.30c82cc6" values={{ p0: dateLabel(rental.createdAt) }} /></span><small>{rental.endedAt ? t('copy.UserSettingsPage.a14042df', { p0: dateLabel(rental.endedAt) }) : t('ui.983ec1306814')}</small></div>
+            <div><span><TranslatedText message="copy.UserSettingsPage.30c82cc6" values={{ p0: dateLabel(rental.createdAt) }} /></span><small>{rental.endedAt ? t('copy.UserSettingsPage.a14042df', { p0: dateLabel(rental.endedAt) }) : t('ui.983ec1306814')}</small>
+              {rental.hasCrash && can(user, 'sessions.console') &&
+                <button type="button" className="button subtle settings-rental-crash" onClick={() => setCrashSession(rental.sessionId)}>{t('performance.crash')}</button>}
+            </div>
           </article>)}
       </div>
       {rentalCursor && <button className="button outline settings-more" type="button" onClick={() => void loadMoreRentals()} disabled={loadingMore}>{loadingMore ? t('ui.22a5d9112486') : t('ui.c6826c783794')}</button>}
+      {section === 'history' && crashSession && <CrashSnapshotDialog sessionId={crashSession} onClose={() => setCrashSession(null)} />}
     </section>
     </div>
     </div>

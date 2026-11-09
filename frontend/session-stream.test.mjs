@@ -20,13 +20,15 @@ function mountStream({ videoConfigureError = false, renderError = false } = {}) 
   const videos = [];
   const audios = [];
   const sockets = [];
+  let now = 0;
   let nextTimer = 0;
   class Socket {
     static OPEN = 1;
     static CLOSED = 3;
     readyState = Socket.OPEN;
+    sent = [];
     constructor() { sockets.push(this); }
-    send() {}
+    send(data) { this.sent.push(JSON.parse(data)); }
     close() { this.readyState = 2; }
     finishClose() { this.readyState = Socket.CLOSED; this.onclose?.(); }
     message(message) { this.onmessage?.({ data: JSON.stringify(message) }); }
@@ -39,11 +41,16 @@ function mountStream({ videoConfigureError = false, renderError = false } = {}) 
     close() { this.closeCalls += 1; this.state = 'closed'; }
   }
   class Video extends Decoder {
+    decodeQueueSize = 0;
+    decoded = 0;
+    resets = 0;
     constructor(callbacks) { super(callbacks); videos.push(this); }
     configure() {
       if (videoConfigureError) throw new Error('Unsupported codec');
       super.configure();
     }
+    reset() { this.state = 'unconfigured'; this.resets += 1; }
+    decode() { this.decoded += 1; }
   }
   class Audio extends Decoder {
     constructor(callbacks) { super(callbacks); audios.push(this); }
@@ -56,13 +63,13 @@ function mountStream({ videoConfigureError = false, renderError = false } = {}) 
   };
   const module = { exports: {} };
   vm.runInNewContext(bundle.outputFiles[0].text, {
-    module, Error, atob, navigator: { onLine: true }, performance: { now: () => 0 },
+    module, Error, atob, navigator: { onLine: true }, performance: { now: () => now },
     require: id => {
       if (id === 'react') return react;
       if (id === './api') return { sessionSocketUrl: id => 'ws://localhost/session/' + id };
       throw new Error('Unexpected import: ' + id);
     },
-    WebSocket: Socket, VideoDecoder: Video, AudioDecoder: Audio,
+    WebSocket: Socket, VideoDecoder: Video, AudioDecoder: Audio, EncodedVideoChunk: class {},
     window: {
       VideoDecoder: Video, AudioDecoder: Audio, addEventListener() {}, removeEventListener() {},
       setInterval: () => -1, clearInterval() {},
@@ -78,6 +85,7 @@ function mountStream({ videoConfigureError = false, renderError = false } = {}) 
   const cleanups = effects.map(effect => effect());
   return {
     hook, socket: sockets[0], videos, audios, timers, updates,
+    advance: ms => { now += ms; },
     flushLayout: () => layoutEffects.forEach(effect => effect()),
     unmount: () => cleanups.forEach(cleanup => cleanup?.()),
   };
@@ -88,6 +96,38 @@ const audioConfig = { type: 'audio-config', codec: 'opus', data: 'AA==' };
 function frame() {
   return { displayWidth: 10, displayHeight: 10, closeCalls: 0, close() { this.closeCalls += 1; } };
 }
+
+test('a stalled H.264 decoder recovers on a fresh keyframe while audio and the socket stay live', () => {
+  const stream = mountStream();
+  stream.socket.message(audioConfig);
+  stream.socket.message(videoConfig);
+  const video = stream.videos[0];
+  const packet = { type: 'video-frame', timestamp: 0, data: 'AA==' };
+  const requests = () => stream.socket.sent.filter(message => message.type === 'request-keyframe').length;
+  stream.socket.message({ ...packet, keyframe: true });
+  video.callbacks.output(frame());
+  stream.socket.message(packet);
+  assert.equal(video.decoded, 2);
+  assert.equal(requests(), 0);
+
+  stream.advance(1500);
+  stream.socket.message(packet);
+  stream.socket.message(packet);
+  assert.equal(requests(), 1);
+  assert.equal(video.decoded, 2);
+  stream.advance(1000);
+  stream.socket.message(packet);
+  assert.equal(requests(), 2);
+
+  stream.socket.message({ ...packet, keyframe: true });
+  assert.equal(video.resets, 1);
+  video.callbacks.output(frame());
+  stream.socket.message(packet);
+  assert.equal(video.decoded, 4);
+  assert.equal(stream.audios[0].closeCalls, 0);
+  assert.equal(stream.socket.readyState, 1);
+  stream.unmount();
+});
 
 test('unsupported video configuration releases both decoders even when no retry will run', () => {
   const stream = mountStream({ videoConfigureError: true });

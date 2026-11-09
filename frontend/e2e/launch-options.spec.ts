@@ -4,12 +4,20 @@ const profile = { id: 'launch-qa', name: 'Android 11 · Google APIs', androidVer
   abi: 'x86_64', deviceType: 'mobile', imageFlavor: 'google_apis', image: 'us-docker.pkg.dev/android-emulator-268719/images/30-google-x64-no-metrics:30.1.2',
   cpu: 4, memoryMb: 4096, guestMemoryMb: 2048, guestCores: 2, diskGb: 8, diskMaxGb: 128, sdcardGb: 0, sdcardMaxGb: 32, gpuMode: 'software', enabled: true, emulatorParams: '-no-snapshot' };
 async function fixture(page: Page, occupied = false) {
-  const state = { requests: [] as Record<string, unknown>[] };
+  const state = { requests: [] as Record<string, unknown>[], privilegedAllowed: false };
   await page.route('**/api/profiles', route => route.fulfill({ json: { profiles: [profile] } }));
   await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: { theme: 'dark', fontFamily: 'system', fontScale: 1, defaultAdbKeyId: null } } }));
   await page.route('**/api/me/adb-public-keys', route => route.fulfill({ json: { keys: [{ id: 'selected-key', name: 'Мой ноутбук', fingerprint: 'fingerprint', createdAt: new Date().toISOString() }] } }));
   await page.route('**/api/me/adb-key', route => route.fulfill({ json: { key: null } }));
-  await page.route('**/api/hosts', async route => { const response = await route.fetch(); const body = await response.json(); for (const host of body.hosts) host.usedSlots = occupied ? host.slots : 0; await route.fulfill({ json: body }); });
+  await page.route('**/api/hosts', async route => {
+    const body = await (await route.fetch()).json();
+    for (const host of body.hosts) {
+      host.usedSlots = occupied ? host.slots : 0;
+      host.lastSeenAt = new Date().toISOString();
+      host.metrics = { ...host.metrics, privilegedEmulatorsAllowed: state.privilegedAllowed };
+    }
+    await route.fulfill({ json: body });
+  });
   for (const path of ['sessions', 'queue']) await page.route('**/api/' + path, route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: path === 'sessions' ? { sessions: [] } : { entries: [], maxEntries: 3 } });
     state.requests.push(route.request().postDataJSON());
@@ -30,11 +38,67 @@ for (const occupied of [false, true]) test(`launch options and chosen ADB key re
   await modal.getByLabel('SD-карта, ГБ', { exact: true }).fill('4');
   await modal.getByRole('combobox', { name: 'Ключ ADB', exact: true }).selectOption('selected-key');
   await modal.locator('.create-advanced-settings > summary').click();
-  await modal.getByLabel('Аргументы эмулятора', { exact: true }).fill('-no-boot-anim');
-  await modal.getByRole('button', { name: occupied ? 'Встать в очередь' : 'Запустить', exact: true }).click();
+  const args = modal.getByLabel('Аргументы эмулятора', { exact: true });
+  const launch = modal.getByRole('button', { name: occupied ? 'Встать в очередь' : 'Запустить', exact: true });
+  await args.fill('-no-boot-anim, -no-snapshot');
+  await expect(args).toHaveAttribute('aria-invalid', 'true');
+  await expect(modal.locator('#launch-params-error')).toContainText('Замените запятые');
+  await expect(launch).toBeDisabled();
+  expect(state.requests).toHaveLength(0);
+  await args.fill('-no-boot-anim\n-no-snapshot');
+  await expect(args).toHaveAttribute('aria-invalid', 'false');
+  await launch.click();
   await expect.poll(() => state.requests.length).toBe(1);
-  expect(state.requests[0]).toMatchObject({ profileId: profile.id, adbKeyId: 'selected-key', gpuMode: 'software', launchOptions: { diskGb: 24, sdCardMb: 4096, emulatorParams: '-no-boot-anim' } });
+  expect(state.requests[0]).toMatchObject({ profileId: profile.id, adbKeyId: 'selected-key', gpuMode: 'software', launchOptions: { diskGb: 24, sdCardMb: 4096, emulatorParams: '-no-boot-anim -no-snapshot' } });
   await expect(modal.locator('.create-error')).toContainText('Проверьте размеры хранилища');
+});
+test('invalid storage keeps the reason visible when the settings section is closed', async ({ page }) => {
+  await fixture(page);
+  const modal = page.getByRole('dialog');
+  const card = modal.getByLabel('SD-карта, ГБ', { exact: true });
+  const launch = modal.getByRole('button', { name: 'Запустить', exact: true });
+  await card.fill('0.01');
+  await expect(card).toHaveAttribute('aria-invalid', 'true');
+  const diskBox = await modal.getByLabel('Раздел данных, ГБ', { exact: true }).boundingBox();
+  const cardBox = await card.boundingBox();
+  expect(Math.abs(diskBox!.y - cardBox!.y)).toBeLessThanOrEqual(1);
+  await expect(launch).toBeDisabled();
+  await modal.locator('.create-storage-section > summary').click();
+  await expect(modal.locator('.create-launch-status')).toContainText('0,125');
+  await openLaunchSection(modal, 'storage');
+  await card.fill('0.125');
+  await expect(launch).toBeEnabled();
+});
+test('privileged launch explains the node restriction from the settings tab', async ({ page }, testInfo) => {
+  await page.clock.install();
+  const state = await fixture(page);
+  const modal = page.getByRole('dialog');
+  await modal.locator('.create-advanced-settings > summary').click();
+  const privileged = modal.getByRole('switch', { name: 'Privileged-контейнер', exact: true });
+  const launch = modal.getByRole('button', { name: 'Запустить', exact: true });
+  await expect(privileged).toBeDisabled();
+  await expect(privileged).toHaveAccessibleDescription('Privileged-режим не разрешён на узле.');
+  state.privilegedAllowed = true;
+  await page.clock.fastForward(10_000);
+  await expect(privileged).toBeEnabled();
+  await privileged.check();
+  await expect(launch).toBeEnabled();
+  state.privilegedAllowed = false;
+  await page.clock.fastForward(10_000);
+  await expect(launch).toBeDisabled();
+  const footer = modal.locator('.create-launch-status');
+  await expect(footer).toContainText('Privileged-режим не разрешён на узле');
+  await expect(privileged).toHaveAccessibleDescription(/Выключите Privileged-режим/);
+  const endGap = await privileged.evaluate(input => input.parentElement!.getBoundingClientRect().right - input.getBoundingClientRect().right);
+  expect(Math.abs(endGap)).toBeLessThanOrEqual(1);
+  await privileged.scrollIntoViewIfNeeded();
+  await modal.screenshot({ path: testInfo.outputPath('privileged-blocker.png') });
+  await footer.getByRole('button', { name: 'Что мешает запуску' }).click();
+  await expect(modal.locator('#create-tab-device')).toBeFocused();
+  await expect(modal.getByRole('region', { name: 'Проверка запуска', exact: true })).toContainText('Выключите Privileged-режим');
+  await modal.locator('#create-tab-settings').click();
+  await privileged.uncheck();
+  await expect(launch).toBeEnabled();
 });
 test('desktop dialog aligns fields and keeps launch action in view', async ({ page }, testInfo) => {
   await fixture(page); const modal = page.getByRole('dialog');
@@ -55,7 +119,7 @@ test('reset is a button enabled only for changed resources, storage or arguments
   await fixture(page);
   const modal = page.getByRole('dialog');
   const reset = modal.getByRole('button', { name: 'Сбросить', exact: true });
-  const cpu = modal.getByLabel('Лимит CPU на узле', { exact: true });
+  const cpu = modal.getByLabel('CPU контейнера', { exact: true });
   const disk = modal.getByLabel('Раздел данных, ГБ', { exact: true });
   await expect(reset).toHaveClass(/button outline/);
   await expect(modal.locator('.create-session-footer .create-reset')).toBeVisible();
@@ -86,7 +150,7 @@ test('reset is a button enabled only for changed resources, storage or arguments
 
 test('launch tabs preserve drafts and ADB selection with keyboard navigation', async ({ page }) => {
   const state = await fixture(page), modal = page.getByRole('dialog');
-  const cpu = modal.getByLabel('Лимит CPU на узле', { exact: true });
+  const cpu = modal.getByLabel('CPU контейнера', { exact: true });
   const disk = modal.getByLabel('Раздел данных, ГБ', { exact: true });
   const adb = modal.getByRole('combobox', { name: 'Ключ ADB', exact: true });
   await cpu.fill('3');

@@ -1,4 +1,5 @@
 import { t } from './i18n';
+import { AUDIO_SIGNAL_THRESHOLD } from './session-media';
 import { HEARTBEAT_INTERVAL_MS, HEARTBEAT_TIMEOUT_MS, INPUT_BUFFER_LIMIT, StreamControl } from './stream-control';
 
 export type RtcConfiguration = { available: boolean; iceServers?: RTCIceServer[]; reason?: string };
@@ -10,7 +11,7 @@ type Callbacks = {
   rtt(value: number): void;
   stats(value: { iceRttMs: number | null; packetsLost: number | null }): void;
   audio(needsGesture: boolean, notice: string): void;
-  audioPacket(): void;
+  audioPacket(hasSignal: boolean | null): void;
   error(message: string, permanent?: boolean): void;
 };
 
@@ -26,7 +27,7 @@ export function createSessionRtc(callbacks: Callbacks, audioEnabled: boolean) {
   let disconnectedTimer: number | undefined;
   let videoFrame: number | undefined;
   let animationFrame: number | undefined;
-  let lastAudioPackets = 0;
+  let lastAudioStats: RTCInboundRtpStreamStats | undefined;
   let lastDrawnTime = -1;
   let cancelGather: (() => void) | null = null;
   let audioAllowed = audioEnabled;
@@ -159,8 +160,15 @@ export function createSessionRtc(callbacks: Callbacks, audioEnabled: boolean) {
               if (stat.type === 'candidate-pair' && stat.state === 'succeeded' && stat.nominated && typeof stat.currentRoundTripTime === 'number') iceRttMs = stat.currentRoundTripTime * 1000;
               if (stat.type === 'inbound-rtp' && stat.kind === 'video' && typeof stat.packetsLost === 'number') packetsLost = Math.max(0, stat.packetsLost);
               if (stat.type === 'inbound-rtp' && stat.kind === 'audio' && typeof stat.packetsReceived === 'number') {
-                if (stat.packetsReceived > lastAudioPackets && audioAllowed && !audio.paused) callbacks.audioPacket();
-                lastAudioPackets = stat.packetsReceived;
+                const current = stat as RTCInboundRtpStreamStats;
+                const previous = lastAudioStats?.id === current.id ? lastAudioStats : undefined;
+                lastAudioStats = current;
+                if (stat.packetsReceived > (previous?.packetsReceived ?? 0) && audioAllowed && !audio.paused && !audio.muted) {
+                  const energy = (current.totalAudioEnergy ?? NaN) - (previous?.totalAudioEnergy ?? 0);
+                  const duration = (current.totalSamplesDuration ?? NaN) - (previous?.totalSamplesDuration ?? 0);
+                  const level = duration > 0 && energy >= 0 ? Math.sqrt(energy / duration) : current.audioLevel;
+                  callbacks.audioPacket(typeof level === 'number' && Number.isFinite(level) ? level >= AUDIO_SIGNAL_THRESHOLD : null);
+                }
               }
             });
             callbacks.stats({ iceRttMs, packetsLost });

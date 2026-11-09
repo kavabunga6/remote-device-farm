@@ -2,9 +2,10 @@ import type { SVGProps } from 'react';
 
 export type IconName =
   | 'globe' | 'pencil' | 'eye' | 'eyeOff' | 'grid' | 'phone' | 'server' | 'shield' | 'plus' | 'minus' | 'arrowRight' | 'chevronLeft'
-  | 'chevronDown' | 'power' | 'rotate' | 'volume' | 'volumeOff' | 'upload' | 'terminal' | 'more'
-  | 'sliders' | 'expand' | 'back' | 'home' | 'recent' | 'play' | 'refresh' | 'close' | 'check' | 'alert'
-  | 'user' | 'logout' | 'keyboard' | 'copy' | 'download' | 'bolt' | 'search' | 'menu' | 'info' | 'wifi' | 'wifiOff' | 'key' | 'camera' | 'record' | 'stop' | 'trash' | 'arrowDown' | 'arrowUp' | 'pause' | 'list' | 'star' | 'slots' | 'layers';
+  | 'chevronDown' | 'power' | 'rotate' | 'volume' | 'volumeOff' | 'headphones' | 'headphonesOff' | 'upload' | 'terminal' | 'more'
+  | 'sidebarCollapse' | 'sidebarExpand'
+  | 'sliders' | 'expand' | 'back' | 'home' | 'recent' | 'play' | 'refresh' | 'close' | 'check' | 'alert' | 'link' | 'monitor' | 'mapPin'
+  | 'user' | 'logout' | 'keyboard' | 'copy' | 'download' | 'bolt' | 'search' | 'menu' | 'info' | 'wifi' | 'wifiOff' | 'key' | 'camera' | 'record' | 'recordScreen' | 'stop' | 'trash' | 'arrowDown' | 'arrowUp' | 'pause' | 'list' | 'star' | 'slots' | 'layers';
 
 const paths: Record<IconName, React.ReactNode> = {
   globe: <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z"/></>,
@@ -17,6 +18,9 @@ const paths: Record<IconName, React.ReactNode> = {
   star: <path d="m12 3 2.78 5.63L21 9.54l-4.5 4.39 1.06 6.2L12 17.2l-5.56 2.93 1.06-6.2L3 9.54l6.22-.91L12 3Z"/>,
   grid: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
   phone: <><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></>,
+  link: <path d="M10 13a4 4 0 0 0 6 .5l3-3a4 4 0 0 0-5.7-5.7l-1.7 1.7M14 11a4 4 0 0 0-6-.5l-3 3a4 4 0 0 0 5.7 5.7l1.7-1.7"/>,
+  monitor: <><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 17v3m-4 0h8"/></>,
+  mapPin: <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></>,
   server: <><rect x="3" y="3" width="18" height="8" rx="2"/><rect x="3" y="13" width="18" height="8" rx="2"/><path d="M7 7h.01M7 17h.01M11 7h7M11 17h7"/></>,
   shield: <><path d="m12 22 7-4V6l-7-4-7 4v12l7 4Z"/><path d="m9 12 2 2 4-4"/></>,
   plus: <path d="M12 5v14M5 12h14"/>,
@@ -28,6 +32,10 @@ const paths: Record<IconName, React.ReactNode> = {
   rotate: <><path d="M20 11a8 8 0 1 0-1.7 6.7"/><path d="M20 4v7h-7"/></>,
   volume: <><path d="M11 5 6 9H3v6h3l5 4V5ZM15.5 8.5a5 5 0 0 1 0 7M18 6a8 8 0 0 1 0 12"/></>,
   volumeOff: <><path d="M11 5 6 9H3v6h3l5 4V5ZM16 9l5 6m0-6-5 6"/></>,
+  headphones: <><path d="M3 14v-3a9 9 0 0 1 18 0v3"/><rect x="3" y="13" width="5" height="7" rx="2"/><rect x="16" y="13" width="5" height="7" rx="2"/></>,
+  headphonesOff: <><path d="m3 3 18 18M3 14v-3a9 9 0 0 1 1-4m4-4a9 9 0 0 1 13 8v3"/><rect x="3" y="13" width="5" height="7" rx="2"/><path d="M18 13h1a2 2 0 0 1 2 2v2"/></>,
+  sidebarCollapse: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m7-11-3 3 3 3"/></>,
+  sidebarExpand: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m5-11 3 3-3 3"/></>,
   upload: <><path d="M12 16V3m-5 5 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></>,
   terminal: <><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m6 9 3 3-3 3m6 0h5"/></>,
   more: <><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></>,
@@ -54,6 +62,7 @@ const paths: Record<IconName, React.ReactNode> = {
   key: <><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9 2 2-2.5 2.5 1.5 1.5-2.5 2.5-1.5-1.5-3 3"/></>,
   camera: <><path d="M3 7h4l2-3h6l2 3h4v12H3V7Z"/><circle cx="12" cy="13" r="3.5"/></>,
   record: <circle cx="12" cy="12" r="6" fill="currentColor" stroke="none"/>,
+  recordScreen: <><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/></>,
   trash: <><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></>,
   arrowDown: <path d="M12 5v14m-6-6 6 6 6-6"/>,
   arrowUp: <path d="M12 19V5m-6 6 6-6 6 6"/>,

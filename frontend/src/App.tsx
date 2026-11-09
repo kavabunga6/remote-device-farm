@@ -220,6 +220,16 @@ export default function App() {
   const { notify } = useNotifications();
   const setToast = useCallback((message: string) => notify({ kind: 'info', title: message }), [notify]);
   const [mobileNav, setMobileNav] = useState(false);
+  const [compactSidebar, setCompactSidebar] = useState(() => {
+    try { return localStorage.getItem('rdf-sidebar-compact') === 'true'; }
+    catch { return false; }
+  });
+  const toggleSidebar = () => {
+    const compact = !compactSidebar;
+    setCompactSidebar(compact);
+    try { localStorage.setItem('rdf-sidebar-compact', String(compact)); }
+    catch { /* Storage is optional. */ }
+  };
   const inventoryRequest = useRef(0);
   const releaseAllPending = useRef(false);
 
@@ -359,12 +369,12 @@ export default function App() {
   }, [user, loadInventory]);
 
 
-  const createSession = async (hostId: string, profileId: string, adbKeyId: string | null, gpuMode?: 'software' | 'nvidia', storage?: { diskGb?: number; sdcardGb?: number }, launchOptions?: SessionLaunchOptions, count = 1) => {
+  const createSession = async (dialog: HTMLElement, hostId: string, profileId: string, adbKeyId: string | null, gpuMode?: 'software' | 'nvidia', storage?: { diskGb?: number; sdcardGb?: number }, launchOptions?: SessionLaunchOptions, count = 1) => {
     const notificationKey = `launch-request:${Date.now()}`;
-    notify({ kind: 'info', pending: true, title: t('ui.1f7b094bc0fa'), message: count > 1 ? t('ui.27d547d26819', { p0: count }) : profiles.find(profile => profile.id === profileId)?.name, key: notificationKey, allowInModal: true });
+    notify({ kind: 'info', pending: true, title: t('ui.1f7b094bc0fa'), message: count > 1 ? t('ui.27d547d26819', { p0: count }) : profiles.find(profile => profile.id === profileId)?.name, key: notificationKey, dialog });
     let first: { id: string };
     try { first = await api.createSession(hostId, profileId, adbKeyId, gpuMode, storage, launchOptions); }
-    catch (error) { notify({ kind: 'error', title: t('ui.37f039b09ee3'), message: displayError(error), key: notificationKey, allowInModal: true }); throw error; }
+    catch (error) { notify({ kind: 'error', title: t('ui.37f039b09ee3'), message: displayError(error), key: notificationKey, dialog }); throw error; }
     observedSessions.current.set(first.id, 'starting');
     if (count <= 1) {
       setModal(null); notify({ kind: 'info', title: t('ui.12ddafe21676'), message: t('ui.71565c75af24', { p0: first.id.slice(0, 8) }), key: notificationKey });
@@ -457,7 +467,24 @@ export default function App() {
   const confirmContext = confirm ? { id: confirm.id, profile: confirmedSession?.profileName || profiles.find(profile => profile.id === confirmedSession?.profileId)?.name || t('ui.85e2179937ff'), owner: confirmedSession?.ownerName || confirmedSession?.ownerId, host: confirmedSession?.hostName || hosts.find(host => host.id === confirmedSession?.hostId)?.name || confirmedSession?.hostId } : null;
   const currentPage: Page = allowedRoute.page === 'session' || allowedRoute.page === 'shared' ? 'overview' : allowedRoute.page;
   return <AccessProvider user={user}><div className="app-shell">
-    <aside className={`sidebar ${mobileNav ? 'mobile-open' : ''}`}><div className="sidebar-brand"><a className="brand-link" href="#/overview" aria-label={t('ui.dc22f0654c57')} onClick={refreshView}><Brand /></a><button className="icon-button mobile-close" onClick={() => setMobileNav(false)} aria-label={t('ui.980d22e392a7')}><Icon name="close" size={20} /></button></div><SidebarNavigation page={currentPage} section={allowedRoute.page === 'admin' ? allowedRoute.section : undefined} user={user} counts={navigationCounts} onNavigate={refreshView} /><div className="sidebar-bottom"><button className={`side-profile ${currentPage === 'account' ? 'active' : ''}`} onClick={() => { navigate({ page: 'account' }); refreshView(); }} title={`${user.displayName || user.username} · ${roleLabel(user)}`} aria-label={t('ui.32fe3de56050')}><span className="avatar">{(user.displayName || user.username).slice(0, 1).toUpperCase()}{user.role === 'admin' && <span className="role-badge" aria-label={t('ui.6c7719973e58')}><Icon name="shield" size={10} strokeWidth={2.6} /></span>}</span><span className="side-profile-name">{user.displayName || user.username}<small>{roleLabel(user)}</small></span></button><button className="side-logout" onClick={() => setLogoutOpen(true)}><Icon name="logout" size={18} /><span>{t('ui.5690c2e63b9d')}</span></button></div></aside>
+    <aside className={`sidebar ${mobileNav ? 'mobile-open' : ''}`} data-compact={compactSidebar || undefined}>
+      <div className="sidebar-brand">
+        <a className="brand-link" href="#/overview" aria-label={t('ui.dc22f0654c57')} onClick={refreshView}><Brand /></a>
+        <button type="button" className="icon-button sidebar-toggle" aria-controls="app-sidebar-navigation" aria-expanded={!compactSidebar}
+          aria-label={t(compactSidebar ? 'navigation.expand' : 'navigation.collapse')} title={t(compactSidebar ? 'navigation.expand' : 'navigation.collapse')} onClick={toggleSidebar}>
+          <Icon name={compactSidebar ? 'sidebarExpand' : 'sidebarCollapse'} />
+        </button>
+        <button type="button" className="icon-button mobile-close" onClick={() => setMobileNav(false)} aria-label={t('ui.980d22e392a7')}><Icon name="close" size={20} /></button>
+      </div>
+      <SidebarNavigation page={currentPage} section={allowedRoute.page === 'admin' ? allowedRoute.section : undefined} user={user} counts={navigationCounts} onNavigate={refreshView} />
+      <div className="sidebar-bottom">
+        <button type="button" className={`side-profile ${currentPage === 'account' ? 'active' : ''}`} onClick={() => { navigate({ page: 'account' }); refreshView(); }} title={`${t('ui.32fe3de56050')} · ${user.displayName || user.username}`} aria-label={t('ui.32fe3de56050')}>
+          <span className="avatar">{(user.displayName || user.username).slice(0, 1).toUpperCase()}{user.role === 'admin' && <span className="role-badge" aria-label={t('ui.6c7719973e58')}><Icon name="shield" size={10} strokeWidth={2.6} /></span>}</span>
+          <span className="side-profile-name">{user.displayName || user.username}<small>{roleLabel(user)}</small></span>
+        </button>
+        <button type="button" className="side-logout" aria-label={t('ui.5690c2e63b9d')} title={t('ui.5690c2e63b9d')} onClick={() => setLogoutOpen(true)}><Icon name="logout" size={20} /><span>{t('ui.5690c2e63b9d')}</span></button>
+      </div>
+    </aside>
     {mobileNav && <div className="nav-scrim" onClick={() => setMobileNav(false)} />}
     <div className="app-main"><FormSaveDock/><header className="topbar"><button className="icon-button mobile-menu" onClick={() => setMobileNav(true)} aria-label={t('ui.b2bbe9885780')}><Icon name="menu" size={21} /></button><div className="topbar-context"><span className="connection-dot" />{t('ui.297c7852691a')}</div><div className="topbar-user"><span className="avatar">{(user.displayName || user.username).slice(0, 1).toUpperCase()}</span><span>{user.displayName || user.username}<small>{roleLabel(user)}</small></span></div></header><main key={refreshKey} className={allowedRoute.page === 'session' ? 'main-content session-main' : `main-content page-${allowedRoute.page}`}>{allowedRoute.page === 'shared' ? <SharedRedeemPage token={allowedRoute.token} onOpen={id => navigate({ page: 'session', id })} onCancel={() => setRoute({ page: 'overview' })} /> : allowedRoute.page === 'session' ? <SessionView key={allowedRoute.id} sessionId={allowedRoute.id} user={user} onBack={() => navigate({ page: 'overview' })} onNotFound={sessionNotFound} onRelease={session => setConfirm({ id: session.id, kind: 'release', session })} onKill={can(user, 'sessions.manageAll') ? session => setConfirm({ id: session.id, kind: 'kill', session }) : undefined} onObserved={observeSession} onUpdated={() => void loadInventory()} /> : allowedRoute.page === 'tokens' ? <TokenManager user={user} onChanged={() => void loadInventory()} /> : allowedRoute.page === 'account' ? <UserSettingsPage user={user} /> : <Dashboard user={user} sessionLimitValue={myLimits?.maxSessions ?? config.limits?.maxSessionsPerUser ?? 0} hosts={hosts} profiles={profiles} adminProfiles={adminProfiles} sessions={sessions} page={allowedRoute.page} adminSection={allowedRoute.page === 'admin' ? allowedRoute.section : undefined} loading={inventoryLoading} error={localizeText(inventoryError)} allowLocalUsers={config.authMethods.includes('local')} onRefresh={() => void loadInventory()} onCreate={() => setModal('create')} onRent={() => setModal('rent')} onOpen={id => navigate({ page: 'session', id })} onRelease={id => setConfirm({ id, kind: 'release' })} onKill={id => setConfirm({ id, kind: 'kill' })} onReleaseAll={releaseAllSessions} />}</main></div>
     {logoutOpen && <LogoutDialog onClose={() => setLogoutOpen(false)} onConfirm={logout} />}

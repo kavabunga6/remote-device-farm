@@ -1,5 +1,7 @@
 import type { RtcConfiguration } from './session-rtc';
 
+export const AUDIO_SIGNAL_THRESHOLD = 0.001;
+
 export type StreamMessage = {
   type: string;
   data?: string;

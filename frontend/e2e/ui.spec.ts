@@ -120,9 +120,8 @@ test('the admin load chart is readable in dark theme', async ({ page }) => {
   await page.goto('/#/admin/ops');
   const section = page.locator('#adm-ops');
   await expect(section.getByRole('heading', { name: 'Занятые слоты' })).toBeVisible();
-  await expect(section.locator('.ops-chart svg').first()).toBeVisible();
-  await section.getByText('Данные графика таблицей').click();
-  await expect(section.getByRole('table', { name: /Занятые слоты по узлам/ })).toBeVisible();
+  await expect(section.getByRole('img', { name: 'Количество занятых слотов по узлам' })).toBeVisible();
+  await expect(section.getByRole('region', { name: 'Занятые слоты' }).getByRole('status')).toBeVisible();
   const ratio = await contrastOf(section.locator('.ops-card strong').first());
   expect(ratio).toBeGreaterThanOrEqual(4.5);
 });
@@ -275,7 +274,7 @@ test('HD session keeps its workspace bounded and screenshot reachable with a sav
   await openSession(page);
   await expect(page.locator('.banner-warning')).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
-    const selectors = ['.device-screen', '.device-controls', '.text-send', '.terminal-input'];
+    const selectors = ['.device-screen', '.device-controls', '.terminal-input'];
     return Math.ceil(Math.max(...selectors.map(selector => document.querySelector(selector)!.getBoundingClientRect().bottom)));
   })).toBeLessThanOrEqual(760);
   const screenshot = page.getByRole('button', { name: 'Скачать PNG-снимок экрана устройства' });
@@ -388,7 +387,19 @@ test('shared view hides owner tools', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Освободить', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Завершить', exact: true })).toHaveCount(0);
   await expect(page.getByRole('application', { name: 'Сенсорный экран устройства' })).toHaveAttribute('tabindex', '-1');
+  await expect(page.getByRole('button', { name: 'Отправить текст на устройство', exact: true })).toHaveCount(0);
   await page.request.post('/api/shares/redeem', { data: { token: 'rdfs_owner_aaaaaaaaaaaaaaaaaaaaaaaaaa' } });
+});
+
+test('shared control can open text input without mounting the owner tools', async ({ page }) => {
+  try {
+    await page.goto('/#/shared/rdfs_control_aaaaaaaaaaaaaaaaaaaaaa');
+    await page.locator('.device-controls').getByRole('button', { name: 'Отправить текст на устройство', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Текст для устройства', exact: true })).toBeFocused();
+    await expect(page.locator('.tool-panel')).toHaveCount(0);
+  } finally {
+    await page.request.post('/api/shares/redeem', { data: { token: 'rdfs_owner_aaaaaaaaaaaaaaaaaaaaaaaaaa' } });
+  }
 });
 test('share link supports several recipients with an explicit limit', async ({ page }) => {
   await openSession(page);

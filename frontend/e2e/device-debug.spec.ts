@@ -72,6 +72,8 @@ for (const variant of [
 ]) test('traffic and WebView tools ' + JSON.stringify(variant), async ({ page }, info) => {
   let recording = false, updated = false, extra = false, cleared = false, bodies = false, packets = false, evicted = false;
   const captureId = 'a'.repeat(32);
+  const documentHtml = '<html><head><title>Example checkout</title></head><body><script>globalThis.webViewResultExecuted=true</script>' +
+    '<p>Example checkout</p>'.repeat(140) + '</body></html>';
   const pcap = Buffer.from('d4c3b2a1020004000000000000000000ffff000001000000', 'hex');
   const operations: string[] = [];
   const rows = () => cleared ? [] : Array.from({ length: extra ? 41 : 40 }, (_, n) => ({
@@ -105,11 +107,42 @@ for (const variant of [
   await page.route('**/api/sessions/' + id + '/network-inspector/har', route => route.fulfill({ headers: { 'content-disposition': 'attachment; filename="session.har"' }, json: { log: { version: '1.2', entries: [] } } }));
   await page.route('**/api/sessions/' + id + '/webviews', async route => {
     const op = route.request().method() === 'GET' ? 'list' : route.request().postDataJSON().op;
-    await route.fulfill({ json: op === 'list' ? { pages: [{ target: 'webview_devtools_remote_1/page', title: 'Example checkout page', url: 'https://example.test/checkout' }] } : { result: { result: { value: op === 'document' ? '<html><body>Example checkout</body></html>' : 2 } } } });
+    await route.fulfill({ json: op === 'list' ? { pages: [{ target: 'webview_devtools_remote_1/page', title: 'Example checkout page', url: 'https://example.test/checkout' }] } : { result: { result: { value: op === 'document' ? documentHtml : 2 } } } });
   });
   await page.goto('/#/session/' + id);
   const layout = page.getByRole('group', { name: /Компоновка сессии|Session layout/ });
   await layout.getByRole('button', { name: variant.layout === 'tools' ? /^(Инструменты|Tools)$/ : /^(Рядом|Side by side)$/ }).click();
+  await page.locator('#tool-tab-webviews').click();
+  const web = page.locator('#tool-panel-webviews');
+  await web.getByRole('button', { name: /Прочитать HTML|Read HTML/ }).click();
+  const code = web.locator('pre');
+  const formatted = web.getByRole('button', { name: /^(С отступами|Formatted)$/ });
+  const source = web.getByRole('button', { name: /^(Исходник|Source)$/ });
+  await expect(formatted).toHaveAttribute('aria-pressed', 'true');
+  expect(await code.textContent()).toMatch(/\n {2}<head>/);
+  await expect(code.locator('script')).toHaveCount(0);
+  await source.click();
+  expect(await code.textContent()).toBe(documentHtml);
+  await formatted.click();
+  const geometry = await web.evaluate(panel => ({
+    panelBottom: panel.getBoundingClientRect().bottom,
+    toolsBottom: panel.parentElement!.getBoundingClientRect().bottom,
+    codeScrollable: panel.querySelector('pre')!.scrollHeight > panel.querySelector('pre')!.clientHeight,
+    buttonHeights: [...panel.querySelectorAll('.webview-result-modes button')].map(button => button.getBoundingClientRect().height),
+  }));
+  expect(geometry.panelBottom).toBeLessThanOrEqual(geometry.toolsBottom);
+  expect(geometry.codeScrollable).toBe(true);
+  expect(geometry.buttonHeights[0]).toBe(geometry.buttonHeights[1]);
+  const appium = web.locator('code.device-debug-endpoint');
+  await appium.scrollIntoViewIfNeeded();
+  await expect(appium).toBeInViewport();
+  await page.screenshot({ path: info.outputPath('webview-result.png') });
+  await web.locator('textarea').fill('1 + 1');
+  await web.getByRole('button', { name: /^(Выполнить|Run)$/ }).click();
+  await expect(code).toHaveText('2');
+  await expect(formatted).toHaveCount(0);
+  await page.locator('#tool-tab-apps').click();
+  await expect(page.locator('#tool-panel-apps input[type=file]')).toHaveAttribute('accept', '.apk,.apks,.zip');
   await page.locator('#tool-tab-traffic').click();
   const traffic = page.locator('#tool-panel-traffic');
   const list = traffic.locator('.traffic-list');
@@ -122,10 +155,10 @@ for (const variant of [
     const geometry = await page.evaluate(() => {
       const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
       return { viewer: rect('.viewer-panel').width, device: rect('.device-screen').width,
-        tools: rect('.terminal-panel').width, workspace: rect('.workspace-grid').width };
+        rail: rect('.device-controls').width, tools: rect('.terminal-panel').width, workspace: rect('.workspace-grid').width };
     });
-    expect(geometry.viewer - geometry.device).toBeLessThanOrEqual(Math.max(26, 320 - geometry.device) + 1);
-    expect(geometry.tools).toBeGreaterThan(geometry.workspace / 2);
+    expect(geometry.viewer - geometry.device).toBeLessThanOrEqual(Math.max(geometry.rail + 26, 320 - geometry.device) + 1);
+    expect(geometry.tools).toBeGreaterThanOrEqual(geometry.workspace / 2 - 1);
   }
   const host = traffic.locator('.traffic-tree > .traffic-tree-node').first();
   const hostSummary = host.locator(':scope > summary');
@@ -360,15 +393,6 @@ for (const variant of [
   await traffic.getByRole('button', { name: /Очистить список|Clear list/ }).click();
   await expect(traffic.locator('.traffic-tree-node')).toHaveCount(0);
   await expect(details).toContainText(/Выберите запрос|Inspect a request/);
-  await page.locator('#tool-tab-webviews').click();
-  const web = page.locator('#tool-panel-webviews');
-  await web.getByRole('button', { name: /Прочитать HTML|Read HTML/ }).click();
-  await expect(web.locator('pre')).toContainText('<html>');
-  await web.locator('textarea').fill('1 + 1');
-  await web.getByRole('button', { name: /^(Выполнить|Run)$/ }).click();
-  await expect(web.locator('pre')).toHaveText('2');
-  await page.locator('#tool-tab-apps').click();
-  await expect(page.locator('#tool-panel-apps input[type=file]')).toHaveAttribute('accept', '.apk,.apks,.zip');
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   expect(operations).toEqual(['start', 'stop', 'pcap', 'clear']);
 });

@@ -24,9 +24,9 @@ for (const width of [1366, 390]) test(`catalog profile keeps 6 GB requirement an
   await expect(modal.locator('.create-summary-resources')).toContainText('4 CPU · 6 ГБ');
   await modal.locator('#create-tab-settings').click();
   await expect(modal.getByLabel('Память Android, МБ', { exact: true })).toHaveValue('4096');
-  await expect(modal.getByLabel('Лимит памяти на узле, МБ', { exact: true })).toHaveValue('6144');
+  await expect(modal.getByLabel('Память контейнера, МБ', { exact: true })).toHaveValue('6144');
   // Lowering the container limit explicitly still cannot silently lower Android memory.
-  await modal.getByLabel('Лимит памяти на узле, МБ', { exact: true }).fill('4096');
+  await modal.getByLabel('Память контейнера, МБ', { exact: true }).fill('4096');
   await expect(modal.getByLabel('Память Android, МБ', { exact: true })).toHaveValue('4096');
   await expect(modal.getByRole('button', { name: 'Запустить', exact: true })).toBeDisabled();
   await expect(modal.locator('.create-launch-status')).toContainText('минимум 1024 МБ');

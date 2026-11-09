@@ -45,7 +45,7 @@ test('published Docker image reports download, creation and connection without a
   await expect(progress.getByRole('progressbar')).toHaveAttribute('value', '50');
   await expect(progress).not.toContainText('Собираем');
   await expect(page.getByRole('button', { name: 'Отменить запуск', exact: true })).toBeVisible();
-  await expect(page.locator('.workspace-grid, .workspace-mode-bar, .device-controls, .text-send, .terminal-panel, .session-media')).toHaveCount(0);
+  await expect(page.locator('.workspace-grid, .workspace-mode-bar, .device-controls, .device-text-popover, .terminal-panel, .session-media')).toHaveCount(0);
   await expect(progress.locator('[aria-current="step"]')).toContainText('Загрузка');
   await expect(page.locator('html')).toHaveAttribute('data-effective-theme', 'dark');
   for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }]) {
@@ -90,7 +90,8 @@ test('published Docker image reports download, creation and connection without a
   state.session!.state = 'running';
   await expect(progress).toHaveCount(0, { timeout: 15000 });
   await expect(page.locator('.device-controls')).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'Текст для устройства', exact: true })).toBeVisible();
+  await expect(page.locator('.device-controls').getByRole('button', { name: 'Отправить текст на устройство', exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Текст для устройства', exact: true })).toHaveCount(0);
   await expect(page.locator('.terminal-panel')).toBeVisible();
   await expect.poll(async () => (await page.locator('.device-screen').boundingBox())?.height || 0).toBeGreaterThan(200);
   expect(state.requests).toBe(1);

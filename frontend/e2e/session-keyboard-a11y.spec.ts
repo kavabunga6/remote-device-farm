@@ -39,7 +39,7 @@ for (const { width, height, theme, scale, language, labels } of [
     await page.setViewportSize({ width, height });
     await openSession(page, theme, scale, language);
     const tabs = page.getByRole('tablist').getByRole('tab');
-    await expect(tabs).toHaveCount(7);
+    await expect(tabs).toHaveCount(8);
     for (const tab of await tabs.all()) {
       const tabId = await tab.getAttribute('id');
       const panelId = await tab.getAttribute('aria-controls');
@@ -48,9 +48,9 @@ for (const { width, height, theme, scale, language, labels } of [
       await expect(page.locator('#' + panelId)).toHaveAttribute('aria-labelledby', tabId!);
     }
     await expect(page.locator('.tool-tabs [tabindex="0"]')).toHaveCount(1);
-    await expect(page.locator('.tool-tabs [tabindex="-1"]')).toHaveCount(6);
+    await expect(page.locator('.tool-tabs [tabindex="-1"]')).toHaveCount(7);
     await page.locator('#tool-tab-console').focus();
-    for (const [key, id] of [['ArrowRight', 'logs'], ['End', 'webviews'], ['ArrowRight', 'console'], ['ArrowLeft', 'webviews'], ['Home', 'console']] as const) {
+    for (const [key, id] of [['ArrowRight', 'logs'], ['End', 'performance'], ['ArrowRight', 'console'], ['ArrowLeft', 'performance'], ['Home', 'console']] as const) {
       await page.keyboard.press(key);
       await expect(page.locator('#tool-tab-' + id)).toBeFocused();
       await expect(page.locator('#tool-tab-' + id)).toHaveAttribute('aria-selected', 'true');

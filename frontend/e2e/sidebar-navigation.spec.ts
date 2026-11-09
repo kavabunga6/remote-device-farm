@@ -26,6 +26,40 @@ async function sidebarFixture(page: Page, theme = 'light', scale = 1) {
   await page.evaluate(() => document.fonts.ready);
 }
 
+test('compact sidebar keeps navigation and account actions accessible and remembers the layout', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1366, height: 800 });
+  await sidebarFixture(page, 'dark', 1.25);
+  const sidebar = page.locator('.sidebar');
+  const links = sidebar.locator('.side-nav a');
+  const count = await links.count();
+  const fullWidth = (await sidebar.boundingBox())!.width;
+  await sidebar.getByRole('button', { name: 'Свернуть боковое меню' }).press('Enter');
+  const expand = sidebar.getByRole('button', { name: 'Развернуть боковое меню' });
+  await expect(expand).toBeFocused();
+  await expect(expand).toHaveAttribute('aria-expanded', 'false');
+  expect((await sidebar.boundingBox())!.width).toBeLessThan(fullWidth / 2);
+  await expect(links).toHaveCount(count);
+  const items = await sidebar.locator('.side-nav a, .side-profile, .side-logout').evaluateAll(nodes => nodes.map(node => {
+    const button = node.getBoundingClientRect();
+    return { width: button.width, height: button.height, center: button.x + button.width / 2, label: node.getAttribute('title') };
+  }));
+  const centers = items.map(item => item.center);
+  expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(1);
+  for (const item of items) { expect(item.width).toBe(44); expect(item.height).toBe(44); expect(item.label).toBeTruthy(); }
+  await sidebar.getByRole('link', { name: 'Пользователи', exact: true }).press('Enter');
+  await expect(page.getByRole('heading', { name: 'Пользователи', level: 1 })).toBeVisible();
+  await page.reload();
+  await expect(expand).toBeVisible();
+  await expect(sidebar.getByRole('link', { name: 'Пользователи', exact: true })).toHaveAttribute('aria-current', 'page');
+  await page.screenshot({ path: info.outputPath('compact-sidebar.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Открыть меню' }).click();
+  await expect(expand).toBeHidden();
+  await expect(sidebar.getByRole('link', { name: 'Пользователи', exact: true }).locator('span')).toBeVisible();
+  await expect(sidebar.locator('.side-profile-name')).toBeVisible();
+  await expect(sidebar.getByRole('button', { name: 'Выйти' })).toBeVisible();
+});
+
 test('sidebar separates own/all sessions, displays zero and refreshes on focus', async ({ page }) => {
   await sidebarFixture(page);
   const admin = page.getByRole('navigation', { name: 'Администрирование' });

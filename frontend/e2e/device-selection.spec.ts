@@ -72,8 +72,8 @@ test('administrators can edit launches even when ordinary-user overrides are den
   const { modal } = await fixture(page, 'admin');
   await modal.locator('#create-tab-settings').click();
   await openLaunchSection(modal, 'connection');
-  await expect(modal.getByLabel('Лимит CPU на узле', { exact: true })).toBeEnabled();
-  await expect(modal.getByLabel('Лимит CPU на узле', { exact: true })).toHaveAttribute('max', '16');
+  await expect(modal.getByLabel('CPU контейнера', { exact: true })).toBeEnabled();
+  await expect(modal.getByLabel('CPU контейнера', { exact: true })).toHaveAttribute('max', '16');
   await expect(modal.getByRole('combobox', { name: 'Узел запуска', exact: true })).toBeEnabled();
 });
 

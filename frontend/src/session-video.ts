@@ -11,6 +11,8 @@ type VideoOwner = {
   requestKeyframe(): void;
 };
 const errorText = (error: unknown) => error instanceof Error ? error.message : t('ui.b9f61453dd3f');
+const VIDEO_DECODE_STALL_MS = 1500;
+const KEYFRAME_REQUEST_INTERVAL_MS = 1000;
 
 /** Owns one connection's image and H.264 decoder resources. */
 export class SessionVideo {
@@ -20,11 +22,15 @@ export class SessionVideo {
   private config: VideoDecoderConfig | null = null;
   private waitingForKeyframe = true;
   private dropping = false;
+  private pendingSince: number | null = null;
+  private lastKeyframeRequestAt = -Infinity;
   constructor(private readonly owner: VideoOwner) {}
   reset(): void {
     if (this.decoder && this.decoder.state !== 'closed') this.decoder.close();
     this.decoder = null; this.configBytes = null; this.configBase64 = null; this.config = null;
     this.waitingForKeyframe = true; this.dropping = false;
+    this.pendingSince = null;
+    this.lastKeyframeRequestAt = -Infinity;
   }
   handle(message: StreamMessage): void {
     if (message.type === 'frame') this.image(message);
@@ -57,6 +63,7 @@ export class SessionVideo {
   }
   private render(frame: VideoFrame, decoder: VideoDecoder): void {
     if (this.owner.closed() || this.decoder !== decoder || this.dropping) { frame.close(); return; }
+    this.pendingSince = null;
     try {
       const canvas = this.owner.canvas();
       if (!canvas) return;
@@ -71,14 +78,25 @@ export class SessionVideo {
   private decode(message: StreamMessage): void {
     if (!message.data || this.decoder?.state !== 'configured') return;
     try {
-      if (this.decoder.decodeQueueSize >= 8 && !this.dropping) { this.dropping = true; this.owner.requestKeyframe(); }
-      if (this.dropping) {
-        if (!message.keyframe || !this.config) return;
-        this.decoder.reset(); this.decoder.configure(this.config);
-        this.dropping = false; this.waitingForKeyframe = true;
+      const now = performance.now();
+      // Accepted chunks can leave the decode queue before the decoder produces a frame.
+      if (this.decoder.decodeQueueSize >= 8 || (this.pendingSince !== null && now - this.pendingSince >= VIDEO_DECODE_STALL_MS)) {
+        this.dropping = true;
       }
-      if (this.waitingForKeyframe && !message.keyframe) return;
+      if ((this.dropping || this.waitingForKeyframe) && !message.keyframe) {
+        if (now - this.lastKeyframeRequestAt >= KEYFRAME_REQUEST_INTERVAL_MS) {
+          this.lastKeyframeRequestAt = now;
+          this.owner.requestKeyframe();
+        }
+        return;
+      }
+      if (this.dropping) {
+        if (!this.config) return;
+        this.decoder.reset(); this.decoder.configure(this.config);
+        this.dropping = false; this.pendingSince = null;
+      }
       const packet = decodeBase64(message.data);
+      this.pendingSince ??= now;
       this.decoder.decode(new EncodedVideoChunk({ type: message.keyframe ? 'key' : 'delta', timestamp: message.timestamp ?? 0,
         data: message.keyframe && this.configBytes ? joinBytes(this.configBytes, packet) : packet }));
       this.waitingForKeyframe = false;

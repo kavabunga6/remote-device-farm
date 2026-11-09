@@ -11,6 +11,7 @@ import { registerImageManagementRoutes } from './routes/image-management-routes.
 import { registerImagePrewarmRoutes, type ImagePrewarmWorker } from './image-prewarm.js';
 import { registerImageRoutes } from './routes/image-routes.js';
 import { registerSessionRoutes } from './routes/session-routes.js';
+import { registerPerformanceRoutes } from './routes/performance-routes.js';
 import { registerAdbPortRoutes } from './routes/adb-port-routes.js';
 import { registerUserSettingsRoutes } from './routes/user-settings-routes.js';
 import { installAuditTrail } from './audit.js';
@@ -81,6 +82,7 @@ export function createHttpApplication(
   registerImageManagementRoutes(app, context, imageManagement);
   registerImagePrewarmRoutes(app, context, imagePrewarm);
   registerSessionRoutes(app, context);
+  registerPerformanceRoutes(app, context);
   registerAdbPortRoutes(app, context, adbPortBroker);
   registerUserSettingsRoutes(app, context);
   const stopApplicationLog = registerApplicationLogRoutes(app, context, applicationLog);

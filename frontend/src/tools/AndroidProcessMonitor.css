@@ -1,0 +1,165 @@
+.process-monitor {
+  --process-memory-color: #3575bd;
+}
+
+[data-effective-theme="dark"] .process-monitor { --process-memory-color: #7bb3f5; }
+
+.process-actions {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(5rem, auto) auto;
+  gap: .35rem .5rem;
+  align-items: stretch;
+  max-inline-size: 100%;
+}
+
+.process-actions label {
+  align-self: center;
+  color: var(--ui-subtle);
+  font-size: .875em;
+  overflow-wrap: anywhere;
+}
+
+.process-actions :is(select, .process-toggle) {
+  box-sizing: border-box;
+  min-block-size: 42px;
+  min-inline-size: 0;
+}
+
+.process-actions select {
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  padding-inline-start: .75rem;
+  background-color: var(--ui-inset);
+  color: var(--ui-text);
+  font: inherit;
+}
+
+.process-actions select:disabled { opacity: .6; }
+.process-toggle { display: inline-flex; align-items: center; gap: .5rem; }
+.process-toggle svg { flex: none; }
+
+.process-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem .75rem;
+}
+
+.process-status {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .25rem .5rem;
+  border-radius: 5px;
+  background: var(--ui-inset);
+  color: var(--ui-subtle);
+  font-size: .85em;
+  font-weight: 650;
+}
+
+.process-status::before {
+  content: '';
+  inline-size: .4rem;
+  block-size: .4rem;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.process-status[data-live="true"] { background: var(--accent-soft); color: var(--accent); }
+.process-hint { color: var(--ui-muted); font-size: .875em; line-height: 1.45; }
+
+.process-table-wrap {
+  min-inline-size: 0;
+  max-block-size: min(23rem, 52vh);
+  overflow: auto;
+  overflow-anchor: none;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+}
+
+.process-table {
+  inline-size: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: .9em;
+}
+
+.process-table :is(th, td) {
+  padding: .5rem .75rem;
+  text-align: start;
+  overflow-wrap: anywhere;
+  border-block-end: 1px solid var(--ui-border);
+}
+
+.process-table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  padding-block: 0;
+  background: var(--ui-inset);
+  color: var(--ui-subtle);
+}
+
+.process-table thead th:not(:first-child) { inline-size: 24%; padding: 0; }
+.process-table thead th[aria-sort="descending"] { color: var(--accent); }
+
+.process-table thead button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .25rem;
+  inline-size: 100%;
+  min-block-size: 36px;
+  padding: .4rem .75rem;
+  text-align: start;
+  color: inherit;
+  font: inherit;
+  border: 0;
+  background: transparent;
+}
+
+.process-table thead button:hover { background: var(--accent-soft); }
+.process-table thead button:focus-visible { outline-offset: -3px; }
+.process-sort-icon { display: flex; flex: none; inline-size: 14px; }
+.process-column-short { display: none; }
+.process-table tbody th { font-weight: 600; }
+.process-table tbody small { display: block; margin-block-start: .15rem; color: var(--ui-muted); font-weight: 400; }
+.process-table tbody tr:nth-child(even) { background: var(--ui-inset); }
+.process-table tbody tr:last-child > * { border-block-end: 0; }
+
+.process-usage {
+  display: grid;
+  justify-items: start;
+  gap: .3rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.process-usage-track {
+  display: block;
+  inline-size: 100%;
+  block-size: .35rem;
+  background: var(--ui-border);
+  border-radius: 3px;
+}
+
+.process-usage-track > span {
+  display: block;
+  block-size: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.process-usage[data-memory="true"] .process-usage-track > span { background: var(--process-memory-color); }
+
+@container tools (max-width: 30rem) {
+  .process-actions { grid-template-columns: minmax(0, 1fr) auto; inline-size: 100%; }
+  .process-actions label { grid-column: 1 / -1; }
+  .process-column-long { display: none; }
+  .process-column-short { display: inline; }
+  .process-table :is(th, td), .process-table thead button { padding-inline: .5rem; }
+  .process-table thead th:nth-child(2) { inline-size: 22%; }
+  .process-table thead th:last-child { inline-size: 30%; }
+}

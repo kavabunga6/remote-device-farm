@@ -439,6 +439,18 @@
     "en": "Traffic inspection requires a compatible emulator image with Python 3. Rebuild the image and start a new session.",
     "ru": "Для инспектора нужен совместимый образ эмулятора с Python 3. Пересоберите образ и запустите новую сессию."
   },
+  "performance.busy": {
+    "ru": "На узле уже идёт диагностическая запись. Повторите позже.",
+    "en": "This node is already capturing diagnostics. Try again shortly."
+  },
+  "performance.processUnavailable": {
+    "ru": "Не удалось снять список процессов Android.",
+    "en": "Could not take an Android process snapshot."
+  },
+  "performance.traceUnavailable": {
+    "ru": "Не удалось записать трассу Perfetto.",
+    "en": "Could not record a Perfetto trace."
+  },
   "webviews.busy": {
     "en": "A page inspection is already running. Try again when it finishes.",
     "ru": "Проверка страницы уже выполняется. Дождитесь её завершения."

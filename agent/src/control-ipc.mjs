@@ -31,7 +31,7 @@ function validateBuildRequest(request) {
 
 export function validateControlRequest(request) {
   if (!request || typeof request !== 'object' || Array.isArray(request) ||
-      typeof request.op !== 'string' || !['hostInfo', 'recover', 'inventory', 'start', 'stop', 'diagnostics', 'setEgress', 'emuConsole', 'networkInspector', 'cameraImage', 'setPolicy', 'emulatorCatalog', 'emulatorCatalogStatus', 'emulatorBuild', 'emulatorCancel', 'emulatorJobs', 'prewarmImage', 'imageCache', 'imageCacheRemove'].includes(request.op)) {
+      typeof request.op !== 'string' || !['hostInfo', 'recover', 'inventory', 'start', 'stop', 'diagnostics', 'containerPerformance', 'setEgress', 'emuConsole', 'networkInspector', 'cameraImage', 'setPolicy', 'emulatorCatalog', 'emulatorCatalogStatus', 'emulatorBuild', 'emulatorCancel', 'emulatorJobs', 'prewarmImage', 'imageCache', 'imageCacheRemove'].includes(request.op)) {
     throw new Error(diagnostic('control-ipc.6b12683987'));
   }
   const fields = {
@@ -39,6 +39,7 @@ export function validateControlRequest(request) {
     hostInfo: ['op'], recover: ['op'], inventory: ['op'],
     start: ['op', 'sessionId', 'profile', 'adbPublicKey'],
     stop: ['op', 'sessionId'], diagnostics: ['op', 'sessionId'], setEgress: ['op', 'sessionId', 'enabled'],
+    containerPerformance: ['op', 'sessionId'],
     emuConsole: ['op', 'sessionId', 'args'],
     cameraImage: ['op', 'sessionId', 'params'], networkInspector: ['op', 'sessionId', 'params'],
     setPolicy: ['op', 'policy'],
@@ -151,6 +152,7 @@ export class ControlClient {
   inventory(options = {}) { return this.request('inventory', {}, DEFAULT_TIMEOUT_MS, options); }
   start(sessionId, profile, adbPublicKey, onProgress, options = {}) { return this.request('start', { sessionId, profile, adbPublicKey }, 60 * 60_000, { ...options, onProgress }); }
   diagnostics(sessionId, onLog) { return this.request('diagnostics', { sessionId }, 15_000, { onLog }); }
+  containerPerformance(sessionId) { return this.request('containerPerformance', { sessionId }, 5000); }
   stop(sessionId, options = {}) { return this.request('stop', { sessionId }, 120_000, options); }
   setEgress(sessionId, enabled) { return this.request('setEgress', { sessionId, enabled }, 60_000); }
   networkInspector(sessionId, params) { return this.request('networkInspector', { sessionId, params }, 60_000); }

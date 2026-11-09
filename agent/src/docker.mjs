@@ -2,6 +2,7 @@ import { diagnostic } from './diagnostics.mjs';
 import { agentMessage } from './messages.mjs';
 import { removePacketCaptures } from './packet-capture.mjs';
 import { diagnosticReporter, diagnosticSecrets, diagnosticSeverity, dockerLogLines } from './session-diagnostics.mjs';
+import { ContainerPerformance } from './container-performance.mjs';
 import { DEFAULT_NVIDIA_CAPABILITIES, FARM_FLAGS, gpuKind } from './docker-options.mjs';
 
 // Farm-built images (deploy/emulator) declare this label and read only RDF_* variables; the farm needs no
@@ -69,7 +70,12 @@ export function egressBridgeName(sessionId) {
 const SDCARD_PATH = '/android-home/rdf-sdcard.img';
 
 export class DockerClient {
-  constructor(socketPath) { this.socketPath = socketPath; this.apiPrefix = null; this.apiVersionPromise = null; }
+  constructor(socketPath) {
+    this.socketPath = socketPath;
+    this.apiPrefix = null;
+    this.apiVersionPromise = null;
+    this.performance = new ContainerPerformance(this);
+  }
 
   async request(method, path, body, options) {
     this.apiVersionPromise ??= this._request('GET', '/version').then((version) => {
@@ -485,8 +491,10 @@ export class DockerClient {
     }
   }
 
-  async listManaged(agentId) {
-    const filters = encodeURIComponent(JSON.stringify({ label: [`remote-device-farm.agent=${agentId}`, 'remote-device-farm.managed=true'] }));
+  async listManaged(agentId, sessionId) {
+    const label = [`remote-device-farm.agent=${agentId}`, 'remote-device-farm.managed=true'];
+    if (sessionId) label.push(`remote-device-farm.session=${sessionId}`);
+    const filters = encodeURIComponent(JSON.stringify({ label }));
     return this.request('GET', `/containers/json?all=1&filters=${filters}`);
   }
 
@@ -506,7 +514,8 @@ export class DockerClient {
       const emit = diagnosticReporter(onLog, secrets);
       emit('container.state', JSON.stringify({ containerId: detail.Id, status: state.Status, running: state.Running,
         exitCode: state.ExitCode, oomKilled: state.OOMKilled, error: state.Error,
-        startedAt: state.StartedAt, finishedAt: state.FinishedAt }), state.OOMKilled || state.Error || state.ExitCode ? 'error' : 'info', 'emulator');
+        startedAt: state.StartedAt, finishedAt: state.FinishedAt,
+        performance: this.performance.latest(containerId) }), state.OOMKilled || state.Error || state.ExitCode ? 'error' : 'info', 'emulator');
       const raw = await this.requestRaw('GET', `/containers/${encodeURIComponent(containerId)}/logs?stdout=1&stderr=1&timestamps=1&tail=2000`,
         undefined, { maxBytes: 2 * 1024 * 1024, timeoutMs: 5000 });
       for (const { stream, text } of dockerLogLines(raw, detail.Config?.Tty === true)) {

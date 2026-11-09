@@ -15,6 +15,7 @@ import { LogcatPanel } from './LogcatPanel';
 import { DeviceInfoPanel } from './DeviceInfoPanel';
 import { EnvPanel } from './tools/EnvPanel';
 import { NetworkPanel } from './tools/NetworkPanel';
+import { PerformancePanel } from './tools/PerformancePanel';
 import { WebViewsPanel } from './tools/WebViewsPanel';
 import { AppsPanel } from './tools/AppsPanel';
 import { ShareControl, SharedBanner } from './ShareControl';
@@ -24,16 +25,19 @@ import { audienceDescription } from './session-audience';
 import { CONSOLE_CATEGORIES, getConsoleCommands } from './console-commands';
 import { useSessionConsole } from './useSessionConsole';
 import { useSessionStream, type ConnectionMode } from './useSessionStream';
-import { SessionMediaStatus } from './SessionMediaStatus';
+import { SessionAudioControl, SessionMediaStatus } from './SessionMediaStatus';
+import { DeviceControls } from './DeviceControls';
+import { DeviceTextInput } from './DeviceTextInput';
 import { hasCapability, type Capability } from './devices';
 import './ConsoleResize.css';
 import { useTouchIndicator } from './useTouchIndicator';
 import './TouchIndicator.css';
 
-type ToolTabId = 'console' | 'logs' | 'info' | 'env' | 'apps' | 'traffic' | 'webviews';
+type ToolTabId = 'console' | 'logs' | 'info' | 'env' | 'apps' | 'traffic' | 'webviews' | 'performance';
 // Each tool needs a device capability; physical phones may offer fewer than emulators.
 function toolTabs(): ReadonlyArray<readonly [ToolTabId, string, Capability]> { return [
   ['console', t('ui.a58f47dbc474'), 'shell'], ['logs', t('ui.1ebab145dea4'), 'logs'], ['info', t('ui.bd38d43cf415'), 'device-info'], ['env', t('ui.d606a9df2b84'), 'env'], ['apps', t('ui.39c4b42c8d11'), 'install'], ['traffic', t('networkInspector.title'), 'network'], ['webviews', t('webviews.title'), 'shell'],
+  ['performance', t('performance.title'), 'shell'],
 ]; }
 import { useSessionCapture } from './useSessionCapture';
 
@@ -49,10 +53,6 @@ function timeLabel(value: string | undefined): string {
   return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
-function captureTime(seconds: number): string {
-  return String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0');
-}
-
 export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, onKill, onObserved, onUpdated }: {
   sessionId: string; user: User; onBack: () => void; onNotFound: (id: string) => void; onRelease: (session: DeviceSession) => void; onKill?: (session: DeviceSession) => void; onObserved: (session: DeviceSession) => void; onUpdated: () => void;
 }) {
@@ -63,8 +63,10 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const shared = access === 'view' || access === 'control';
   const audience = useSessionAudience(session, user);
   const readOnly = access === 'view' || !can(user, 'sessions.control');
-  const toolPermission: Record<ToolTabId, string> = { console: 'sessions.console', logs: 'sessions.logcat', info: 'sessions.view', env: 'sessions.env', apps: 'sessions.files', traffic: 'sessions.console', webviews: 'sessions.console' };
-  const toolAllowed = (id: ToolTabId) => can(user, toolPermission[id]) && (id !== 'traffic' || (can(user, 'sessions.env') && session?.deviceKind !== 'usb-android'));
+  const toolPermission: Record<ToolTabId, string> = { console: 'sessions.console', logs: 'sessions.logcat', info: 'sessions.view', env: 'sessions.env', apps: 'sessions.files', traffic: 'sessions.console', webviews: 'sessions.console', performance: 'sessions.console' };
+  const toolAllowed = (id: ToolTabId) => can(user, toolPermission[id])
+    && (id !== 'traffic' || (can(user, 'sessions.env') && session?.deviceKind !== 'usb-android'))
+    && (id !== 'performance' || (!shared && (session?.deviceKind ?? 'emulator') === 'emulator'));
   const canReadEnvironment = session?.id === sessionId && session.status === 'running' && !shared && can(user, 'sessions.env') && hasCapability(session, 'env');
   const [sessionError, setSessionError] = useState('');
   const [busy, setBusy] = useState('');
@@ -111,13 +113,13 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const { adbPortAccess, adbPublicKey, setAdbPublicKey, adbUserKey, adbKeyLoaded, newAdbKey, setNewAdbKey, privateKeyDownloaded, setPrivateKeyDownloaded, publicKeyDownloaded, setPublicKeyDownloaded, showCustomAdbKey, setShowCustomAdbKey, confirmKeyRotation, setConfirmKeyRotation, adbBusy, adbError, setAdbError, adbMenuOpen, setAdbMenuOpen, adbCopied, adbMenuRef, closeAdbMenu, loadAdbPublicKey, requestAdbPortAccess, createAdbUserKey, revokeAdbPortAccess, copyAdbCommand } = useSessionAdb(sessionId, session, user);
   const [sessionActionsOpen, setSessionActionsOpen] = useState(false);
   const sessionMetadataRef = useRef<HTMLDetailsElement>(null);
-  const [textInput, setTextInput] = useState('');
   const pointerStartRef = useRef<{ x: number; y: number; time: number; pointerId: number; live: boolean; lastMoveAt: number; lastX: number; lastY: number } | null>(null);
   const audioEnabled = session?.audioEnabled ?? false;
   const networkEnabled = session?.networkEnabled !== false;
   const [imageFrameReady, setImageFrameReady] = useState(false);
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>('websocket');
   const stream = useSessionStream(sessionId, audioEnabled, connectionMode);
+  const landscape = stream.size.width > stream.size.height;
   const [toolTab, setToolTab] = useState<ToolTabId>('console');
   const { activeWorkspaceMode, compactWorkspace, changeWorkspaceMode, consoleWidth, consoleResized, consoleHeight, consoleHeightResized, visibleConsoleSize, workspaceRef, screenRef, viewerWidth, displayScale, minConsoleWidth, maxConsoleWidth, maxConsoleHeight, resetConsoleSize, resizeConsoleWithKeyboard, startWidthResize, moveWidthResize, endWidthResize, startHeightResize, moveHeightResize, endHeightResize } = useSessionWorkspace({ size: stream.size, toolTab, isPreparing, terminalOutputRef });
   const touchIndicator = useTouchIndicator(sessionId, canReadEnvironment && !stream.nativeTouches);
@@ -250,7 +252,8 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const toggleRotate = async () => {
     if (!session) return;
     setBusy('rotate');
-    try { setSession(await api.rotate(sessionId, session.orientation === 'landscape' ? 'portrait' : 'landscape')); onUpdated(); }
+    const currentLandscape = stream.status === 'live' ? landscape : session.orientation === 'landscape';
+    try { setSession(await api.rotate(sessionId, currentLandscape ? 'portrait' : 'landscape')); onUpdated(); }
     catch (error) { notifyError(t('ui.3b3e6c347bba'), error); }
     finally { setBusy(''); }
   };
@@ -345,12 +348,6 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     if (can(user, 'sessions.files')) void uploadFiles(event.dataTransfer.files);
   };
 
-  const sendText = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!textInput) return;
-    if (sendInput({ kind: 'text', text: textInput })) setTextInput('');
-  };
-
   const chooseDeviceFiles = (apkOnly = false) => {
     const input = fileInputRef.current;
     if (!input) return;
@@ -380,7 +377,13 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const profileName = session?.profileName || t('ui.85e2179937ff');
   const isRunning = session?.status === 'running';
   const canControl = isRunning && !readOnly && stream.inputReady;
-  const audioStatus = ({ disabled: t('ui.5a577d905660'), connecting: t('ui.bd3e94ec1557'), waiting: t('ui.ce51f08bf71c'), unlock: t('ui.e8d306f3eaae'), receiving: t('ui.1b4deda45c35'), unavailable: t('ui.53ba89acf405') })[stream.audioState];
+  const audioControl = {
+    mode: connectionMode, audioTransport: stream.audioTransport, audioEnabled, audioState: stream.audioState,
+    audioNotice: stream.audioNotice, audioBusy: !isRunning || busy === 'audio', audioPending: busy === 'audio',
+    onUnlockAudio: stream.unlockAudio,
+    onToggleAudio: !shared && can(user, 'sessions.control') && hasCapability(session, 'audio') ? () => void toggleAudio() : undefined,
+  };
+  const audioStatus = ({ disabled: t('ui.5a577d905660'), connecting: t('ui.bd3e94ec1557'), waiting: t('ui.ce51f08bf71c'), unlock: t('ui.e8d306f3eaae'), receiving: t('ui.1b4deda45c35'), silent: t('sessionAudio.silenceDetail'), unavailable: t('ui.53ba89acf405') })[stream.audioState];
   const idleWarning = session?.status === 'running' && session.ownerId === user.id && idleLeftMs !== null && idleLeftMs <= 10 * 60_000 && <div className="banner-warning session-idle-warning" role="status">
       <Icon name="alert" size={17} /><span title={t('ui.e1a23d943344')}><TranslatedText message="copy.SessionView.34b0e063" values={{ p0: Math.max(1, Math.ceil(idleLeftMs / 60_000)) }} /></span>
       <button type="button" className="button primary small" onClick={() => void extendSession()}>{t('ui.659ad690ef24')}</button>
@@ -420,9 +423,9 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
         <div className="session-status-items">
             {session && <SessionStatusBadge status={session.status} />}
             {!isPreparing && <SessionMediaStatus status={stream.status} format={stream.format} transport={stream.transport} streamError={stream.streamError}
-              mode={connectionMode} onModeChange={mode => { pointerStartRef.current = null; touchIndicator.clear(); setConnectionMode(mode); }} metrics={stream.metrics} audioTransport={stream.audioTransport}
-              audioEnabled={audioEnabled} audioState={stream.audioState} audioNotice={stream.audioNotice} audioBusy={!isRunning || busy === 'audio'} audioPending={busy === 'audio'}
-              onUnlockAudio={stream.unlockAudio} onToggleAudio={!shared && can(user, 'sessions.control') && hasCapability(session, 'audio') ? () => void toggleAudio() : undefined} />}
+              onModeChange={mode => { pointerStartRef.current = null; touchIndicator.clear(); setConnectionMode(mode); }} onReconnect={stream.reconnect} metrics={stream.metrics}
+              {...audioControl} onUnlockAudio={activeWorkspaceMode === 'tools' ? audioControl.onUnlockAudio : undefined}
+              onToggleAudio={activeWorkspaceMode === 'tools' ? audioControl.onToggleAudio : undefined} />}
             {!isPreparing && can(user, 'sessions.adb') && <div className="adb-title-control owner-only" ref={adbMenuRef}>
               <button
                 type="button"
@@ -489,22 +492,18 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     {shared && <SharedBanner ownerName={session?.ownerName} mode={access === 'view' ? 'view' : 'control'} />}
     {sessionError && <div className="banner-error" role="alert"><Icon name="alert" size={17} />{localizeText(sessionError)}<button onClick={() => void refresh()}>{t('ui.5189135a6110')}</button></div>}
     {isPreparing ? <SessionStartupProgress progress={session?.startupProgress}/> : <>
-    <div className="workspace-grid" data-console-resized={consoleResized || undefined} ref={workspaceRef} style={{ '--console-width': consoleWidth + 'px', '--viewer-width': viewerWidth + 'px' } as CSSProperties}>
+    <div className="workspace-grid" data-console-resized={consoleResized || undefined} data-landscape={landscape || undefined} ref={workspaceRef} style={{ '--console-width': consoleWidth + 'px', '--viewer-width': viewerWidth + 'px' } as CSSProperties}>
       <section className="viewer-panel" aria-label={t('ui.4547b46d3c0c')}>
-        <div className="device-controls">
-          <div className="control-group"><button data-tip={t('ui.1a9fb1f3cf8e')} title={t('ui.1a9fb1f3cf8e')} aria-label={t('ui.1a9fb1f3cf8e')} onClick={() => navKey(4)} disabled={!canControl}><Icon name="back" size={19} /></button><button data-tip={t('ui.f6e01d413ff6')} title={t('ui.f6e01d413ff6')} aria-label={t('ui.f6e01d413ff6')} onClick={() => navKey(3)} disabled={!canControl}><Icon name="home" size={19} /></button><button data-tip={t('ui.2d7ce9a5379c')} title={t('ui.2d7ce9a5379c')} aria-label={t('ui.2d7ce9a5379c')} onClick={() => navKey(187)} disabled={!canControl}><Icon name="recent" size={19} /></button></div>
-          <span className="controls-divider" />
-          <div className="control-group">{hasCapability(session, 'rotate') && <button className="owner-only" data-tip={t('ui.4bfe24c8f020')} title={t('ui.4bfe24c8f020')} aria-label={t('ui.4bfe24c8f020')} onClick={() => void toggleRotate()} disabled={!isRunning || busy === 'rotate'}><Icon name="rotate" size={19} /></button>}<button data-tip={t('ui.187b90793015')} title={t('ui.187b90793015')} aria-label={t('ui.187b90793015')} onClick={() => navKey(164)} disabled={!canControl}><Icon name="volumeOff" size={19} /></button><button data-tip={t('ui.d32a29ef600e')} title={t('ui.d32a29ef600e')} aria-label={t('ui.d32a29ef600e')} onClick={() => navKey(24)} disabled={!canControl}><Icon name="plus" size={19} /></button><button data-tip={t('ui.e199c10f2526')} title={t('ui.e199c10f2526')} aria-label={t('ui.e199c10f2526')} onClick={() => navKey(25)} disabled={!canControl}><Icon name="minus" size={19} /></button><button data-tip={t('ui.ffe25dd2be73')} title={t('ui.ffe25dd2be73')} aria-label={t('ui.ffe25dd2be73')} onClick={() => navKey(26)} disabled={!canControl}><Icon name="power" size={18} /></button></div>
-          <span className="controls-divider" />
-          {hasCapability(session, 'network') && <button className={'network-toggle owner-only' + (networkEnabled ? ' enabled' : '')} data-tip={t('ui.9a8556f40eb0')} title={t('ui.9a8556f40eb0')} aria-label={networkEnabled ? t('ui.1866e096f838') : t('ui.fcfc99f6b5e8')} onClick={() => void toggleNetwork()} disabled={!isRunning || busy === 'network'}><Icon name={networkEnabled ? 'wifi' : 'wifiOff'} size={17} />{t('ui.13aa6284b1ae')}<span>{networkEnabled ? t('ui.ea20b8f6d311') : t('ui.70f71197033b')}</span></button>}
-          <span className="controls-divider" />
-          {can(user, 'sessions.files') && <button type="button" className="upload-control owner-only" data-tip={t('ui.b59947f1458d')} title={t('ui.b59947f1458d')} aria-label={t('ui.f48012de6546')} onClick={() => chooseDeviceFiles()} disabled={!isRunning || uploading.length > 0}>{uploading.length ? <span className="mini-spinner" /> : <Icon name="upload" size={17} />}<span>{t('ui.9088ca9c0de9')}</span></button>}
-          <input ref={fileInputRef} type="file" multiple hidden onChange={event => { if (event.target.files) void uploadFiles(event.target.files); event.target.value = ''; }} />
-          <button type="button" className="capture-control" data-tip={t('ui.02ea85d55701')} title={t('ui.02ea85d55701')} aria-label={t('ui.02ea85d55701')} onClick={() => void capture.takeScreenshot()} disabled={!captureReady || !capture.screenshotSupported}><Icon name="camera" size={17} /><span>{t('ui.77a2f659d70e')}</span></button>
-          <button type="button" className={'capture-control' + (capture.recording ? ' recording' : '')} data-tip={capture.recording ? t('ui.ea0f675f3aab') : t('ui.c085454ef117')} title={capture.recording ? t('ui.ea0f675f3aab') : t('ui.c085454ef117')} aria-label={capture.saving ? t('ui.8d839c3234cd') : capture.recording ? t('ui.29efbde7481a') : t('ui.4e087745e0a4')} aria-pressed={capture.recording} onClick={capture.recording ? capture.stopRecording : capture.startRecording} disabled={capture.saving || (!capture.recording && (!captureReady || !capture.recordingSupported))}>{capture.saving ? <span className="mini-spinner" /> : <Icon name={capture.recording ? 'stop' : 'record'} size={16} />}<span>{capture.saving ? t('ui.9c27c381dd8b') : capture.recording ? t('copy.SessionView.558cf26c', { p0: captureTime(capture.elapsedSeconds) }) : t('ui.db10366f5370')}</span></button>
-        </div>
+        <DeviceControls onKey={navKey} canControl={canControl} capture={capture} captureReady={captureReady}
+          textInput={!readOnly && <DeviceTextInput key={sessionId} active={shared || activeWorkspaceMode !== 'tools'} canSend={canControl}
+            onSend={text => sendInput({ kind: 'text', text })} />}
+          audio={(audioEnabled || audioControl.onToggleAudio) && <SessionAudioControl rail {...audioControl} />}
+          rotate={!shared && hasCapability(session, 'rotate') ? { landscape, busy: !isRunning || busy === 'rotate', onClick: () => void toggleRotate() } : undefined}
+          network={!shared && hasCapability(session, 'network') ? { enabled: networkEnabled, busy: !isRunning || busy === 'network', onClick: () => void toggleNetwork() } : undefined}
+          upload={!shared && can(user, 'sessions.files') ? { pending: uploading.length > 0, disabled: !isRunning || uploading.length > 0, onClick: () => chooseDeviceFiles() } : undefined} />
+        <input ref={fileInputRef} type="file" multiple hidden onChange={event => { if (event.target.files) void uploadFiles(event.target.files); event.target.value = ''; }} />
         <div className="viewer-stage" ref={screenRef} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDragEnd={() => { dragDepthRef.current = 0; setDragging(false); }} onDrop={dropFiles}>
-          <div className={'device-screen ' + (stream.size.width > stream.size.height ? 'landscape' : 'portrait')} style={{ width: stream.size.width * displayScale + 'px', height: stream.size.height * displayScale + 'px' }}>
+          <div className={'device-screen ' + (landscape ? 'landscape' : 'portrait')} style={{ width: stream.size.width * displayScale + 'px', height: stream.size.height * displayScale + 'px' }}>
             <img ref={stream.imageRef} alt={t('ui.b4a6c9bc414c')} className={stream.format === 'image' ? 'active-frame' : ''} draggable={false} onLoad={() => setImageFrameReady(true)} onError={() => setImageFrameReady(false)} />
             <canvas ref={stream.canvasRef} className={stream.format === 'video' ? 'active-frame' : ''} />
             <div className="touch-layer" role="application" aria-label={t('ui.684de2e969ef')} tabIndex={readOnly ? -1 : 0} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerCancel} onLostPointerCapture={pointerCancel} onKeyDown={event => { if (event.key === 'Escape' || event.key === 'Backspace') { event.preventDefault(); navKey(4); } else if (event.key === 'Enter') { event.preventDefault(); navKey(66); } else if (event.key.startsWith('Arrow')) { event.preventDefault(); navKey(({ ArrowUp: 19, ArrowDown: 20, ArrowLeft: 21, ArrowRight: 22 } as Record<string, number>)[event.key]); } }}><span ref={touchIndicator.markerRef} className="session-touch-marker" aria-hidden="true" hidden /></div>
@@ -513,8 +512,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
           </div>
         </div>
       </section>
-      {(!shared || !readOnly) && <section className={'tool-panel ' + (shared ? 'shared-text-tools' : 'terminal-panel')} aria-label={t('ui.fecfbc6e1053')} data-active-tool={toolTab} data-console-height-resized={!shared && consoleHeightResized && toolTab === 'console' && !catalogOpen || undefined}>
-        {shared ? <h2 className="shared-tools-title">{t('ui.4e90074f740b')}</h2> : <>
+      {!shared && <section className="tool-panel terminal-panel" aria-label={t('ui.fecfbc6e1053')} data-active-tool={toolTab} data-console-height-resized={consoleHeightResized && toolTab === 'console' && !catalogOpen || undefined}>
         <div className="tool-tabs" role="tablist" aria-label={t('ui.fecfbc6e1053')} onKeyDown={event => {
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !availableToolTabs.length) return;
           event.preventDefault();
@@ -563,9 +561,10 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
         <EnvPanel panelId="tool-panel-env" sessionId={sessionId} active={toolTab === 'env'} running={canReadEnvironment} readForViewer={!shared && can(user, 'sessions.env') && hasCapability(session, 'env')} onShowTouchesChange={touchIndicator.setEnabled} nativeTouches={stream.nativeTouches} />
         <NetworkPanel sessionId={sessionId} active={toolAllowed('traffic') && toolTab === 'traffic'} running={isRunning} canExport={can(user, 'sessions.files')} onExpand={activeWorkspaceMode !== 'tools' ? () => changeWorkspaceMode('tools') : undefined} />
         <WebViewsPanel sessionId={sessionId} active={toolAllowed('webviews') && toolTab === 'webviews'} running={isRunning} />
+        {toolAllowed('performance') && <PerformancePanel key={sessionId} sessionId={sessionId}
+          active={toolTab === 'performance' && activeWorkspaceMode !== 'screen'} running={isRunning}
+          ended={session?.status === 'stopped' || session?.status === 'error'} />}
         <AppsPanel panelId="tool-panel-apps" sessionId={sessionId} active={toolAllowed('apps') && toolTab === 'apps'} running={isRunning} />
-        </>}
-        <form className="text-send" onSubmit={sendText} aria-label={t('ui.8565dde56e60')}><Icon name="keyboard" size={18} /><input value={textInput} onChange={event => setTextInput(event.target.value)} placeholder={t('ui.8565dde56e60')} aria-label={t('ui.dd844df0eed4')} disabled={!canControl || readOnly} /><button type="submit" disabled={!canControl || readOnly || !textInput}>{t('ui.d3aa8669598a')}<Icon name="arrowRight" size={16} /></button></form>
       </section>}
     </div>
     </>}

@@ -5,14 +5,8 @@ import { ActivityIndicator } from './ActivityIndicator';
 import type { ConnectionMode, SessionAudioState, StreamMetrics, StreamStatus, StreamTransport } from './useSessionStream';
 import './SessionMediaStatus.css';
 
-type Props = {
-  status: StreamStatus;
-  format: 'image' | 'video';
-  transport?: StreamTransport;
-  streamError?: string;
+type AudioProps = {
   mode?: ConnectionMode;
-  onModeChange?: (mode: ConnectionMode) => void;
-  metrics?: StreamMetrics;
   audioTransport?: ConnectionMode | null;
   audioEnabled: boolean;
   audioState: SessionAudioState;
@@ -22,9 +16,19 @@ type Props = {
   onUnlockAudio?: () => void;
   onToggleAudio?: () => void;
 };
+type Props = AudioProps & {
+  status: StreamStatus;
+  format: 'image' | 'video';
+  transport?: StreamTransport;
+  streamError?: string;
+  onModeChange?: (mode: ConnectionMode) => void;
+  onReconnect?: () => void;
+  metrics?: StreamMetrics;
+};
 const audioLabels: Record<SessionAudioState, string> = {
   get disabled() { return t('ui.2a9dc2437cd8'); }, get connecting() { return t('ui.ba0c00b1a3f2'); }, get waiting() { return t('ui.7109ee75aab8'); },
   get unlock() { return t('ui.176288e012a0'); }, get receiving() { return t('ui.24c10d415fb7'); }, get unavailable() { return t('ui.0c30ab349215'); },
+  get silent() { return t('sessionAudio.silence'); },
 };
 const audioDetails: Record<SessionAudioState, string> = {
   get disabled() { return t('ui.2c8e6c5b13db'); },
@@ -33,10 +37,32 @@ const audioDetails: Record<SessionAudioState, string> = {
   get unlock() { return t('ui.6e41e2d90e82'); },
   get receiving() { return t('ui.6c01357d0c95'); },
   get unavailable() { return t('ui.8b08da0887fc'); },
+  get silent() { return t('sessionAudio.silenceDetail'); },
 };
 
-/** Transport and playback state are observed locally, independently of Android media volume. */
-export function SessionMediaStatus({ status, format, transport, streamError, mode = 'websocket', onModeChange, metrics, audioTransport, audioEnabled, audioState, audioNotice, audioBusy = false, audioPending = false, onUnlockAudio, onToggleAudio }: Props) {
+/** The headphones control browser playback independently of Android media volume. */
+export function SessionAudioControl({ rail = false, mode, audioTransport, audioEnabled, audioState, audioNotice, audioBusy, audioPending, onUnlockAudio, onToggleAudio }: AudioProps & { rail?: boolean }) {
+  const state = audioEnabled ? audioState === 'disabled' ? 'connecting' : audioState : 'disabled';
+  const unlock = state === 'unlock' && onUnlockAudio;
+  const action = unlock || onToggleAudio;
+  const actionLabel = unlock ? t('ui.e94b876c3606') : audioEnabled ? t('ui.3a8735ac215d') : t('ui.249482ec7bb9');
+  const fallback = mode === 'webrtc' && audioTransport === 'websocket' && audioEnabled;
+  const label = fallback && (state === 'receiving' || state === 'waiting') ? t('ui.e1be5d71d4c7') : audioLabels[state];
+  const detail = [audioDetails[state], fallback ? t('ui.2b65c50dff39') : '', audioNotice].filter(Boolean).join(' ');
+  const off = state === 'disabled' || state === 'unavailable';
+  const icon = rail ? off ? 'headphonesOff' : 'headphones' : off ? 'volumeOff' : 'volume';
+  const contents = <>{state === 'connecting' || audioPending ? <ActivityIndicator /> : <Icon name={icon} size={rail ? 20 : 15} />}{!rail && <span>{label}</span>}</>;
+  const props = {
+    className: rail ? 'device-control device-audio' : 'session-badge session-media-badge session-media-audio',
+    'data-media': rail ? undefined : 'audio', 'data-state': state, title: rail && action ? `${actionLabel}\n${detail}` : detail,
+  };
+  return action ? <button type="button" {...props} data-audio-control="" aria-label={actionLabel}
+    aria-description={label} aria-pressed={unlock ? undefined : audioEnabled} onClick={action} disabled={audioBusy}>{contents}</button>
+    : <span {...props} role="status" aria-label={rail ? label : undefined}>{contents}</span>;
+}
+
+/** The header reports transport and playback, and offers playback controls in tools-only mode. */
+export function SessionMediaStatus({ status, format, transport, streamError, mode = 'websocket', onModeChange, onReconnect, metrics, ...audio }: Props) {
   const transportMenu = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     const outside = (event: PointerEvent) => { if (transportMenu.current && !transportMenu.current.contains(event.target as Node)) transportMenu.current.open = false; };
@@ -46,15 +72,8 @@ export function SessionMediaStatus({ status, format, transport, streamError, mod
   const actualTransport = transport ?? (status === 'live' ? format === 'video' ? 'scrcpy' : 'images' : null);
   const videoLabel = status === 'live' ? actualTransport === 'webrtc' ? 'WebRTC' : actualTransport === 'scrcpy' ? 'scrcpy' : actualTransport === 'mjpeg' ? 'MJPEG' : t('ui.57ea1e1aa7d9')
     : status === 'connecting' ? t('ui.2b0e3fa2e835') : status === 'unsupported' ? t('ui.3a6ec360f375') : t('ui.1cdbd38b277f');
-  const videoDetail = status === 'live' ? actualTransport === 'webrtc' ? t('ui.6078d009cc30') : actualTransport === 'scrcpy' ? t('ui.d2ba013e5891') : actualTransport === 'mjpeg' ? t('ui.5dc4e9d9a2ae') : t('ui.766ed39cb87f')
+  const videoDetail = status === 'live' ? metrics?.fps === 0 ? t('sessionVideo.noFrames') : actualTransport === 'webrtc' ? t('ui.6078d009cc30') : actualTransport === 'scrcpy' ? t('ui.d2ba013e5891') : actualTransport === 'mjpeg' ? t('ui.5dc4e9d9a2ae') : t('ui.766ed39cb87f')
     : streamError || (status === 'connecting' ? t('ui.3020ac4bc180') : status === 'unsupported' ? t('ui.a435e4c18cb1') : t('ui.ec863f600ac1'));
-  const state = audioEnabled ? audioState === 'disabled' ? 'connecting' : audioState : 'disabled';
-  const unlock = state === 'unlock' && onUnlockAudio;
-  const action = unlock || onToggleAudio;
-  const audioFallback = mode === 'webrtc' && audioTransport === 'websocket' && audioEnabled;
-  const audioLabel = audioFallback && (state === 'receiving' || state === 'waiting') ? t('ui.e1be5d71d4c7') : audioLabels[state];
-  const audioTitle = [audioDetails[state], audioFallback ? t('ui.2b65c50dff39') : '', audioNotice].filter(Boolean).join(' ');
-  const audioContents = <>{state === 'connecting' || audioPending ? <ActivityIndicator /> : <Icon name={state === 'disabled' || state === 'unavailable' ? 'volumeOff' : 'volume'} size={15}/>}<span>{audioLabel}</span></>;
   return <div className="session-media-status" role="group" aria-label={t('ui.8c04e6b7ad8e')}>
     {onModeChange ? <details className="session-transport-menu" ref={transportMenu} onKeyDown={event => {
       if (event.key === 'Escape' && transportMenu.current) { transportMenu.current.open = false; transportMenu.current.querySelector('summary')?.focus(); }
@@ -70,11 +89,9 @@ export function SessionMediaStatus({ status, format, transport, streamError, mod
           {mode === 'webrtc' && <><div><dt>{t('ui.c4003078c9fa')}</dt><dd>{metrics?.iceRttMs == null ? '—' : t('copy.SessionMediaStatus.74fb1d19', { p0: Math.round(metrics.iceRttMs) })}</dd></div><div><dt>{t('ui.bd6c2f1e576a')}</dt><dd>{metrics?.packetsLost ?? '—'}</dd></div></>}
         </dl>
         <small>{t('ui.f6621fd37f49')}</small>
+        {onReconnect && <button type="button" className="button subtle stream-reconnect" onClick={onReconnect}><Icon name="refresh" size={16}/>{t('ui.2de34a1774f6')}</button>}
       </div>
     </details> : <span className="session-badge session-media-badge" data-media="video" data-state={status} title={videoDetail} role="status">{status === 'connecting' ? <ActivityIndicator /> : <Icon name={status === 'live' ? 'play' : 'alert'} size={15}/>}<span>{videoLabel}</span></span>}
-    {action ? <button type="button" className="session-badge session-media-badge session-media-audio" data-media="audio" data-state={state} title={audioTitle}
-      aria-label={unlock ? t('ui.e94b876c3606') : audioEnabled ? t('ui.3a8735ac215d') : t('ui.249482ec7bb9')}
-      aria-pressed={unlock ? undefined : audioEnabled} onClick={action} disabled={audioBusy}>{audioContents}</button>
-      : <span className="session-badge session-media-badge session-media-audio" data-media="audio" data-state={state} title={audioTitle} role="status">{audioContents}</span>}
+    <SessionAudioControl {...audio} mode={mode} />
   </div>;
 }

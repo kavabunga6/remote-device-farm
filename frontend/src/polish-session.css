@@ -54,14 +54,7 @@
 /* ---------- Workspace ---------- */
 .session-layout .workspace-grid{display:grid;gap:1rem;align-items:start}
 .session-layout .viewer-panel,.session-layout .tool-panel{background:var(--ui-surface);border:1px solid var(--ui-border);border-radius:1rem;box-shadow:0 1px 2px rgb(0 0 0 / .04);color:var(--ui-text);min-width:0}
-.session-layout .text-send{flex:0 0 auto;min-width:0;margin:0;min-height:3.5rem;padding:.5rem .75rem;border-top:1px solid var(--ui-border);gap:.75rem;color:var(--ui-subtle)}
-.session-layout .text-send>svg{flex:none}
 .session-layout[data-shared] .workspace-grid{grid-template-areas:"viewer"}
-.session-layout[data-shared] .shared-text-tools{grid-column:1;grid-row:2;height:auto;overflow:hidden}
-.session-layout .shared-tools-title{margin:0;padding:.75rem;font-size:.9375rem}
-.session-layout .text-send input{font-size:.9375rem;min-height:2.5rem;min-width:0;padding:0 .25rem}
-.session-layout .text-send input::placeholder{color:var(--ui-subtle);opacity:1}
-.session-layout .text-send button{min-height:2.5rem;padding:0 .875rem;white-space:nowrap;border-radius:.5rem;display:inline-flex;align-items:center;gap:.5rem}
 .session-layout .upload-feedback,.session-layout .capture-feedback,.session-layout .audio-notice{margin:0;padding:.5rem .75rem;font-size:.8125rem}
 
 /* Tablet and phone: the device card and the tool card are the same width and stack. */
@@ -71,19 +64,58 @@
   .session-layout .viewer-panel{width:100%;justify-self:stretch}
   .session-layout .console-width-handle{display:none}
 }
-/* Device actions stay in one row above the screen at every viewport size. */
-.session-layout .workspace-grid .viewer-stage:not(:fullscreen){grid-column:1;grid-row:2;padding:12px}
-.session-layout .workspace-grid .device-controls{grid-column:1;grid-row:1;display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:flex-start;justify-self:stretch;align-self:start;position:relative;z-index:4;width:auto;min-width:0;max-width:none;height:50px;min-height:50px;max-height:50px;box-sizing:border-box;margin:0;padding:4px 6px;gap:1px;border:0;border-bottom:1px solid var(--stage-line);border-radius:0;background:var(--stage);backdrop-filter:none;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:var(--stage-line) transparent}
-.session-layout .workspace-grid .device-controls::-webkit-scrollbar{height:6px}
-.session-layout .workspace-grid .device-controls::-webkit-scrollbar-thumb{background:var(--stage-line);border-radius:3px}
-.session-layout .workspace-grid .device-controls .control-group{display:flex;flex:none;flex-direction:row;flex-wrap:nowrap;align-items:center;gap:2px}
-.session-layout .workspace-grid .device-controls .controls-divider{display:block;flex:none;width:1px;height:20px;margin:0 2px;background:var(--stage-line)}
-.session-layout .workspace-grid .device-controls :is(.control-group button,.network-toggle,.upload-control,.capture-control){display:inline-flex;flex:none;align-items:center;justify-content:center;box-sizing:border-box;width:32px;min-width:32px;max-width:none;height:32px;min-height:32px;margin:0;padding:0;gap:0;border:0;border-radius:7px;font-size:0;line-height:1}
-.session-layout .workspace-grid .device-controls svg{display:block;flex:none;width:18px;height:18px}
-.session-layout .workspace-grid .device-controls .network-toggle>span,.session-layout .workspace-grid .device-controls .capture-control:not(.recording)>span:not(.mini-spinner){display:none}
-.session-layout .workspace-grid .device-controls .capture-control.recording{width:auto;min-width:32px;padding:0 7px;gap:6px;font-size:12px;line-height:1.2}
-/* Scrollable rows use each button's native title instead of clipped side tooltips. */
-.session-layout .workspace-grid .device-controls [data-tip]::after{display:none}
+/* The rail gets its own column so wide frames never sit under the controls. */
+.session-layout .viewer-stage:not(:fullscreen){padding:12px}
+.device-controls {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+  contain: size;
+  padding: 6px 1px;
+  overflow: hidden auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable both-edges;
+  scrollbar-color: #60746f transparent;
+  background: var(--stage);
+  border-inline-end: 1px solid var(--stage-line);
+}
+.device-controls .control-group { display: grid; flex: none; gap: 2px; }
+.device-controls .control-group + .control-group { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--stage-line); }
+.device-controls .device-control {
+  --control-ink: var(--stage-ink);
+  --control-fill: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 40px;
+  height: 40px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--control-ink);
+  background: var(--control-fill);
+}
+.device-controls .device-control > svg { display: block; flex: none; width: 20px; height: 20px; }
+.device-controls .device-control > .activity-indicator { width: 20px; height: 20px; }
+.device-controls button.device-control:hover:not(:disabled) { background: color-mix(in srgb, var(--control-fill), white 12%); }
+.device-controls button.device-control:focus-visible { outline: 2px solid #7ff0c9; outline-offset: -2px; }
+.device-controls button.device-control:disabled { opacity: .42; }
+.device-controls .device-control:is([data-state=receiving], [data-state=enabled]) { --control-ink: #8af1c8; --control-fill: #1b4237; }
+.device-controls .device-control:is([data-state=waiting], [data-state=connecting], [data-state=unlock]) { --control-ink: #f3cf87; --control-fill: #42351f; }
+.device-controls .device-control[data-state=recording] { --control-ink: #ffaca7; --control-fill: #502725; }
+.device-controls .device-recording-time { font: 600 10px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+@media (pointer: coarse) {
+  .session-layout .viewer-panel { grid-template-columns: 68px minmax(0, 1fr); }
+  .device-controls .device-control { width: 44px; height: 44px; }
+}
 
 /* Desktop: device card and tool card sit side by side and share one height; the tool card fills the rest. */
 @media(min-width:1201px){
@@ -116,11 +148,11 @@
 
 /* Shared panel padding and headings. */
 .session-layout .terminal-panel .tool-content,
-.session-layout .log-panel,.session-layout .info-panel,.session-layout .env-panel,.session-layout .apps-panel{padding:1rem;gap:.75rem}
-.session-layout :is(.tool-header h2,.log-title h2,.env-head h2,.apps-head h2){margin:0 0 .25rem;font-size:1rem;line-height:1.3;letter-spacing:-.01em}
-.session-layout :is(.tool-header p,.log-title p,.env-head p,.apps-head p){margin:0;font-size:.8125rem;line-height:1.5}
-:root:root:root .session-layout :is(.tool-header h2,.log-title h2,.env-head h2,.apps-head h2){color:var(--ui-text)}
-:root:root:root .session-layout :is(.tool-header p,.log-title p,.env-head p,.apps-head p,.env-note,.env-hint,.apps-hint,.info-none){color:var(--ui-subtle)}
+.session-layout .log-panel,.session-layout .info-panel,.session-layout .apps-panel{padding:1rem;gap:.75rem}
+.session-layout :is(.tool-header h2,.log-title h2,.apps-head h2){margin:0 0 .25rem;font-size:1rem;line-height:1.3;letter-spacing:-.01em}
+.session-layout :is(.tool-header p,.log-title p,.apps-head p){margin:0;font-size:.8125rem;line-height:1.5}
+:root:root:root .session-layout :is(.tool-header h2,.log-title h2,.apps-head h2){color:var(--ui-text)}
+:root:root:root .session-layout :is(.tool-header p,.log-title p,.apps-head p,.env-note,.env-hint,.apps-hint,.info-none){color:var(--ui-subtle)}
 .session-layout .terminal-topline .tool-header p{margin:0}
 .session-layout .terminal-topline{align-items:flex-start;gap:.75rem;margin-bottom:.25rem}
 .session-layout .terminal-header-actions{gap:.5rem}
@@ -138,7 +170,7 @@
   .session-layout .terminal-topline{flex-wrap:wrap}
   .session-layout .terminal-header-actions{width:100%}
   .session-layout .terminal-header-actions>*{flex:1 1 0}
-  .session-layout .terminal-panel .tool-content,.session-layout .log-panel,.session-layout .info-panel,.session-layout .env-panel,.session-layout .apps-panel{padding:.75rem}
+  .session-layout .terminal-panel .tool-content,.session-layout .log-panel,.session-layout .info-panel,.session-layout .apps-panel{padding:.75rem}
 }
 
 /* Shared header used by the device information panel. Logcat owns its reader styles. */
@@ -241,11 +273,9 @@
 .session-layout .shared-banner{align-items:flex-start;line-height:1.45}
 
 /* Short helper: keep keyboard focus visible on device controls. */
-.session-layout .device-controls button:focus-visible{outline:2px solid #7ff0c9;outline-offset:-2px}
 
 .session-layout :is(.env-panel,.apps-panel,.log-panel,.info-panel)[hidden]{display:none !important}
 
-@media(max-width:420px){.session-layout .text-send button svg{display:none}.session-layout .text-send input{font-size:.875rem}}
 
 :root:root:root .session-layout :is(.env-head,.apps-head) .button:not(.primary){background:transparent;border:1px solid var(--ui-border);color:var(--ui-text)}
 
@@ -319,9 +349,11 @@
 @media(min-width:1201px){.session-layout:not([data-shared])[data-workspace-mode=split] .tool-panel{height:max(22rem,var(--session-fit-height,700px));align-self:start}}
 
 @media(min-width:1201px){
-  .session-layout:not([data-shared])[data-workspace-mode=split] .workspace-grid{grid-template-columns:minmax(0,min(var(--viewer-width),calc(100% - 320px - 1.5rem))) minmax(320px,1fr)}
+  .session-layout:not([data-shared])[data-workspace-mode=split] .workspace-grid{--viewer-fit-width:var(--viewer-width);grid-template-columns:minmax(0,min(var(--viewer-fit-width),calc(100% - 320px - 1.5rem))) minmax(320px,1fr)}
+  /* In a portrait session, keep room for the tools when the sidebar is open. */
+  .session-layout:not([data-shared])[data-workspace-mode=split] .workspace-grid:not([data-landscape]){--viewer-fit-width:min(var(--viewer-width),max(320px,calc(50% - 1.5rem)))}
   /* A saved tool width can shrink the viewer, but must not add empty space around the device. */
-  .session-layout:not([data-shared])[data-workspace-mode=split] .workspace-grid[data-console-resized]{grid-template-columns:minmax(0,min(var(--viewer-width),max(320px,calc(100% - var(--console-width) - 1.5rem)))) minmax(320px,1fr)}
+  .session-layout:not([data-shared])[data-workspace-mode=split] .workspace-grid[data-console-resized]{grid-template-columns:minmax(0,min(var(--viewer-fit-width),max(320px,calc(100% - var(--console-width) - 1.5rem)))) minmax(320px,1fr)}
   .session-layout:not([data-shared])[data-workspace-mode=split] .console-width-handle{display:grid;left:-1.375rem;width:1.25rem}
 }
 

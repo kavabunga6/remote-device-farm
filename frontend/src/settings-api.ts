@@ -32,6 +32,7 @@ export interface RentalRecord {
   startedAt: string | null;
   endedAt: string | null;
   finalState: string | null;
+  hasCrash?: boolean;
 }
 
 export interface AuditRecord {

@@ -1,10 +1,10 @@
 import { diagnostic } from './diagnostics.js';
 import { AgentStreams } from './agent-streams.js';
 import { normalizeProviderStatuses } from './generated/device-contract.js';
-import { AgentRequests } from './agent-requests.js';
+import { AgentRequests, type PendingAgentRequest } from './agent-requests.js';
 import { ApiError } from './http-common.js';
 import { uiMessage } from './messages.js';
-import { emitServiceLog, recordServiceLog, sessionLog } from './service-log.js';
+import { emitServiceLog, queryDiagnostic, recordServiceLog, sessionLog } from './service-log.js';
 import { randomUUID } from 'node:crypto';
 import { StreamInputError, type InputMetadata } from './stream-input.js';
 import type { Socket } from 'node:net';
@@ -78,6 +78,7 @@ export class AgentHub {
     this.locallyStartedSessions.clear();
     this.policyRefreshInFlight.clear();
     this.policyRetryAfter.clear();
+    this.maintenanceLogs.clear();
     for (const socket of sockets) socket.terminate();
     this.stopping = Promise.allSettled([...this.agentTasks]).then(() => {});
     return this.stopping;
@@ -117,10 +118,10 @@ export class AgentHub {
     if (message.type === 'device-alert') return this.onDeviceAlertMessage(ws, link, message);
     if (message.type === 'session-log') return this.onSessionLogMessage(ws, link, message);
     if (message.type === 'startup-progress') return this.onStartupProgressMessage(ws, link, message);
-    if (message.type === 'result') return this.onResultMessage(ws, link, message);
-    if (['frame', 'video-config', 'video-frame', 'audio-config', 'audio-frame', 'audio-unavailable'].includes(String(message.type))) return this.onMediaMessage(ws, link, message);
-    if (message.type === 'tunnel-data') return this.onTunnelDataMessage(ws, link, message);
-    if (message.type === 'tunnel-close') return this.onTunnelCloseMessage(ws, link, message);
+    if (message.type === 'result') return this.onResultMessage(ws, message);
+    if (['frame', 'video-config', 'video-frame', 'audio-config', 'audio-frame', 'audio-unavailable'].includes(String(message.type))) return this.onMediaMessage(link, message);
+    if (message.type === 'tunnel-data') return this.onTunnelDataMessage(link, message);
+    if (message.type === 'tunnel-close') return this.onTunnelCloseMessage(link, message);
   }
 
   private async onHelloMessage(ws: WebSocket, expectedHostId: string, message: Record<string, unknown>, setLink: (link: AgentLink) => void): Promise<void> {
@@ -297,7 +298,8 @@ export class AgentHub {
   }
 
   private async onSessionLogMessage(ws: WebSocket, link: AgentLink, message: Record<string, unknown>): Promise<void> {
-    const pending = this.pending.get(String(message.requestId || ''));
+    const requestId = String(message.requestId || '');
+    const pending = this.pending.get(requestId);
     const sessionId = typeof message.sessionId === 'string' ? message.sessionId : '';
     const event = message.event as Record<string, unknown> | undefined;
     if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(sessionId) ||
@@ -313,32 +315,36 @@ export class AgentHub {
       const key = link.hostId + ':' + sessionId;
       let state = this.maintenanceLogs.get(key);
       if (!state) {
-        const owner = this.pool.query('SELECT id FROM sessions WHERE id=$1 AND host_id=$2', [sessionId, link.hostId])
-          .then(async result => Boolean(result.rowCount) || Boolean((await this.pool.query('SELECT id FROM rental_history WHERE session_id=$1 AND host_id=$2 LIMIT 1', [sessionId, link.hostId])).rowCount)).catch(() => false);
+        const owner = queryDiagnostic(this.pool, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id=$1 AND host_id=$2)
+          OR EXISTS(SELECT 1 FROM rental_history WHERE session_id=$1 AND host_id=$2) AS owned`, [sessionId, link.hostId])
+          .then(result => result.rows[0]?.owned === true).catch(() => false);
         state = { hostId: link.hostId, owner, writes: Promise.resolve(), count: 0 }; this.maintenanceLogs.set(key, state);
       }
       if (state.count++ > 4500) return;
-      state.writes = state.writes.then(async () => { if (await state!.owner) await write(); });
+      state.writes = state.writes.then(async () => { if (await state!.owner && !this.stopped) await write(); });
       this.trackAgentTask(state.writes);
       return;
     }
-    if (pending.ws !== ws || pending.hostId !== link.hostId || pending.sessionId !== sessionId ||
+    if (pending.completing || pending.ws !== ws || pending.hostId !== link.hostId || pending.sessionId !== sessionId ||
         !['start', 'stop', 'kill'].includes(pending.action)) return;
     if (/^container\.(stdout|stderr)$/.test(event.code)) {
       if ((pending.diagnosticCount ?? 0) >= 4000) {
         if (pending.diagnosticCount === 4000) {
           pending.diagnosticCount++;
-          pending.diagnosticWrites = (pending.diagnosticWrites ?? Promise.resolve()).then(() => sessionLog(this.pool, link.hostId, sessionId, 'container.output_limited', uiMessage('ui.56bae39642e5'), 'warning'));
-          this.trackAgentTask(pending.diagnosticWrites);
+          this.queueDiagnostic(requestId, pending, () => sessionLog(this.pool, link.hostId, sessionId, 'container.output_limited', uiMessage('ui.56bae39642e5'), 'warning'));
         }
         return;
       }
       pending.diagnosticCount = (pending.diagnosticCount ?? 0) + 1;
     }
-    pending.diagnosticWrites = (pending.diagnosticWrites ?? Promise.resolve()).then(write);
-    this.trackAgentTask(pending.diagnosticWrites);
-    return;
+    this.queueDiagnostic(requestId, pending, write);
+  }
 
+  private queueDiagnostic(id: string, pending: PendingAgentRequest, write: () => Promise<void>): void {
+    pending.diagnosticWrites = (pending.diagnosticWrites ?? Promise.resolve()).then(async () => {
+      if (this.pending.get(id) === pending) await write();
+    });
+    this.trackAgentTask(pending.diagnosticWrites);
   }
 
   private async onStartupProgressMessage(ws: WebSocket, link: AgentLink, message: Record<string, unknown>): Promise<void> {
@@ -351,7 +357,7 @@ export class AgentHub {
     let previousStage: StartupStage | undefined;
     let previousAt = 0;
     if (pending) {
-      if (pending.ws !== ws || pending.action !== 'start' || pending.hostId !== link.hostId || pending.sessionId !== sessionId) return;
+      if (pending.completing || pending.ws !== ws || pending.action !== 'start' || pending.hostId !== link.hostId || pending.sessionId !== sessionId) return;
       previousStage = pending.progressStage; previousAt = pending.progressWrittenAt ?? 0;
     } else {
       // After a broker restart the agent still owns its original start RPC. Recover only an
@@ -372,37 +378,36 @@ export class AgentHub {
       pending.progressLoggedAt = now;
       const labels = { checking_image: uiMessage('ui.814d5c2acd76'), waiting_image: uiMessage('ui.62ebb1360547'),
         downloading: uiMessage('ui.30c7ae7079e1'), creating: uiMessage('ui.4dfa4c1c204a'), booting: uiMessage('ui.511ecf396a50'), ready: uiMessage('ui.ad0b444760b8') };
-      pending.diagnosticWrites = (pending.diagnosticWrites ?? Promise.resolve()).then(() => sessionLog(this.pool,
+      this.queueDiagnostic(requestId, pending, () => sessionLog(this.pool,
         link.hostId, sessionId, 'session.' + progress.stage as `session.${string}`, labels[progress.stage] +
         (progress.percent == null ? '' : ': ' + progress.percent + '%'), 'info', 'agent'));
-      this.trackAgentTask(pending.diagnosticWrites);
     }
     // Stage changes are immediately visible; only repeated samples within one stage are throttled.
     if (pending) { pending.progressWrittenAt = now; pending.progressStage = progress.stage; }
-    await this.pool.query(
+    await queryDiagnostic(this.pool,
       "UPDATE sessions SET startup_progress=$3 WHERE id=$1 AND host_id=$2 AND state='starting' AND ($4::boolean OR startup_deadline_at > now())",
       [sessionId, link.hostId, progress, Boolean(pending)]);
     return;
 
   }
 
-  private async onResultMessage(ws: WebSocket, link: AgentLink, message: Record<string, unknown>): Promise<void> {
+  private async onResultMessage(ws: WebSocket, message: Record<string, unknown>): Promise<void> {
     const id = String(message.id || '');
     const pending = this.pending.get(id);
     if (!pending || pending.ws !== ws) return;
-    this.pending.take(id);
-    await pending.diagnosticWrites;
-    if (message.ok === true) pending.resolve((message.data && typeof message.data === 'object') ? message.data as Record<string, unknown> : {});
-    else pending.reject(typeof message.code === 'string' && message.code.startsWith('input_')
-      ? new StreamInputError(message.code, String(message.error || 'Input rejected'))
-      : message.code === 'device_capability_unavailable'
-        ? new ApiError(409, message.code, uiMessage('api.device_capability_unavailable', {}, 'en'))
-        : new Error(String(message.error || 'agent rejected command')));
-    return;
-
+    await this.pending.complete(id, entry => {
+      if (message.ok === true) entry.resolve((message.data && typeof message.data === 'object') ? message.data as Record<string, unknown> : {});
+      else entry.reject(typeof message.code === 'string' && message.code.startsWith('input_')
+        ? new StreamInputError(message.code, String(message.error || 'Input rejected'))
+        : message.code === 'performance_busy'
+          ? new ApiError(409, message.code, uiMessage('performance.busy'))
+        : message.code === 'device_capability_unavailable'
+          ? new ApiError(409, message.code, uiMessage('api.device_capability_unavailable', {}, 'en'))
+          : new Error(String(message.error || 'agent rejected command')));
+    });
   }
 
-  private async onMediaMessage(ws: WebSocket, link: AgentLink, message: Record<string, unknown>): Promise<void> {
+  private async onMediaMessage(link: AgentLink, message: Record<string, unknown>): Promise<void> {
     const sessionId = String(message.sessionId || '');
     if (!await this.belongsToHost(sessionId, link.hostId)) return;
     if (message.type === 'audio-unavailable') await this.pool.query('UPDATE sessions SET audio_enabled=false WHERE id=$1', [sessionId]);
@@ -412,7 +417,7 @@ export class AgentHub {
 
   }
 
-  private async onTunnelDataMessage(ws: WebSocket, link: AgentLink, message: Record<string, unknown>): Promise<void> {
+  private async onTunnelDataMessage(link: AgentLink, message: Record<string, unknown>): Promise<void> {
     const tunnelId = String(message.tunnelId || '');
     const device = this.deviceTunnels.get(tunnelId);
     if (device?.hostId === link.hostId && typeof message.data === 'string' && message.data.length <= 2_000_000) {
@@ -434,7 +439,7 @@ export class AgentHub {
 
   }
 
-  private async onTunnelCloseMessage(ws: WebSocket, link: AgentLink, message: Record<string, unknown>): Promise<void> {
+  private async onTunnelCloseMessage(link: AgentLink, message: Record<string, unknown>): Promise<void> {
     const tunnelId = String(message.tunnelId || '');
     const device = this.deviceTunnels.get(tunnelId);
     if (device?.hostId === link.hostId) {
@@ -507,7 +512,7 @@ export class AgentHub {
     return true;
   }
 
-  async command(hostId: string, sessionId: string, action: string, params: Record<string, unknown>, timeoutMs = 30_000, input?: InputMetadata): Promise<Record<string, unknown>> {
+  async command(hostId: string, sessionId: string, action: string, params: Record<string, unknown>, timeoutMs = 30_000, input?: InputMetadata, signal?: AbortSignal): Promise<Record<string, unknown>> {
     if (this.stopped) throw new Error(diagnostic('agent.da4390b715'));
     const agent = this.agents.get(hostId);
     if (!agent || agent.ws.readyState !== WebSocket.OPEN) throw new ApiError(503, 'agent_offline', uiMessage('api.agent_offline'));
@@ -515,7 +520,7 @@ export class AgentHub {
     return this.pending.request({ ws: agent.ws, hostId, sessionId, action }, timeoutMs, (id, fail) => {
       agent.ws.send(JSON.stringify({ type: 'command', id, sessionId, action, params, ...(input ? { input } : {}) }),
         error => { if (error) fail(error); });
-    });
+    }, signal);
   }
 
   private schedulePolicyApply(link: AgentLink, phase: 'apply' | 'refresh'): void {
@@ -571,8 +576,9 @@ export class AgentHub {
     if (active.preparing || !active.bootReady || !active.containerId || this.agents.get(link.hostId) !== link) return;
     for (const [id, pending] of this.pending) {
       if (pending.action !== 'start' || pending.sessionId !== sessionId || pending.hostId !== link.hostId || pending.ws !== link.ws) continue;
-      this.pending.take(id);
-      pending.resolve({ containerId: active.containerId, networkEnabled: active.networkEnabled, ...active.details });
+      this.trackAgentTask(this.pending.complete(id, entry => {
+        entry.resolve({ containerId: active.containerId, networkEnabled: active.networkEnabled, ...active.details });
+      }));
     }
   }
 
@@ -770,8 +776,7 @@ export class AgentHub {
         return row;
       }
       await client.query('UPDATE host_slots SET session_id=NULL WHERE session_id=$1', [sessionId]);
-      const deleted = await client.query('DELETE FROM sessions WHERE id=$1 RETURNING host_id', [sessionId]);
-
+      await client.query('DELETE FROM sessions WHERE id=$1', [sessionId]);
       return true;
     });
     if (released === true) { this.locallyStartedSessions.delete(sessionId); this.closeSessionChannels(sessionId); }
@@ -785,9 +790,9 @@ export class AgentHub {
   private async agentClosed(link: AgentLink): Promise<void> {
     if (this.agents.get(link.hostId) !== link) return;
     this.agents.delete(link.hostId);
+    this.pending.rejectWhere(pending => pending.ws === link.ws && pending.action !== 'start', new Error(diagnostic('agent.c74f3d49fe')));
     emitServiceLog(this.pool, { service: 'server', severity: 'warning', code: 'agent.disconnected', hostId: link.hostId });
     await this.pool.query(`UPDATE hosts SET status='offline' WHERE id=$1`, [link.hostId]).catch(() => {});
-    this.pending.rejectWhere(pending => pending.ws === link.ws && pending.action !== 'start', new Error(diagnostic('agent.c74f3d49fe')));
     const result = await this.pool.query(`SELECT id FROM sessions WHERE host_id=$1 AND state IN ('starting','running','stopping')`, [link.hostId]).catch(() => ({ rows: [] }));
     for (const row of result.rows) {
       await sessionLog(this.pool, link.hostId, row.id, 'session.agent_disconnected', uiMessage('ui.9ad97d6ce64c'), 'warning');

@@ -22,4 +22,5 @@
 .session-layout .session-transport-popover dt,.session-layout .session-transport-popover dd{margin:0;min-width:0}
 .session-layout .session-transport-popover dd{font-variant-numeric:tabular-nums;font-weight:600}
 .session-layout .session-transport-popover small{display:block;color:var(--ui-subtle);font-size:12px}
+.session-layout .session-transport-popover .stream-reconnect{margin-block-start:12px;white-space:normal;text-align:start}
 @container session-heading (max-width:650px){.session-layout .session-transport-popover{position:fixed;inset:auto 16px auto 16px;width:auto;max-width:none}}

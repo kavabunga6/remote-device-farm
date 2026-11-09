@@ -10,12 +10,13 @@ const profile = {
   diskGb: 8, diskMaxGb: 128, sdcardGb: 0, sdcardMaxGb: 32, enabled: true, emulatorParams: '-no-snapshot',
 };
 const resourceLabels = {
-  cpu: 'Лимит CPU на узле', memoryMb: 'Лимит памяти на узле, МБ',
+  cpu: 'CPU контейнера', memoryMb: 'Память контейнера, МБ',
   guestCores: 'Ядра Android', guestMemoryMb: 'Память Android, МБ',
 } as const;
 
 async function fixture(page: Page, options: { role?: 'user'; busy?: boolean; theme?: 'light' | 'dark'; scale?: number } = {}) {
-  const state = { requests: [] as Array<{ endpoint: string; body: { launchOptions: SessionLaunchOptions } }> };
+  const state = { requests: [] as Array<{ endpoint: string; body: { launchOptions: SessionLaunchOptions } }>,
+    slotLimits: { slotCpu: 8, slotMemoryMb: 16384 } };
   await page.route('**/api/profiles', route => route.fulfill({ json: { profiles: [profile] } }));
   await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: [] } }));
   if (options.role) await page.route('**/api/me', async route => {
@@ -31,7 +32,7 @@ async function fixture(page: Page, options: { role?: 'user'; busy?: boolean; the
     const body = await (await route.fetch()).json();
     for (const host of body.hosts) Object.assign(host, {
       name: 'Узел с длинным именем для проверки переноса подсказки', lastSeenAt: new Date().toISOString(),
-      status: 'online', disabled: false, slotCpu: 8, slotMemoryMb: 16384, slots: 2, usedSlots: options.busy ? 2 : 0,
+      status: 'online', disabled: false, ...state.slotLimits, slots: 2, usedSlots: options.busy ? 2 : 0,
     });
     await route.fulfill({ json: body });
   });
@@ -59,7 +60,29 @@ async function setResources(modal: Locator, values: Pick<SessionLaunchOptions, k
   }
 }
 
-for (const busy of [false, true]) test(`chosen Android and node resources reach the ${busy ? 'queue' : 'session'} API`, async ({ page }) => {
+test('node slot limits refresh without replacing the profile defaults or edited container resources', async ({ page }) => {
+  await page.clock.install();
+  const { modal, state } = await fixture(page);
+  const slotLimit = modal.locator('#create-slot-limit');
+  const cpu = modal.getByLabel(resourceLabels.cpu, { exact: true });
+  const memory = modal.getByLabel(resourceLabels.memoryMb, { exact: true });
+  await expect(slotLimit).toContainText(/8 CPU и 16\s384 МБ/);
+  await expect(cpu).toHaveValue(String(profile.cpu));
+  await expect(memory).toHaveValue(String(profile.memoryMb));
+
+  await cpu.fill('6');
+  state.slotLimits = { slotCpu: 12, slotMemoryMb: 12288 };
+  await page.clock.fastForward(10_000);
+  await expect(slotLimit).toContainText(/12 CPU и 12\s288 МБ/);
+  await expect(cpu).toHaveValue('6');
+  await expect(memory).toHaveValue(String(profile.memoryMb));
+
+  await modal.getByRole('button', { name: 'Запустить', exact: true }).click();
+  await expect.poll(() => state.requests.length).toBe(1);
+  expect(state.requests[0].body.launchOptions).toEqual({ cpu: 6 });
+});
+
+for (const busy of [false, true]) test(`chosen Android and container resources reach the ${busy ? 'queue' : 'session'} API`, async ({ page }) => {
   const { modal, state } = await fixture(page, { busy });
   const resources = { cpu: 6, memoryMb: 8192, guestCores: 4, guestMemoryMb: 4096 };
   await setResources(modal, resources);
@@ -89,7 +112,7 @@ test('guest resources above effective container limits block launch', async ({ p
   expect(state.requests).toHaveLength(0);
 });
 
-test('a regular user may lower resources but cannot raise the profile node limits', async ({ page }) => {
+test('a regular user may lower container resources within the profile limits', async ({ page }) => {
   const { modal, state } = await fixture(page, { role: 'user' });
   const launch = modal.getByRole('button', { name: 'Запустить', exact: true });
   await expect(modal.getByLabel(resourceLabels.cpu, { exact: true })).toHaveAttribute('max', '4');

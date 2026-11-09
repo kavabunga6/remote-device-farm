@@ -12,6 +12,7 @@ export default defineConfig(async () => {
   }
   return {
     plugins,
+    optimizeDeps: { include: ['prettier/standalone', 'prettier/plugins/html'] },
     server: {
       fs: { allow: [searchForWorkspaceRoot(process.cwd()), resolve(process.cwd(), '../shared')] },
       proxy: {

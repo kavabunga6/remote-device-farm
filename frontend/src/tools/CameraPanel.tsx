@@ -3,6 +3,7 @@ import { apiRequest, jsonBody } from '../api';
 import { t } from '../i18n';
 import { Icon } from '../icons';
 import { useNotifications } from '../notifications';
+import { EnvironmentSection } from './EnvironmentSection';
 
 type CameraState = { available: boolean; imageSet: boolean | null };
 async function prepareImage(file: File): Promise<Blob> {
@@ -65,30 +66,25 @@ export function CameraPanel({ sessionId, running, active }: { sessionId: string;
       }
     }
   }
-  return <details className="env-card env-camera" open={open} onToggle={event => setOpen(event.currentTarget.open)} aria-busy={busy}>
-    <summary><span className="env-card-heading"><strong>{t('camera.title')}</strong><span>{t('camera.description')}</span></span>
-      {busy && <span className="env-pending" role="status"><span className="mini-spinner" />{t('camera.working')}</span>}
-      <Icon name="chevronDown" size={18} />
-    </summary>
-    <div className="env-card-body">
-      <div className="env-camera-state" role="status" data-active={state?.imageSet === true}>
-        <Icon name="camera" size={20} />
-        <strong>{t(!running ? 'camera.stopped' : !state ? 'camera.checking' : !state.available ? 'camera.unavailable' : state.imageSet === null ? 'camera.unknown' : state.imageSet ? 'camera.imageSet' : 'camera.defaultScene')}</strong>
-      </div>
-      <p className="env-hint" id={id + '-hint'}>{t('camera.hint')}</p>
-      <input ref={input} id={id} type="file" hidden accept="image/png,image/jpeg" aria-label={t('camera.file')} aria-describedby={id + '-hint'}
-        disabled={!running || !state?.available || busy} onChange={event => { const file = event.target.files?.[0]; if (file) void change('image', file); }} />
-      <div className="env-camera-actions">
-        <button type="button" className="button primary small" disabled={!running || !state?.available || busy} onClick={() => input.current?.click()}>
-          <Icon name="camera" size={16} />{t('camera.file')}
-        </button>
-        <button type="button" data-camera-action="show" className="button small" disabled={!running || !state?.available || !state.imageSet || busy} onClick={() => void change('show')}>
-          <Icon name="camera" size={16} />{t('camera.show')}
-        </button>
-        <button type="button" data-camera-action="reset" className="button outline small" disabled={!running || !state?.available || state.imageSet === false || busy} onClick={() => void change('reset')}>
-          <Icon name="refresh" size={16} />{t('camera.reset')}
-        </button>
-      </div>
+  return <EnvironmentSection title={t('camera.title')} description={t('camera.description')} icon="camera" className="env-camera"
+    onOpenChange={setOpen} pending={busy ? t('camera.working') : undefined}>
+    <div className="env-camera-state" role="status" data-active={state?.imageSet === true}>
+      <Icon name="camera" size={20} />
+      <strong>{t(!running ? 'camera.stopped' : !state ? 'camera.checking' : !state.available ? 'camera.unavailable' : state.imageSet === null ? 'camera.unknown' : state.imageSet ? 'camera.imageSet' : 'camera.defaultScene')}</strong>
     </div>
-  </details>;
+    <p className="env-hint" id={id + '-hint'}>{t('camera.hint')}</p>
+    <input ref={input} id={id} type="file" hidden accept="image/png,image/jpeg" aria-label={t('camera.file')} aria-describedby={id + '-hint'}
+      disabled={!running || !state?.available || busy} onChange={event => { const file = event.target.files?.[0]; if (file) void change('image', file); }} />
+    <div className="env-camera-actions">
+      <button type="button" className="button primary small" disabled={!running || !state?.available || busy} onClick={() => input.current?.click()}>
+        <Icon name="camera" size={16} />{t('camera.file')}
+      </button>
+      <button type="button" data-camera-action="show" className="button small" disabled={!running || !state?.available || !state.imageSet || busy} onClick={() => void change('show')}>
+        <Icon name="camera" size={16} />{t('camera.show')}
+      </button>
+      <button type="button" data-camera-action="reset" className="button outline small" disabled={!running || !state?.available || state.imageSet === false || busy} onClick={() => void change('reset')}>
+        <Icon name="refresh" size={16} />{t('camera.reset')}
+      </button>
+    </div>
+  </EnvironmentSection>;
 }

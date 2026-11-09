@@ -35,7 +35,7 @@
 .shared-page h1{font-size:1.5rem;margin:0}
 .shared-page p{margin:0;color:var(--ui-muted)}
 /* Shared viewers get a read-only screen and no owner tools. */
-.session-layout[data-shared="view"] .touch-layer,.session-layout[data-shared="view"] .text-send{pointer-events:none}
+.session-layout[data-shared="view"] .touch-layer{pointer-events:none}
 .session-layout[data-shared] .owner-only,.session-layout[data-shared] .owner-only[hidden]{display:none !important}
 .session-layout[data-shared="view"] .workspace-grid,.session-layout[data-shared="control"] .workspace-grid{grid-template-columns:minmax(0,var(--viewer-width));justify-content:center}
 .share-status-unknown{display:inline-grid;place-items:center;min-width:1.3rem;min-height:1.3rem;border:1px solid var(--ui-border);border-radius:50%;font-size:.75rem}

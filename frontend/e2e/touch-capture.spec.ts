@@ -102,6 +102,10 @@ for (const landscape of [false, true]) {
       return { x: box.x + box.width * x, y: box.y + box.height * y };
     };
     await page.getByRole('button', { name: 'Начать запись экрана без звука', exact: true }).click();
+    const recording = page.getByRole('button', { name: 'Остановить запись экрана', exact: true });
+    await expect(recording).toHaveAttribute('aria-pressed', 'true');
+    await expect(recording).toHaveCSS('color', 'rgb(255, 172, 167)');
+    await expect(recording.locator('.device-recording-time')).toHaveText(/\d\d:\d\d/);
     await page.waitForTimeout(200);
     await nextPaint(page);
     let point = await position(.25, .3);

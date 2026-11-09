@@ -33,3 +33,24 @@
 .sidebar-navigation .side-nav a > span { grid-column: 2; grid-row: 1; }
 .sidebar-navigation .side-nav .side-nav-count,
 .sidebar-navigation .side-nav a[aria-current=page]::after { grid-column: 3; grid-row: 1; justify-self: center; margin-inline-start: 0; }
+
+.sidebar .sidebar-toggle { display: none; }
+@media (min-width: 801px) {
+  .sidebar .sidebar-toggle { display: grid; place-items: center; flex: none; width: 36px; height: 36px; padding: 0; }
+  [dir="rtl"] .sidebar-toggle svg { transform: scaleX(-1); }
+  .sidebar[data-compact] { width: 72px; padding-inline: 0; }
+  .sidebar[data-compact] .sidebar-brand { flex-direction: column; gap: 10px; padding: 0; margin-bottom: 12px; }
+  .sidebar[data-compact] .sidebar-navigation { scrollbar-gutter: stable both-edges; }
+  .sidebar[data-compact] :is(.brand-name, .side-nav-heading, .side-nav a > span, .side-nav-count, .side-profile-name, .side-logout > span) { display: none; }
+  .sidebar[data-compact] .side-nav-admin { margin-top: 8px; padding-top: 8px; }
+  .sidebar[data-compact] .sidebar-navigation .side-nav a,
+  .sidebar[data-compact] :is(.side-profile, .side-logout) {
+    display: grid; grid-template-columns: minmax(0, 1fr); place-items: center;
+    width: 44px; min-height: 44px; margin-inline: auto; padding: 0;
+  }
+  .sidebar[data-compact] .side-nav a[aria-current=page]::after { display: none; }
+  .sidebar[data-compact] .side-nav a > svg { grid-column: auto; grid-row: auto; }
+  .sidebar[data-compact] .sidebar-bottom { margin-inline: 4px; }
+  .sidebar[data-compact] .side-logout { margin-top: 4px; border-radius: 8px; }
+  .sidebar[data-compact] .side-logout:hover { background: var(--ui-inset); }
+}

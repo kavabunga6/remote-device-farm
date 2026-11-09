@@ -141,6 +141,11 @@ export class AgentControl {
           await this.docker.captureDiagnostics(container.Id, request.sessionId, this.config.agentId, onLog);
         return { captured: true };
       });
+      case 'containerPerformance': {
+        const containers = await this.sessionContainers(request.sessionId);
+        if (containers.length !== 1 || containers[0].State !== 'running') throw new Error(agentMessage('agent.a14b4d584e08'));
+        return this.docker.performance.sample(containers[0].Id);
+      }
       case 'setEgress': return this.withSessionLock(request.sessionId, () => this.setEgress(request.sessionId, request.enabled));
       case 'networkInspector': return this.withSessionLock(request.sessionId, () => this.networkInspector(request.sessionId, request.params));
       case 'cameraImage': return this.withSessionLock(request.sessionId, () => this.cameraImage(request.sessionId, request.params));
@@ -324,7 +329,7 @@ export class AgentControl {
   }
 
   async sessionContainers(sessionId) {
-    const containers = await this.docker.listManaged(this.config.agentId);
+    const containers = await this.docker.listManaged(this.config.agentId, sessionId);
     return containers.filter((item) => item.Labels?.['remote-device-farm.session'] === sessionId);
   }
 

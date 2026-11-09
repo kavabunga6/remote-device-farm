@@ -4,6 +4,8 @@ import { hashPassword, verifyPassword } from '../auth.js';
 import { profileField } from '../user-profile.js';
 import { transaction } from '../db.js';
 import { ApiError, isUuid, route } from '../http-common.js';
+import { hasPermission } from '../permissions.js';
+import { rentalCrashIds } from '../session-performance.js';
 import type { ServerContext } from '../server-context.js';
 
 const PAGE_SIZE = 50;
@@ -224,12 +226,15 @@ export function registerUserSettingsRoutes(app: Express, context: ServerContext)
 
   app.get('/api/me/rentals', requireAuth, route(async (req, res) => {
     const { limit, before } = pageParams(req);
+    const user = current(res).user;
     const { rows } = await pool.query(
       'SELECT * FROM rental_history WHERE owner_user_id=$1 AND ($2::bigint IS NULL OR id<$2) ' +
       'ORDER BY id DESC LIMIT $3',
-      [current(res).user.id, before, limit + 1],
+      [user.id, before, limit + 1],
     );
-    res.json({ rentals: rows.slice(0, limit).map(rentalJson),
+    const page = rows.slice(0, limit);
+    const crashes = hasPermission(user, 'sessions.console') ? await rentalCrashIds(pool, page) : null;
+    res.json({ rentals: page.map(row => ({ ...rentalJson(row), hasCrash: crashes?.has(row.session_id) ?? false })),
       nextCursor: rows.length > limit ? String(rows[limit - 1].id) : null });
   }));
 

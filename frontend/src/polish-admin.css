@@ -47,16 +47,6 @@
 .admin-workspace .node-dialog-form label,.admin-workspace .node-dialog-form legend{font-size:.875rem}
 .admin-workspace .node-dialog-form small{font-size:.8125rem;line-height:1.5}
 .admin-workspace .node-dialog-form input:not([type=radio]):not([type=checkbox]){background:var(--ui-inset);font-size:.9375rem;min-height:44px}
-.admin-workspace .ops-cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:18px}
-.admin-workspace .ops-card{padding:20px;gap:8px}
-.admin-workspace .ops-card span,.admin-workspace .ops-card small{font-size:.8125rem;line-height:1.4}
-.admin-workspace .ops-card strong{font-size:1.625rem}
-.ops-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
-.ops-panels>.ops-panel{margin:0;padding:20px}
-.ops-panels>.ops-panel:last-child{grid-column:1/-1}
-.admin-workspace .ops-panel-head{margin-bottom:16px}
-.admin-workspace .ops-panel-head h3{font-size:1rem}
-.admin-workspace .ops-note,.admin-workspace .ops-legend,.admin-workspace .ops-readout{font-size:.8125rem}
 .admin-workspace .admin-journal-tabs{margin-bottom:18px}
 .admin-workspace .admin-journal-tabs button{font-size:.875rem;padding:10px 16px}
 .admin-workspace .admin-journal-filters{padding:18px;gap:14px;margin-bottom:18px;align-items:end}
@@ -68,15 +58,8 @@
 .admin-workspace .admin-journal-outcome{background:color-mix(in srgb,var(--ui-accent) 12%,var(--ui-surface));color:var(--ui-accent)}
 .admin-workspace .admin-journal-outcome.failed,.admin-workspace .admin-journal-outcome.denied,.admin-workspace .admin-journal-outcome.error{background:color-mix(in srgb,#d9554a 12%,var(--ui-surface));color:var(--ui-danger,#d9554a)}
 .admin-workspace .admin-journal-outcome.warning{background:color-mix(in srgb,#b98628 12%,var(--ui-surface));color:var(--ui-warning,#b98628)}
-@media(max-width:1200px){.ops-panels{grid-template-columns:1fr}}
-@media(max-width:760px){.admin-workspace .section-heading{align-items:flex-start;flex-wrap:wrap}.admin-heading-actions{gap:8px}.admin-workspace .ops-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-workspace .ops-card{padding:16px}.admin-workspace .agent-list{padding:0 16px}.admin-workspace .agent-row{flex-wrap:wrap;gap:12px}.admin-workspace .agent-row>div{flex:1 1 calc(100% - 56px)}.admin-workspace .agent-row>.text-button{flex:0 1 auto}.admin-workspace .agent-row>.user-role{margin-inline-start:54px}.admin-form-dialog{max-height:calc(100dvh - 24px)}.admin-empty{padding:22px;align-items:flex-start;gap:14px}.admin-workspace .admin-journal-filters{padding:14px;gap:12px}.admin-workspace .admin-sessions-table{min-width:0}.admin-sessions-table thead{display:none}.admin-sessions-table tbody{display:grid;gap:12px;padding:12px}.admin-sessions-table tr{display:grid;border:1px solid var(--ui-border);border-radius:10px;overflow:hidden}.admin-workspace .admin-sessions-table td{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:end;padding:11px 13px}.admin-sessions-table td::before{content:attr(data-label);font-size:.75rem;color:var(--ui-muted);flex:none}.admin-sessions-table td:first-child::before,.admin-sessions-table td:last-child::before{display:none}.admin-sessions-table .table-device{text-align:start}.admin-sessions-table .row-actions{width:100%;justify-content:space-between}}
-@media(max-width:420px){.admin-workspace .ops-card strong{font-size:1.375rem}.admin-workspace .admin-journal-filters label{flex-basis:100%}.admin-heading-actions{width:100%;justify-content:space-between}}
-
-/* The three-column usage table must fit inside narrow metrics cards. */
-.admin-workspace .ops-panel>.table-wrap .ops-table{min-width:0;table-layout:fixed}
-.admin-workspace .ops-panel>.table-wrap .ops-table th:first-child{width:44%}
-.admin-workspace .ops-panel>.table-wrap .ops-table td:first-child{overflow-wrap:anywhere}
-@media(max-width:760px){.admin-workspace .ops-panel>.table-wrap .ops-table th,.admin-workspace .ops-panel>.table-wrap .ops-table td{padding:11px 7px;font-size:.75rem}.admin-workspace .ops-panel>.table-wrap .ops-table .num{white-space:normal}}
+@media(max-width:760px){.admin-workspace .section-heading{align-items:flex-start;flex-wrap:wrap}.admin-heading-actions{gap:8px}.admin-workspace .agent-list{padding:0 16px}.admin-workspace .agent-row{flex-wrap:wrap;gap:12px}.admin-workspace .agent-row>div{flex:1 1 calc(100% - 56px)}.admin-workspace .agent-row>.text-button{flex:0 1 auto}.admin-workspace .agent-row>.user-role{margin-inline-start:54px}.admin-form-dialog{max-height:calc(100dvh - 24px)}.admin-empty{padding:22px;align-items:flex-start;gap:14px}.admin-workspace .admin-journal-filters{padding:14px;gap:12px}.admin-workspace .admin-sessions-table{min-width:0}.admin-sessions-table thead{display:none}.admin-sessions-table tbody{display:grid;gap:12px;padding:12px}.admin-sessions-table tr{display:grid;border:1px solid var(--ui-border);border-radius:10px;overflow:hidden}.admin-workspace .admin-sessions-table td{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:end;padding:11px 13px}.admin-sessions-table td::before{content:attr(data-label);font-size:.75rem;color:var(--ui-muted);flex:none}.admin-sessions-table td:first-child::before,.admin-sessions-table td:last-child::before{display:none}.admin-sessions-table .table-device{text-align:start}.admin-sessions-table .row-actions{width:100%;justify-content:space-between}}
+@media(max-width:420px){.admin-workspace .admin-journal-filters label{flex-basis:100%}.admin-heading-actions{width:100%;justify-content:space-between}}
 
 /* ---------- Final polish pass ---------- */
 /* Accent chips use the theme's soft accent so they stay green in both themes. */

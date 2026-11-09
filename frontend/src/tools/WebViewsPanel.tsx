@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { t } from '../i18n';
 import { Icon } from '../icons';
 import { debugApi } from './debug-api';
+import { WebViewResult } from './WebViewResult';
 import './DeviceDebug.css';
+import './WebViewsPanel.css';
 type Page = { target: string; title: string; url: string };
 export function WebViewsPanel({ sessionId, active, running }: { sessionId: string; active: boolean; running: boolean }) {
   const [pages, setPages] = useState<Page[]>([]), [target, setTarget] = useState('');
@@ -30,7 +32,7 @@ export function WebViewsPanel({ sessionId, active, running }: { sessionId: strin
     } catch (cause) { if (current.current === sessionId) setError(cause instanceof Error ? cause.message : t('webviews.failed')); }
     finally { if (current.current === sessionId) setBusy(false); }
   };
-  return <section className="device-debug-panel" id="tool-panel-webviews" role="tabpanel" aria-labelledby="tool-tab-webviews" hidden={!active}>
+  return <section className="device-debug-panel webviews-panel" id="tool-panel-webviews" role="tabpanel" aria-labelledby="tool-tab-webviews" hidden={!active}>
     <div className="device-debug-head"><div><h2>{t('webviews.title')}</h2><p>{t('webviews.description')}</p></div>
       <button className="button" disabled={!running || busy} onClick={() => void refresh()} aria-label={t('debug.refresh')}><Icon name="refresh" size={16}/></button></div>
     {!running ? <p>{t('debug.stopped')}</p> : !pages.length && !busy ? <p className="device-debug-hint">{t('webviews.empty')}</p> : null}
@@ -38,17 +40,17 @@ export function WebViewsPanel({ sessionId, active, running }: { sessionId: strin
     {pages.length > 0 && <>
       <label className="device-debug-field">{t('webviews.page')}<select value={target} onChange={event => { setTarget(event.target.value); setOutput(''); }} disabled={busy}>
         {pages.map(page => <option key={page.target} value={page.target}>{page.title || page.url}</option>)}</select></label>
-      <p className="device-debug-endpoint">{pages.find(page => page.target === target)?.url}</p>
+      <p className="device-debug-endpoint" dir="ltr">{pages.find(page => page.target === target)?.url}</p>
       <div className="device-debug-actions"><button className="button" disabled={busy} onClick={() => void inspect('document')}>{busy ? t('debug.working') : t('webviews.document')}</button></div>
       <form onSubmit={event => { event.preventDefault(); void inspect('evaluate'); }} className="device-debug-field">
         <label htmlFor="webview-expression">{t('webviews.expression')}</label>
-        <textarea id="webview-expression" value={expression} maxLength={16384} onChange={event => setExpression(event.target.value)} disabled={busy} spellCheck={false}/>
-        <p className="device-debug-hint">{t('webviews.scriptHint')}</p>
+        <textarea id="webview-expression" dir="ltr" aria-describedby="webview-expression-hint" value={expression} maxLength={16384} onChange={event => setExpression(event.target.value)} disabled={busy} spellCheck={false}/>
+        <p id="webview-expression-hint" className="device-debug-hint">{t('webviews.scriptHint')}</p>
         <div className="device-debug-actions"><button type="submit" className="button primary" disabled={busy || !expression.trim()}><Icon name="play" size={16}/>{t('webviews.run')}</button></div>
       </form>
     </>}
     {busy && <div className="device-debug-state" role="status"><span className="mini-spinner"/>{t('debug.working')}</div>}
-    {output && <pre className="device-debug-code" tabIndex={0}>{output}</pre>}
-    <div className="device-debug-field"><span>{t('webviews.appium')}</span><code className="device-debug-endpoint">{location.origin + '/api/sessions/' + sessionId + '/appium'}</code></div>
+    {output && <WebViewResult source={output}/>}
+    <div className="device-debug-field"><span>{t('webviews.appium')}</span><code className="device-debug-endpoint" dir="ltr">{location.origin + '/api/sessions/' + sessionId + '/appium'}</code></div>
   </section>;
 }

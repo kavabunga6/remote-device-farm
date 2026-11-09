@@ -48,12 +48,13 @@ export function AdminTools({ section, profiles, allowLocalUsers, onRefresh }: { 
   const confirmAction = async () => {
     if (!pendingAction) return;
     if (actionBusy) return;
+    const dialog = dialogRef.current;
     setActionBusy(true);
     try {
       if (pendingAction.kind === 'delete-profile') { await api.deleteProfile(pendingAction.id); onRefresh(); notify({ kind: 'success', title: t('ui.925efb6367cf'), message: pendingAction.name }); }
       else if (pendingAction.kind === 'disable-profile') { await api.disableProfile(pendingAction.id); onRefresh(); }
       setPendingAction(null);
-    } catch (cause) { notifyError(t('ui.b9f61453dd3f'), cause); }
+    } catch (cause) { notifyError(t('ui.b9f61453dd3f'), cause, dialog); }
     finally { setActionBusy(false); }
   };
 

@@ -52,12 +52,14 @@ for (const [width, height, theme, scale] of [[1366, 768, 'light', 1], [1920, 108
       })).toBeLessThanOrEqual(height - 6);
       if (width > 650) expect(await page.evaluate(() => scrollY)).toBe(0);
       if (name !== 'Инструменты') {
-        const toolbar = await page.locator('.device-controls').evaluate(el => ({ bottom: el.getBoundingClientRect().bottom, overflow: el.scrollWidth - el.clientWidth }));
-        const screenTop = await page.locator('.device-screen').evaluate(el => el.getBoundingClientRect().top);
-        expect(toolbar.bottom).toBeLessThanOrEqual(screenTop);
-        // A narrow portrait viewer intentionally keeps its toolbar in one scrollable row.
         const controls = page.locator('.device-controls');
-        await expect(controls).toHaveCSS('overflow-x', 'auto');
+        const position = await controls.evaluate(el => {
+          const rail = el.getBoundingClientRect();
+          const stage = el.parentElement!.querySelector('.viewer-stage')!.getBoundingClientRect();
+          return { leftGap: stage.left - rail.right, topGap: stage.top - rail.top, bottomGap: stage.bottom - rail.bottom, overflow: el.scrollWidth - el.clientWidth };
+        });
+        expect(Math.max(Math.abs(position.leftGap), Math.abs(position.topGap), Math.abs(position.bottomGap), position.overflow)).toBeLessThanOrEqual(1);
+        await expect(controls).toHaveCSS('overflow-y', 'auto');
         await controls.getByRole('button').last().scrollIntoViewIfNeeded();
         await expect(controls.getByRole('button').last()).toBeInViewport();
       }

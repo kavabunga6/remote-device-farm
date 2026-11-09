@@ -1,0 +1,54 @@
+.session-layout .tool-panel > .webviews-panel {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: clamp(.75rem, 4cqi, 1.25rem);
+}
+
+.webviews-panel > * {
+  flex: none;
+  min-inline-size: 0;
+}
+
+.webviews-panel .device-debug-field { grid-template-columns: minmax(0, 1fr); }
+.webviews-panel .device-debug-endpoint { margin: 0; }
+.webviews-panel .device-debug-code { max-block-size: min(40vh, 20rem); }
+.webviews-panel .device-debug-code code { font: inherit; }
+
+.webview-result-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem 1rem;
+}
+
+.webview-result-header h3 { margin: 0; font-size: 1rem; }
+
+.webview-result-modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-inset);
+}
+
+.webview-result-modes button {
+  min-block-size: 32px;
+  padding: .25rem .625rem;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ui-muted);
+  font-size: .875rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.webview-result-modes button[aria-pressed=true] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}

@@ -25,7 +25,7 @@
 :root[data-effective-theme="dark"] :is(.sidebar,.topbar,.modal,.session-card,.host-card,.stat-card,.viewer-panel,.tool-panel,.profile-card,.token-list,.token-create,.account-identity,.account-farm-card,.account-key-list,.account-upload-card,.account-key-dialog,.settings-card,.settings-identity,.settings-history-list,.admin-journal-table-wrap){
   background:var(--ui-surface);border-color:var(--ui-border);color:var(--ui-text);
 }
-:root[data-effective-theme="dark"] :is(.device-controls,.profile-actions,.token-row,.account-key-row,.account-key-save-help,.account-key-dialog-actions,.modal-top,.console-catalog-search,.console-catalog-categories){
+:root[data-effective-theme="dark"] :is(.profile-actions,.token-row,.account-key-row,.account-key-save-help,.account-key-dialog-actions,.modal-top,.console-catalog-search,.console-catalog-categories){
   background:var(--ui-surface);border-color:var(--ui-border);
 }
 :root[data-effective-theme="dark"] :is(.page-heading h1,.section-heading h2,.session-title-top h1,.tool-header h2,.profile-card h3,.token-create h3,.token-row-main strong,.account-section-heading h2,.account-farm-title h3,.account-key-main strong,.account-upload-card h3,.account-identity strong,.settings-card-title h2,.settings-rental strong,.modal h2,.brand-name,.topbar-user,.stat-value,.session-card h3,.host-card h3,.account-key-dialog h2){
@@ -34,10 +34,10 @@
 :root[data-effective-theme="dark"] :is(.page-heading p,.section-heading p,.tool-header p,.profile-card p,.account-section-heading p,.account-farm-copy>p,.account-upload-card>p,.settings-card-title p,.modal-description,.session-meta,.token-create>p,.token-row-main small,.account-key-main small,.settings-muted,.settings-hint){
   color:var(--ui-muted);
 }
-:root[data-effective-theme="dark"] :is(.button.outline,.icon-button,.network-toggle,.console-catalog-toggle,.console-catalog-categories button,.adb-title-badge){
+:root[data-effective-theme="dark"] :is(.button.outline,.icon-button,.console-catalog-toggle,.console-catalog-categories button,.adb-title-badge){
   background:#1f293d;border-color:var(--ui-border);color:#c1e2d2;
 }
-:root[data-effective-theme="dark"] :is(.button.outline,.icon-button,.network-toggle,.console-catalog-toggle,.console-catalog-categories button):hover{background:#27384f}
+:root[data-effective-theme="dark"] :is(.button.outline,.icon-button,.console-catalog-toggle,.console-catalog-categories button):hover{background:#27384f}
 :root[data-effective-theme="dark"] :is(.button.subtle,.segmented button.selected,.status-badge,.account-role,.count-pill,.token-secret,.adb-key-status){
   background:#29433a;color:#a9debd;
 }
@@ -51,7 +51,6 @@
   background:#334143;color:#b2c0bd;
 }
 :root[data-effective-theme="dark"] :is(.side-logout,.topbar-context,.breadcrumbs,.stat-label,.session-id,.token-empty,.account-key-empty){color:var(--ui-muted)}
-:root[data-effective-theme="dark"] :is(.control-group button:hover:not(:disabled)){background:#1d2a3d;color:#c6e9d6}
 :root[data-effective-theme="dark"] :is(.login-form input,.modal input,.modal select,.profile-form input,.profile-form select,.profile-form textarea,.node-settings-form input,.token-create input,.token-create select,.account-upload-card input[type="text"],.settings-form input,.settings-form select,.terminal-input,.terminal-input input,.console-catalog-search input):where(:not([role="switch"])){
   background:#152326;border-color:var(--ui-border);color:var(--ui-text);
 }

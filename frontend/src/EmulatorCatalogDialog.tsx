@@ -155,6 +155,7 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
   });
   const build = async () => {
     if (buildInFlight.current || busy || !ready || !selected.size) return;
+    const dialog = dialogRef.current;
     buildInFlight.current = true;
     setBuildSending(true); setBusy(true); setError('');
     try {
@@ -162,7 +163,7 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
       // Show the accepted jobs immediately; refreshing the SDK catalog can take minutes.
       setCatalog(previous => previous ? { ...previous, jobs: [...jobs, ...previous.jobs.filter(job => !jobs.some(next => next.id === job.id))] } : previous);
       setSelected(new Set());
-      notify({ kind: 'success', title: t('ui.b53fbcc36019'), message: t('ui.e17e148c3973', { p0: jobs.length }), key: 'image-build', allowInModal: true });
+      notify({ kind: 'success', title: t('ui.b53fbcc36019'), message: t('ui.e17e148c3973', { p0: jobs.length }), key: 'image-build', dialog });
       setLoading(false);
       void load(false, true);
     } catch (cause) { setError(cause instanceof Error ? cause.message : t('ui.3c8a4983f3b6')); }
@@ -172,6 +173,7 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
     const builderHostId = catalog?.builder?.id;
     const key = `${builderHostId}:${job.id}`;
     if (!builderHostId || busy || !CANCELLABLE.includes(job.state) || cancelInFlight.current.has(key)) return;
+    const dialog = dialogRef.current;
     cancelInFlight.current.add(key);
     setCancelSending(new Set(cancelInFlight.current));
     try {
@@ -184,28 +186,30 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
       notify({ kind: updated.state === 'cancelled' ? 'success' : 'info',
         title: updated.state === 'cancelled' ? t('ui.0823a590adb7') : updated.state === 'cancelling' ? t('ui.1baaacca93fa') : t('ui.2d863a886dbd'),
         message: updated.state === 'cancelling' ? t('ui.cea38c50910b') : jobLabel(updated),
-        key: `image-cancel:${key}`, allowInModal: true });
+        key: `image-cancel:${key}`, dialog });
       void load(false, true);
-    } catch (cause) { notifyError(t('ui.7b07a6c5a322'), cause); }
+    } catch (cause) { notifyError(t('ui.7b07a6c5a322'), cause, dialog); }
     finally {
       cancelInFlight.current.delete(key);
       setCancelSending(new Set(cancelInFlight.current));
     }
   };
   const copyPackage = async (image: CatalogImage) => {
+    const dialog = dialogRef.current;
     try {
       await navigator.clipboard.writeText(image.package);
-      notify({ kind: 'success', title: t('ui.59f4bec35373'), key: 'image-package-copy', allowInModal: true });
-    } catch { notify({ kind: 'error', title: t('ui.f400e0b540f3'), message: t('ui.9e1443f4cd7d'), key: 'image-package-copy', allowInModal: true }); }
+      notify({ kind: 'success', title: t('ui.59f4bec35373'), key: 'image-package-copy', dialog });
+    } catch { notify({ kind: 'error', title: t('ui.f400e0b540f3'), message: t('ui.9e1443f4cd7d'), key: 'image-package-copy', dialog }); }
   };
   const prewarm = async () => {
+    const dialog = dialogRef.current;
     setBusy(true);
     try {
       const result = await imagesApi.prewarm();
       notify({ kind: result.queued ? 'success' : 'info', title: result.queued ? t('ui.259dbd34685d') : t('ui.fca6f7cdb25f'),
-        message: t('ui.beea065aa184', { p0: result.queued, p1: result.skipped }), key: 'image-prewarm', allowInModal: true });
+        message: t('ui.beea065aa184', { p0: result.queued, p1: result.skipped }), key: 'image-prewarm', dialog });
       await load(false, true);
-    } catch (cause) { notifyError(t('ui.1af056ffacba'), cause); }
+    } catch (cause) { notifyError(t('ui.1af056ffacba'), cause, dialog); }
     finally { setBusy(false); }
   };
   const apply = async (image: CatalogImage) => {

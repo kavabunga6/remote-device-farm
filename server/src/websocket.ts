@@ -116,7 +116,7 @@ export function attachWebSocket(server: Server, context: ServerContext): () => P
           if ((hasPermission(refreshed.user, 'sessions.control') ? again.access : 'view') !== access || again.grantId !== grantId) throw new Error(diagnostic('websocket.dff0ecb0b9'));
         } else { assertPermission(refreshed.user, 'sessions.adb'); await ownedSession(sessionId, refreshed, true); }
       };
-      const revalidateSocket = (ws: WebSocket) => {
+      const revalidateSocket = (ws: WebSocket, closeMedia?: () => void) => {
         let checking = false;
         const timer = setInterval(() => {
           if (checking || ws.readyState !== WebSocket.OPEN) return;
@@ -125,6 +125,7 @@ export function attachWebSocket(server: Server, context: ServerContext): () => P
             try {
               await authorizeSocket();
             } catch {
+              closeMedia?.();
               ws.close(4003, 'authorization expired');
             } finally {
               checking = false;
@@ -137,13 +138,17 @@ export function attachWebSocket(server: Server, context: ServerContext): () => P
       if (kind === 'stream') {
         streamWss.handleUpgrade(req, socket, head, ws => {
           let rtc: ReturnType<typeof attachRtcSignaling> | undefined;
-          registerAccessConnection(authenticatedContext.user.id, ws, () => rtc?.close());
+          const closeMedia = () => rtc?.close();
+          registerAccessConnection(authenticatedContext.user.id, ws, closeMedia);
           const heartbeat = streamHeartbeat(ws);
           // Register first so a concurrent revoke can close the socket. Then re-check the
           // exact grant before any frame or input can reach it.
           if (grantId) {
-            registerGrantSocket(session.id, { ws, grantId, userId: authenticatedContext.user.id, name: authenticatedContext.user.displayName, mode: access, beforeClose: () => rtc?.close() });
-            const timer = setTimeout(() => ws.close(4003, 'share expired'), Math.min(Math.max(0, (grantExpiresAt ?? 0) - Date.now()), 2 ** 31 - 1));
+            registerGrantSocket(session.id, { ws, grantId, userId: authenticatedContext.user.id, name: authenticatedContext.user.displayName, mode: access, beforeClose: closeMedia });
+            const timer = setTimeout(() => {
+              closeMedia();
+              ws.close(4003, 'share expired');
+            }, Math.min(Math.max(0, (grantExpiresAt ?? 0) - Date.now()), 2 ** 31 - 1));
             timer.unref();
             ws.once('close', () => clearTimeout(timer));
           }
@@ -155,7 +160,7 @@ export function attachWebSocket(server: Server, context: ServerContext): () => P
             hub.addViewer(session.id, hostId, ws, inputReady);
             rtc = attachRtcSignaling({ socket: ws, hub, sessionId: session.id, hostId, canControl: access !== 'view',
               activity: () => activity.touch(session.id), enabled: new URL(req.url || '/', 'http://local').searchParams.get('transport') === 'webrtc' });
-            revalidateSocket(ws);
+            revalidateSocket(ws, closeMedia);
             return true;
           })().catch(() => {
             if (ws.readyState === WebSocket.OPEN) ws.close(4003, 'share revoked');

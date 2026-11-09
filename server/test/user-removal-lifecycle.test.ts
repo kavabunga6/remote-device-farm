@@ -224,7 +224,9 @@ test('revoking a shared stream closes WebRTC before a client acknowledges WebSoc
   const hub = {
     setViewerTransport() {},
     command: async (_host: string, _session: string, action: string) => {
-      commands.push(action); return { description: { type: 'answer', sdp: 'synthetic-answer' } };
+      commands.push(action);
+      if (action === 'rtc-capabilities') return { available: true, iceServers: [] };
+      return { description: { type: 'answer', sdp: 'synthetic-answer' } };
     },
   } as unknown as AgentHub;
   const rtc = attachRtcSignaling({ socket: socket as unknown as WebSocket, hub,
@@ -232,8 +234,10 @@ test('revoking a shared stream closes WebRTC before a client acknowledges WebSoc
   registerGrantSocket(sessionId, { ws: socket as unknown as WebSocket, grantId,
     userId: id(), name: 'Shared viewer', mode: 'control', beforeClose: rtc.close });
   try {
+    await new Promise(resolve => setImmediate(resolve));
     assert.equal(rtc.handle({ type: 'rtc-offer', description: { type: 'offer', sdp: 'synthetic-offer' } }), true);
     await new Promise(resolve => setImmediate(resolve));
+    assert.equal(commands.filter(action => action === 'rtc-offer').length, 1);
     assert.equal(closeGrantSockets(sessionId, new Set([id()])), 0);
     assert.equal(commands.includes('rtc-close'), false);
     assert.equal(closeGrantSockets(sessionId, new Set([grantId])), 1);

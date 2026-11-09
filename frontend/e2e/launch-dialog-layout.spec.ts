@@ -145,6 +145,38 @@ for (const [name, theme, width, height, scale, language] of [
     await page.screenshot({ path: testInfo.outputPath('launch-options-' + name + '.png'), fullPage: false, animations: 'disabled' });
     await dialog.locator('.create-advanced-settings > summary').scrollIntoViewIfNeeded();
     await dialog.screenshot({ path: testInfo.outputPath('launch-controls-' + name + '.png'), animations: 'disabled' });
+    if (width === 390) await page.evaluate(() => { document.documentElement.style.fontSize = '24px'; });
+    await dialog.locator('.create-advanced-settings > summary').click();
+    const examples = dialog.locator('.create-argument-help');
+    await examples.locator('summary').click();
+    const list = examples.locator('ul');
+    await expect(list.getByRole('listitem')).toHaveCount(5);
+    const listLayout = await list.evaluate(element => {
+      const range = document.createRange();
+      const flags = Array.from(element.querySelectorAll('code > span'), argument => {
+        range.selectNodeContents(argument);
+        return { lines: range.getClientRects().length, direction: getComputedStyle(argument).direction };
+      });
+      const detachedPunctuation = Array.from(element.querySelectorAll('code')).filter(code => {
+        const tail = code.nextSibling;
+        const punctuation = tail?.textContent?.match(/^\s*[.,;،؛。；，।]/);
+        if (!tail || !punctuation) return false;
+        range.setStart(tail, punctuation[0].length - 1);
+        range.setEnd(tail, punctuation[0].length);
+        const mark = range.getBoundingClientRect();
+        const token = code.lastElementChild!.getBoundingClientRect();
+        return mark.top >= token.bottom || mark.bottom <= token.top;
+      }).length;
+      const style = getComputedStyle(element);
+      return { flags, detachedPunctuation, indent: parseFloat(style.paddingInlineStart), overflow: element.scrollWidth - element.clientWidth };
+    });
+    expect(listLayout.flags).toHaveLength(26);
+    for (const flag of listLayout.flags) expect(flag).toEqual({ lines: 1, direction: 'ltr' });
+    expect(listLayout.detachedPunctuation).toBe(0);
+    expect(listLayout.indent).toBeGreaterThan(0);
+    expect(listLayout.overflow).toBeLessThanOrEqual(1);
+    await list.scrollIntoViewIfNeeded();
+    await dialog.screenshot({ path: testInfo.outputPath('launch-arguments-' + name + '.png'), animations: 'disabled' });
   });
 }
 

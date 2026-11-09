@@ -12,6 +12,7 @@ const connectionCode = source.slice(source.indexOf('function connect() {'), sour
 
 function fixture() {
   const sockets = [], intervals = new Set(), reconnects = [], hellos = [], graceTimers = new Set(), stopped = [], released = [], appiumClosed = [];
+  const traceReleased = [];
   class FakeWebSocket extends EventEmitter {
     static OPEN = 1;
     constructor() { super(); this.readyState = 0; sockets.push(this); }
@@ -27,11 +28,12 @@ function fixture() {
     setTimeout: (fn, delay) => { if (delay === 20000) graceTimers.add(fn); else reconnects.push(fn); return fn; },
     clearTimeout: fn => graceTimers.delete(fn),
     managedAppium: { close: async () => { appiumClosed.push(true); } },
+    emulator: { traceCapture: { dispose: () => { traceReleased.push(true); } } },
     inputGate: { disconnect: async () => { released.push(true); } }, rtc: { closeAll: async () => {} },
     streams: { streams: new Map([['session-1', {}]]), stop: async id => { stopped.push(id); } }, tunnels: new Map(), process: { exit() {} },
   });
   vm.runInContext('let socket, heartbeatTimer, streamDisconnectTimer; let reconnectDelayMs = 1000; let closing = false;\n' + connectionCode, context);
-  return { sockets, intervals, reconnects, hellos, graceTimers, stopped, released, appiumClosed, connect: () => vm.runInContext('connect()', context),
+  return { sockets, intervals, reconnects, hellos, graceTimers, stopped, released, appiumClosed, traceReleased, connect: () => vm.runInContext('connect()', context),
     shutdown: () => vm.runInContext('shutdown()', context) };
 }
 
@@ -82,6 +84,7 @@ test('brief broker reconnect releases input immediately but preserves local medi
   const broker = fixture(); broker.connect(); broker.sockets[0].open(); broker.hellos[0](); await flush();
   broker.sockets[0].close(); await flush();
   assert.equal(broker.released.length, 1);
+  assert.equal(broker.traceReleased.length, 1);
   assert.deepEqual(broker.stopped, []);
   assert.equal(broker.graceTimers.size, 1);
   broker.reconnects.shift()(); broker.sockets[1].open();

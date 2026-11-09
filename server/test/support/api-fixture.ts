@@ -71,6 +71,9 @@ class TestAgent extends AgentHub {
     _sessionId: string,
     action: string,
     params: Record<string, unknown>,
+    _timeoutMs?: number,
+    _input?: Parameters<AgentHub['command']>[5],
+    _signal?: AbortSignal,
   ): Promise<Record<string, unknown>> {
     if (action === 'start') {
       this.launches.push(params);

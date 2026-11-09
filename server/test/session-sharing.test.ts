@@ -63,6 +63,8 @@ async function harness() {
     requestKeyframe: (_sessionId: string, hostId: string) => { assert.equal(hostId, 'host-1'); return true; },
     onSessionClosed: (listener: (id: string) => void) => { closedListeners.push(listener); },
     command: async (hostId: string, _id: string, action: string, params: unknown) => { assert.equal(hostId, 'host-1'); commands.push({ action, params });
+      if (action === 'rtc-capabilities') return { available: true, iceServers: [] };
+      if (action === 'rtc-offer') return { description: { type: 'answer', sdp: 'synthetic-answer' } };
       if (action === 'screenshot') {
         await state.onScreenshot?.();
         return { mime: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZlS8AAAAASUVORK5CYII=' };
@@ -458,6 +460,32 @@ test('a grant revoked between pre-upgrade authorization and socket registration 
     assert.equal(code, 4003);
     assert.equal(h.viewers.length, 0, 'the revoked viewer was never attached to the emulator');
   } finally { await h.close(); }
+});
+
+test('an expired share stops WebRTC while the viewer is unable to acknowledge close', async () => {
+  const h = await harness();
+  let ws: WebSocket | undefined;
+  try {
+    const { body } = await h.share('control');
+    h.state.actor = FRIEND;
+    assert.equal((await h.redeem(body.token)).status, 200);
+    const expires = new Date(Date.now() + 1800);
+    await h.db.query('UPDATE session_share_grants SET expires_at=$1 WHERE session_id=$2', [expires, SID]);
+    ws = new WebSocket(`ws://127.0.0.1:${h.port}/api/sessions/${SID}/stream?transport=webrtc`);
+    const [rawCapabilities] = await once(ws, 'message', { signal: AbortSignal.timeout(1000) });
+    assert.equal(JSON.parse(String(rawCapabilities)).available, true);
+    const answer = once(ws, 'message', { signal: AbortSignal.timeout(1000) });
+    ws.send(JSON.stringify({ type: 'rtc-offer', description: { type: 'offer', sdp: 'synthetic-offer' } }));
+    const response = JSON.parse(String((await answer)[0]));
+    assert.equal(response.type, 'rtc-answer');
+    ws.pause();
+    for (let i = 0; i < 30 && !h.commands.some(c => c.action === 'rtc-close'); i++) await settle();
+    assert.equal(ws.readyState, WebSocket.OPEN);
+    assert.deepEqual(h.commands.filter(c => c.action === 'rtc-close'), [{ action: 'rtc-close', params: { peerId: response.peerId } }]);
+    const closed = once(ws, 'close', { signal: AbortSignal.timeout(1000) });
+    ws.resume();
+    assert.equal((await closed)[0], 4003);
+  } finally { ws?.terminate(); await h.close(); }
 });
 
 test('session end notifies the share module and shared access stays limited to viewer routes', async () => {

@@ -16,13 +16,13 @@ export type NotificationInput = {
   details?: string;
   action?: { href: string; label: string };
   key?: string;
-  /** Feedback for an explicit action in the currently open dialog. */
-  allowInModal?: boolean;
+  /** The dialog that initiated this action, if any. */
+  dialog?: HTMLElement | null;
 };
 export type AppNotification = NotificationInput & { id: string; revision: number; count: number };
 type NotificationContext = {
   notify: (notification: NotificationInput) => void;
-  notifyError: (title: string, error: unknown) => void;
+  notifyError: (title: string, error: unknown, dialog?: HTMLElement | null) => void;
   dismiss: (id: string) => void;
 };
 const NotificationsContext = createContext<NotificationContext | null>(null);
@@ -95,10 +95,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     if (!restoreAfterDismiss.current) return;
     restoreAfterDismiss.current = false;
     // Restore focus in the same commit that removes the focused toast.
-    const next = document.querySelector<HTMLElement>('.notification-stack .notification-close');
     const previous = returnFocus.current;
     const dialog = Array.from(document.querySelectorAll<HTMLElement>('[aria-modal="true"], dialog[open]'))
       .filter(element => element.getClientRects().length > 0).at(-1);
+    const next = (dialog ?? document).querySelector<HTMLElement>('.notification-stack:not([inert]) .notification-close');
     if (next) next.focus();
     else if (previous?.isConnected && (!dialog || dialog.contains(previous))) previous.focus();
     else Array.from(dialog?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
@@ -108,7 +108,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     if (!input.title.trim()) return;
     if (document.activeElement instanceof HTMLElement && !document.activeElement.closest('.notification-stack')) returnFocus.current = document.activeElement;
     const key = input.key || [input.kind, input.title, input.messagePrefix ?? '', input.message ?? '', clip(input.details ?? '', 2000)].join('|');
-    const normalized = { ...input, title: clip(input.title.trim(), 160), message: input.message && clip(input.message, 500), messagePrefix: input.messagePrefix && clip(input.messagePrefix, 160), details: input.details && clip(input.details, MAX_DETAILS), key };
+    const normalized = { ...input, dialog: input.dialog?.isConnected ? input.dialog : null, title: clip(input.title.trim(), 160), message: input.message && clip(input.message, 500), messagePrefix: input.messagePrefix && clip(input.messagePrefix, 160), details: input.details && clip(input.details, MAX_DETAILS), key };
     const id = `notification-${++nextId.current}`;
     setItems(current => {
       const existing = current.find(item => item.key === key);
@@ -118,7 +118,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       return limitNotifications([...next.filter(value => value.kind === 'error'), ...next.filter(value => value.kind !== 'error')]);
     });
   }, []);
-  const notifyError = useCallback((title: string, error: unknown) => notify({ kind: 'error', title, ...describeNotificationError(error) }), [notify]);
+  const notifyError = useCallback((title: string, error: unknown, dialog?: HTMLElement | null) =>
+    notify({ kind: 'error', title, ...describeNotificationError(error), dialog }), [notify]);
 
   useLayoutEffect(() => {
     const sync = () => {
@@ -128,25 +129,36 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       setBlocked(Boolean(active || document.querySelector('.modal-backdrop')));
     };
     sync();
-    const observer = new MutationObserver(sync);
+    const observer = new MutationObserver(records => {
+      sync();
+      if (records.some(record => record.removedNodes.length > 0)) {
+        setItems(current => current.some(item => item.dialog && !item.dialog.isConnected)
+          ? current.map(item => item.dialog && !item.dialog.isConnected ? { ...item, dialog: null } : item)
+          : current);
+      }
+    });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-modal', 'open'] });
     return () => observer.disconnect();
   }, []);
   const context = useMemo(() => ({ notify, notifyError, dismiss }), [notify, notifyError, dismiss, getLanguage()]);
-  const visible = items.filter(item => item.kind === 'error' || item.allowInModal || !blocked);
+  const pageItems = items.filter(item => !item.dialog?.isConnected);
+  const dialogItems = modalTarget ? items.filter(item => item.dialog === modalTarget) : [];
+  const renderToast = (item: AppNotification) => <AppToast key={item.id} notification={item} onClose={() => dismiss(item.id)} />;
   return <NotificationsContext.Provider value={context}>
     {children}
-    {visible.length > 0 && createPortal(<section className={"notification-stack" + (modalTarget ? " notification-stack-in-modal" : "")} aria-label={t('ui.d4baf8f6b173')} onKeyDown={event => {
+    {pageItems.length > 0 && createPortal(<section className={'notification-stack' + (blocked ? ' notification-stack-behind-modal' : '')}
+      inert={blocked} aria-label={t('ui.d4baf8f6b173')}>{pageItems.map(renderToast)}</section>, document.body, 'page')}
+    {modalTarget && dialogItems.length > 0 && createPortal(<section className="notification-stack notification-stack-in-modal" aria-label={t('ui.d4baf8f6b173')} onKeyDown={event => {
       // Portal events do not reach a dialog's React key handler through the DOM.
-      if (!modalTarget || event.key !== 'Tab' || event.defaultPrevented) return;
+      if (event.key !== 'Tab' || event.defaultPrevented) return;
       const controls = Array.from(modalTarget.querySelectorAll<HTMLElement>(`${FOCUSABLE},summary`))
         .filter(element => element.tabIndex >= 0 && element.getClientRects().length > 0);
       const first = controls[0], last = controls.at(-1);
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     }}>
-      {visible.map(item => <AppToast key={item.id} notification={item} onClose={() => dismiss(item.id)} />)}
-    </section>, modalTarget?.querySelector('[data-dialog-notifications]') ?? modalTarget ?? document.body)}
+      {dialogItems.map(renderToast)}
+    </section>, modalTarget.querySelector('[data-dialog-notifications]') ?? modalTarget, 'dialog')}
   </NotificationsContext.Provider>;
 }
 

@@ -6,6 +6,7 @@ import { diagnosticReporter } from '../session-diagnostics.mjs';
 import { DeviceProvider } from './base.mjs';
 import { resolveGpuBackend } from '../docker-options.mjs';
 import { androidOps } from './android-ops.mjs';
+import { AndroidTraceCapture, recordAndroidTrace, sampleAndroidProcesses } from '../android-performance.mjs';
 import { validateProfile } from '../config.mjs';
 import { waitForAndroidBoot } from '../android-boot.mjs';
 import { progressReporter } from '../startup-progress.mjs';
@@ -24,6 +25,8 @@ export class EmulatorProvider extends DeviceProvider {
     this.shared = androidOps({ adb, streams, appTransfers });
     this.envTools = envTools;
     this.inspector = new NetworkInspector(adb, control);
+    this.performanceCapture = null;
+    this.traceCapture = new AndroidTraceCapture();
   }
 
   get ops() {
@@ -36,9 +39,32 @@ export class EmulatorProvider extends DeviceProvider {
         return result;
       },
       'network-inspector': (s, p, { sessionId }) => this.inspector.command(sessionId, s.serial, p),
+      'performance-container': (_s, _p, { sessionId }) => this.control.containerPerformance(sessionId),
+      'performance-processes': (s) => this.capturePerformance(s, sampleAndroidProcesses),
+      'performance-trace-open': (s, { traceId }, { sessionId }) => this.traceCapture.open(sessionId, traceId,
+        signal => this.capturePerformance(s, recordAndroidTrace, signal)),
+      'performance-trace-read': (_s, { traceId, offset }, { sessionId }) => this.traceCapture.read(sessionId, traceId, offset),
+      'performance-trace-release': (_s, { traceId }, { sessionId }) => { this.traceCapture.release(sessionId, traceId); },
       camera: (s, p, { sessionId }) => this.control.cameraImage(sessionId, p),
       env: (s, p, ctx) => p.op === 'read' ? this.envTools.read(s.serial, ctx) : this.envTools.apply(s.serial, p.op, p.params, ctx),
     };
+  }
+
+  async capturePerformance(session, capture, parentSignal) {
+    if (this.performanceCapture) {
+      const error = new Error(agentMessage('performance.busy'));
+      error.code = 'performance_busy';
+      throw error;
+    }
+    const controller = new AbortController();
+    this.performanceCapture = controller;
+    session.performanceAbort = controller;
+    const signal = parentSignal ? AbortSignal.any([parentSignal, controller.signal]) : controller.signal;
+    try { return await capture(this.adb, session.serial, signal); }
+    finally {
+      this.performanceCapture = null;
+      session.performanceAbort = null;
+    }
   }
 
   get nodeOps() {
@@ -191,6 +217,7 @@ export class EmulatorProvider extends DeviceProvider {
   // agent-control; we then verify the container is really gone. Any doubt keeps the slot occupied.
   async stop(sessionId, { onLog } = {}) {
     const entry = this.sessions.get(sessionId);
+    this.traceCapture.dispose(sessionId);
     this.inspector.dispose(sessionId);
     entry?.recoveryAbort?.abort(new Error(agentMessage('agent.edb6e60881d1')));
     await this.control.stop(sessionId, { onLog });

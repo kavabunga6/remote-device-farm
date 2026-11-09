@@ -386,6 +386,7 @@
   "scrcpy.f99b364423": "scrcpy recovered for {p0} (video)",
   "scrcpy.fadeeda20f": "scrcpy stream failed for {p0}, switching to screenshots: {p1}",
   "scrcpy.fbb2bce1da": "scrcpy unavailable for {p0}, using screenshots: {p1}",
+  "scrcpy.keyframeTimeout": "scrcpy did not send a keyframe after the encoder reset",
   "session-diagnostics.2c85885dad": "Incomplete Docker log stream",
   "session-diagnostics.9ffdeadba5": "Invalid Docker log stream",
   "startup-progress.5463fe1736": "Invalid startup progress stage",

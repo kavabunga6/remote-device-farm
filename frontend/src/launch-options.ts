@@ -62,7 +62,7 @@ export function hasLaunchDraftChanges(profile: Profile | undefined, draft: Launc
     normalizeEmulatorParams(draft.emulatorParams) !== normalizeEmulatorParams(profile.emulatorParams ?? ''));
 }
 
-export function parseLaunchDraft(draft: LaunchDraft): { options: SessionLaunchOptions; error: string } {
+export function parseLaunchDraft(draft: LaunchDraft): { options: SessionLaunchOptions; error: string; field?: keyof LaunchDraft } {
   const options: SessionLaunchOptions = {};
   if (draft.privileged !== undefined) options.privileged = draft.privileged;
   for (const field of RESOURCE_FIELDS) {
@@ -84,7 +84,8 @@ export function parseLaunchDraft(draft: LaunchDraft): { options: SessionLaunchOp
     options[field] = value;
   }
   if (draft.emulatorParams !== undefined) {
-    if (draft.emulatorParams.length > 500) return { options, error: t('ui.122cf20817f8') };
+    if (draft.emulatorParams.length > 500) return { options, field: 'emulatorParams', error: t('ui.122cf20817f8') };
+    if (/[,،，、]/.test(draft.emulatorParams)) return { options, field: 'emulatorParams', error: t('launch.argumentCommas') };
     options.emulatorParams = normalizeEmulatorParams(draft.emulatorParams);
   }
   return { options, error: '' };

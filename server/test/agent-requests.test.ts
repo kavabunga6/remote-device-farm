@@ -27,3 +27,17 @@ test('disconnect preserves starts for recovery and disposal rejects all outstand
   await stopped;
   assert.equal([...requests].length, 0);
 });
+
+test('a result waiting on diagnostics still has a deadline and cannot settle twice', async () => {
+  const requests = new AgentRequests();
+  let id = '';
+  let written!: () => void;
+  const rpc = requests.request(meta('stop'), 15, value => { id = value; });
+  requests.get(id)!.diagnosticWrites = new Promise<void>(resolve => { written = resolve; });
+  const completing = requests.complete(id, entry => entry.resolve({ stopped: true }));
+  await requests.complete(id, () => assert.fail('duplicate result won the race'));
+  await assert.rejects(rpc, /timed out/);
+  assert.equal(requests.get(id), undefined);
+  written();
+  await completing;
+});

@@ -142,6 +142,15 @@ test('cross-tab language changes preserve the running device and physical screen
     await expect(page.getByRole('tab', { name: copy(id)[englishKey('Environment')], exact: true })).toBeVisible();
     expect(await page.locator('.touch-layer').evaluate(element => getComputedStyle(element).direction)).toBe('ltr');
     expect(await page.locator('.tool-panel').evaluate(element => getComputedStyle(element).direction)).toBe(id === 'ar' ? 'rtl' : 'ltr');
+    if (id === 'ar') {
+      await page.getByRole('button', { name: copy(id)['navigation.collapse'] }).click();
+      await expect(page.getByRole('button', { name: copy(id)['navigation.expand'] })).toBeVisible();
+      expect(await page.getByRole('group', { name: copy(id)['device.controls'] }).evaluate(element => {
+        const frame = element.parentElement!.querySelector('.device-screen')!.getBoundingClientRect();
+        const sidebar = document.querySelector('.sidebar')!.getBoundingClientRect();
+        return element.getBoundingClientRect().right <= frame.left && Math.abs(sidebar.right - innerWidth) <= 1;
+      })).toBe(true);
+    }
     expect(page.url()).toBe(url); expect(stopped).toBe(0);
   }
   await page.reload(); await expect(page.locator('html')).toHaveAttribute('lang', 'en');

@@ -186,6 +186,7 @@ async function stop(sessionId, options) {
   const entry = registry.owner(sessionId)?.sessions.get(sessionId);
   entry?.uiAbort?.abort();
   entry?.automationAbort?.abort();
+  entry?.performanceAbort?.abort();
   await managedAppium.stop(sessionId);
   relayMedia.delete(sessionId);
   relayNeedsKeyframe.delete(sessionId);
@@ -261,7 +262,12 @@ async function handleCommand(message) {
     });
     send({ type: 'result', id, ok: true, data });
   } catch (error) {
-    send({ type: 'result', id, ok: false, error: ['start', 'stop', 'kill'].includes(message.action) ? redactDiagnostic(error.message || 'Agent command failed', [...Object.values(message.params?.profile?.containerEnv || {}), message.params?.profile?.registryAuth?.password]) : error.message || 'Agent command failed', ...(typeof error.code === 'string' && (error.code.startsWith('input_') || error.code === 'device_capability_unavailable') ? { code: error.code } : {}) });
+    const code = error.code;
+    const exposeCode = typeof code === 'string' && (code.startsWith('input_') || code === 'device_capability_unavailable' || code === 'performance_busy');
+    const detail = error.message || 'Agent command failed';
+    const safeDetail = ['start', 'stop', 'kill'].includes(message.action)
+      ? redactDiagnostic(detail, [...Object.values(message.params?.profile?.containerEnv || {}), message.params?.profile?.registryAuth?.password]) : detail;
+    send({ type: 'result', id, ok: false, error: safeDetail, ...(exposeCode ? { code } : {}) });
   } finally { if (startup && startups.get(message.sessionId) === startup) startups.delete(message.sessionId); }
 }
 
@@ -469,6 +475,7 @@ function connect() {
   });
   socket.on('close', () => {
     if (socket !== connection) return;
+    emulator.traceCapture.dispose();
     clearInterval(heartbeatTimer);
     for (const id of [...tunnels.keys()]) closeTunnel(id);
     void inputGate.disconnect();
@@ -489,6 +496,7 @@ function connect() {
 async function shutdown() {
   if (closing) return;
   closing = true;
+  emulator.traceCapture.dispose();
   clearInterval(heartbeatTimer);
   clearTimeout(streamDisconnectTimer);
   await inputGate.disconnect();

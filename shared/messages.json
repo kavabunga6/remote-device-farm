@@ -1,4 +1,32 @@
 {
+  "launch.diskSizeInvalid": {
+    "ru": "Укажите размер раздела данных целым числом от {min} до {max} ГБ.",
+    "en": "Enter a whole number from {min} to {max} GB for the data partition."
+  },
+  "launch.sdCardSizeInvalid": {
+    "ru": "Укажите 0, если SD-карта не нужна, или размер от {min} до {max} ГБ с шагом 1 МБ.",
+    "en": "Enter 0 for no SD card, or a size from {min} to {max} GB in 1 MB increments."
+  },
+  "performance.memoryWorkingSet": {
+    "ru": "Память без неактивного файлового кэша",
+    "en": "Memory excluding inactive file cache"
+  },
+  "performance.startupFailed": {
+    "ru": "Не удалось запустить эмулятор.",
+    "en": "The emulator failed to start."
+  },
+  "sessionVideo.noFrames": {
+    "ru": "Новых кадров пока нет.",
+    "en": "No new frames yet."
+  },
+  "launch.argumentCommas": {
+    "ru": "Замените запятые в аргументах пробелами или переносами строк.",
+    "en": "Replace commas in the arguments with spaces or line breaks."
+  },
+  "launch.slotLimit": {
+    "ru": "Лимит слота на узле {node} — {cpu} CPU и {memory} памяти.",
+    "en": "Slot limit on {node} is {cpu} CPU and {memory} of memory."
+  },
   "ui.8f9c4884b8f9": {
     "ru": "Не удалось выполнить запрос",
     "en": "Could not complete the request"
@@ -904,12 +932,12 @@
     "en": "{p0} h {p1} min"
   },
   "ui.46ba3b9fbd21": {
-    "ru": "Среднее за 2 часа",
-    "en": "2-hour average"
+    "ru": "Среднее число занятых слотов за 2 часа",
+    "en": "Average occupied slots over 2 hours"
   },
   "ui.6abc26ec5b23": {
-    "ru": "Среднее за {p0} минут",
-    "en": "Average over {p0} minutes"
+    "ru": "Среднее число занятых слотов за {p0} минут",
+    "en": "Average occupied slots over {p0} minutes"
   },
   "ui.bcf4746929de": {
     "ru": "Количество занятых слотов по узлам",
@@ -918,10 +946,6 @@
   "ui.e029cc4b39ce": {
     "ru": " из ",
     "en": " of "
-  },
-  "ui.940b752f5e1c": {
-    "ru": "Данные графика таблицей",
-    "en": "Chart data as a table"
   },
   "ui.2367addf6e46": {
     "ru": "Занятые слоты по узлам за ",
@@ -946,18 +970,6 @@
   "ui.582385e8b1cb": {
     "ru": "Сессий в день за 14 дней",
     "en": "Sessions per day over 14 days"
-  },
-  "ui.87454cdae15f": {
-    "ru": "Наведите на столбец, чтобы увидеть число",
-    "en": "Hover over a bar to see the count"
-  },
-  "ui.3397e8fcdd64": {
-    "ru": "Сессии по дням таблицей",
-    "en": "Daily sessions as a table"
-  },
-  "ui.d8e2472752af": {
-    "ru": "Количество сессий за 14 дней",
-    "en": "Sessions over 14 days"
   },
   "ui.232a0ead182b": {
     "ru": "Дата",
@@ -991,14 +1003,6 @@
     "ru": "90% короче ",
     "en": "90% shorter than "
   },
-  "ui.21765716bc2d": {
-    "ru": "Час пик",
-    "en": "Peak hour"
-  },
-  "ui.ddf3f81a4867": {
-    "ru": "по времени вашего браузера",
-    "en": "in your browser's time zone"
-  },
   "ui.22b700067e3d": {
     "ru": "Сбои запуска за 14 дней",
     "en": "Startup failures over 14 days"
@@ -1015,10 +1019,6 @@
     "ru": "Период",
     "en": "Period"
   },
-  "ui.19eecdbd5084": {
-    "ru": "Данных о загрузке пока нет. Замеры делаются раз в минуту и появятся здесь.",
-    "en": "No usage data yet. Measurements are taken every minute and will appear here."
-  },
   "ui.03073cee43b5": {
     "ru": "Сессии по дням",
     "en": "Sessions by day"
@@ -1034,10 +1034,6 @@
   "ui.5d4c7bd2d5c5": {
     "ru": "за 14 дней, по минутам сессий",
     "en": "over 14 days, by session minutes"
-  },
-  "ui.53e09cc50d71": {
-    "ru": "Пока нет данных об использовании.",
-    "en": "No usage data yet."
   },
   "ui.7b1487ed07ac": {
     "ru": "Версия Android",
@@ -5496,8 +5492,8 @@
     "en": "Privileged mode is not permitted on the node."
   },
   "ui.bfd5b7899496": {
-    "ru": "Выключите privileged-режим или попросите администратора разрешить его в конфигурации агента.",
-    "en": "Disable privileged mode or ask an administrator to allow it in the agent configuration."
+    "ru": "Выключите Privileged-режим, чтобы запустить эмулятор на этом узле.",
+    "en": "Turn off privileged mode to launch the emulator on this node."
   },
   "ui.5293ac418993": {
     "ru": "Все подходящие слоты заняты.",
@@ -13999,18 +13995,6 @@
     "ru": "{p0} из {p1}",
     "en": "{p0} of {p1}"
   },
-  "copy.AdminOps.f6b2b61a": {
-    "ru": "Занятые слоты по узлам за {p0} · {p1}",
-    "en": "Occupied slots by node over {p0} · {p1}"
-  },
-  "copy.AdminOps.68d29ac9": {
-    "ru": "90% сессий длятся меньше {p0}",
-    "en": "90% of sessions last less than {p0}"
-  },
-  "copy.AdminOps.0046a3d6": {
-    "ru": "за сутки: {p0}",
-    "en": "today: {p0}"
-  },
   "copy.AdminProfiles.c480241a": {
     "ru": "Страница {p0} из {p1}",
     "en": "Page {p0} of {p1}"
@@ -14778,5 +14762,221 @@
   "agent.connections.serverOnly": {
     "ru": "На этом узле можно подключаться только через сервер.",
     "en": "Connections to this node must go through the server."
+  },
+  "performance.title": {
+    "ru": "Производительность",
+    "en": "Performance"
+  },
+  "performance.container": {
+    "ru": "Нагрузка контейнера",
+    "en": "Container load"
+  },
+  "performance.cpuCores": {
+    "ru": "CPU, ядер",
+    "en": "CPU cores used"
+  },
+  "performance.throttle": {
+    "ru": "Периоды с ограничением CPU",
+    "en": "Throttled CPU periods"
+  },
+  "performance.disk": {
+    "ru": "Диск, чтение / запись",
+    "en": "Disk read / write"
+  },
+  "performance.processes": {
+    "ru": "Процессы Android",
+    "en": "Android processes"
+  },
+  "performance.snapshot": {
+    "ru": "Снять снимок",
+    "en": "Take snapshot"
+  },
+  "performance.process": {
+    "ru": "Процесс",
+    "en": "Process"
+  },
+  "performance.rss": {
+    "ru": "Память RSS",
+    "en": "RSS memory"
+  },
+  "performance.processHint": {
+    "ru": "До 20 процессов с наибольшей загрузкой CPU. {p0} соответствует одному ядру.",
+    "en": "Up to 20 processes ranked by CPU usage. {p0} equals one CPU core."
+  },
+  "performance.trace": {
+    "ru": "Трасса Perfetto",
+    "en": "Perfetto trace"
+  },
+  "performance.recordTrace": {
+    "ru": "Записать {p0} с",
+    "en": "Record {p0} s"
+  },
+  "performance.traceHint": {
+    "ru": "Запишите работу потоков и время кадров, если образ поддерживает эти данные. Файл можно открыть в Perfetto.",
+    "en": "Record thread activity and frame timing where supported. Open the file in Perfetto."
+  },
+  "performance.recording": {
+    "ru": "Идёт запись трассы…",
+    "en": "Recording trace…"
+  },
+  "performance.crash": {
+    "ru": "Снимок при сбое",
+    "en": "Crash snapshot"
+  },
+  "performance.exitCode": {
+    "ru": "Код выхода {p0}",
+    "en": "Exit code {p0}"
+  },
+  "performance.lastSample": {
+    "ru": "Последний замер нагрузки в {p0}",
+    "en": "Last load sample at {p0}"
+  },
+  "performance.noCrash": {
+    "ru": "Снимок сбоя отсутствует.",
+    "en": "No crash snapshot is available."
+  },
+  "performance.crashHint": {
+    "ru": "Здесь появится диагностика, если эмулятор завершится со сбоем.",
+    "en": "Diagnostics will appear here if the emulator crashes."
+  },
+  "performance.oom": {
+    "ru": "Эмулятор остановлен из-за нехватки памяти.",
+    "en": "The emulator ran out of memory and stopped."
+  },
+  "performance.exited": {
+    "ru": "Контейнер эмулятора завершился.",
+    "en": "The emulator container exited."
+  },
+  "performance.lost": {
+    "ru": "Сессия завершилась без подтверждённого состояния контейнера.",
+    "en": "The session ended before the container state could be confirmed."
+  },
+  "performance.containerUnavailable": {
+    "ru": "Не удалось получить нагрузку контейнера.",
+    "en": "Could not read container load."
+  },
+  "performance.processUnavailable": {
+    "ru": "Не удалось снять список процессов Android.",
+    "en": "Could not take an Android process snapshot."
+  },
+  "performance.traceUnavailable": {
+    "ru": "Не удалось записать трассу Perfetto.",
+    "en": "Could not record a Perfetto trace."
+  },
+  "performance.crashUnavailable": {
+    "ru": "Не удалось загрузить снимок сбоя.",
+    "en": "Could not load the crash snapshot."
+  },
+  "performance.busy": {
+    "ru": "На узле уже идёт диагностическая запись. Повторите позже.",
+    "en": "This node is already capturing diagnostics. Try again shortly."
+  },
+  "performance.unsupported": {
+    "ru": "Эти инструменты доступны для эмуляторов Android.",
+    "en": "These tools are available for Android emulators."
+  },
+  "ops.chartKeys": {
+    "ru": "Выбирайте значения клавишами со стрелками влево и вправо.",
+    "en": "Use the left and right arrow keys to browse values."
+  },
+  "ops.noSample": {
+    "ru": "Нет замера",
+    "en": "No reading"
+  },
+  "ops.dayCount": {
+    "ru": "Сессии · {p0}",
+    "en": "Sessions · {p0}"
+  },
+  "ops.avgDuration": {
+    "ru": "Средняя длительность завершённых сессий",
+    "en": "Average duration of completed sessions"
+  },
+  "ops.slotsIdle": {
+    "ru": "По доступным замерам все слоты были свободны.",
+    "en": "All slots were free in the available readings."
+  },
+  "ops.noSamples": {
+    "ru": "За этот период нет замеров занятости.",
+    "en": "No slot readings for this period."
+  },
+  "ops.dailyNote": {
+    "ru": "По дате создания сессии · календарные дни по UTC",
+    "en": "By session creation date · calendar days in UTC"
+  },
+  "ops.activityNote": {
+    "ru": "За 14 дней по суммарному времени в сессиях",
+    "en": "Total session time over 14 days"
+  },
+  "navigation.collapse": {
+    "ru": "Свернуть боковое меню",
+    "en": "Collapse sidebar"
+  },
+  "navigation.expand": {
+    "ru": "Развернуть боковое меню",
+    "en": "Expand sidebar"
+  },
+  "device.controls": {
+    "ru": "Управление устройством",
+    "en": "Device controls"
+  },
+  "environment.androidPermission": {
+    "ru": "Разрешение Android",
+    "en": "Android permission"
+  },
+  "environment.appPermissions": {
+    "ru": "Разрешения приложения",
+    "en": "App permissions"
+  },
+  "environment.displayBehavior": {
+    "ru": "Касания и анимации",
+    "en": "Touches and animations"
+  },
+  "environment.networkConditions": {
+    "ru": "Скорость и задержка",
+    "en": "Speed and latency"
+  },
+  "webviews.formatted": {
+    "ru": "С отступами",
+    "en": "Formatted"
+  },
+  "webviews.source": {
+    "ru": "Исходник",
+    "en": "Source"
+  },
+  "performance.processLive": {
+    "ru": "Обновляется",
+    "en": "Live"
+  },
+  "performance.processPaused": {
+    "ru": "На паузе",
+    "en": "Paused"
+  },
+  "performance.processRetry": {
+    "ru": "Повторяем запрос",
+    "en": "Retrying"
+  },
+  "performance.processSampled": {
+    "ru": "Замер в {p0}",
+    "en": "Sampled at {p0}"
+  },
+  "performance.processMemoryScale": {
+    "ru": "Полная полоса памяти — {p0} RSS",
+    "en": "Full memory bar: {p0} RSS"
+  },
+  "performance.rssShort": {
+    "ru": "RSS",
+    "en": "RSS"
+  },
+  "performance.processInterval": {
+    "ru": "Интервал обновления",
+    "en": "Update interval"
+  },
+  "sessionAudio.silence": {
+    "ru": "Звук: тишина",
+    "en": "Audio: silence"
+  },
+  "sessionAudio.silenceDetail": {
+    "ru": "Аудиоданные поступают, но в потоке тишина. Проверьте звук в приложении Android.",
+    "en": "Audio is arriving, but the stream is silent. Check the sound in the Android app."
   }
 }

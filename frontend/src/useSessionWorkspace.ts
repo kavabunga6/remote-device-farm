@@ -51,14 +51,17 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, terminalOutput
   const widthResizeRef = useRef<{ pointerId: number; x: number; start: number; value: number } | null>(null);
   const heightResizeRef = useRef<{ pointerId: number; y: number; start: number; value: number } | null>(null);
   const [stageSize, setStageSize] = useState({ width: 900, height: 650 });
-  const [stageHorizontalPadding, setStageHorizontalPadding] = useState(0);
+  const [viewerInsets, setViewerInsets] = useState(0);
   const screenRef = useRef<HTMLDivElement>(null);
   const workspaceGap = () => workspaceRef.current ? Number.parseFloat(getComputedStyle(workspaceRef.current).columnGap) || 0 : 24;
   const maxConsoleWidth = () => Math.max(320, Math.floor((workspaceRef.current?.clientWidth ?? 1400) - 320 - workspaceGap()));
   const minConsoleWidth = () => {
     const workspace = workspaceRef.current;
     const viewer = Number.parseFloat(workspace?.style.getPropertyValue('--viewer-width') || '') || 320;
-    return Math.min(maxConsoleWidth(), Math.max(320, Math.round((workspace?.clientWidth ?? 1400) - viewer - workspaceGap())));
+    const width = workspace?.clientWidth ?? 1400;
+    const gap = workspaceGap();
+    const viewerFit = size.width > size.height ? viewer : Math.min(viewer, Math.max(320, width / 2 - gap));
+    return Math.min(maxConsoleWidth(), Math.max(320, Math.round(width - viewerFit - gap)));
   };
   const clampConsoleWidth = (value: number) => Math.max(minConsoleWidth(), Math.min(maxConsoleWidth(), Math.round(value)));
   const maxConsoleHeight = () => {
@@ -145,9 +148,10 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, terminalOutput
     if (!stage) return;
     const observer = new ResizeObserver(entries => {
       const { width, height } = entries[0].contentRect;
-      setStageSize({ width, height });
-      const style = getComputedStyle(stage);
-      setStageHorizontalPadding(parseFloat(style.paddingLeft) + parseFloat(style.paddingRight));
+      if (!width || !height) return;
+      setStageSize(previous => previous.width === width && previous.height === height ? previous : { width, height });
+      // Include the rail and the stage padding in the desired card width.
+      setViewerInsets(Math.round((stage.parentElement?.clientWidth ?? width) - width));
     });
     observer.observe(stage);
     return () => observer.disconnect();
@@ -180,8 +184,7 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, terminalOutput
         for (const child of Array.from(viewer.children)) {
           if (child === stage) continue;
           const box = child.getBoundingClientRect();
-          // The vertical control bar overlays the stage; the single-row bar takes its own row.
-          if (child.classList.contains('device-controls') && box.height >= box.width) continue;
+          if (child.classList.contains('device-controls')) continue;
           chrome += box.height / scale;
         }
         setPx('--session-viewer-chrome', chrome);
@@ -225,7 +228,7 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, terminalOutput
   }, [toolTab, activeWorkspaceMode, workspaceMode, isPreparing]);
   const frameWidth = Math.max(1, size.width);
   const frameHeight = Math.max(1, size.height);
-  const viewerWidth = Math.max(320, Math.ceil(stageSize.height * frameWidth / frameHeight + stageHorizontalPadding + 2));
+  const viewerWidth = Math.max(320, Math.ceil(stageSize.height * frameWidth / frameHeight + viewerInsets + 2));
   const displayScale = Math.min(Math.max(0, stageSize.width) / frameWidth, Math.max(0, stageSize.height) / frameHeight);
 
   return { workspaceMode, activeWorkspaceMode, compactWorkspace, changeWorkspaceMode, consoleWidth, consoleResized, consoleHeight, consoleHeightResized, visibleConsoleSize, workspaceRef, screenRef, viewerWidth, displayScale, minConsoleWidth, maxConsoleWidth, maxConsoleHeight, resetConsoleSize, resizeConsoleWithKeyboard, startWidthResize, moveWidthResize, endWidthResize, startHeightResize, moveHeightResize, endHeightResize };

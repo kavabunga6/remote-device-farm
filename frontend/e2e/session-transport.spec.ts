@@ -94,6 +94,80 @@ async function selectTransport(page: Page, mode: 'websocket' | 'webrtc') {
   await page.getByLabel('Транспорт трансляции', { exact: true }).selectOption(mode);
 }
 
+test('floating device text preserves its draft and sends once through the connected stream', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  const fixture = await transportFixture(page);
+  const button = page.locator('.device-controls').getByRole('button', { name: 'Отправить текст на устройство', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Отправить текст на устройство' });
+  const field = dialog.getByRole('textbox', { name: 'Текст для устройства', exact: true });
+  const send = dialog.getByRole('button', { name: 'Отправить', exact: true });
+  await expect(page.getByRole('textbox', { name: 'Текст для устройства', exact: true })).toHaveCount(0);
+  await button.press('Enter');
+  await expect(field).toBeFocused();
+  await expect(send).toBeDisabled();
+  const draft = '  Test 123 тест  ';
+  await field.fill(draft);
+  await field.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(button).toBeFocused();
+  await button.click();
+  await expect(field).toHaveValue(draft);
+  await page.locator('.session-name h1').click();
+  await expect(dialog).toBeHidden();
+  await button.click();
+  await expect(field).toHaveValue(draft);
+  const fieldBox = (await field.boundingBox())!, sendBox = (await send.boundingBox())!;
+  expect(Math.abs(fieldBox.y - sendBox.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(fieldBox.y + fieldBox.height - sendBox.y - sendBox.height)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: info.outputPath('device-text-light.png') });
+
+  await page.evaluate(() => { (window as any).__transport.online = false; window.dispatchEvent(new Event('offline')); });
+  await expect(send).toBeDisabled();
+  await field.press('Enter');
+  await expect(field).toHaveValue(draft);
+  expect(await page.evaluate(() => (window as any).__transport.inputs)).toEqual([]);
+  await page.evaluate(() => { (window as any).__transport.online = true; window.dispatchEvent(new Event('online')); });
+  await expect(send).toBeEnabled();
+  await field.press('Enter');
+  await expect(dialog).toBeHidden();
+  await expect(button).toBeFocused();
+  const inputs = await page.evaluate(() => (window as any).__transport.inputs);
+  expect(inputs).toHaveLength(1);
+  expect(inputs[0]).toMatchObject({ via: 'websocket', kind: 'text', text: draft });
+  expect(fixture.httpInputs).toEqual([]);
+  await button.click();
+  await expect(field).toHaveValue('');
+  await page.locator('.workspace-mode-buttons').getByRole('button', { name: 'Инструменты', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('.device-text-popover:popover-open')).toHaveCount(0);
+});
+
+test('floating device text stays inside a narrow RTL viewport at 150% text size', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route('**/api/me/preferences', route => route.fulfill({ json: {
+    preferences: { theme: 'dark', fontScale: 1.5, fontFamily: 'system', defaultAdbKeyId: null },
+  } }));
+  await transportFixture(page, { language: 'ar' });
+  const label = copy('ar', 'ui.8565dde56e60');
+  const button = page.getByRole('button', { name: label, exact: true });
+  const dialog = page.getByRole('dialog', { name: label });
+  await button.click();
+  await expect(dialog).toHaveAttribute('dir', 'rtl');
+  await expect(dialog.getByRole('textbox')).toBeFocused();
+  await page.evaluate(() => document.fonts.ready);
+  const bounds = (await dialog.boundingBox())!;
+  expect(bounds.x).toBeGreaterThanOrEqual(11);
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(379);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(833);
+  const field = (await dialog.getByRole('textbox').boundingBox())!;
+  const send = (await dialog.getByRole('button', { name: copy('ar', 'ui.d3aa8669598a').trim(), exact: true }).boundingBox())!;
+  expect(send.y).toBeGreaterThan(field.y + field.height);
+  expect(Math.abs(send.width - field.width)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: info.outputPath('device-text-dark-rtl.png') });
+  await dialog.getByRole('button', { name: copy('ar', 'ui.a7a4033657e8'), exact: true }).click();
+  await expect(button).toBeFocused();
+});
+
 test('WSS input has a new epoch, monotonic sequence and a peer-clock deadline; disconnect never falls back to HTTP', async ({ page }) => {
   const fixture = await transportFixture(page);
   await page.getByRole('button', { name: 'Домой', exact: true }).click();
@@ -148,6 +222,11 @@ test('WebRTC selection receives genuine H264 video frames and sends protected co
   expect(input).toMatchObject({ via: 'webrtc', kind: 'key', keyCode: 3, epoch: 'rtc-epoch', seq: 1 });
   expect(input.deadline - input.receivedAt).toBeGreaterThan(500);
   expect(input.deadline - input.receivedAt).toBeLessThanOrEqual(1500);
+  await page.getByRole('button', { name: 'Отправить текст на устройство', exact: true }).click();
+  const field = page.getByRole('textbox', { name: 'Текст для устройства', exact: true });
+  await field.fill('via WebRTC');
+  await field.press('Enter');
+  await expect.poll(() => page.evaluate(() => (window as any).__transport.inputs.at(-1))).toMatchObject({ via: 'webrtc', kind: 'text', text: 'via WebRTC', seq: 2 });
   expect(fixture.httpInputs).toEqual([]);
   await selectTransport(page, 'websocket');
   await expect(page.locator('[data-media="video"]')).toHaveText('Кадры');

@@ -2080,6 +2080,222 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /api/sessions/{id}/performance:
+    get:
+      tags:
+        - Diagnostics
+      summary: Read container resource usage for an active emulator
+      operationId: getSessionPerformance
+      x-permission: sessions.console
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Diagnostic result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - sample
+                properties:
+                  sample:
+                    $ref: "#/components/schemas/SessionPerformanceSample"
+        default:
+          description: Diagnostic request rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      description: CPU and disk rates require two samples. The agent reuses a recent sample for five seconds.
+  /api/sessions/{id}/performance/processes:
+    post:
+      tags:
+        - Diagnostics
+      summary: Take one bounded Android process snapshot
+      operationId: postSessionPerformanceProcesses
+      x-permission: sessions.console
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Diagnostic result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - sampledAt
+                  - processes
+                properties:
+                  sampledAt:
+                    type: string
+                    format: date-time
+                  processes:
+                    type: array
+                    maxItems: 20
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        - pid
+                        - name
+                        - cpuPercent
+                        - residentBytes
+                      properties:
+                        pid:
+                          type: integer
+                          minimum: 1
+                        name:
+                          type: string
+                          maxLength: 160
+                        cpuPercent:
+                          type: number
+                          minimum: 0
+                        residentBytes:
+                          type: number
+                          minimum: 0
+        default:
+          description: Diagnostic request rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/sessions/{id}/performance/trace:
+    post:
+      tags:
+        - Diagnostics
+      summary: Capture a 10-second Perfetto trace
+      operationId: postSessionPerformanceTrace
+      x-permission: sessions.console
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Diagnostic result
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        default:
+          description: Diagnostic request rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      description: Records on the selected emulator. The response is limited to 5 MiB. Closing the request cancels capture or transfer. Traces are not retained after download.
+  /api/sessions/{id}/performance/crash:
+    get:
+      tags:
+        - Diagnostics
+      summary: Read a retained crash snapshot for this session
+      operationId: getSessionPerformanceCrash
+      x-permission: sessions.console
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200":
+          description: Diagnostic result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - crash
+                properties:
+                  crash:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - reason
+                      - occurredAt
+                      - exitCode
+                      - oomKilled
+                      - lastSample
+                      - logs
+                    properties:
+                      reason:
+                        type: string
+                        enum:
+                          - oom
+                          - exit
+                          - lost
+                          - startup
+                      occurredAt:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      exitCode:
+                        type: integer
+                        nullable: true
+                      oomKilled:
+                        type: boolean
+                        nullable: true
+                      lastSample:
+                        type: object
+                        additionalProperties: false
+                        required:
+                          - sampledAt
+                          - cpuCores
+                          - throttlePercent
+                          - memoryBytes
+                          - memoryLimitBytes
+                          - readBytesPerSecond
+                          - writeBytesPerSecond
+                        properties:
+                          sampledAt:
+                            type: string
+                            format: date-time
+                          cpuCores:
+                            type: number
+                            nullable: true
+                            minimum: 0
+                          throttlePercent:
+                            type: number
+                            nullable: true
+                            minimum: 0
+                            maximum: 100
+                          memoryBytes:
+                            type: number
+                            nullable: true
+                            minimum: 0
+                          memoryWorkingSetBytes:
+                            type: number
+                            nullable: true
+                            minimum: 0
+                            description: Docker memory usage excluding inactive file cache, when available.
+                          memoryLimitBytes:
+                            type: number
+                            nullable: true
+                            minimum: 0
+                          readBytesPerSecond:
+                            type: number
+                            nullable: true
+                            minimum: 0
+                          writeBytesPerSecond:
+                            type: number
+                            nullable: true
+                            minimum: 0
+                        nullable: true
+                      logs:
+                        type: array
+                        maxItems: 12
+                        items:
+                          type: string
+                          maxLength: 500
+                    nullable: true
+        default:
+          description: Diagnostic request rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      description: Available to the session owner or an administrator with session management access, including
+        after the rental ends.
   /api/sessions/{id}/device-info:
     get:
       tags: [ Diagnostics ]
@@ -4745,6 +4961,52 @@ components:
         type: string
         format: uuid
   schemas:
+    SessionPerformanceSample:
+      type: object
+      additionalProperties: false
+      required:
+        - sampledAt
+        - cpuCores
+        - throttlePercent
+        - memoryBytes
+        - memoryLimitBytes
+        - readBytesPerSecond
+        - writeBytesPerSecond
+      properties:
+        sampledAt:
+          type: string
+          format: date-time
+        cpuCores:
+          type: number
+          nullable: true
+          minimum: 0
+        throttlePercent:
+          type: number
+          nullable: true
+          minimum: 0
+          maximum: 100
+        memoryBytes:
+          type: number
+          nullable: true
+          minimum: 0
+          description: Raw Docker memory usage, including file cache.
+        memoryWorkingSetBytes:
+          type: number
+          nullable: true
+          minimum: 0
+          description: Docker memory usage excluding inactive file cache, when available.
+        memoryLimitBytes:
+          type: number
+          nullable: true
+          minimum: 0
+        readBytesPerSecond:
+          type: number
+          nullable: true
+          minimum: 0
+        writeBytesPerSecond:
+          type: number
+          nullable: true
+          minimum: 0
     RegistrationInput:
       type: object
       additionalProperties: false
@@ -6339,6 +6601,9 @@ components:
         finalState:
           type: string
           nullable: true
+        hasCrash:
+          type: boolean
+          description: Whether the caller can open a crash snapshot from their rental history.
       required:
         [
           id,

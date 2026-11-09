@@ -267,6 +267,26 @@ test('explicit IDR requests use the scrcpy control socket and throttle repeats',
   assert.deepEqual(manager.requestKeyframe('session-1', serial), { requested: false });
 });
 
+test('a silent video socket falls back only if it fails to answer a keyframe probe', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let failures = 0;
+  const stream = new ScrcpyStream({ sessionId: 'session-1', serial: 'emulator:5555', adb: {}, serverPath: '/unused',
+    emit: () => {}, canEmitVideo: () => false, onFailure: () => { failures++; } });
+  stream.controlSocket = { destroyed: false, write: () => {}, destroy: () => {} };
+  t.mock.timers.tick(5000);
+  assert.equal(failures, 0, 'an idle display is normal');
+  assert.equal(stream.requestKeyframe(true), true);
+  stream.forwardVideoFrame({ keyframe: true }, Buffer.from([1]));
+  t.mock.timers.tick(5000);
+  assert.equal(failures, 0, 'the agent got the keyframe despite relay backpressure');
+  stream.lastVideoResetAt = 0;
+  assert.equal(stream.requestKeyframe(true), true);
+  t.mock.timers.tick(5000);
+  assert.equal(failures, 1);
+  assert.equal(stream.closed, true);
+  await stream.close();
+});
+
 test('keeps native scrcpy audio and does not open emulator gRPC when supported', async () => {
   const stream = new ScrcpyStream({
     sessionId: 'native-audio', serial: 'rdf-11111111-2222-3333-4444-555555555555:5555',

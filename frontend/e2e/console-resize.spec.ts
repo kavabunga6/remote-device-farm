@@ -111,7 +111,7 @@ async function fittedWorkspace(page: Page) {
       toolsWidth: tools.width,
       workspaceWidth: workspace.width,
       preferredViewerWidth: Number.parseFloat((document.querySelector('.workspace-grid') as HTMLElement).style.getPropertyValue('--viewer-width')),
-      viewerWidth: viewer.width, deviceWidth: device.width, gap,
+      viewerWidth: viewer.width, deviceWidth: device.width, controlsWidth: controls.width, gap,
       documentOverflow: document.documentElement.scrollWidth - innerWidth,
       verticalOverflow: document.documentElement.scrollHeight - innerHeight,
       rootFontSize: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
@@ -141,7 +141,7 @@ for (const [savedWidth, scale] of [[600, 1], [960, 1], [5000, 1], [960, 1.25]] a
       expect(geometry.verticalOverflow).toBeLessThanOrEqual(1);
       const minimum = Math.max(320, geometry.workspaceWidth - geometry.preferredViewerWidth - geometry.gap);
       expect(geometry.toolsWidth).toBeCloseTo(Math.max(minimum, Math.min(savedWidth, geometry.workspaceWidth - 320 - geometry.gap)), 0);
-      expect(geometry.viewerWidth - geometry.deviceWidth).toBeLessThanOrEqual(Math.max(26, 320 - geometry.deviceWidth) + 1);
+      expect(geometry.viewerWidth - geometry.deviceWidth).toBeLessThanOrEqual(Math.max(geometry.controlsWidth + 26, 320 - geometry.deviceWidth) + 1);
       expect(await page.evaluate(() => localStorage.getItem('rdf-console-width'))).toBe(String(savedWidth));
     };
     await page.goto('/#/session/' + sessionId);

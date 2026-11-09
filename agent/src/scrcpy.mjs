@@ -9,6 +9,8 @@ import { EmulatorAudioStream } from './emulator-audio.mjs';
 import { EmulatorTouchController } from './emulator-touch.mjs';
 import { TouchGeometryCache, parseTouchGeometryChange } from './touch-geometry.mjs';
 
+const KEYFRAME_PROBE_TIMEOUT_MS = 4000;
+
 export class ScrcpyStream {
   constructor({ sessionId, serial, adb, serverPath, emit, canEmitVideo = () => true,
     audioEnabled = false, audioCodec = 'opus', onFailure, onAudioFailure,
@@ -83,31 +85,16 @@ export class ScrcpyStream {
       // In forward mode the server accepts video, audio and control in that
       // order. It cannot start publishing media until all three connect.
       this.controlSocket = await connectPort(this.port);
-      this.controlSocket.once('error', (error) => {
-        if (this.closed) return;
-        this.lastError = error;
-        void this.close();
-        this.onFailure?.(error);
-      });
+      this.controlSocket.once('error', error => this.fail(error));
       this.controlSocket.once('close', () => {
-        if (this.closed) return;
-        const error = new Error(diagnostic('scrcpy.385c12e8ca'));
-        this.lastError = error;
-        void this.close();
-        this.onFailure?.(error);
+        this.fail(new Error(diagnostic('scrcpy.385c12e8ca')));
       });
       const videoReader = video.reader;
       const audioReader = new SocketReader(this.audioSocket);
       const videoCodec = (await within(videoReader.read(4), 10000, 'scrcpy video header')).toString('ascii');
       if (videoCodec !== 'h264') throw new Error(diagnostic('scrcpy.a5c4b439f4', { p0: videoCodec }));
       this.videoTask = this.readVideo(videoReader);
-      this.videoTask.catch((error) => {
-        if (!this.closed) {
-          this.lastError = error;
-          this.close();
-          this.onFailure?.(error);
-        }
-      });
+      this.videoTask.catch(error => this.fail(error));
       try {
         const audioHeader = await within(audioReader.read(4), 5000, 'scrcpy audio header');
         const audio = parseAudioCodecHeader(audioHeader, this.audioCodec);
@@ -175,6 +162,7 @@ export class ScrcpyStream {
   }
 
   forwardVideoFrame(flags, packet) {
+    if (flags.keyframe) this.clearKeyframeProbe();
     // Always drain the device socket; only the newest decodable frames may
     // enter the broker queue. Skipped H.264 deltas require a fresh keyframe.
     if (!this.canEmitVideo(this.sessionId)) {
@@ -362,26 +350,43 @@ export class ScrcpyStream {
     return this.inputRelease;
   }
 
-  requestKeyframe() {
+  fail(error) {
+    if (this.closed) return;
+    this.lastError = error;
+    void this.close().catch(() => {});
+    this.onFailure?.(error);
+  }
+
+  clearKeyframeProbe() {
+    clearTimeout(this.keyframeProbe);
+    this.keyframeProbe = undefined;
+  }
+
+  requestKeyframe(probe = false) {
     const now = Date.now();
     if (this.closed || !this.controlSocket || this.controlSocket.destroyed || now - this.lastVideoResetAt < 1000) return false;
     this.controlSocket.write(RESET_VIDEO_CONTROL_MESSAGE);
     this.lastVideoResetAt = now;
+    if (probe && !this.keyframeProbe) {
+      this.keyframeProbe = setTimeout(() => this.fail(new Error(diagnostic('scrcpy.keyframeTimeout'))), KEYFRAME_PROBE_TIMEOUT_MS);
+      this.keyframeProbe.unref();
+    }
     return true;
   }
 
-  resendConfig() {
+  resendConfig(probe = false) {
     if (this.videoConfig?.data) this.emit({ ...this.videoConfig, sessionId: this.sessionId });
     if (this.audioEnabled && this.audioConfig) this.emit({ ...this.audioConfig, sessionId: this.sessionId });
     // A new viewer may join while Android is idle, when scrcpy emits no frames.
     // Ask the running encoder for a fresh keyframe so the viewer paints immediately.
-    this.requestKeyframe();
+    this.requestKeyframe(probe);
   }
 
   async close() {
     if (this.closed) return;
     const released = this.releaseInput('close');
     this.closed = true;
+    this.clearKeyframeProbe();
     this.touchGeometry.close();
     this.displayLogBuffers.clear();
     this.inputAbort.abort(new Error(diagnostic('scrcpy.5eab189f21')));
@@ -422,7 +427,7 @@ export class StreamManager {
     const existing = this.streams.get(sessionId);
     if (existing?.starting) return existing.ready;
     if (existing) {
-      existing.resendConfig?.();
+      existing.resendConfig?.(true);
       this.emulatorAudio.get(sessionId)?.resendConfig();
       if (!(existing instanceof ScrcpyStream)) this.scheduleScrcpyRetry(sessionId, serial, existing);
       return { mode: existing instanceof ScrcpyStream ? 'scrcpy' : 'screenshots' };
@@ -666,7 +671,7 @@ export class StreamManager {
   requestKeyframe(sessionId, serial) {
     const stream = this.controlStream(sessionId, serial);
     if (!(stream instanceof ScrcpyStream) || stream.serial !== serial) return { requested: false };
-    return { requested: stream.requestKeyframe() };
+    return { requested: stream.requestKeyframe(true) };
   }
 
   async stop(sessionId) {

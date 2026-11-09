@@ -4,10 +4,10 @@ import type { IconName } from './icons';
 export type AdminSection = 'sessions' | 'nodes' | 'profiles' | 'images' | 'users' | 'roles' | 'ops' | 'journal';
 
 export const adminSections: ReadonlyArray<{ id: AdminSection; label: string; icon: IconName }> = [
-  { id: 'sessions', get label() { return t('ui.156552b7ff38'); }, icon: 'phone' },
+  { id: 'sessions', get label() { return t('ui.156552b7ff38'); }, icon: 'list' },
   { id: 'nodes', get label() { return t('ui.f3a46c2f2b5c'); }, icon: 'server' },
   { id: 'profiles', get label() { return t('ui.4d8dc88b1785'); }, icon: 'grid' },
-  { id: 'images', get label() { return t('images.title'); }, icon: 'server' },
+  { id: 'images', get label() { return t('images.title'); }, icon: 'layers' },
   { id: 'users', get label() { return t('ui.845595d6e899'); }, icon: 'user' },
   { id: 'roles', get label() { return t('roles.title'); }, icon: 'shield' },
   { id: 'ops', get label() { return t('ui.37663aa93839'); }, icon: 'bolt' },

@@ -1,4 +1,5 @@
 {
+  "scrcpy.keyframeTimeout": "scrcpy did not send a keyframe after the encoder reset",
   "access-connections.4c86d65188": "Access resource revocation failed",
   "adb-key.c24b440938": "RSA integer exceeds ADB key field",
   "adb-key.4f03e73366": "ADB requires RSA-2048 with public exponent 65537",

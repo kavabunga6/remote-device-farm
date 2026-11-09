@@ -28,6 +28,7 @@ export function requestPermission(method: string, path: string): string | undefi
   if (action === 'webviews' || action === 'network-inspector' || action.startsWith('network-inspector/')) return 'sessions.console';
   if (action.startsWith('appium/')) return 'sessions.console';
   if (action === 'adb') return 'sessions.console';
+  if (action === 'performance' || action.startsWith('performance/')) return 'sessions.console';
   if (action === 'ui') return read ? 'sessions.view' : 'sessions.control';
   if (action.startsWith('ui/')) return 'sessions.control';
   if (action.startsWith('adb-')) return 'sessions.adb';

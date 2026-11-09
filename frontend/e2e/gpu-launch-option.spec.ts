@@ -57,7 +57,7 @@ test('GPU toggle keeps one image and resource limit and sends the chosen mode', 
     await gpu.setChecked(checked);
     await modal.locator('#create-tab-settings').click();
     await expect(modal.locator('.create-container-details')).toContainText(profile.image);
-    await expect(modal.getByRole('spinbutton', { name: 'Лимит памяти на узле, МБ', exact: true })).toHaveValue('4096');
+    await expect(modal.getByRole('spinbutton', { name: 'Память контейнера, МБ', exact: true })).toHaveValue('4096');
     await expect(launch).toBeEnabled();
     if (requests.length) {
       const notices = modal.locator('.notification-stack-in-modal');
@@ -73,6 +73,12 @@ test('GPU toggle keeps one image and resource limit and sends the chosen mode', 
   await gpu.check();
   await expect(gpu).toHaveCSS('background-color', 'rgb(52, 211, 153)');
   await page.screenshot({ path: testInfo.outputPath('gpu-capability-dark.png') });
+  await modal.getByRole('button', { name: 'Отмена', exact: true }).click();
+  const pageErrors = page.locator('body > .notification-stack .notification-error');
+  await expect(pageErrors).toHaveCount(2);
+  await page.getByRole('button', { name: 'Новая сессия', exact: true }).first().click();
+  await expect(modal.locator('.notification-error')).toHaveCount(0);
+  await expect(pageErrors).toHaveCount(2);
 });
 
 test('legacy profile GPU restrictions do not prevent launch on a capable node', async ({ page }) => {

@@ -11,7 +11,8 @@ export type StreamStatus = 'connecting' | 'live' | 'disconnected' | 'unsupported
 export type StreamTransport = 'scrcpy' | 'mjpeg' | 'images' | 'webrtc' | null;
 export type ConnectionMode = 'websocket' | 'webrtc';
 export type StreamMetrics = { rttMs: number | null; fps: number | null; iceRttMs: number | null; packetsLost: number | null };
-export type SessionAudioState = 'disabled' | 'connecting' | 'waiting' | 'unlock' | 'receiving' | 'unavailable';
+export type SessionAudioState = 'disabled' | 'connecting' | 'waiting' | 'unlock' | 'receiving' | 'silent' | 'unavailable';
+const AUDIO_ACTIVITY_MS = 1500;
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : t('ui.b9f61453dd3f');
 }
@@ -37,8 +38,10 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
   const [metrics, setMetrics] = useState<StreamMetrics>({ rttMs: null, fps: null, iceRttMs: null, packetsLost: null });
   const [audioTransport, setAudioTransport] = useState<ConnectionMode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const audioRef = useRef<SessionAudio | null>(null);
   const audioClockRef = useRef(0);
   const lastAudioPlaybackRef = useRef(0);
+  const lastAudioSignalRef = useRef<number | null>(null);
   const audioActivityTimerRef = useRef<number | undefined>(undefined);
   const [retry, setRetry] = useState(0);
   const [status, setStatus] = useState<StreamStatus>('connecting');
@@ -51,32 +54,36 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
   const [audioUnavailableCount, setAudioUnavailableCount] = useState(0);
   const [audioNeedsGesture, setAudioNeedsGesture] = useState(false);
   const [audioNotice, setAudioNotice] = useState('');
-  const [audioActive, setAudioActive] = useState(false);
-  const markAudioPlayback = () => {
-    lastAudioPlaybackRef.current = Date.now();
-    setAudioActive(true);
+  const [audioPlayback, setAudioPlayback] = useState<'receiving' | 'silent' | null>(null);
+  const markAudioPlayback = (hasSignal: boolean | null) => {
+    const now = Date.now();
+    lastAudioPlaybackRef.current = now;
+    if (hasSignal !== false) lastAudioSignalRef.current = now;
+    setAudioPlayback(lastAudioSignalRef.current !== null && now - lastAudioSignalRef.current < AUDIO_ACTIVITY_MS ? 'receiving' : 'silent');
     if (audioActivityTimerRef.current !== undefined) return;
     const check = () => {
-      const remaining = 1500 - (Date.now() - lastAudioPlaybackRef.current);
+      const remaining = AUDIO_ACTIVITY_MS - (Date.now() - lastAudioPlaybackRef.current);
       if (remaining > 0) audioActivityTimerRef.current = window.setTimeout(check, remaining);
-      else { audioActivityTimerRef.current = undefined; setAudioActive(false); }
+      else { audioActivityTimerRef.current = undefined; setAudioPlayback(null); }
     };
-    audioActivityTimerRef.current = window.setTimeout(check, 1500);
+    audioActivityTimerRef.current = window.setTimeout(check, AUDIO_ACTIVITY_MS);
   };
   const clearAudioActivity = () => {
     if (audioActivityTimerRef.current !== undefined) window.clearTimeout(audioActivityTimerRef.current);
     audioActivityTimerRef.current = undefined;
     lastAudioPlaybackRef.current = 0;
+    lastAudioSignalRef.current = null;
   };
+  const resetAudioPlayback = () => { clearAudioActivity(); setAudioPlayback(null); };
 
   useEffect(() => {
     audioEnabledRef.current = audioEnabled;
     rtcRef.current?.setAudioEnabled(audioEnabled);
     if (!audioEnabled) {
+      audioRef.current?.pause();
       setAudioNeedsGesture(false);
       setAudioNotice('');
-      setAudioActive(false);
-      clearAudioActivity();
+      resetAudioPlayback();
       audioClockRef.current = 0;
       const context = audioContextRef.current;
       audioContextRef.current = null;
@@ -90,7 +97,7 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
       if (!event.isTrusted) return;
       // The explicit audio button owns its action. Resuming on pointerdown there
       // would turn the same click into a transmission toggle after React updates.
-      if (event.target instanceof Element && event.target.closest('[data-media="audio"], .audio-notice button')) return;
+      if (event.target instanceof Element && event.target.closest('[data-audio-control], .audio-notice button')) return;
       if (audioContextRef.current?.state === 'running' && !audioNeedsGesture) return;
       unlockAudioRef.current();
     };
@@ -98,7 +105,13 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
     window.addEventListener('keydown', unlock, true);
     return () => { window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); };
   }, [audioEnabled, audioNeedsGesture]);
-  useEffect(() => () => { clearAudioActivity(); void audioContextRef.current?.close(); audioContextRef.current = null; }, []);
+  useEffect(() => () => {
+    clearAudioActivity();
+    audioRef.current?.pause();
+    const context = audioContextRef.current;
+    audioContextRef.current = null;
+    if (context && context.state !== 'closed') void context.close().catch(() => {});
+  }, []);
   useEffect(() => {
     const online = () => { retryAttemptRef.current = 0; setRetry(value => value + 1); };
     const offline = () => {
@@ -142,7 +155,7 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
       rtt: rttMs => setMetrics(previous => ({ ...previous, rttMs })),
       stats: value => setMetrics(previous => ({ ...previous, ...value })),
       audio: (needsGesture, notice) => { setAudioNeedsGesture(needsGesture); setAudioNotice(notice); },
-      audioPacket: () => { setAudioTransport('webrtc'); markAudioPlayback(); },
+      audioPacket: hasSignal => { setAudioTransport('webrtc'); markAudioPlayback(hasSignal); },
       error: (message, permanent) => {
         if (closed) return;
         unsupportedVideo = permanent === true; setStreamError(message); setControlReady(false);
@@ -189,7 +202,7 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
     };
     socketRef.current = socket;
     setStatus('connecting'); setStreamError(''); setConnected(false); setTransport(null); setNativeTouches(false);
-    setAudioActive(false); setAudioNeedsGesture(false); setAudioNotice(''); clearAudioActivity();
+    resetAudioPlayback(); setAudioNeedsGesture(false); setAudioNotice('');
     socket.onopen = () => { setConnected(true); openedAt = performance.now(); sendPing(); };
 
     const failVideo = (message: string, unsupported = false) => {
@@ -220,9 +233,10 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
       closed: () => closed,
       enabled: () => audioEnabledRef.current,
       context: audioContextRef, clock: audioClockRef,
-      active: setAudioActive, needsGesture: setAudioNeedsGesture, notice: setAudioNotice,
+      clearPlayback: resetAudioPlayback, needsGesture: setAudioNeedsGesture, notice: setAudioNotice,
       playback: markAudioPlayback, transport: setAudioTransport,
     }, Boolean(rtc));
+    audioRef.current = audio;
 
     socket.onmessage = event => {
       if (closed || socket.readyState !== WebSocket.OPEN) return;
@@ -268,9 +282,10 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
         setStreamError(t('ui.f0a6f67a351c'));
       }
       if (message.type === 'audio-unavailable') {
+        audio.reset();
         setAudioNotice(t('ui.85049ec8e7fd'));
         setAudioNeedsGesture(false);
-        setAudioActive(false);
+        resetAudioPlayback();
         setAudioUnavailableCount(value => value + 1);
       }
 
@@ -287,8 +302,8 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
       setMetrics({ rttMs: null, fps: null, iceRttMs: null, packetsLost: null });
       window.clearInterval(heartbeatTimer); window.clearInterval(metricsTimer);
       if (rtcStartupTimer !== undefined) window.clearTimeout(rtcStartupTimer);
-      releaseDecoders(); clearAudioActivity();
-      setConnected(false); setAudioActive(false);
+      releaseDecoders(); resetAudioPlayback();
+      setConnected(false);
       setStatus(unsupportedVideo ? 'unsupported' : 'disconnected');
       socket.close();
       if (!unsupportedVideo && navigator.onLine && reconnectTimer === undefined) {
@@ -315,25 +330,29 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
       socket.close();
       if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
       releaseDecoders();
+      audioRef.current = null;
       clearAudioActivity();
     };
   }, [id, retry, mode]);
 
-  const audioState: SessionAudioState = !audioEnabled ? 'disabled' : audioNeedsGesture ? 'unlock' : audioNotice ? 'unavailable' : audioActive ? 'receiving' : !connected ? 'connecting' : 'waiting';
+  const audioState: SessionAudioState = !audioEnabled ? 'disabled' : audioNeedsGesture ? 'unlock' : audioNotice ? 'unavailable' : audioPlayback ?? (connected ? 'waiting' : 'connecting');
   const unlockAudio = () => {
     rtcRef.current?.unlockAudio();
     try {
       const context = audioContextRef.current ?? new AudioContext({ latencyHint: 'interactive' });
       audioContextRef.current = context;
       void context.resume().then(() => {
+        if (audioContextRef.current !== context) return;
         if (context.state === 'running') { audioClockRef.current = context.currentTime; setAudioNeedsGesture(false); setAudioNotice(''); }
         else { setAudioNeedsGesture(true); setAudioNotice(t('ui.3b0cbc5e4cdc')); }
-      }).catch(error => setAudioNotice(t('ui.5b373bfe7eaa', { p0: errorText(error) })));
+      }).catch(error => {
+        if (audioContextRef.current === context) setAudioNotice(t('ui.5b373bfe7eaa', { p0: errorText(error) }));
+      });
     } catch (error) { setAudioNotice(t('ui.5b373bfe7eaa', { p0: errorText(error) })); }
   };
   unlockAudioRef.current = unlockAudio;
   return {
-    imageRef, canvasRef, status, size, format, transport, nativeTouches, streamError: localizeText(streamError), connected, inputReady, connectionGeneration, metrics, audioTransport, mode, audioUnavailableCount, audioNeedsGesture, audioNotice, audioActive, audioState,
+    imageRef, canvasRef, status, size, format, transport, nativeTouches, streamError: localizeText(streamError), connected, inputReady, connectionGeneration, metrics, audioTransport, mode, audioUnavailableCount, audioNotice, audioState,
     reconnect: () => { retryAttemptRef.current = 0; setRetry(value => value + 1); },
     send: (payload: Record<string, unknown>) => sendInputRef.current(payload),
     unlockAudio,
