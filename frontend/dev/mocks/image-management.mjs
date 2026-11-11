@@ -3,6 +3,7 @@ const digest = letter => 'sha256:' + letter.repeat(64);
 const repo = 'registry.example.test/rdf-emulator';
 let policy = { registryEnabled: false, registryKeep: 3, registryDays: 30, cacheEnabled: false, cacheDays: 30, cacheMaxGb: 0, intervalHours: 24 };
 let items = ['a', 'b', 'c'].map((letter, index) => ({ digest: digest(letter), tags: index === 0 ? ['36-default-x86_64'] : [], package: 'system-images;android-36;default;x86_64', sizeBytes: 3 * 1024 ** 3, createdAt: '2026-01-0' + (3 - index) + 'T00:00:00Z', children: [], known: true, uses: index === 0 ? [{ kind: 'profile', id: 'a13', name: 'Android 16 · AOSP', image: repo + ':36-default-x86_64@' + digest(letter) }, { kind: 'catalog', id: 'sdk', name: 'sdk', image: repo + '@' + digest(letter) }] : [], blockers: index === 2 ? ['session'] : [] }));
+export const imageNavigationCount = () => items.length;
 let cache = [{ id: digest('d'), tags: [repo + ':old'], digests: [repo + '@' + digest('b')], package: 'system-images;android-35;default;x86_64', sizeBytes: 3 * 1024 ** 3, firstSeenAt: '2026-01-01T00:00:00Z', lastUsedAt: '2026-02-01T00:00:00Z', uses: [], blockers: [] }], jobs = [];
 export default function handle(req, res, path, method, state, send) {
   if (!path.startsWith('/admin/image-management')) return false;

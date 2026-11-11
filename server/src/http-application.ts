@@ -77,7 +77,7 @@ export function createHttpApplication(
   installAuditTrail(app, pool);
   const stopAuth = registerAuthRoutes(app, context);
   registerRegistrationRoutes(app, context);
-  registerAdminRoutes(app, context);
+  registerAdminRoutes(app, context, services.imageManagement);
   registerImageRoutes(app, context, imageBuilds);
   registerImageManagementRoutes(app, context, imageManagement);
   registerImagePrewarmRoutes(app, context, imagePrewarm);

@@ -16,12 +16,12 @@ test('the brand opens the overview and every sidebar click reloads the page even
 });
 
 
-const counts = { sessions: 2, allSessions: 17, tokens: 0, nodes: 3, profiles: 1024, users: 1234567 };
+const counts = { sessions: 2, allSessions: 17, tokens: 0, nodes: 3, profiles: 1024, images: 8, users: 1234567 };
 async function sidebarFixture(page: Page, theme = 'light', scale = 1) {
   await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: { theme, fontScale: scale, fontFamily: 'system', defaultAdbKeyId: null } } }));
   await page.route('**/api/navigation-counts', route => route.fulfill({ json: { counts } }));
   await page.goto('/#/overview');
-  await expect(page.locator('.sidebar .side-nav-count')).toHaveCount(6);
+  await expect(page.locator('.sidebar .side-nav-count')).toHaveCount(7);
   await expect(page.getByRole('navigation', { name: 'Главная навигация' }).getByRole('link', { name: 'Сессии', exact: true }).locator('small')).toHaveText('2');
   await page.evaluate(() => document.fonts.ready);
 }
@@ -64,10 +64,12 @@ test('sidebar separates own/all sessions, displays zero and refreshes on focus',
   await sidebarFixture(page);
   const admin = page.getByRole('navigation', { name: 'Администрирование' });
   await expect(admin.getByRole('link', { name: 'Все сессии' }).locator('small')).toHaveText('17');
+  await expect(admin.getByRole('link', { name: 'Образы', exact: true }).locator('small')).toHaveText('8');
   await expect(page.getByRole('link', { name: 'API-токены', exact: true }).locator('small')).toHaveText('0');
-  await page.route('**/api/navigation-counts', route => route.fulfill({ json: { counts: { ...counts, sessions: 0, users: 9 } } }));
+  await page.route('**/api/navigation-counts', route => route.fulfill({ json: { counts: { ...counts, sessions: 0, users: 9, images: 0 } } }));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(admin.getByRole('link', { name: 'Пользователи' }).locator('small')).toHaveText('9');
+  await expect(admin.getByRole('link', { name: 'Образы', exact: true }).locator('small')).toHaveText('0');
   await expect(page.getByRole('link', { name: 'Сессии', exact: true }).locator('small')).toHaveText('0');
 });
 

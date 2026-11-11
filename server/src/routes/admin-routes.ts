@@ -15,6 +15,7 @@ import { transaction } from '../db.js';
 import { desiredNodePolicy, parseNodeSettings } from '../node-policy.js';
 import { listAgentInventory } from '../agent-inventory.js';
 import type { ServerContext } from '../server-context.js';
+import type { ImageManagement } from '../image-management.js';
 import { allowedProfileIds } from '../teams.js';
 import { matchesSelector, parseProfileSelector } from '../profile-selector.js';
 import { recordAuditEvent } from '../audit.js';
@@ -24,7 +25,7 @@ function pickUserMetrics(metrics: Record<string, unknown>) {
   return { architecture: metrics.architecture, ...(Array.isArray(metrics.gpuCapabilities) ? { gpuCapabilities: metrics.gpuCapabilities.filter(value => value === 'cuda' || value === 'gpu') } : {}), nvidiaGpuAvailable: metrics.nvidiaGpuAvailable === true, driGpuAvailable: metrics.driGpuAvailable === true };
 }
 
-export function registerAdminRoutes(app: Express, context: ServerContext): void {
+export function registerAdminRoutes(app: Express, context: ServerContext, images?: Pick<ImageManagement, 'navigationCount'>): void {
   const { pool, config, auth, hub, requireAuth, requireAdmin, current } = context;
   registerRoleRoutes(app, context);
   // Only scalar totals for navigation: no identities, token values or cross-user data for ordinary users.
@@ -41,6 +42,10 @@ export function registerAdminRoutes(app: Express, context: ServerContext): void 
       (SELECT COUNT(*)::integer FROM users WHERE provider!='system' AND removed_at IS NULL) AS users` : ''}`, [user.id, hasPermission(user, 'tokens.system')]);
     const counts = rows[0];
     for (const [key, permission] of Object.entries({ allSessions: 'sessions.viewAll', nodes: 'nodes.view', profiles: 'profiles.view', users: 'users.view' })) if (!hasPermission(user, permission)) delete counts[key];
+    if (hasPermission(user, 'images.view')) {
+      const count = await images?.navigationCount().catch(() => undefined);
+      if (count !== undefined) counts.images = count;
+    }
     res.json({ counts });
   }));
   async function assertAgentCredentialChangeAllowed(client: { query: typeof pool.query }, hostId: string): Promise<void> {

@@ -32,6 +32,7 @@ export interface NavigationCounts {
   allSessions?: number;
   nodes?: number;
   profiles?: number;
+  images?: number;
   users?: number;
 }
 

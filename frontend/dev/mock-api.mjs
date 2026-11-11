@@ -6,6 +6,7 @@ const messages = JSON.parse(readFileSync(new URL('../../shared/messages.json', i
 import { pageLogcat, parseLogcat, validateLogcatParams } from '../../agent/src/logcat.mjs';
 import { parseDeviceInfo } from '../../agent/src/device-info.mjs';
 import featureMocks from './mocks/index.mjs';
+import { imageNavigationCount } from './mocks/image-management.mjs';
 import { setMockRole } from './mocks/roles.mjs';
 
 // Dev-only mock of the backend API so the UI can be developed without the server stack.
@@ -131,7 +132,7 @@ export default function mockApi() {
         if (path === '/logout') { loggedIn = false; return send(res, 200, {}); }
         if (path === '/navigation-counts' && m === 'GET') {
           const current = sessions.filter(session => ['starting', 'running', 'stopping'].includes(session.state));
-          return send(res, 200, { counts: { sessions: current.filter(session => session.ownerId === user.id).length, allSessions: current.length, nodes: 1, profiles: profiles.length, users: adminUsers.length, tokens: tokens.length } });
+          return send(res, 200, { counts: { sessions: current.filter(session => session.ownerId === user.id).length, allSessions: current.length, nodes: 1, profiles: profiles.length, images: imageNavigationCount(), users: adminUsers.length, tokens: tokens.length } });
         }
         if (path === '/hosts') {
           // The baseline live agent keeps reporting during a long test run.

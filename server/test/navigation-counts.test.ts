@@ -45,9 +45,13 @@ test('sidebar counts respect ownership, hide admin totals, include disabled reco
       await db.query("INSERT INTO api_tokens(id,owner_user_id,kind,name,token_hash,expires_at) VALUES($1,$2,$3,'token',$4,CASE WHEN $5 THEN now()-interval '1 day' ELSE NULL END)", [randomUUID(), owner, kind, randomUUID(), expired]);
     }
     let actor: string | null = ADMIN;
-    const auth = { authenticate: async () => actor ? { user: { id: actor, username: actor, role: actor === ADMIN ? 'admin' : 'user' }, via: 'cookie' } : null } as unknown as AuthService;
+    let permissions: string[] | undefined;
+    let imageReads = 0, imageFailure = false;
+    const auth = { authenticate: async () => actor ? { user: { id: actor, username: actor, role: actor === ADMIN ? 'admin' : 'user', permissions }, via: 'cookie' } : null } as unknown as AuthService;
     const app = express();
-    registerAdminRoutes(app, createServerContext(pool, {} as Config, auth, undefined, {} as AgentHub));
+    registerAdminRoutes(app, createServerContext(pool, {} as Config, auth, undefined, {} as AgentHub), {
+      navigationCount: async () => { imageReads++; if (imageFailure) throw new Error('registry unavailable'); return 8; }
+    });
     app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
       if (!(error instanceof ApiError)) console.error(error);
       res.status(error instanceof ApiError ? error.status : 500).json({ error: 'request_failed' });
@@ -55,9 +59,17 @@ test('sidebar counts respect ownership, hide admin totals, include disabled reco
     server = createServer(app); server.listen(0, '127.0.0.1'); await once(server, 'listening');
     const address = server.address(); assert.ok(address && typeof address !== 'string');
     const request = () => fetch(`http://127.0.0.1:${address.port}/api/navigation-counts`);
+    assert.deepEqual(await (await request()).json(), { counts: { sessions: 3, allSessions: 505, nodes: 3, profiles: 2, images: 8, users: 2, tokens: 2 } });
+    assert.equal(imageReads, 1);
+    imageFailure = true;
     assert.deepEqual(await (await request()).json(), { counts: { sessions: 3, allSessions: 505, nodes: 3, profiles: 2, users: 2, tokens: 2 } });
+    imageFailure = false;
     actor = USER;
     assert.deepEqual(await (await request()).json(), { counts: { sessions: 502, tokens: 1 } });
+    assert.equal(imageReads, 2, 'users without images.view must not query the registry');
+    permissions = ['images.view'];
+    assert.deepEqual(await (await request()).json(), { counts: { sessions: 502, tokens: 1, images: 8 } });
+    permissions = undefined;
     await db.query("DELETE FROM sessions WHERE owner_user_id=$1", [USER]);
     await db.query("DELETE FROM api_tokens WHERE owner_user_id=$1", [USER]);
     assert.deepEqual(await (await request()).json(), { counts: { sessions: 0, tokens: 0 } });

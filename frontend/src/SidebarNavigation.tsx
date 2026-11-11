@@ -26,6 +26,7 @@ export function SidebarNavigation({ page, section, user, counts, onNavigate }: P
     sessions: { value: counts?.allSessions, description: t('ui.4f64520b34bf') },
     nodes: { value: counts?.nodes, description: t('ui.a6942642be3f') },
     profiles: { value: counts?.profiles, description: t('ui.d0acee5d717b') },
+    images: { value: counts?.images, description: t('images.title') },
     users: { value: counts?.users, description: t('ui.b3d19f2fed0f') },
   };
   return <div className="sidebar-navigation" id="app-sidebar-navigation">

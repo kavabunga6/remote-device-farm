@@ -38,6 +38,36 @@ test('retention groups by package and protects references, unknown builds and re
   assert.deepEqual(registryCandidates(items, { ...defaultPolicy, registryKeep: 1 }, Date.parse('2026-10-01')).map(item => item.digest), [A, B]);
   items[0].uses = [{ kind: 'profile', id: 'p', name: 'p', image: 'x' }]; items[1].known = false; assert.deepEqual(registryCandidates(items, { ...defaultPolicy, registryKeep: 1 }, Date.parse('2026-10-01')), []);
 });
+
+test('navigation counts image digests, includes untagged versions and refreshes from fresh inventory', async () => {
+  const f = await fixture(); try {
+    f.inventory[0].tags.push('alias');
+    f.inventory[1].tags = [];
+    assert.equal(await f.manager.navigationCount(), 2);
+    f.inventory.splice(0, 1);
+    await f.manager.registryImages();
+    assert.equal(await f.manager.navigationCount(), 1);
+    f.inventory.splice(0);
+    await f.manager.registryImages();
+    assert.equal(await f.manager.navigationCount(), 0);
+    await f.db.query("UPDATE registry_settings SET mode='external',external_address='external.example.test' WHERE id");
+    assert.equal(await f.manager.navigationCount(), undefined, 'external inventory is unknown, not empty');
+  } finally { await f.close(); }
+});
+
+test('slow registry inventory does not block navigation and concurrent requests share the read', async () => {
+  const f = await fixture(); let finish: (() => void) | undefined;
+  try {
+    let reads = 0;
+    const inventory = f.registry.inventory;
+    f.registry.inventory = async () => { reads++; await new Promise<void>(resolve => { finish = resolve; }); return inventory(); };
+    const results = await Promise.all([f.manager.navigationCount(), f.manager.navigationCount()]);
+    assert.deepEqual(results, [undefined, undefined]);
+    assert.equal(reads, 1);
+    finish!();
+    assert.equal(await f.manager.navigationCount(), 2);
+  } finally { finish?.(); await f.close(); }
+});
 test('explicit deletion disables profiles, persists intent and blocks reenabling a deleted digest', async () => {
   const f = await fixture(); try {
     await f.profile();

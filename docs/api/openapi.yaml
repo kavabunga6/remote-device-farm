@@ -503,6 +503,9 @@ paths:
         administrators also see system tokens in this total. Administrator-only fields are allSessions,
         nodes (including offline/disabled, excluding removed), profiles (including disabled, excluding
         removed and internal device profiles), and users (excluding the internal system identity).
+        images requires images.view and counts distinct digests in the built-in registry, including
+        untagged versions. Multiple tags on one digest count once. This total is cached for up to
+        10 seconds and omitted when inventory is unavailable or an external registry is configured.
       responses:
         "200":
           description: Scalar totals; administrator fields are omitted for ordinary users
@@ -6659,6 +6662,10 @@ components:
           type: number
         profiles:
           type: number
+        images:
+          type: integer
+          minimum: 0
+          description: Number of distinct image digests in the built-in registry. Requires images.view. Omitted when inventory is unavailable or an external registry is configured.
         users:
           type: number
       required: [ sessions, tokens ]

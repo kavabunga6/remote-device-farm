@@ -17,7 +17,27 @@ const activeBuild = ['queued', 'building', 'validating', 'pushing', 'cancelling'
 const fail = (code: string, status = 409) => new ApiError(status, code, uiMessage('images.error.' + code));
 export class ImageManagement {
   private flight: Promise<void> | null = null; private timer?: ReturnType<typeof setTimeout>; private stopped = true;
+  private navigationSnapshot?: { source: string; value?: number; at: number };
+  private navigationFlight?: Promise<void>;
   constructor(private readonly pool: Pool, private readonly hub: Pick<AgentHub, 'command' | 'hasAgent'>, private readonly registry: RegistryMaintenance = new RegistryMaintenanceClient()) { }
+  // Only the sidebar total is cached. Deletion previews always read fresh inventory.
+  async navigationCount(): Promise<number | undefined> {
+    const settings = await readRegistrySettings(this.pool);
+    if (settings.mode !== 'builtin' || !settings.builtinAddress) return undefined;
+    const source = settings.builtinAddress;
+    if (this.navigationSnapshot?.source === source && Date.now() - this.navigationSnapshot.at < 10000) return this.navigationSnapshot.value;
+    this.navigationFlight ??= this.registry.inventory().then(inventory => {
+      this.navigationSnapshot = { source, value: new Set(inventory.items.map(item => item.digest)).size, at: Date.now() };
+    }).catch(() => {
+      this.navigationSnapshot = { source, at: Date.now() };
+    }).finally(() => { this.navigationFlight = undefined; });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      // A slow registry must not hold up every navigation counter.
+      await Promise.race([this.navigationFlight, new Promise<void>(resolve => { timer = setTimeout(resolve, 500); })]);
+    } finally { clearTimeout(timer); }
+    return this.navigationSnapshot?.source === source ? this.navigationSnapshot.value : undefined;
+  }
   async policy(db: DB = this.pool): Promise<CleanupPolicy & { lastRunAt: string | null }> {
     const row = (await db.query('SELECT * FROM image_cleanup_policy WHERE id')).rows[0];
     return {
@@ -48,6 +68,7 @@ export class ImageManagement {
     if (settings.mode !== 'builtin' || !settings.builtinAddress) return { supported: false, repository: null, items: [] as ManagedImage[], maintenance: false, blockers: [] as string[] };
     const repository = settings.builtinAddress + '/' + IMAGE_REPOSITORY;
     const inventory = await this.registry.inventory();
+    this.navigationSnapshot = { source: settings.builtinAddress, value: new Set(inventory.items.map(item => item.digest)).size, at: Date.now() };
     const refs = await this.uses(db);
     const completed = (await db.query("SELECT digest FROM emulator_image_job_receipts WHERE repository=$1 AND state='done' UNION SELECT digest FROM emulator_images WHERE repository=$1", [repository])).rows;
     const known = new Set(completed.map(row => row.digest));
