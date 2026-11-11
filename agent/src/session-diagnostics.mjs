@@ -32,6 +32,9 @@ export function diagnosticSeverity(line, stream = 'stdout') {
 }
 // Never persist credentials or keys in container diagnostics.
 export function redactDiagnostic(value, secrets = []) {
+  // Emulator builds can log the entire signaling envelope, including ICE
+  // credentials and agent addresses. It is never useful as a device log.
+  if (/\b(?:acceptJsepMessage|RtcPacket|ice-pwd|ice-ufrag)\b|(?:^|\n)a=candidate:/i.test(String(value))) return '[redacted]';
   let text = String(value ?? '').replace(/-----BEGIN [\s\S]*?-----END [^\n]+-----/g, '[redacted key]')
     .replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/gi, '$1[redacted]@')
     .replace(/\bBearer\s+\S+/gi, 'Bearer [redacted]')

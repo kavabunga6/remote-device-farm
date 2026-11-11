@@ -94,6 +94,17 @@ async function selectTransport(page: Page, mode: 'websocket' | 'webrtc') {
   await page.getByLabel('Транспорт трансляции', { exact: true }).selectOption(mode);
 }
 
+test('a native PNG seed sends scaled live touches instead of legacy device-coordinate taps', async ({ page }) => {
+  const fixture = await transportFixture(page);
+  const layer = page.locator('.touch-layer');
+  await expect(page.locator('.active-frame')).toBeVisible();
+  await layer.click({ position: { x: 80, y: 100 } });
+  const inputs = await page.evaluate(() => (window as any).__transport.inputs);
+  expect(inputs.map((x: any) => [x.kind, x.action])).toEqual([['touch', 'down'], ['touch', 'up']]);
+  expect(inputs.every((x: any) => x.x >= 0 && x.x < 180 && x.y >= 0 && x.y < 320)).toBe(true);
+  expect(fixture.httpInputs).toEqual([]);
+});
+
 test('floating device text preserves its draft and sends once through the connected stream', async ({ page }, info) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   const fixture = await transportFixture(page);

@@ -18,6 +18,8 @@ import { ManagedAppium, assertAppiumAndroid } from './managed-appium.mjs';
 import { AdbServerFilter, adbFailure } from './adb-proxy.mjs';
 import { AdbDeviceAuth } from './adb-device-auth.mjs';
 import { StreamManager } from './scrcpy.mjs';
+import { NativeEmulatorStream } from './emulator-native-stream.mjs';
+import { AndroidAudioStream } from './android-audio.mjs';
 import { dispatchCommand, dispatchNodeAction } from './command-dispatch.mjs';
 import { SlotReservations } from './capacity.mjs';
 import { progressReporter } from './startup-progress.mjs';
@@ -56,6 +58,8 @@ const streams = new StreamManager({
   adb,
   serverPath: config.scrcpyServerPath,
   screenshotIntervalMs: config.streamIntervalMs,
+  createNativeStream: config.emulatorStream === 'native' ? options => new NativeEmulatorStream(options) : null,
+  createNativeAudioStream: options => new AndroidAudioStream({ ...options, adb, serverPath: config.scrcpyServerPath }),
   canEmitVideo: sessionId => rtc?.hasPeers(sessionId) || (relayMedia.get(sessionId) !== false && socket?.readyState === WebSocket.OPEN && socket.bufferedAmount < 256 * 1024),
   emit: (event) => { rtc?.publish(event); send(event); },
 });

@@ -4,7 +4,11 @@ import net from 'node:net';
 const SCRCPY_VERSION = '4.1';
 export const RESET_VIDEO_CONTROL_MESSAGE = Buffer.from([17]); // scrcpy v4.1 RESET_VIDEO
 
-export function scrcpyServerArgs(serial, deviceServerPath, scid, audioCodec) {
+export function scrcpyServerArgs(serial, deviceServerPath, scid, audioCodec, audioOnly = false) {
+  if (audioOnly) return ['-s', serial, 'shell', 'CLASSPATH=' + deviceServerPath, 'app_process', '/',
+    'com.genymobile.scrcpy.Server', SCRCPY_VERSION, 'scid=' + scid.toString(16).padStart(8, '0'),
+    'log_level=verbose', 'tunnel_forward=true', 'video=false', 'audio=true', 'control=false',
+    'send_device_meta=false', 'send_dummy_byte=true', 'audio_codec=' + audioCodec];
   return ['-s', serial, 'shell',
     'CLASSPATH=' + deviceServerPath, 'app_process', '/',
     'com.genymobile.scrcpy.Server', SCRCPY_VERSION,

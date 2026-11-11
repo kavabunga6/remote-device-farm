@@ -133,6 +133,8 @@ export function validateNvidiaXorgModuleDir(value) {
 }
 
 export function loadConfig(env = process.env) {
+  const emulatorStream = env.AGENT_EMULATOR_STREAM || 'scrcpy';
+  if (!['scrcpy', 'native'].includes(emulatorStream)) throw new Error(diagnostic('native.rtc.config'));
   const brokerUrl = agentBrokerUrl(env);
   const token = env.AGENT_TOKEN;
   const agentId = agentIdentity(env);
@@ -178,6 +180,7 @@ export function loadConfig(env = process.env) {
     emuConsole,
     dockerSocket: env.DOCKER_SOCKET || '/var/run/docker.sock',
     scrcpyServerPath: env.SCRCPY_SERVER_PATH || '/opt/scrcpy/scrcpy-server',
+    emulatorStream,
     streamIntervalMs: Number(env.AGENT_SCREENSHOT_INTERVAL_MS || 800),
   };
 }

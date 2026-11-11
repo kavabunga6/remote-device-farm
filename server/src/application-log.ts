@@ -8,6 +8,8 @@ export type ApplicationLogRecord = {
 };
 
 export function redactLog(message: string, secrets: readonly string[] = []): string {
+  // Also protect diagnostics sent by older agents and emulator images.
+  if (/\b(?:acceptJsepMessage|RtcPacket|ice-pwd|ice-ufrag)\b|(?:^|\n)a=candidate:/i.test(message)) return '[REDACTED]';
   let value = message
     .replace(/-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?(?:-----END [^-]*PRIVATE KEY-----|$)/g, '[REDACTED PRIVATE KEY]')
     .replace(/(\b(?:https?|postgres(?:ql)?|ldaps?):\/\/[^\s:@/]+:)[^\s@/]+@/gi, '$1[REDACTED]@')

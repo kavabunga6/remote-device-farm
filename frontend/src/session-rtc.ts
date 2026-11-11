@@ -89,7 +89,7 @@ export function createSessionRtc(callbacks: Callbacks, audioEnabled: boolean) {
         const connection = new RTCPeerConnection({ iceServers: configuration.iceServers || [], bundlePolicy: 'max-bundle' });
         peer = connection;
         const videoTransceiver = connection.addTransceiver('video', { direction: 'recvonly' });
-        const videoCodecs = RTCRtpReceiver.getCapabilities?.('video')?.codecs.filter(codec => codec.mimeType.toLowerCase() === 'video/h264');
+        const videoCodecs = RTCRtpReceiver.getCapabilities?.('video')?.codecs.filter(codec => ['video/h264', 'video/vp8'].includes(codec.mimeType.toLowerCase()));
         if (videoCodecs?.length && videoTransceiver.setCodecPreferences) videoTransceiver.setCodecPreferences(videoCodecs);
         const audioTransceiver = connection.addTransceiver('audio', { direction: 'recvonly' });
         const audioCodecs = RTCRtpReceiver.getCapabilities?.('audio')?.codecs.filter(codec => codec.mimeType.toLowerCase() === 'audio/opus');

@@ -3743,5 +3743,7 @@
   "performance.rssShort": "RSS",
   "performance.processInterval": "الفاصل بين التحديثات",
   "sessionAudio.silence": "الصوت صامت",
-  "sessionAudio.silenceDetail": "تصل بيانات الصوت، لكن البث صامت. تحقّق من الصوت في تطبيق Android."
+  "sessionAudio.silenceDetail": "تصل بيانات الصوت، لكن البث صامت. تحقّق من الصوت في تطبيق Android.",
+  "sessionVideo.native": "WebRTC للمحاكي",
+  "sessionVideo.nativeDetail": "يُمرَّر بث فيديو WebRTC من المحاكي عبر الخادم."
 }

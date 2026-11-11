@@ -5,8 +5,8 @@ type VideoOwner = {
   canvas(): HTMLCanvasElement | null;
   image(): HTMLImageElement | null;
   pendingImage: { current: string | null };
-  frame(format: 'image' | 'video', width?: number, height?: number, transport?: 'mjpeg' | 'images'): void;
-  connecting(): void;
+  frame(format: 'image' | 'video', width?: number, height?: number, transport?: 'mjpeg' | 'images' | 'scrcpy' | 'native'): void;
+  connecting(transport?: 'scrcpy' | 'native'): void;
   fail(message: string, unsupported?: boolean): void;
   requestKeyframe(): void;
 };
@@ -14,11 +14,11 @@ const errorText = (error: unknown) => error instanceof Error ? error.message : t
 const VIDEO_DECODE_STALL_MS = 1500;
 const KEYFRAME_REQUEST_INTERVAL_MS = 1000;
 
-/** Owns one connection's image and H.264 decoder resources. */
+/** Owns one connection's image and encoded video decoder resources. */
 export class SessionVideo {
   private decoder: VideoDecoder | null = null;
   private configBytes: Uint8Array | null = null;
-  private configBase64: string | null = null;
+  private configKey: string | null = null;
   private config: VideoDecoderConfig | null = null;
   private waitingForKeyframe = true;
   private dropping = false;
@@ -27,7 +27,7 @@ export class SessionVideo {
   constructor(private readonly owner: VideoOwner) {}
   reset(): void {
     if (this.decoder && this.decoder.state !== 'closed') this.decoder.close();
-    this.decoder = null; this.configBytes = null; this.configBase64 = null; this.config = null;
+    this.decoder = null; this.configBytes = null; this.configKey = null; this.config = null;
     this.waitingForKeyframe = true; this.dropping = false;
     this.pendingSince = null;
     this.lastKeyframeRequestAt = -Infinity;
@@ -47,12 +47,14 @@ export class SessionVideo {
     this.owner.frame('image', message.width, message.height, mime === 'image/jpeg' ? 'mjpeg' : 'images');
   }
   private configure(message: StreamMessage): void {
-    if (!message.data || (this.decoder?.state === 'configured' && this.configBase64 === message.data)) return;
-    this.reset(); this.owner.connecting();
+    const vp8 = message.codec === 'vp8';
+    const key = JSON.stringify([message.codec, message.data, message.width, message.height]);
+    if ((!vp8 && !message.data) || (this.decoder?.state === 'configured' && this.configKey === key)) return;
+    this.reset(); this.owner.connecting(vp8 ? 'native' : 'scrcpy');
     if (!('VideoDecoder' in window)) { this.owner.fail(globalThis.isSecureContext ? t('ui.6afd1f9a6d5d') : t('ui.5857f8195393'), true); return; }
     try {
-      this.configBytes = decodeBase64(message.data); this.configBase64 = message.data;
-      this.config = { codec: h264Codec(this.configBytes), optimizeForLatency: true };
+      this.configBytes = vp8 ? null : decodeBase64(message.data!); this.configKey = key;
+      this.config = { codec: vp8 ? 'vp8' : h264Codec(this.configBytes!), optimizeForLatency: true };
       let decoder: VideoDecoder;
       decoder = new VideoDecoder({
         output: frame => this.render(frame, decoder),
@@ -71,7 +73,7 @@ export class SessionVideo {
       if (canvas.width !== width) canvas.width = width;
       if (canvas.height !== height) canvas.height = height;
       canvas.getContext('2d')?.drawImage(frame, 0, 0, width, height);
-      this.owner.frame('video', width, height);
+      this.owner.frame('video', width, height, this.config?.codec === 'vp8' ? 'native' : 'scrcpy');
     } catch (error) { this.owner.fail(t('copy.session-video.3f00f5e6', { p0: errorText(error) })); }
     finally { frame.close(); }
   }

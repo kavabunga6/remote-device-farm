@@ -7,6 +7,12 @@ import { PGlite } from '@electric-sql/pglite';
 import { readFile } from 'node:fs/promises';
 import type { Pool } from 'pg';
 import { ApplicationLog, redactLog, logSecrets } from '../src/application-log.js';
+
+test('native emulator signaling from any agent is redacted before log storage', () => {
+  for (const text of ['INFO | acceptJsepMessage: id, {"sdp":"a=ice-pwd:private"}', 'RtcPacket: message: "candidate:private"', 'v=0\na=ice-ufrag:private\na=candidate:1 1 UDP 1 192.0.2.20 40000 typ host']) {
+    assert.equal(redactLog(text), '[REDACTED]');
+  }
+});
 import { applicationRequestLog } from '../src/application-request-log.js';
 import { connectServiceLog, emitServiceLog, recordServiceLog } from '../src/service-log.js';
 import { registerApplicationLogRoutes } from '../src/routes/application-log-routes.js';

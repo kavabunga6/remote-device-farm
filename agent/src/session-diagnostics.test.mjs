@@ -2,6 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DockerClient } from './docker.mjs';
 import { diagnosticSecrets, diagnosticSeverity, dockerLogLines, redactDiagnostic } from './session-diagnostics.mjs';
+
+test('native signaling envelopes never persist ICE credentials or network candidates', () => {
+  for (const text of ['INFO | acceptJsepMessage: id, {"sdp":"a=ice-pwd:private"}', 'RtcPacket: message: "candidate:private"', 'v=0\na=ice-ufrag:private\na=candidate:1 1 UDP 1 192.0.2.20 40000 typ host']) {
+    assert.equal(redactDiagnostic(text), '[redacted]');
+  }
+});
 const frame = (kind, text) => { const data=Buffer.from(text), header=Buffer.alloc(8);header[0]=kind;header.writeUInt32BE(data.length,4);return Buffer.concat([header,data]); };
 test('container diagnostics preserve fragmented UTF-8, exit status and stdout/stderr before removal and hide environment secrets', async () => {
   const docker = new DockerClient('/unused'), events=[], order=[];

@@ -3743,5 +3743,7 @@
   "performance.rssShort": "RSS",
   "performance.processInterval": "আপডেটের ব্যবধান",
   "sessionAudio.silence": "অডিওতে শব্দ নেই",
-  "sessionAudio.silenceDetail": "অডিও ডেটা আসছে, কিন্তু স্ট্রিমে শব্দ নেই। Android অ্যাপে শব্দের সেটিংস দেখুন।"
+  "sessionAudio.silenceDetail": "অডিও ডেটা আসছে, কিন্তু স্ট্রিমে শব্দ নেই। Android অ্যাপে শব্দের সেটিংস দেখুন।",
+  "sessionVideo.native": "এমুলেটর WebRTC",
+  "sessionVideo.nativeDetail": "এমুলেটরের WebRTC ভিডিও স্ট্রিম সার্ভারের মাধ্যমে পাঠানো হয়।"
 }

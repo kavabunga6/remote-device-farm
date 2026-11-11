@@ -70,9 +70,9 @@ export function SessionMediaStatus({ status, format, transport, streamError, mod
     return () => document.removeEventListener('pointerdown', outside);
   }, []);
   const actualTransport = transport ?? (status === 'live' ? format === 'video' ? 'scrcpy' : 'images' : null);
-  const videoLabel = status === 'live' ? actualTransport === 'webrtc' ? 'WebRTC' : actualTransport === 'scrcpy' ? 'scrcpy' : actualTransport === 'mjpeg' ? 'MJPEG' : t('ui.57ea1e1aa7d9')
+  const videoLabel = status === 'live' ? actualTransport === 'native' ? t('sessionVideo.native') : actualTransport === 'webrtc' ? 'WebRTC' : actualTransport === 'scrcpy' ? 'scrcpy' : actualTransport === 'mjpeg' ? 'MJPEG' : t('ui.57ea1e1aa7d9')
     : status === 'connecting' ? t('ui.2b0e3fa2e835') : status === 'unsupported' ? t('ui.3a6ec360f375') : t('ui.1cdbd38b277f');
-  const videoDetail = status === 'live' ? metrics?.fps === 0 ? t('sessionVideo.noFrames') : actualTransport === 'webrtc' ? t('ui.6078d009cc30') : actualTransport === 'scrcpy' ? t('ui.d2ba013e5891') : actualTransport === 'mjpeg' ? t('ui.5dc4e9d9a2ae') : t('ui.766ed39cb87f')
+  const videoDetail = status === 'live' ? metrics?.fps === 0 ? t('sessionVideo.noFrames') : actualTransport === 'native' ? t('sessionVideo.nativeDetail') : actualTransport === 'webrtc' ? t('ui.6078d009cc30') : actualTransport === 'scrcpy' ? t('ui.d2ba013e5891') : actualTransport === 'mjpeg' ? t('ui.5dc4e9d9a2ae') : t('ui.766ed39cb87f')
     : streamError || (status === 'connecting' ? t('ui.3020ac4bc180') : status === 'unsupported' ? t('ui.a435e4c18cb1') : t('ui.ec863f600ac1'));
   return <div className="session-media-status" role="group" aria-label={t('ui.8c04e6b7ad8e')}>
     {onModeChange ? <details className="session-transport-menu" ref={transportMenu} onKeyDown={event => {

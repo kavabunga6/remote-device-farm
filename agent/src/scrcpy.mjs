@@ -4,16 +4,16 @@ export { scrcpyServerArgs, SocketReader, parseMediaHeader, parseAudioCodecHeader
 import { spawn } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import crypto from 'node:crypto';
-import { runProcess } from './adb.mjs';
 import { EmulatorAudioStream } from './emulator-audio.mjs';
 import { EmulatorTouchController } from './emulator-touch.mjs';
 import { TouchGeometryCache, parseTouchGeometryChange } from './touch-geometry.mjs';
 
 const KEYFRAME_PROBE_TIMEOUT_MS = 4000;
+const isControlStream = stream => stream instanceof ScrcpyStream || stream?.mode === 'emulator-rtc';
 
 export class ScrcpyStream {
   constructor({ sessionId, serial, adb, serverPath, emit, canEmitVideo = () => true,
-    audioEnabled = false, audioCodec = 'opus', onFailure, onAudioFailure,
+    audioEnabled = false, audioCodec = 'opus', audioOnly = false, onFailure, onAudioFailure, createProcess = spawn,
     createEmulatorTouch = options => new EmulatorTouchController(options),
     maxInputAgeMs = 500, now = Date.now }) {
     this.sessionId = sessionId;
@@ -24,6 +24,8 @@ export class ScrcpyStream {
     this.canEmitVideo = canEmitVideo;
     this.audioEnabled = audioEnabled;
     this.audioCodec = audioCodec;
+    this.audioOnly = audioOnly;
+    this.createProcess = createProcess;
     this.closed = false;
     this.videoConfig = null;
     this.audioConfig = null;
@@ -54,7 +56,7 @@ export class ScrcpyStream {
   async start() {
     await access(this.serverPath);
     await this.adb.connect(this.serial);
-    void this.startNativeTouch();
+    if (!this.audioOnly) void this.startNativeTouch();
     this.scid = crypto.randomBytes(4).readUInt32BE(0) & 0x7fffffff;
     this.deviceServerPath = `/data/local/tmp/rdf-scrcpy-${this.scid.toString(16).padStart(8, '0')}.jar`;
     const pushed = await this.adb.run(this.serial, ['push', this.serverPath, this.deviceServerPath], { timeoutMs: 30000 });
@@ -64,8 +66,8 @@ export class ScrcpyStream {
     if (forwarded.exitCode !== 0) throw new Error(forwarded.stderr || diagnostic('scrcpy.ce97c9716d'));
     this.port = Number(forwarded.stdout.trim());
     if (!Number.isInteger(this.port) || this.port < 1 || this.port > 65535) throw new Error(diagnostic('scrcpy.7ff723e956'));
-    const args = scrcpyServerArgs(this.serial, this.deviceServerPath, this.scid, this.audioCodec);
-    this.process = spawn('adb', args, { shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const args = scrcpyServerArgs(this.serial, this.deviceServerPath, this.scid, this.audioCodec, this.audioOnly);
+    this.process = this.createProcess('adb', args, { shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     this.process.stdout.on('data', data => this.observeDisplayOutput(data, 'stdout'));
     this.process.stderr.on('data', data => {
       this.processLog = `${this.processLog}${data.toString()}`.slice(-4000);
@@ -80,21 +82,24 @@ export class ScrcpyStream {
     });
     try {
       const video = await connectVideoPortWithHandshake(this.port);
-      this.videoSocket = video.socket;
-      this.audioSocket = await connectPort(this.port);
-      // In forward mode the server accepts video, audio and control in that
-      // order. It cannot start publishing media until all three connect.
-      this.controlSocket = await connectPort(this.port);
-      this.controlSocket.once('error', error => this.fail(error));
-      this.controlSocket.once('close', () => {
-        this.fail(new Error(diagnostic('scrcpy.385c12e8ca')));
-      });
-      const videoReader = video.reader;
-      const audioReader = new SocketReader(this.audioSocket);
-      const videoCodec = (await within(videoReader.read(4), 10000, 'scrcpy video header')).toString('ascii');
-      if (videoCodec !== 'h264') throw new Error(diagnostic('scrcpy.a5c4b439f4', { p0: videoCodec }));
-      this.videoTask = this.readVideo(videoReader);
-      this.videoTask.catch(error => this.fail(error));
+      let audioReader;
+      if (this.audioOnly) {
+        this.audioSocket = video.socket;
+        audioReader = video.reader;
+      } else {
+        this.videoSocket = video.socket;
+        this.audioSocket = await connectPort(this.port);
+        // Forward mode accepts video, audio and control in this order.
+        this.controlSocket = await connectPort(this.port);
+        this.controlSocket.once('error', error => this.fail(error));
+        this.controlSocket.once('close', () => this.fail(new Error(diagnostic('scrcpy.385c12e8ca'))));
+        const videoReader = video.reader;
+        audioReader = new SocketReader(this.audioSocket);
+        const videoCodec = (await within(videoReader.read(4), 10000, 'scrcpy video header')).toString('ascii');
+        if (videoCodec !== 'h264') throw new Error(diagnostic('scrcpy.a5c4b439f4', { p0: videoCodec }));
+        this.videoTask = this.readVideo(videoReader);
+        this.videoTask.catch(error => this.fail(error));
+      }
       try {
         const audioHeader = await within(audioReader.read(4), 5000, 'scrcpy audio header');
         const audio = parseAudioCodecHeader(audioHeader, this.audioCodec);
@@ -121,6 +126,7 @@ export class ScrcpyStream {
         this.audioAvailable = false;
         console.warn(diagnostic('scrcpy.e41ec2ac4e', { p0: this.sessionId, p1: error.message }));
       }
+      if (this.audioOnly && !this.audioAvailable) throw this.lastError || new Error(diagnostic('scrcpy.f7034c1bc1'));
       if (this.closed) throw this.lastError || new Error(diagnostic('scrcpy.03bf10da46'));
     } catch (error) {
       const log = this.processLog.trim();
@@ -400,7 +406,7 @@ export class ScrcpyStream {
     this.activePointers.clear();
     this.process?.kill('SIGTERM');
     const cleanup = [];
-    if (this.port) cleanup.push(runProcess('adb', ['-s', this.serial, 'forward', '--remove', `tcp:${this.port}`], { timeoutMs: 5000 }));
+    if (this.port) cleanup.push(this.adb.run(this.serial, ['forward', '--remove', `tcp:${this.port}`], { timeoutMs: 5000 }));
     if (this.deviceServerPath) cleanup.push(this.adb.run(this.serial, ['shell', 'rm', '-f', this.deviceServerPath], { timeoutMs: 5000 }));
     await Promise.allSettled(cleanup);
   }
@@ -409,6 +415,7 @@ export class ScrcpyStream {
 export class StreamManager {
   constructor({ adb, serverPath, emit, canEmitVideo = () => true, screenshotIntervalMs = 800,
     scrcpyRetryIntervalMs = 5000, createScrcpyStream = options => new ScrcpyStream(options),
+    createNativeStream = null, createNativeAudioStream = null,
     createEmulatorAudioStream = options => new EmulatorAudioStream(options) }) {
     this.adb = adb;
     this.serverPath = serverPath;
@@ -417,6 +424,8 @@ export class StreamManager {
     this.screenshotIntervalMs = screenshotIntervalMs;
     this.scrcpyRetryIntervalMs = scrcpyRetryIntervalMs;
     this.createScrcpyStream = createScrcpyStream;
+    this.createNativeStream = createNativeStream;
+    this.createNativeAudioStream = createNativeAudioStream;
     this.createEmulatorAudioStream = createEmulatorAudioStream;
     this.streams = new Map();
     this.audio = new Map();
@@ -429,17 +438,49 @@ export class StreamManager {
     if (existing) {
       existing.resendConfig?.(true);
       this.emulatorAudio.get(sessionId)?.resendConfig();
-      if (!(existing instanceof ScrcpyStream)) this.scheduleScrcpyRetry(sessionId, serial, existing);
-      return { mode: existing instanceof ScrcpyStream ? 'scrcpy' : 'screenshots' };
+      if (!isControlStream(existing)) this.scheduleScrcpyRetry(sessionId, serial, existing);
+      return { mode: existing.mode ?? (existing instanceof ScrcpyStream ? 'scrcpy' : 'screenshots') };
     }
     // Track startup before the first await so disconnect/stop can see it and
     // concurrent viewers share the same candidate. Cleanup waits for startup
     // to settle, including resources acquired after a stop request.
     const startup = { serial, starting: true, closed: false,
-      close: async () => { startup.closed = true; await startup.ready?.catch(() => {}); } };
+      close: async () => { startup.closed = true; if (startup.candidate?.mode === 'emulator-rtc') await startup.candidate.close(); await startup.ready?.catch(() => {}); } };
     this.streams.set(sessionId, startup);
-    startup.ready = this.tryScrcpy(sessionId, serial, null, startup);
+    startup.ready = this.createNativeStream && /^rdf-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}:5555$/.test(serial)
+      ? this.tryNative(sessionId, serial, startup) : this.tryScrcpy(sessionId, serial, null, startup);
     return startup.ready;
+  }
+
+  async tryNative(sessionId, serial, startup) {
+    const native = this.createNativeStream({ sessionId, serial, audioEnabled: this.audio.get(sessionId) || false,
+      canEmitVideo: this.canEmitVideo,
+      emit: event => { if (this.streams.get(sessionId) === native || (!startup.closed && this.streams.get(sessionId) === startup)) this.emit(event); },
+      onFailure: error => {
+        if (this.streams.get(sessionId) !== native) return;
+        console.warn(diagnostic('native.rtc.fallback', { p0: sessionId, p1: error.message }));
+        const owner = { serial, starting: true, closed: false, close: async () => { owner.closed = true; await owner.ready?.catch(() => {}); } };
+        this.streams.set(sessionId, owner);
+        owner.ready = native.close().then(() => this.tryScrcpy(sessionId, serial, null, owner));
+        void owner.ready.catch(() => {});
+      }
+    });
+    startup.candidate = native;
+    try {
+      await native.start();
+      if (startup.closed || this.streams.get(sessionId) !== startup) throw new Error(diagnostic('scrcpy.6431866ac8'));
+      if (native.closed) throw native.lastError || new Error(diagnostic('native.rtc.closed'));
+      this.streams.set(sessionId, native);
+      native.selectAudioSource?.();
+      if (native.audioAvailable) await this.closeEmulatorAudio(sessionId);
+      else if (this.audio.get(sessionId)) void this.restoreEmulatorAudio(sessionId, serial, native);
+      return { mode: 'emulator-rtc', audioCodec: native.audioAvailable ? 'opus' : null };
+    } catch (error) {
+      await native.close();
+      if (startup.closed || this.streams.get(sessionId) !== startup) throw error;
+      console.warn(diagnostic('native.rtc.fallback', { p0: sessionId, p1: error.message }));
+      return this.tryScrcpy(sessionId, serial, null, startup);
+    }
   }
 
   scheduleScrcpyRetry(sessionId, serial, fallback) {
@@ -505,7 +546,7 @@ export class StreamManager {
           console.log(diagnostic('scrcpy.f99b364423', { p0: sessionId }));
           scrcpy.resendConfig();
         } else console.log(diagnostic('scrcpy.36db2f1033', { p0: sessionId }));
-        if (scrcpy.audioAvailable) this.closeEmulatorAudio(sessionId);
+        if (scrcpy.audioAvailable) await this.closeEmulatorAudio(sessionId);
         else if (this.audio.get(sessionId)) void this.restoreEmulatorAudio(sessionId, serial, scrcpy);
         return { mode: 'scrcpy', audioCodec: scrcpy.audioAvailable ? codec : null };
       } catch (error) {
@@ -551,14 +592,15 @@ export class StreamManager {
   closeEmulatorAudio(sessionId) {
     const audio = this.emulatorAudio.get(sessionId);
     this.emulatorAudio.delete(sessionId);
-    audio?.close();
+    return audio?.close();
   }
 
   async startEmulatorAudio(sessionId, serial, stream) {
     if (this.streams.get(sessionId) !== stream) throw new Error(diagnostic('scrcpy.cffa58ec97'));
     let audio = this.emulatorAudio.get(sessionId);
     if (!audio) {
-      audio = this.createEmulatorAudioStream({
+      const createAudio = stream.mode === 'emulator-rtc' && this.createNativeAudioStream ? this.createNativeAudioStream : this.createEmulatorAudioStream;
+      audio = createAudio({
         sessionId, serial, emit: event => this.emit(event),
         onFailure: error => {
           if (this.emulatorAudio.get(sessionId) !== audio) return;
@@ -602,8 +644,8 @@ export class StreamManager {
   async setAudio(sessionId, enabled) {
     const stream = this.streams.get(sessionId);
     if (enabled && !stream) throw new Error(diagnostic('scrcpy.a44b2fc426'));
-    if (enabled && stream instanceof ScrcpyStream && stream.audioAvailable) {
-      this.closeEmulatorAudio(sessionId);
+    if (enabled && isControlStream(stream) && stream.audioAvailable) {
+      await this.closeEmulatorAudio(sessionId);
       stream.setAudio(true);
       this.audio.set(sessionId, true);
       return { enabled: true, available: true, codec: stream.audioCodec };
@@ -612,12 +654,12 @@ export class StreamManager {
       const audio = await this.startEmulatorAudio(sessionId, stream.serial, stream);
       audio.setEnabled(true);
       this.audio.set(sessionId, true);
-      return { enabled: true, available: true, codec: 'pcm-s16le' };
+      return { enabled: true, available: true, codec: audio.codec || 'pcm-s16le' };
     }
     this.audio.set(sessionId, false);
     stream?.setAudio?.(false);
-    this.closeEmulatorAudio(sessionId);
-    return { enabled: false, available: stream instanceof ScrcpyStream && stream.audioAvailable };
+    await this.closeEmulatorAudio(sessionId);
+    return { enabled: false, available: isControlStream(stream) && stream.audioAvailable };
   }
 
   controlStream(sessionId, serial, { release = false } = {}) {
@@ -626,14 +668,14 @@ export class StreamManager {
     // startup owner for cancellation, but expose its already-open control socket
     // so the first visible-frame input never falls into the slow ADB queue.
     const stream = current?.starting && !current.closed ? current.candidate : current;
-    if (!(stream instanceof ScrcpyStream) || (serial && stream.serial !== serial)) return null;
+    if (!isControlStream(stream) || (serial && stream.serial !== serial)) return null;
     if (current?.starting && !release && !stream.hasControl()) return null;
     return stream;
   }
 
   touch(sessionId, serial, params) {
     const stream = this.controlStream(sessionId, serial);
-    if (!(stream instanceof ScrcpyStream) || stream.serial !== serial) {
+    if (!isControlStream(stream) || stream.serial !== serial) {
       throw new Error(diagnostic('scrcpy.d3457cf7f5'));
     }
     return stream.touch(params);
@@ -642,7 +684,7 @@ export class StreamManager {
   realtimeInput(sessionId, serial, params) {
     const stream = this.controlStream(sessionId, serial);
     if ((params?.kind === 'key' || params?.kind === 'text') &&
-        stream instanceof ScrcpyStream && stream.serial === serial && stream.hasControl()) {
+        isControlStream(stream) && stream.serial === serial && stream.hasControl() && (stream.canInput?.(params) ?? true)) {
       // Capture this exact stream before bypassing the session command queue.
       // A later close must fail here, never run a slow adb fallback outside it.
       const epoch = stream.inputEpoch;
@@ -655,6 +697,8 @@ export class StreamManager {
     if (params?.kind === 'touch') return this.touch(sessionId, serial, params);
     const realtime = this.realtimeInput(sessionId, serial, params);
     if (realtime) return realtime();
+    const native = this.controlStream(sessionId, serial);
+    if (native?.mode === 'emulator-rtc' && native.hasControl() && native.canInput(params)) return native.input(params);
     // Screenshot mode and non-streaming API clients still use adb. Legacy
     // tap/swipe coordinates refer to the device, not the downscaled video.
     // Never fall back after a write failure: input might already be delivered.
@@ -664,21 +708,20 @@ export class StreamManager {
   async releaseInput(sessionId, serial, reason = 'disconnect') {
     // A broken control socket must not prevent native-pointer cleanup.
     const stream = this.controlStream(sessionId, serial, { release: true });
-    if (!(stream instanceof ScrcpyStream) || (serial && stream.serial !== serial)) return { released: false };
+    if (!isControlStream(stream) || (serial && stream.serial !== serial)) return { released: false };
     return stream.releaseInput(reason);
   }
 
   requestKeyframe(sessionId, serial) {
     const stream = this.controlStream(sessionId, serial);
-    if (!(stream instanceof ScrcpyStream) || stream.serial !== serial) return { requested: false };
+    if (!isControlStream(stream) || stream.serial !== serial) return { requested: false };
     return { requested: stream.requestKeyframe(true) };
   }
 
   async stop(sessionId) {
     const stream = this.streams.get(sessionId);
     this.streams.delete(sessionId);
-    this.closeEmulatorAudio(sessionId);
-    if (stream) await stream.close();
+    await Promise.all([this.closeEmulatorAudio(sessionId), stream?.close()]);
   }
 
   async dispose(sessionId) {

@@ -1,8 +1,8 @@
 import { diagnostic } from './diagnostics.mjs';
 import { agentMessage } from './messages.mjs';
 import { randomInt } from 'node:crypto';
-import { RTCPeerConnection, MediaStreamTrack, RtpPacket, RtpHeader, useH264, useOPUS } from 'werift';
-import { packetizeH264, h264Profile, rtpTimestamp, opusPacketSamples, OpusRtpClock } from './rtc-media.mjs';
+import { RTCPeerConnection, MediaStreamTrack, RtpPacket, RtpHeader, useH264, useVP8, useOPUS } from 'werift';
+import { packetizeH264, packetizeVp8, h264Profile, rtpTimestamp, opusPacketSamples, OpusRtpClock } from './rtc-media.mjs';
 import { loadRtcConfig } from './rtc-config.mjs';
 import { INPUT_MAX_AGE_MS } from './input-gate.mjs';
 
@@ -90,10 +90,10 @@ export class WebRtcManager {
     if (this.peers.size >= 32 || [...this.peers.values()].filter(p => p.sessionId === sessionId).length >= 8) throw new Error(diagnostic('webrtc.3eacb4b61e'));
     const stream = this.streams.streams.get(sessionId);
     const videoConfig = this.videoConfigs.get(sessionId) || stream?.videoConfig;
-    if (!videoConfig?.data) throw new Error(agentMessage('agent.webrtc.waitForStream', {}, 'ru'));
-    const profile = h264Profile(Buffer.from(videoConfig.data, 'base64'));
+    if (!videoConfig || (videoConfig.codec !== 'vp8' && !videoConfig.data)) throw new Error(agentMessage('agent.webrtc.waitForStream', {}, 'ru'));
+    const codec = videoConfig.codec === 'vp8' ? useVP8() : useH264({ parameters: `profile-level-id=${h264Profile(Buffer.from(videoConfig.data, 'base64'))};packetization-mode=1;level-asymmetry-allowed=1` });
     const pc = this.createPeer({
-      codecs: { video: [useH264({ parameters: `profile-level-id=${profile};packetization-mode=1;level-asymmetry-allowed=1` })], audio: [useOPUS()] },
+      codecs: { video: [codec], audio: [useOPUS()] },
       iceServers: this.config.iceServers,
       icePortRange: this.config.icePortRange,
       iceAdditionalHostAddresses: this.config.addresses,
@@ -218,8 +218,12 @@ export class WebRtcManager {
     if (event.type === 'video-config') {
       const previous = this.videoConfigs.get(event.sessionId);
       this.videoConfigs.set(event.sessionId, event);
-      if (previous?.data !== event.data || previous?.width !== event.width || previous?.height !== event.height) {
+      if (previous?.data !== event.data || previous?.codec !== event.codec || previous?.width !== event.width || previous?.height !== event.height) {
         for (const peer of this.peers.values()) if (peer.sessionId === event.sessionId) {
+          if (previous && (previous.codec || 'h264') !== (event.codec || 'h264')) {
+            void this.closePeer(peer).catch(() => {});
+            continue;
+          }
           peer.videoGeneration++;
           peer.videoQueue.length = 0;
           peer.lastVideoTimestamp = null;
@@ -341,7 +345,7 @@ export class WebRtcManager {
       }
       const timestamp = kind === 'video' ? rtpTimestamp(event.timestamp, 90000) : event.audioSamplePosition >>> 0;
       const audioSamples = kind === 'audio' ? event.audioSampleCount : 0;
-      const packets = kind === 'video' ? packetizeH264(bytes) : [{ payload: bytes,
+      const packets = kind === 'video' ? (this.videoConfigs.get(peer.sessionId)?.codec === 'vp8' ? packetizeVp8(bytes) : packetizeH264(bytes)) : [{ payload: bytes,
         marker: peer.audioNextTimestamp == null || peer.audioNextTimestamp !== timestamp }];
       for (const { payload, marker } of packets) {
         if (peer.closed || (kind === 'video' && generation !== peer.videoGeneration)) return;

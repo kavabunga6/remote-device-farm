@@ -8,7 +8,7 @@ import { HEARTBEAT_INTERVAL_MS, HEARTBEAT_TIMEOUT_MS, INPUT_BUFFER_LIMIT, reconn
 import { createSessionRtc, type RtcConfiguration } from './session-rtc';
 
 export type StreamStatus = 'connecting' | 'live' | 'disconnected' | 'unsupported';
-export type StreamTransport = 'scrcpy' | 'mjpeg' | 'images' | 'webrtc' | null;
+export type StreamTransport = 'scrcpy' | 'native' | 'mjpeg' | 'images' | 'webrtc' | null;
 export type ConnectionMode = 'websocket' | 'webrtc';
 export type StreamMetrics = { rttMs: number | null; fps: number | null; iceRttMs: number | null; packetsLost: number | null };
 export type SessionAudioState = 'disabled' | 'connecting' | 'waiting' | 'unlock' | 'receiving' | 'silent' | 'unavailable';
@@ -225,7 +225,7 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
         if (width && height) setSize(previous => previous.width === width && previous.height === height ? previous : { width, height });
         setFormat(format); if (transport) setTransport(transport); setStatus('live');
       },
-      connecting: () => { setTransport('scrcpy'); setStatus('connecting'); }, fail: failVideo,
+      connecting: (transport = 'scrcpy') => { setTransport(transport); setStatus('connecting'); }, fail: failVideo,
       requestKeyframe: () => socket.send(JSON.stringify({ type: 'request-keyframe' })),
     });
 
@@ -273,7 +273,7 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
       // Transport capability can change without a new codec configuration (including identical SPS/PPS).
       if (message.type === 'frame' || message.type === 'video-config') setNativeTouches(message.nativeTouches === true);
 
-      if (rtc && message.type === 'video-config' && message.data) { rtcVideoConfigured = true; maybeStartRtc(); }
+      if (rtc && message.type === 'video-config' && (message.data || message.codec === 'vp8')) { rtcVideoConfigured = true; maybeStartRtc(); }
       if (rtc && (message.type === 'frame' || message.type === 'video-config' || message.type === 'video-frame')) return;
 
       video.handle(message);

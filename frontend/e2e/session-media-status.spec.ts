@@ -176,6 +176,21 @@ test('transport status follows received frames and disconnect rather than the co
   await expect(video).toHaveText('Видео: нет связи');
 });
 
+for (const theme of ['light', 'dark']) for (const language of ['ru', 'ar']) test(`native source status stays readable in ${theme} theme / ${language}`, async ({ page }, info) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: { theme, fontScale: 1.5, fontFamily: 'system' } } }));
+  await mediaFixture(page, { audioEnabled: false }); await openMedia(page);
+  await sendImage(page, 'image/png');
+  await expect(page.locator('[data-media="video"]')).toHaveText('Кадры');
+  if (language === 'ar') await page.evaluate(async () => { const { setLanguage } = await import('/src/i18n.ts'); await setLanguage('ar'); });
+  await sendMedia(page, { type: 'video-config', codec: 'vp8', width: 720, height: 1280 });
+  await sendMedia(page, { type: 'video-frame', codec: 'vp8', keyframe: true, timestamp: 0, data: 'AA==' });
+  const badge = page.locator('[data-media="video"]');
+  await expect(badge).toHaveText(language === 'ar' ? 'WebRTC للمحاكي' : 'WebRTC эмулятора'); await expect(badge).toHaveAttribute('data-state', 'live');
+  expect(await badge.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: info.outputPath(`native-source-${theme}-${language}.png`) });
+});
+
 test('audio distinguishes silence from a signal and the transmission toggle is independent of Android volume', async ({ page }) => {
   const { toggles } = await mediaFixture(page);
   const audio = page.locator('[data-media="audio"]');

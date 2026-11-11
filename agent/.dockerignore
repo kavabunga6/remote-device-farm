@@ -9,3 +9,7 @@ coverage
 *.key
 adbkey
 adbkey.pub
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache

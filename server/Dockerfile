@@ -19,7 +19,7 @@ COPY --from=rdf_agent_sources /emulator-image ./emulator-image
 RUN mkdir /out && \
     case "$AGENT_BUNDLE_VERSION" in *[!A-Za-z0-9._-]*|'') exit 1;; esac && \
     mv compose.bundle.yaml compose.agent.yaml && \
-    tar -czf "/out/rdf-linux-agent-${AGENT_BUNDLE_VERSION}.tar.gz" . && \
+    tar -czf "/out/rdf-linux-agent-${AGENT_BUNDLE_VERSION}.tar.gz" --exclude='__pycache__' --exclude='*.pyc' --exclude='*.pyo' . && \
     sha256sum "/out/rdf-linux-agent-${AGENT_BUNDLE_VERSION}.tar.gz" | cut -d' ' -f1 > /out/sha256.txt && \
     printf '%s' "$AGENT_BUNDLE_VERSION" > /out/version.txt
 

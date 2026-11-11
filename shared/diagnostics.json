@@ -589,5 +589,12 @@
   "physical.0ae08a9bf1": "Cleaning {p0} crashed: {p1}",
   "wipe.a93f85be0e": "adb {p0} failed: {p1}",
   "connection.serverUrlInvalid": "AGENT_SERVER_URL must be an http:// or https:// server address without credentials, path, query or fragment, and must agree with AGENT_BROKER_URL when both are set",
-  "rtc-config.direct_connections": "AGENT_ALLOW_DIRECT_CONNECTIONS must be 0 or 1"
+  "rtc-config.direct_connections": "AGENT_ALLOW_DIRECT_CONNECTIONS must be 0 or 1",
+  "native.grpc.invalid": "Invalid native emulator gRPC response",
+  "native.grpc.timeout": "Native emulator gRPC request timed out",
+  "native.rtc.closed": "Native emulator stream is closed",
+  "native.rtc.frame_timeout": "Native emulator did not produce a decodable video frame",
+  "native.rtc.input": "Native emulator input is unavailable",
+  "native.rtc.config": "AGENT_EMULATOR_STREAM must be scrcpy or native",
+  "native.rtc.fallback": "Native emulator stream failed for {p0}: {p1}; using scrcpy"
 }

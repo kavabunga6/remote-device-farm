@@ -3743,5 +3743,7 @@
   "performance.rssShort": "RSS",
   "performance.processInterval": "अपडेट का अंतराल",
   "sessionAudio.silence": "ऑडियो में आवाज़ नहीं",
-  "sessionAudio.silenceDetail": "ऑडियो डेटा आ रहा है, लेकिन स्ट्रीम में आवाज़ नहीं है। Android ऐप में आवाज़ की सेटिंग देखें।"
+  "sessionAudio.silenceDetail": "ऑडियो डेटा आ रहा है, लेकिन स्ट्रीम में आवाज़ नहीं है। Android ऐप में आवाज़ की सेटिंग देखें।",
+  "sessionVideo.native": "एम्युलेटर WebRTC",
+  "sessionVideo.nativeDetail": "एम्युलेटर की WebRTC वीडियो स्ट्रीम सर्वर के ज़रिए भेजी जाती है।"
 }

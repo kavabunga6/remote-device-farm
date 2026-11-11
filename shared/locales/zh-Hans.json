@@ -3743,5 +3743,7 @@
   "performance.rssShort": "RSS",
   "performance.processInterval": "刷新间隔",
   "sessionAudio.silence": "音频：静音",
-  "sessionAudio.silenceDetail": "已收到音频数据，但当前没有声音。请检查 Android 应用内的声音设置。"
+  "sessionAudio.silenceDetail": "已收到音频数据，但当前没有声音。请检查 Android 应用内的声音设置。",
+  "sessionVideo.native": "模拟器 WebRTC",
+  "sessionVideo.nativeDetail": "模拟器的 WebRTC 视频流通过服务器转发。"
 }

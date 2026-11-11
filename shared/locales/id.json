@@ -3743,5 +3743,7 @@
   "performance.rssShort": "RSS",
   "performance.processInterval": "Interval pembaruan",
   "sessionAudio.silence": "Audio senyap",
-  "sessionAudio.silenceDetail": "Data audio diterima, tetapi siaran tidak bersuara. Periksa pengaturan suara di aplikasi Android."
+  "sessionAudio.silenceDetail": "Data audio diterima, tetapi siaran tidak bersuara. Periksa pengaturan suara di aplikasi Android.",
+  "sessionVideo.native": "WebRTC emulator",
+  "sessionVideo.nativeDetail": "Video WebRTC dari emulator diteruskan melalui server."
 }

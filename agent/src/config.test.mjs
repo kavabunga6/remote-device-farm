@@ -105,6 +105,13 @@ test('optional NVIDIA Xorg module path is validated at startup', () => {
   }
   assert.equal(validateNvidiaXorgModuleDir(undefined), null);
 });
+
+test('native emulator streaming is opt-in and rejects misspelled backends', () => {
+  const env = { AGENT_BROKER_URL: 'ws://broker/agent/connect', AGENT_TOKEN: 'a'.repeat(32), AGENT_ID: 'agent-1' };
+  assert.equal(loadConfig(env).emulatorStream, 'scrcpy');
+  assert.equal(loadConfig({ ...env, AGENT_EMULATOR_STREAM: 'native' }).emulatorStream, 'native');
+  assert.throws(() => loadConfig({ ...env, AGENT_EMULATOR_STREAM: 'other' }), /AGENT_EMULATOR_STREAM/);
+});
 test('physical phones are enabled only with an allowlist and an explicit wipe strategy', () => {
   const env = { AGENT_BROKER_URL: 'ws://x', AGENT_TOKEN: 'a'.repeat(32), AGENT_ID: 'agent-1' };
   assert.equal(loadConfig(env).usb.enabled, false);

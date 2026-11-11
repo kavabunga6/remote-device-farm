@@ -52,6 +52,30 @@ function fixture(t, options = {}) {
     offer: (canControl = true, peerId = PEER) => rtc.offer(SESSION, 'device:5555', {peerId, description: SDP, canControl})};
 }
 
+test('VP8 native frames negotiate without SPS/PPS and are relayed without H264 headers', async t => {
+  const f = fixture(t);
+  f.rtc.publish({ type: 'video-config', sessionId: SESSION, codec: 'vp8', width: 1080, height: 2400, data: null });
+  await f.offer();
+  const data = Buffer.from([0x10, 0, 0, 0x9d, 1, 0x2a, 0x38, 4, 0x60, 9]);
+  f.rtc.publish({ type: 'video-frame', sessionId: SESSION, codec: 'vp8', data: data.toString('base64'), keyframe: true, timestamp: 1000 });
+  await until(() => f.pcs[0].packets.length === 1);
+  assert.deepEqual(f.pcs[0].packets[0].packet.payload.subarray(1), data);
+  assert.equal(f.pcs[0].packets[0].packet.payload[0], 0x10);
+});
+
+test('switching native VP8 to H264 closes the negotiated peer and permits reconnection', async t => {
+  const f = fixture(t);
+  f.rtc.publish({ type: 'video-config', sessionId: SESSION, codec: 'vp8', width: 1080, height: 2400, data: null });
+  await f.offer();
+  f.rtc.publish({ type: 'video-config', sessionId: SESSION, codec: 'h264', width: 720, height: 1280, data: configBytes(9).toString('base64') });
+  await until(() => f.rtc.peers.size === 0);
+  assert.equal(f.pcs[0].closed, 1);
+  await f.offer();
+  f.rtc.publish(frame(true));
+  await until(() => f.pcs[1].packets.length > 0);
+  assert.equal(f.pcs[1].closed, 0);
+});
+
 test('control and view-only peers both require server lease renewal; only controllers release input', async t => {
   t.mock.timers.enable({apis: ['setInterval']});
   const f = fixture(t);

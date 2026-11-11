@@ -1,10 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { annexBNals, h264Profile, packetizeH264, rtpTimestamp, opusPacketSamples, OpusRtpClock } from './rtc-media.mjs';
+import { annexBNals, h264Profile, packetizeH264, packetizeVp8, rtpTimestamp, opusPacketSamples, OpusRtpClock } from './rtc-media.mjs';
+import { NativeVp8Frames } from './native-rtc-media.mjs';
 import { loadRtcConfig } from './rtc-config.mjs';
 import { rtcInputParams } from './webrtc.mjs';
 
 const sps = Buffer.from([0, 0, 0, 1, 0x67, 0x42, 0xc0, 0x1f, 9]);
+test('VP8 RTP packetization preserves native access units and marks only the last fragment', () => {
+  const data = Buffer.concat([Buffer.from([0x10, 0, 0, 0x9d, 1, 0x2a, 0x38, 4, 0x60, 9]), Buffer.alloc(5000, 42)]);
+  const packets = packetizeVp8(data, 500), decoder = new NativeVp8Frames(); let result;
+  for (const [sequenceNumber, p] of packets.entries()) result = decoder.push({ header: { sequenceNumber, timestamp: 42, marker: p.marker }, payload: p.payload });
+  assert.deepEqual(result.data, data); assert.equal(result.keyframe, true);
+  assert.equal(packets.filter(p => p.marker).length, 1);
+  assert.throws(() => packetizeVp8(data, 1));
+});
 test('Annex B preserves mixed start codes and extracts actual encoder profile', () => {
   const data = Buffer.concat([sps, Buffer.from([0, 0, 1, 0x68, 42])]);
   assert.equal(h264Profile(data), '42c01f');

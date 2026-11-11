@@ -205,7 +205,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     event.currentTarget.setPointerCapture(event.pointerId);
     touchIndicator.down(event);
     const position = point(event);
-    const live = stream.inputReady && stream.format === 'video' && stream.send({ kind: 'touch', action: 'down', pointerId: 0, ...position });
+    const live = stream.inputReady && (stream.format === 'video' || stream.nativeTouches) && stream.send({ kind: 'touch', action: 'down', pointerId: 0, ...position });
     pointerStartRef.current = { ...position, time: Date.now(), pointerId: event.pointerId, live, lastMoveAt: 0, lastX: position.x, lastY: position.y };
     event.currentTarget.focus();
   };

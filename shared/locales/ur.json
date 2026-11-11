@@ -3743,5 +3743,7 @@
   "performance.rssShort": "RSS",
   "performance.processInterval": "اپ ڈیٹ کا وقفہ",
   "sessionAudio.silence": "آڈیو میں آواز نہیں",
-  "sessionAudio.silenceDetail": "آڈیو ڈیٹا موصول ہو رہا ہے، مگر اسٹریم میں آواز نہیں ہے۔ Android ایپ میں آواز چیک کریں۔"
+  "sessionAudio.silenceDetail": "آڈیو ڈیٹا موصول ہو رہا ہے، مگر اسٹریم میں آواز نہیں ہے۔ Android ایپ میں آواز چیک کریں۔",
+  "sessionVideo.native": "ایمولیٹر WebRTC",
+  "sessionVideo.nativeDetail": "ایمولیٹر کی WebRTC ویڈیو اسٹریم سرور کے ذریعے بھیجی جاتی ہے۔"
 }

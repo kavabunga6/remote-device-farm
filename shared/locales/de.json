@@ -3743,5 +3743,7 @@
   "performance.rssShort": "RSS",
   "performance.processInterval": "Aktualisierungsintervall",
   "sessionAudio.silence": "Audio stumm",
-  "sessionAudio.silenceDetail": "Audiodaten kommen an, aber der Stream ist stumm. Prüfen Sie den Ton in der Android-App."
+  "sessionAudio.silenceDetail": "Audiodaten kommen an, aber der Stream ist stumm. Prüfen Sie den Ton in der Android-App.",
+  "sessionVideo.native": "Emulator-WebRTC",
+  "sessionVideo.nativeDetail": "Der WebRTC-Videostream des Emulators wird über den Server weitergeleitet."
 }

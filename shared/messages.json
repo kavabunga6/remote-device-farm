@@ -14978,5 +14978,13 @@
   "sessionAudio.silenceDetail": {
     "ru": "Аудиоданные поступают, но в потоке тишина. Проверьте звук в приложении Android.",
     "en": "Audio is arriving, but the stream is silent. Check the sound in the Android app."
+  },
+  "sessionVideo.native": {
+    "ru": "WebRTC эмулятора",
+    "en": "Emulator WebRTC"
+  },
+  "sessionVideo.nativeDetail": {
+    "ru": "Видео из WebRTC-потока эмулятора передаётся через сервер.",
+    "en": "The emulator’s WebRTC video stream is relayed through the server."
   }
 }

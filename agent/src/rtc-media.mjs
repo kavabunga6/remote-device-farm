@@ -38,6 +38,16 @@ export function rtpTimestamp(microseconds, rate) {
   return Number((BigInt(microseconds) * BigInt(rate) / 1000000n) & 0xffffffffn);
 }
 
+export function packetizeVp8(data, maxPayload = 1100) {
+  if (!Number.isInteger(maxPayload) || maxPayload < 2) throw new Error(diagnostic('rtc-media.54207a1285'));
+  const packets = [];
+  for (let offset = 0; offset < data.length; offset += maxPayload - 1) {
+    const end = Math.min(data.length, offset + maxPayload - 1);
+    packets.push({ payload: Buffer.concat([Buffer.from([offset === 0 ? 0x10 : 0]), data.subarray(offset, end)]), marker: end === data.length });
+  }
+  return packets;
+}
+
 // Opus TOC frame duration/count, expressed on its fixed 48 kHz RTP clock.
 // RFC 6716 section 3.1: an Opus packet contains at most 120 ms of audio.
 export function opusPacketSamples(data) {
