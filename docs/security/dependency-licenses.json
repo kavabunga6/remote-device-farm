@@ -2463,7 +2463,7 @@
     },
     {
       "component": "integrations/mcp",
-      "lockSha256": "a5c7f381bd20d29b3a3d932120245eefa6310e702e946043a604cbb4dc159ea0",
+      "lockSha256": "627a6fe105091cd16fcdd2aaf75322ed727d8775df5ff338d76a53e9bbeb9ee8",
       "packages": [
         {
           "name": "@hono/node-server",
@@ -2687,7 +2687,7 @@
         },
         {
           "name": "hono",
-          "version": "4.13.13",
+          "version": "4.13.18",
           "license": "MIT"
         },
         {
