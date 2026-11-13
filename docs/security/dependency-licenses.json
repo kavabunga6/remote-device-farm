@@ -712,7 +712,7 @@
     },
     {
       "component": "examples/appium",
-      "lockSha256": "7da0b7df9126191ec5ae9561176e1d8300f8fb701ca02fe32db231750d5df9ab",
+      "lockSha256": "d7c2b1d681f80c4651b17e8a6b60e04c2d36ae639b329f3603e215e58ca956d7",
       "packages": [
         {
           "name": "@appium/base-driver",
@@ -913,6 +913,11 @@
           "name": "@img/sharp-win32-x64",
           "version": "0.35.5",
           "license": "Apache-2.0 AND LGPL-3.0-or-later"
+        },
+        {
+          "name": "@isaacs/nonrecursive-glob-match",
+          "version": "1.1.0",
+          "license": "BlueOak-1.0.0"
         },
         {
           "name": "@sidvind/better-ajv-errors",
@@ -1551,7 +1556,7 @@
         },
         {
           "name": "glob",
-          "version": "13.0.6",
+          "version": "14.0.2",
           "license": "BlueOak-1.0.0"
         },
         {
@@ -1821,7 +1826,7 @@
         },
         {
           "name": "minimatch",
-          "version": "10.2.6",
+          "version": "11.0.1",
           "license": "BlueOak-1.0.0"
         },
         {
@@ -1921,7 +1926,7 @@
         },
         {
           "name": "path-scurry",
-          "version": "2.0.2",
+          "version": "3.0.0",
           "license": "BlueOak-1.0.0"
         },
         {

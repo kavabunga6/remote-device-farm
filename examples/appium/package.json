@@ -10,6 +10,7 @@
   },
   "scripts": {
     "test": "node run.mjs",
+    "test:dependencies": "node --test dependencies.test.mjs",
     "build:driver": "node build-driver.mjs"
   },
   "devDependencies": {
@@ -30,6 +31,8 @@
     "proxy-addr": "2.0.8",
     "sharp": "0.35.5",
     "body-parser": "2.4.0",
-    "fast-uri": "4.2.3"
+    "fast-uri": "4.2.3",
+    "glob@>=9": "14.0.2",
+    "minimatch@>=7": "11.0.1"
   }
 }

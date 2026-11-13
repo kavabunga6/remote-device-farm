@@ -162,6 +162,7 @@ jobs:
           cache-dependency-path: examples/appium/package-lock.json
       - run: npm ci --ignore-scripts
       - run: npm run build:driver
+      - run: npm run test:dependencies
       - name: Verify Appium and pinned driver can load
         run: |
           node node_modules/appium/index.js --version
@@ -169,7 +170,7 @@ jobs:
           node --input-type=module -e "const { AndroidUiautomator2Driver } = await import('appium-uiautomator2-driver'); if (typeof AndroidUiautomator2Driver !== 'function') throw new Error('UiAutomator2 driver did not load')"
           node --input-type=module -e "const { default: sharp } = await import('sharp'); const png = await sharp({ create: { width: 2, height: 2, channels: 3, background: 'red' } }).png().toBuffer(); if (png.readUInt32BE(0) !== 0x89504e47) throw new Error('Sharp PNG encoding failed')"
       - name: Audit pinned Appium dependencies
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=moderate
 
   verify:
     runs-on: ubuntu-24.04
