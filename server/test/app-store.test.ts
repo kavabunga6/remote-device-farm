@@ -183,7 +183,7 @@ const SESSION_A = 'a0000000-0000-4000-8000-000000000001';
 
 type Call = { action: string; params: Record<string, unknown> };
 
-async function harness(apps: Partial<Config['apps']> = {}) {
+async function harness(apps: Partial<Config['apps']> = {}, hooks: { usage?: () => Promise<void> } = {}) {
   const db = new PGlite();
   for (const file of MIGRATIONS) await db.exec(await readFile(new URL(`../migrations/${file}.sql`, import.meta.url), 'utf8'));
   await db.query("INSERT INTO users(id,provider,subject,username,display_name) VALUES($1,'local','a','a','A'),($2,'local','b','b','B')", [USER_A, USER_B]);
@@ -198,7 +198,10 @@ async function harness(apps: Partial<Config['apps']> = {}) {
     [ADMIN]: { id: ADMIN, username: 'root', displayName: 'Root', role: 'admin', provider: 'local' },
   };
   const calls: Call[] = [];
-  const pool = { query: db.query.bind(db) } as unknown as Pool;
+  const pool = { query: async (sql: string, values?: unknown[]) => {
+    if (sql.startsWith('SELECT COUNT(*)::int AS count')) await hooks.usage?.();
+    return db.query(sql, values);
+  } } as unknown as Pool;
   const auth = { authenticate: async () => ({ user: users[state.actor], via: 'cookie' }) } as unknown as AuthService;
   const hub = {
     hasAgent: () => true,
@@ -324,6 +327,38 @@ test('size, space and count limits are enforced', async () => {
     assert.equal((await few.upload(apk([filler(10, 2)]))).status, 201);
     assert.equal(await code(await few.upload(apk([filler(10, 3)]))), 'app_limit');
   } finally { await few.close(); }
+});
+
+test('upload admission blocks a second request while the first quota check is pending', async () => {
+  let entered!: () => void, release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  let checks = 0;
+  const h = await harness({}, { usage: async () => { if (++checks === 1) { entered(); await pending; } } });
+  const first = h.upload(apk(), 'first.apk').then(async response => { await response.arrayBuffer(); return response; });
+  try {
+    await started;
+    const second = await h.upload(apk([{ name: 'asset', data: Buffer.from('different') }]), 'second.apk');
+    assert.equal(second.status, 429);
+    assert.equal(await code(second), 'upload_busy');
+    release();
+    assert.equal((await first).status, 201);
+    const listed = await (await h.send('/api/apps')).json() as { apps: unknown[] };
+    assert.equal(listed.apps.length, 1);
+    assert.equal((await readdir(path.join(h.dir, USER_A))).length, 1);
+  } finally { release(); await first; await h.close(); }
+});
+
+test('upload admission is released when the initial quota query fails', async () => {
+  let checks = 0;
+  const h = await harness({}, { usage: async () => {
+    if (++checks === 1) throw new ApiError(503, 'temporarily_unavailable', 'Temporary database failure');
+  } });
+  try {
+    assert.equal((await h.upload(apk())).status, 503);
+    const retry = await h.upload(apk());
+    assert.equal(retry.status, 201); await retry.arrayBuffer();
+  } finally { await h.close(); }
 });
 
 test('apps belong to their owner: nobody else can list, delete or install them', async () => {

@@ -96,12 +96,12 @@ export function registerAppRoutes(app: Express, context: ServerContext): void {
     if (uploading.size >= 4 || uploading.has(user.id)) throw new ApiError(429, 'upload_busy', uiMessage('ui.68185b022a6e', {}, 'en'));
     const declared = Number(req.headers['content-length']);
     if (Number.isFinite(declared) && declared > store.maxFileBytes + 64 * 1024) throw new ApiError(413, 'app_too_large', uiMessage('ui.7ca24428a99c', { p0: Math.floor(store.maxFileBytes / 1048576) }, 'en'));
-    const before = await usage(user.id);
-    if (before.count >= store.maxApps) throw new ApiError(409, 'app_limit', uiMessage('ui.82a09812c13e', { p0: store.maxApps }, 'en'));
-    if (before.usedBytes >= store.maxUserBytes) throw new ApiError(413, 'quota_exceeded', uiMessage('ui.c3a3800eb31c', {}, 'en'));
     uploading.add(user.id);
     (req as Request & { appUserId?: string }).appUserId = user.id;
     try {
+      const before = await usage(user.id);
+      if (before.count >= store.maxApps) throw new ApiError(409, 'app_limit', uiMessage('ui.82a09812c13e', { p0: store.maxApps }, 'en'));
+      if (before.usedBytes >= store.maxUserBytes) throw new ApiError(413, 'quota_exceeded', uiMessage('ui.c3a3800eb31c', {}, 'en'));
       await runUpload(req, res);
       const received = req.file;
       const appId = (req as Request & { appId?: string }).appId;
