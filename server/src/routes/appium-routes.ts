@@ -1,5 +1,6 @@
 import type { Express } from 'express';
 import type { ServerContext } from '../server-context.js';
+import { revalidateRequestAuth } from '../server-context.js';
 import { ApiError, route } from '../http-common.js';
 import { assertPermission } from '../permissions.js';
 import { uiMessage } from '../messages.js';
@@ -12,10 +13,11 @@ export function appiumCommandError(error:unknown):ApiError {
 
 export function registerAppiumRoutes(app: Express, context: ServerContext): void {
   const { requireAuth, current, ownedSession, hub, activity } = context;
+  const permissions = ['sessions.control', 'sessions.files', 'sessions.console'];
   const handle = route(async (req, res) => {
     const user = current(res).user;
     // Appium can inspect and modify application data, not just the visible screen.
-    for (const permission of ['sessions.control', 'sessions.files', 'sessions.console']) assertPermission(user, permission);
+    for (const permission of permissions) assertPermission(user, permission);
     const session = await ownedSession(req.params.id!, current(res), true);
     const resource = '/' + req.params[0];
     if (!['GET', 'POST', 'DELETE'].includes(req.method) || req.originalUrl.includes('?') ||
@@ -28,6 +30,8 @@ export function registerAppiumRoutes(app: Express, context: ServerContext): void
     try { result = await hub.command(session.hostId, session.id, 'appium',
       { method: req.method, path: resource, ...(req.method === 'POST' ? { body: req.body } : {}) }, 190_000); }
     catch(error) { throw appiumCommandError(error); }
+    const fresh = await revalidateRequestAuth(context, req, res, permissions);
+    await ownedSession(session.id, fresh, true);
     const status = Number(result.status);
     if (!Number.isInteger(status) || status < 200 || status > 599 || !result.body || typeof result.body !== 'object') {
       throw new ApiError(502, 'appium_unavailable', uiMessage('appium.failed'));

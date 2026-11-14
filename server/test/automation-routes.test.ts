@@ -51,3 +51,35 @@ test('automation routes enforce owner, role revocation, upload limits and Appium
     assert.equal((await request('GET', '/api/sessions/' + id + '/ui', member)).status, 200);
   } finally { await f.close(); }
 });
+
+test('Appium never delivers a pending reply after permission, login or lease revocation', async t => {
+  for (const mode of ['permission', 'login', 'lease'] as const) await t.test(mode, async () => {
+    const f = await apiFixture();
+    try {
+      const signed = await fetch(f.url + '/api/login', { method: 'POST',
+        headers: { origin: f.url, 'content-type': 'application/json' }, body: JSON.stringify(memberCredentials) });
+      assert.equal(signed.status, 200); await signed.arrayBuffer();
+      const headers = { cookie: signed.headers.get('set-cookie')!.split(';')[0]!, origin: f.url, 'content-type': 'application/json' };
+      const created = await fetch(f.url + '/api/sessions', { method: 'POST', headers,
+        body: JSON.stringify({ hostId: 'contract-node', profileId: 'contract-profile' }) });
+      assert.equal(created.status, 202);
+      const { session } = await created.json() as any;
+      const deadline = Date.now() + 5000;
+      while (true) {
+        const state = await fetch(f.url + '/api/sessions/' + session.id, { headers });
+        if ((await state.json() as any).session.state === 'running') break;
+        assert.ok(Date.now() < deadline); await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      f.hub.command = async (_host, _session, action) => {
+        assert.equal(action, 'appium');
+        if (mode === 'permission') await f.pool.query("UPDATE access_roles SET permissions=array_remove(permissions,'sessions.files') WHERE builtin='user'");
+        if (mode === 'login') await f.pool.query("DELETE FROM browser_sessions WHERE user_id=(SELECT id FROM users WHERE username=$1)", [memberCredentials.username]);
+        if (mode === 'lease') await f.pool.query("UPDATE sessions SET state='stopped',ended_at=now() WHERE id=$1", [session.id]);
+        return { status: 200, body: { value: 'private-pending-device-reply' } };
+      };
+      const response = await fetch(f.url + '/api/sessions/' + session.id + '/appium/status', { headers });
+      assert.equal(response.status, { permission: 403, login: 401, lease: 409 }[mode]);
+      assert.doesNotMatch(await response.text(), /private-pending-device-reply/);
+    } finally { await f.close(); }
+  });
+});

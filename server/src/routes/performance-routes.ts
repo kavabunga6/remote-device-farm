@@ -4,6 +4,7 @@ import { ApiError, isUuid, route } from '../http-common.js';
 import { hasPermission } from '../permissions.js';
 import { uiMessage } from '../messages.js';
 import type { ServerContext } from '../server-context.js';
+import { revalidateRequestAuth } from '../server-context.js';
 import { containerSample, isEmulatorRental, processSnapshot, sessionCrash } from '../session-performance.js';
 
 const MAX_TRACE_BYTES = 5 * 1024 * 1024;
@@ -15,7 +16,8 @@ const unavailableMessage = {
   trace: 'performance.traceUnavailable',
 } as const;
 
-export function registerPerformanceRoutes(app: Express, { pool, hub, requireAuth, current, ownedSession }: ServerContext) {
+export function registerPerformanceRoutes(app: Express, context: ServerContext) {
+  const { pool, hub, requireAuth, current, ownedSession } = context;
   async function sessionFor(req: Request, res: Response) {
     const session = await ownedSession(req.params.id!, current(res));
     if (session.deviceKind !== 'emulator') {
@@ -34,11 +36,14 @@ export function registerPerformanceRoutes(app: Express, { pool, hub, requireAuth
   }
   async function collect(req: Request, res: Response, action: Exclude<Action, 'trace'>, timeout: number) {
     const session = await runningSession(req, res);
-    try { return await hub.command(session.hostId, session.id, 'performance-' + action, {}, timeout); }
+    let result;
+    try { result = await hub.command(session.hostId, session.id, 'performance-' + action, {}, timeout); }
     catch (error) {
       if (error instanceof ApiError) throw error;
       throw unavailable(action);
     }
+    await ownedSession(session.id, await revalidateRequestAuth(context, req, res), true);
+    return result;
   }
 
   app.get('/api/sessions/:id/performance', requireAuth, route(async (req, res) => {
@@ -84,7 +89,7 @@ export function registerPerformanceRoutes(app: Express, { pool, hub, requireAuth
       } finally {
         void command('release', {}, 5000).catch(() => {});
       }
-      await runningSession(req, res);
+      await ownedSession(session.id, await revalidateRequestAuth(context, req, res), true);
       if (!res.destroyed) res.attachment('android.perfetto-trace').type('application/octet-stream').send(trace);
     } finally {
       res.off('close', close);

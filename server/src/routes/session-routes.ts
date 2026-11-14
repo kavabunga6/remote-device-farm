@@ -8,6 +8,7 @@ import multer from 'multer';
 import { newToken, tokenHash } from '../auth.js';
 import { parseSessionAdbKeyId } from '../user-adb-keys.js';
 import type { ServerContext } from '../server-context.js';
+import { revalidateRequestAuth } from '../server-context.js';
 import { ApiError, boundedString, inputParams, route, safeUploadName, sessionJson,
          type Session } from '../http-common.js';
 import { withDeadlines } from '../session-lifecycle.js';
@@ -168,6 +169,7 @@ export function registerSessionRoutes(app: Express, context: ServerContext): voi
       throw new ApiError(400, 'invalid_adb', uiMessage('ui.7c8ef6918fbc', {}, 'en'));
     }
     const result = await hub.command(session.hostId, session.id, 'adb', { argv }, 120_000);
+    await ownedSession(session.id, await revalidateRequestAuth(context, req, res), true);
     res.json({ stdout: String(result.stdout || ''), stderr: String(result.stderr || ''), exitCode: Number(result.exitCode || 0) });
   }));
   app.post('/api/sessions/:id/keepalive', requireAuth, route(async (req, res) => {
@@ -231,11 +233,13 @@ export function registerSessionRoutes(app: Express, context: ServerContext): voi
   app.get('/api/sessions/:id/logcat/apps', requireAuth, route(async (req, res) => {
     const session = await ownedSession(req.params.id!, current(res), true);
     const result = await hub.command(session.hostId, session.id, 'logcat-apps', {}, 30_000);
+    await ownedSession(session.id, await revalidateRequestAuth(context, req, res), true);
     res.json({ apps: Array.isArray(result.apps) ? result.apps : [] });
   }));
   app.get('/api/sessions/:id/logcat', requireAuth, route(async (req, res) => {
     const session = await ownedSession(req.params.id!, current(res), true);
     const result = await hub.command(session.hostId, session.id, 'logcat', logcatParams(req.query), 30_000);
+    await ownedSession(session.id, await revalidateRequestAuth(context, req, res), true);
     res.json({ entries: Array.isArray(result.entries) ? result.entries : [], cursor: result.cursor ?? null, app: result.app ?? null });
   }));
   app.post('/api/sessions/:id/logcat/clear', requireAuth, route(async (req, res) => {
@@ -253,8 +257,8 @@ export function registerSessionRoutes(app: Express, context: ServerContext): voi
       screenshots.set(session.id, capture);
     }
     const frame = await capture;
-    // Recheck active sharing grants after the potentially slow device call.
-    await accessibleSession(context, req.params.id!, current(res), 'view', true);
+    // Recheck the login, current role and grant after the slow device call.
+    await accessibleSession(context, req.params.id!, await revalidateRequestAuth(context, req, res), 'view', true);
     if (frame.mime !== 'image/png' || typeof frame.data !== 'string' ||
         frame.data.length > 4 * Math.ceil(8 * 1024 * 1024 / 3) || !/^[A-Za-z0-9+/]*={0,2}$/.test(frame.data)) {
       throw new ApiError(502, 'invalid_screenshot', uiMessage('mcp.screenshotUnavailable', {}, 'en'));
@@ -278,6 +282,7 @@ export function registerSessionRoutes(app: Express, context: ServerContext): voi
       ),
     ]);
     const row = profile.rows[0] as Record<string, unknown> | undefined;
+    await ownedSession(session.id, await revalidateRequestAuth(context, req, res), true);
     res.json({
       ...info,
       session: {

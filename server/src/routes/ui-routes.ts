@@ -1,5 +1,6 @@
 import type { Express } from 'express';
 import type { ServerContext } from '../server-context.js';
+import { revalidateRequestAuth } from '../server-context.js';
 import { ApiError, route } from '../http-common.js';
 import { uiMessage } from '../messages.js';
 import { assertPermission } from '../permissions.js';
@@ -34,13 +35,19 @@ export function registerUiRoutes(app: Express, context: ServerContext): void {
     const session = await ownedSession(req.params.id!, current(res), true);
     activity.touch(session.id);
     res.setHeader('Cache-Control', 'no-store');
-    try { res.json(await hub.command(session.hostId, session.id, 'ui-tree', {}, 30_000)); } catch(error) { throw uiCommandError(error); }
+    let result;
+    try { result = await hub.command(session.hostId, session.id, 'ui-tree', {}, 30_000); } catch(error) { throw uiCommandError(error); }
+    await ownedSession(session.id, await revalidateRequestAuth(context, req, res), true);
+    res.json(result);
   }));
   app.post('/api/sessions/:id/ui/tap', requireAuth, route(async (req, res) => {
     assertPermission(current(res).user, 'sessions.control');
     const session = await ownedSession(req.params.id!, current(res), true);
     const selector = parseUiSelector(req.body?.selector);
     activity.touch(session.id);
-    try { res.json(await hub.command(session.hostId, session.id, 'ui-tap', { selector }, 30_000)); } catch(error) { throw uiCommandError(error); }
+    let result;
+    try { result = await hub.command(session.hostId, session.id, 'ui-tap', { selector }, 30_000); } catch(error) { throw uiCommandError(error); }
+    await ownedSession(session.id, await revalidateRequestAuth(context, req, res), true);
+    res.json(result);
   }));
 }

@@ -1,5 +1,6 @@
 import type { Express } from 'express';
 import type { ServerContext } from '../server-context.js';
+import { revalidateRequestAuth } from '../server-context.js';
 import { ApiError, route } from '../http-common.js';
 import { assertPermission } from '../permissions.js';
 import { uiMessage } from '../messages.js';
@@ -59,6 +60,9 @@ export function registerDeviceDebugRoutes(app: Express, context: ServerContext):
     try { result = await hub.command(session.hostId, session.id, feature, params, 60_000); }
     catch (error) { throw debugCommandError(error, feature); }
     finally { active--; const left = (pending.get(user.id) ?? 1) - 1; if (left) pending.set(user.id, left); else pending.delete(user.id); }
+    const permissions = ['sessions.console', ...(feature === 'network-inspector' ? ['sessions.env'] : []),
+      ...(format === 'har' || params.op === 'pcap' ? ['sessions.files'] : [])];
+    await ownedSession(session.id, await revalidateRequestAuth(context, req, res, permissions), true);
     if (req.method !== 'GET' && params.op !== 'pcap' && params.op !== 'document') {
       await pool.query(
         'INSERT INTO audit_events(actor_user_id,actor_username,subject_user_id,action,target_type,target_id,detail) ' +

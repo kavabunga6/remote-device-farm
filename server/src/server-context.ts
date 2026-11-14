@@ -3,7 +3,7 @@ import { assertPermission, hasPermission } from './permissions.js';
 import { requestPermission } from './request-permissions.js';
 import { uiMessage } from './messages.js';
 import type { Pool } from 'pg';
-import type { RequestHandler, Response } from 'express';
+import type { Request, RequestHandler, Response } from 'express';
 import { AuthService, type AuthContext } from './auth.js';
 import { AgentHub } from './agent.js';
 import type { Config } from './config.js';
@@ -39,6 +39,19 @@ export type ServerContext = {
   activity: ActivityTracker;
   policy: LifecyclePolicy;
 };
+
+// Device replies may arrive long after the request was admitted. Never use the
+// captured login or role to authorize delivery of a delayed response.
+export async function revalidateRequestAuth(server: ServerContext, req: Request, res: Response,
+  permissions: readonly string[] = []): Promise<AuthContext> {
+  const fresh = await server.auth.authenticate(req);
+  if (!fresh || fresh.user.id !== server.current(res).user.id)
+    throw new ApiError(401, 'unauthorized', uiMessage('ui.89858f87f6ca', {}, 'en'));
+  const permission = requestPermission(req.method, req.path);
+  if (permission) assertPermission(fresh.user, permission);
+  for (const required of permissions) assertPermission(fresh.user, required);
+  return fresh;
+}
 
 export function createServerContext(pool: Pool, config: Config, auth: AuthService,
                                     oidc: OidcService | undefined, hub: AgentHub): ServerContext {

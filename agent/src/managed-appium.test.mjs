@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, writeFile, rm, access, readFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile, rm, access, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { ManagedAppium, sessionCapabilities, validateAppiumRequest, assertAppiumAndroid } from './managed-appium.mjs';
@@ -104,4 +104,36 @@ test('closing drains pending creation and permanently rejects later requests', a
     assert.equal(manager.pending.size, 0);
     await assert.rejects(manager.request('later', 'owned-device', { method: 'GET', path: '/status' }));
   } finally { await rejected; await manager.close(); }
+});
+
+test('ending a lease during pending worker creation cannot start a process or retain its directory', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'rdf-appium-test-'));
+  let enter, release, spawned = 0;
+  const entered = new Promise(resolve => { enter = resolve; });
+  const gate = new Promise(resolve => { release = resolve; });
+  const manager = new ManagedAppium({ entry: process.execPath, temporaryRoot: root,
+    spawnImpl: () => { spawned++; throw new Error('A released lease must not spawn'); } });
+  const start = manager.start.bind(manager);
+  manager.start = async (...args) => { enter(); await gate; return start(...args); };
+  const lease = new AbortController();
+  const creating = manager.request('released', 'owned-device',
+    { method: 'POST', path: '/session', body: { capabilities: { alwaysMatch: {} } } }, { signal: lease.signal });
+  const rejected = assert.rejects(creating);
+  try {
+    await entered;
+    lease.abort();
+    await manager.stop('released');
+    release();
+    await rejected;
+    assert.equal(spawned, 0);
+    assert.equal(manager.workers.size, 0);
+    assert.equal(manager.pending.size, 0);
+    assert.equal(manager.ports.size, 0);
+    assert.deepEqual(await readdir(root), []);
+  } finally {
+    release(); await rejected; await manager.close();
+    assert.equal(path.dirname(path.resolve(root)), path.resolve(os.tmpdir()));
+    assert.ok(path.basename(root).startsWith('rdf-appium-test-'));
+    await rm(root, { recursive: true, force: true });
+  }
 });
