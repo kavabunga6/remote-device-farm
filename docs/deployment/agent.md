@@ -89,7 +89,14 @@ AGENT_SERVER_URL=https://farm.example.com:8443
 
 Сертификат сервера должен быть доверенным для Node.js внутри контейнера агента. `localhost` внутри этого контейнера указывает на него самого. Опубликованный только на loopback порт сервера недоступен через `host.docker.internal`: используйте общую Docker-сеть или настройте доступный с узла HTTPS-адрес. `AGENT_BROKER_URL` поддерживается для прежних конфигураций; если заданы оба параметра, они должны указывать на один сервер.
 
-### 3. Запустите агент
+### 3. Установите сетевую политику
+
+На Linux-узле установите [firewall и его ресурс политики](../../deploy/firewall/README.md#установка-на-узле-фермы)
+до запуска устройств. Новые управляющие bridge-сети запрещают межконтейнерные соединения; правила разрешают
+агенту открыть TCP/UDP-соединение к устройству и получить ответ, сохраняя запрет обратного доступа.
+Нужен включённый `net.bridge.bridge-nf-call-iptables=1`; инструкция включает сохранение настройки после перезагрузки.
+
+### 4. Запустите агент
 
 ```bash
 docker compose --env-file .env.agent -p rdf-agent -f compose.agent.yaml up --build -d
@@ -146,7 +153,24 @@ services:
 
 ID нового узла определяется из выданного токена и сохраняется при перезапуске. Указывать его и IP в интерфейсе не нужно. Старые токены с вручную заданным ID и bootstrap-токен сервера требуют прежнего `AGENT_ID`. Для одного и того же узла сохраняйте его конфигурацию и тома; не используйте один токен на нескольких машинах.
 
-3. Ограничьте доступ к файлу и запустите агент:
+3. Установите сетевую политику из каталога `firewall/` в архиве. Пример для systemd:
+
+```bash
+sudo install -m 0755 firewall/rdf-egress-firewall.sh /usr/local/sbin/
+sudo install -m 0644 firewall/network-policy.json /usr/local/sbin/
+sudo install -m 0644 firewall/rdf-egress-firewall.service /etc/systemd/system/
+printf 'br_netfilter\n' | sudo tee /etc/modules-load.d/rdf-bridge.conf
+printf 'net.bridge.bridge-nf-call-iptables = 1\n' | sudo tee /etc/sysctl.d/90-rdf-bridge.conf
+sudo modprobe br_netfilter
+sudo sysctl -p /etc/sysctl.d/90-rdf-bridge.conf
+sudo systemctl daemon-reload
+sudo systemctl enable --now rdf-egress-firewall
+```
+
+При другом init применяйте скрипт после запуска Docker и до выдачи устройств, сохраняя bridge netfilter
+включённым после перезагрузки. Без политики новые управляющие соединения запрещены.
+
+4. Ограничьте доступ к файлу и запустите агент:
 
 ```bash
 chmod 600 .env.agent
@@ -171,6 +195,12 @@ AGENT_ALLOWED_IMAGE_PREFIXES=us-docker.pkg.dev/android-emulator-268719/images/
 Значение `0` запрещает WebRTC, в том числе при `AGENT_WEBRTC_ENABLED=1` в существующей конфигурации. Агент не создаёт прямое соединение и не передаёт зрителю ICE-адреса или параметры STUN/TURN. Для передачи экрана выберите WebSocket.
 
 Чтобы разрешить дополнительный прямой транспорт, явно задайте `AGENT_ALLOW_DIRECT_CONNECTIONS=1` и [настройте WebRTC](../guides/transport-comparison.md). В этом режиме авторизованный зритель может узнать сетевые адреса узла. Настройки ADB при этом не меняются: подключение остаётся через сервер.
+
+## Обновление узла
+
+При обновлении узла сначала установите firewall и `network-policy.json` из новой версии, затем обновите
+агент. Старые сессии завершите и создайте заново: управляющие сети с прежними именами, настройками ICC
+или MAC агента повторно не используются. Подробности — в [инструкции сетевой изоляции](../../deploy/firewall/README.md).
 
 ## Образы и сборщик
 

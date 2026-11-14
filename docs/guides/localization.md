@@ -57,4 +57,4 @@ The source guard rejects visible JSX literals, literal labels and untranslated R
 
 Browser tests cover language persistence, search, keyboard navigation, download failures, both themes, enlarged text and switching while a device is open. Automated checks do not replace linguistic review.
 
-Docker builds receive the shared directory through the `rdf_ui_messages` build context configured in Compose and CI. Direct server or frontend builds must pass `--build-context rdf_ui_messages=../shared` from the corresponding directory.
+Docker builds receive the shared directory through the `rdf_ui_messages` build context configured in Compose and CI. Direct server or frontend builds must pass `--build-context rdf_ui_messages=../shared` from the corresponding directory. A direct server build also needs `--build-context rdf_agent_sources=../agent --build-context rdf_node_firewall=../deploy/firewall` to package the Linux agent and its node policy.

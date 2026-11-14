@@ -19,6 +19,7 @@ Run Android emulators on your own Linux/KVM servers and use them from a browser,
 | **Own image registry** | Build emulator images from the SDK catalog; manage versions, node caches, retention policies and cleanup from the UI. [Images](docs/guides/image-management.md) |
 | **Application library and diagnostics** | Store APKs and APK sets, select compatible .apks parts, inspect Logcat and WebViews, capture HTTP/HTTPS connection metadata, export HAR and retain startup/stop diagnostics. [Guides](docs/README.md) |
 | **Access administration** | Custom roles and permissions, users, personal API tokens and configurable authentication providers. [Security](SECURITY.md) |
+| **Per-session network policy** | Separate management and egress networks. The Linux node firewall permits agent-initiated control and blocks container-initiated access to the agent, host and other sessions. Requires the [node policy](deploy/firewall/README.md) and default container restrictions; [verification limits](docs/verification.md). |
 | **Self-hosted deployment** | Docker Compose for a single host or separate server and Linux/KVM agents, with HTTPS and backup/restore tooling. [Deployment](docs/deployment/server.md) |
 
 MCP ships from source as a local stdio adapter. CI packages also ship from source; external client/controller validation is incomplete. GPU and authentication-provider verification depends on the environment. [Tested and Not tested scenarios](docs/verification.md).
@@ -41,6 +42,9 @@ One Linux host requires Docker Engine 28+, Compose 2.30+ with BuildKit, Node.js 
 git clone https://github.com/kavabunga6/remote-device-farm.git
 cd remote-device-farm
 node scripts/init-local.mjs
+sudo modprobe br_netfilter
+sudo sysctl -w net.bridge.bridge-nf-call-iptables=1
+sudo sh deploy/firewall/rdf-egress-firewall.sh apply
 docker compose -f compose.yaml -f compose.agent.yaml -f compose.override.yaml up -d --build
 ```
 
@@ -51,6 +55,8 @@ Open [http://localhost:8088](http://localhost:8088). Sign in as **admin** with `
 3. After build validation and registry upload, enable the profile and create a session.
 
 Initial image downloads and builds take several minutes. Later sessions use cached images.
+
+Install the [persistent Linux node firewall](deploy/firewall/README.md) before allocating devices. New management networks disable Docker inter-container communication; the policy enables agent-initiated control. The agent archive includes the firewall scripts and matching policy resource. When upgrading, install the policy first, update the agent, then recreate older sessions; legacy management networks are rejected.
 
 > **Warning: prebuilt emulator images.** Third-party images, including vendor-published images, may disable ADB authentication or ignore supplied keys. A successful boot, a pinned digest or an ADB key environment variable does not establish that authentication is enforced. Before enabling a profile, verify that the emulator itself accepts a trusted key and rejects an independent untrusted client. Keep ADB, gRPC and emulator console endpoints isolated behind the service's access controls. [Image security requirements](docs/guides/images.md#готовые-сторонние-образы).
 

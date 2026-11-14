@@ -19,6 +19,7 @@ services:
       context: ./server
       additional_contexts:
         rdf_agent_sources: ./agent
+        rdf_node_firewall: ./deploy/firewall
         rdf_ui_messages: ./shared
       args:
         AGENT_BUNDLE_VERSION: ${RDF_RELEASE_VERSION:-0.1.0}

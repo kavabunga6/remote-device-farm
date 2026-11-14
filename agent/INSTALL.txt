@@ -1,6 +1,7 @@
 Remote Device Farm Linux agent
 
-This archive contains the agent source, Dockerfile and a standalone Compose file.
+This archive contains the agent source, Dockerfile, standalone Compose file and
+firewall/ with the Linux node policy and its systemd unit.
 It contains no enrollment token, TLS certificate, ADB private key or Docker socket.
 
 Requirements: Linux x86-64 with /dev/kvm, Docker Engine 28+ and Compose 2.30+.
@@ -11,9 +12,21 @@ Requirements: Linux x86-64 with /dev/kvm, Docker Engine 28+ and Compose 2.30+.
    AGENT_SLOTS=1
    The node ID is derived automatically from a newly issued token. Do not share
    the token or .env.agent with the archive; the token is shown only when issued.
-2. Start the agent:
+2. Install the node firewall before starting devices (systemd example):
+   sudo install -m 0755 firewall/rdf-egress-firewall.sh /usr/local/sbin/
+   sudo install -m 0644 firewall/network-policy.json /usr/local/sbin/
+   sudo install -m 0644 firewall/rdf-egress-firewall.service /etc/systemd/system/
+   printf 'br_netfilter\n' | sudo tee /etc/modules-load.d/rdf-bridge.conf
+   printf 'net.bridge.bridge-nf-call-iptables = 1\n' | sudo tee /etc/sysctl.d/90-rdf-bridge.conf
+   sudo modprobe br_netfilter
+   sudo sysctl -p /etc/sysctl.d/90-rdf-bridge.conf
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now rdf-egress-firewall
+   On other init systems, apply the script after Docker starts and before
+   devices can be allocated; keep bridge netfilter enabled across reboots.
+3. Start the agent:
    docker compose --env-file .env.agent -p rdf-agent -f compose.agent.yaml up --build -d
-3. Confirm the node appears online in the UI before starting emulators.
+4. Confirm the node appears online in the UI before starting emulators.
    AGENT_NAME and AGENT_HOST_IP are optional local settings. Existing manually
    assigned or bootstrap credentials still need their matching AGENT_ID;
    AGENT_BROKER_URL remains supported instead of AGENT_SERVER_URL.
@@ -31,6 +44,13 @@ server certificate. Keep TLS verification enabled. Docker registry trust is
 configured separately on the Docker host.
 
 The I/O agent has no Docker socket. Only agent-control has Docker access.
+Management bridges disable inter-container communication. The node firewall
+allows agent-initiated TCP/UDP and corresponding replies; without it, new control
+connections are blocked when bridge netfilter is enabled. Install the policy from
+the same version as the agent. Stop and recreate old sessions when upgrading;
+networks with legacy bridge names, ICC settings or endpoint MACs cannot be reused.
+Keep all emulator capabilities dropped and no-new-privileges enabled. Privileged
+containers and additional network capabilities are outside this isolation boundary.
 
 Docker images
 -------------

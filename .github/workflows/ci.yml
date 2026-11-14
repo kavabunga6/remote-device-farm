@@ -221,7 +221,7 @@ jobs:
         if: matrix.component == 'server'
         run: |
           chmod -R go-rwx package.json package-lock.json tsconfig.json src migrations
-          docker build --build-context rdf_ui_messages=../shared --build-context rdf_agent_sources=../agent --build-arg AGENT_BUNDLE_VERSION="${GITHUB_SHA::12}" --tag rdf-server-ci .
+          docker build --build-context rdf_ui_messages=../shared --build-context rdf_agent_sources=../agent --build-context rdf_node_firewall=../deploy/firewall --build-arg AGENT_BUNDLE_VERSION="${GITHUB_SHA::12}" --tag rdf-server-ci .
           docker run --rm --network none --user node --cap-drop ALL --read-only --entrypoint node rdf-server-ci --input-type=module -e "await import('pg'); await import('./dist/http-common.js')"
           docker run --rm --network none --user node --cap-drop ALL --read-only --entrypoint sh rdf-server-ci -ec '
             set -- /app/agent-bundle/*.tar.gz
@@ -230,6 +230,10 @@ jobs:
             listing="$(tar -tzf "$1")"
             printf "%s\n" "$listing" | grep -q "^./compose.agent.yaml$"
             printf "%s\n" "$listing" | grep -q "^./INSTALL.txt$"
+            printf "%s\n" "$listing" | grep -Fxq "./firewall/rdf-egress-firewall.sh"
+            printf "%s\n" "$listing" | grep -Fxq "./firewall/rdf-egress-firewall.service"
+            printf "%s\n" "$listing" | grep -Fxq "./firewall/network-policy.json"
+            test "$(tar -xOzf "$1" ./firewall/network-policy.json)" = "$(tar -xOzf "$1" ./src/network-policy.json)"
             printf "%s\n" "$listing" | grep -Fxq "./.dockerignore"
             printf "%s\n" "$listing" | grep -q "^./licenses/Apache-2.0.txt$"
             printf "%s\n" "$listing" | grep -q "^./licenses/scrcpy.txt$"
