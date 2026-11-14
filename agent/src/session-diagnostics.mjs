@@ -35,13 +35,16 @@ export function redactDiagnostic(value, secrets = []) {
   // Emulator builds can log the entire signaling envelope, including ICE
   // credentials and agent addresses. It is never useful as a device log.
   if (/\b(?:acceptJsepMessage|RtcPacket|ice-pwd|ice-ufrag)\b|(?:^|\n)a=candidate:/i.test(String(value))) return '[redacted]';
-  let text = String(value ?? '').replace(/-----BEGIN [\s\S]*?-----END [^\n]+-----/g, '[redacted key]')
+  let text = String(value ?? '');
+  for (const secret of secrets) if (typeof secret === 'string' && secret.length >= 4) {
+    for (const form of new Set([secret, JSON.stringify(secret).slice(1, -1)])) text = text.split(form).join('[redacted]');
+  }
+  text = text.replace(/-----BEGIN [\s\S]*?(?:-----END [^\n]+-----|$)/g, '[redacted key]')
     .replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/gi, '$1[redacted]@')
     .replace(/\bBearer\s+\S+/gi, 'Bearer [redacted]')
     .replace(/\b(?:rdf_[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)\b/g, '[redacted]')
-    .replace(/((?:password|passwd|secret|token|authorization|cookie|api[_-]?key|adbkey(?:_pub)?|private[_-]?key)\s*[=:]\s*)(?:"[^"\n]*"|'[^'\n]*'|[^\s,;]+)/gi, '$1[redacted]')
+    .replace(/(?<![\w-])((?:[\w-]*(?:password|passwd|secret|token|authorization|cookie|api[_-]?key|adbkey(?:_pub)?|private[_-]?key)[\w-]*)["']?\s*[=:]\s*)(?:"(?:\\.|[^"\\\r\n])*"|'(?:\\.|[^'\\\r\n])*'|[^\s,;}]+)/gi, '$1[redacted]')
     .replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
-  for (const secret of secrets) if (typeof secret === 'string' && secret.length >= 4) text = text.split(secret).join('[redacted]');
   return text.slice(0, 4096);
 }
 export function diagnosticReporter(onLog, secrets = []) {

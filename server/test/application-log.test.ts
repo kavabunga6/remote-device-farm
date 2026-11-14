@@ -22,6 +22,18 @@ import { ApiError } from '../src/http-common.js';
 import type { Config } from '../src/config.js';
 import type { AgentHub } from '../src/agent.js';
 
+test('JSON-escaped credentials and known opaque values are redacted completely', () => {
+  const secret = 'private-prefix"private-tail\\value';
+  for (const key of ['password', 'api_key', 'access_token']) {
+    const cleaned = redactLog(JSON.stringify({ [key]: secret, normal: 'readable' }));
+    assert.doesNotMatch(cleaned, /private-prefix|private-tail/);
+    assert.match(cleaned, /readable/);
+  }
+  const cleaned = redactLog(JSON.stringify({ setting: secret, normal: 'readable' }), [secret]);
+  assert.doesNotMatch(cleaned, /private-prefix|private-tail/);
+  assert.match(cleaned, /readable/);
+});
+
 test('runtime log captures console, redacts secrets, bounds records and replays cursors', () => {
   const logs = new ApplicationLog(3, ['known-secret']);
   const original = console.warn;

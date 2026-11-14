@@ -10,13 +10,16 @@ export type ApplicationLogRecord = {
 export function redactLog(message: string, secrets: readonly string[] = []): string {
   // Also protect diagnostics sent by older agents and emulator images.
   if (/\b(?:acceptJsepMessage|RtcPacket|ice-pwd|ice-ufrag)\b|(?:^|\n)a=candidate:/i.test(message)) return '[REDACTED]';
-  let value = message
+  let value = message;
+  for (const secret of secrets) if (secret.length >= 4) {
+    for (const form of new Set([secret, JSON.stringify(secret).slice(1, -1)])) value = value.split(form).join('[REDACTED]');
+  }
+  value = value
     .replace(/-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?(?:-----END [^-]*PRIVATE KEY-----|$)/g, '[REDACTED PRIVATE KEY]')
     .replace(/(\b(?:https?|postgres(?:ql)?|ldaps?):\/\/[^\s:@/]+:)[^\s@/]+@/gi, '$1[REDACTED]@')
     .replace(/\bBearer\s+[^\s,'"}]+/gi, 'Bearer [REDACTED]')
     .replace(/\b(?:rdf[a-z]?_[A-Za-z0-9_-]{8,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)\b/g, '[REDACTED TOKEN]')
-    .replace(/((?:[\w-]*(?:password|passwd|secret|token|authorization|cookie|api[_-]?key|private[_-]?key)[\w-]*)["']?\s*[:=]\s*)(?:"[^"\n]*"|'[^'\n]*'|[^\s,;}]+)/gi, '$1[REDACTED]');
-  for (const secret of secrets) if (secret.length >= 4) value = value.split(secret).join('[REDACTED]');
+    .replace(/(?<![\w-])((?:[\w-]*(?:password|passwd|secret|token|authorization|cookie|api[_-]?key|private[_-]?key)[\w-]*)["']?\s*[:=]\s*)(?:"(?:\\.|[^"\\\r\n])*"|'(?:\\.|[^'\\\r\n])*'|[^\s,;}]+)/gi, '$1[REDACTED]');
   return value.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '').slice(0, 4096);
 }
 

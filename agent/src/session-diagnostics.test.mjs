@@ -9,6 +9,26 @@ test('native signaling envelopes never persist ICE credentials or network candid
   }
 });
 const frame = (kind, text) => { const data=Buffer.from(text), header=Buffer.alloc(8);header[0]=kind;header.writeUInt32BE(data.length,4);return Buffer.concat([header,data]); };
+
+test('JSON-escaped credentials and known opaque values stay private in diagnostics', () => {
+  const secret = 'private-prefix"private-tail\\value';
+  for (const key of ['password', 'api_key', 'access_token']) {
+    const cleaned = redactDiagnostic(JSON.stringify({ [key]: secret, normal: 'readable' }));
+    assert.doesNotMatch(cleaned, /private-prefix|private-tail/);
+    assert.match(cleaned, /readable/);
+  }
+  const cleaned = redactDiagnostic(JSON.stringify({ setting: secret, normal: 'readable' }), diagnosticSecrets(['CUSTOM=' + secret]));
+  assert.doesNotMatch(cleaned, /private-prefix|private-tail/);
+  assert.match(cleaned, /readable/);
+});
+
+test('a truncated private key block never persists in container diagnostics', async () => {
+  const docker = new DockerClient('/unused'), events = [];
+  docker.inspect = async () => ({ Id: 'owned', Config: { Labels: { 'remote-device-farm.session': 's', 'remote-device-farm.agent': 'a' } }, State: {} });
+  docker.requestRaw = async () => frame(1, 'startup\n-----BEGIN PRIVATE KEY-----\nsynthetic-sensitive-material\n');
+  await docker.captureDiagnostics('owned', 's', 'a', event => events.push(event));
+  assert.doesNotMatch(JSON.stringify(events), /synthetic-sensitive-material/);
+});
 test('container diagnostics preserve fragmented UTF-8, exit status and stdout/stderr before removal and hide environment secrets', async () => {
   const docker = new DockerClient('/unused'), events=[], order=[];
   const bytes=Buffer.from('2026-10-07T10:00:00Z Ошибка GPU\n');

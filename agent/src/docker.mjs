@@ -519,7 +519,7 @@ export class DockerClient {
       const raw = await this.requestRaw('GET', `/containers/${encodeURIComponent(containerId)}/logs?stdout=1&stderr=1&timestamps=1&tail=2000`,
         undefined, { maxBytes: 2 * 1024 * 1024, timeoutMs: 5000 });
       for (const { stream, text } of dockerLogLines(raw, detail.Config?.Tty === true)) {
-        const lines = text.replace(/-----BEGIN [\s\S]*?-----END [^\n]+-----/g, '[redacted key]').split(/\r?\n/).filter(Boolean);
+        const lines = text.replace(/-----BEGIN [\s\S]*?(?:-----END [^\n]+-----|$)/g, '[redacted key]').split(/\r?\n/).filter(Boolean);
         for (const line of lines) await emit('container.' + stream, line, diagnosticSeverity(line, stream), 'emulator');
       }
       await emit('container.output_captured', agentMessage('agent.diagnostics.snapshot', {}, 'ru'), 'info', 'emulator');
