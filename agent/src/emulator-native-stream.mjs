@@ -4,6 +4,7 @@ import { EmulatorTouchController } from './emulator-touch.mjs';
 import { NativeVp8Frames } from './native-rtc-media.mjs';
 import { OpusRtpClock, opusPacketSamples } from './rtc-media.mjs';
 import { diagnostic } from './diagnostics.mjs';
+import { isIPv4 } from 'node:net';
 
 const KEYS = new Map([[3, 'GoHome'], [4, 'GoBack'], [19, 'ArrowUp'], [20, 'ArrowDown'], [21, 'ArrowLeft'], [22, 'ArrowRight'],
   [23, 'Enter'], [24, 'AudioVolumeUp'], [25, 'AudioVolumeDown'], [26, 'Power'], [61, 'Tab'], [66, 'Enter'], [67, 'Backspace'],
@@ -32,8 +33,15 @@ export class NativeEmulatorStream {
       this.naturalSize = await this.touchControl.prepare();
       await this.touchControl.rpc('sendKey', keyEvent('WakeUp'));
       this.assertOpen();
+      // Use the actual gRPC connection, not addresses supplied in untrusted SDP.
+      const socket = this.touchControl.client?.socket;
+      const remoteAddress = socket?.remoteAddress, localAddress = socket?.localAddress;
+      if (!isIPv4(remoteAddress ?? '') || !isIPv4(localAddress ?? '')) throw new Error(diagnostic('native.grpc.invalid'));
       this.pc = this.createPeer({ codecs: { video: [useVP8()], audio: [useOPUS()] }, iceServers: [],
-        iceLite: true, iceUseIpv6: false, iceUseTcp: false, bundlePolicy: 'max-bundle' });
+        iceLite: false, iceUseIpv6: false, iceUseTcp: false, bundlePolicy: 'max-bundle',
+        iceInterfaceAddresses: { udp4: localAddress },
+        iceFilterCandidatePair: pair => pair.remoteCandidate?.host === remoteAddress,
+        iceFilterStunResponse: (_message, address) => address[0] === remoteAddress });
       this.pc.onTrack.subscribe(track => {
         track.onReceiveRtp.subscribe(packet => {
           if (this.closed) return;
@@ -59,6 +67,14 @@ export class NativeEmulatorStream {
         if (message.type !== 'offer' || message.sdp.length > 128 * 1024 || this.offered) throw new Error(diagnostic('native.grpc.invalid'));
         this.offered = true;
         await this.pc.setRemoteDescription({ type: 'offer', sdp: message.sdp }); this.assertOpen();
+        // The pinned werift version substitutes public STUN even for iceServers=[].
+        // Disable that fallback before setLocalDescription gathers any candidates.
+        const transports = this.pc.iceTransports;
+        if (!Array.isArray(transports) || !transports.length) throw new Error(diagnostic('native.grpc.invalid'));
+        for (const transport of transports) {
+          transport.connection.stunServer = undefined;
+          transport.connection.turnServer = undefined;
+        }
         for (const transceiver of this.pc.getTransceivers()) transceiver.setDirection('recvonly');
         const transceiver = this.pc.getTransceivers().find(item => item.kind === 'video');
         this.videoReceiver = transceiver?.receiver;

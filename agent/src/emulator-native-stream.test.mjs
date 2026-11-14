@@ -11,10 +11,12 @@ function fixture(options = {}) {
   const answered = new Promise(resolve => { ready = resolve; });
   const track = { kind: 'video', onReceiveRtp: event() };
   const pc = { onTrack: event(), onDataChannel: event(), connectionStateChange: event(),
+    iceTransports: [{ connection: {} }],
     getTransceivers: () => [{ kind: 'video', setDirection() {}, receiver: { sendRtcpPLI: async () => {} } }],
     setRemoteDescription: async () => { pc.onTrack.emit(track); }, createAnswer: async () => ({}),
     setLocalDescription: async () => {}, localDescription: { sdp: 'answer' }, addIceCandidate: async () => {}, close: async () => { closed++; } };
-  const control = { prepare: async () => ({ width: 1080, height: 2400 }),
+  const control = { client: { socket: { remoteAddress: '192.0.2.20', localAddress: '192.0.2.21' } },
+    prepare: async () => ({ width: 1080, height: 2400 }),
     rpc: async (method, bytes) => {
       rpc.push({ method, bytes });
       if (method === 'getScreenshot') return Buffer.concat([protoBytes(1, protoBytes(2, Buffer.from([8, rotation]))), protoBytes(4, Buffer.from('pixel'))]);
@@ -54,12 +56,31 @@ test('actual Opus packets establish native audio and precede playback with a dec
   await f.stream.close();
 });
 
-test('the internal native peer uses ICE lite so werift cannot add its default public STUN server', async () => {
+test('the native peer opens ICE from the management interface and only to its emulator', async () => {
   const f = fixture(); let options;
+  f.pc.iceTransports = [{ connection: { stunServer: ['stun.example.com', 19302], turnServer: ['turn.example.com', 3478] } }];
   f.stream.createPeer = value => { options = value; return f.pc; };
+  f.pc.setLocalDescription = async () => {
+    assert.equal(f.pc.iceTransports[0].connection.stunServer, undefined, 'disable default STUN before gathering');
+    assert.equal(f.pc.iceTransports[0].connection.turnServer, undefined);
+  };
   const starting = f.stream.start(); await f.answered; f.frame(); await starting;
-  assert.equal(options.iceLite, true); assert.deepEqual(options.iceServers, []);
+  assert.equal(options.iceLite, false); assert.deepEqual(options.iceServers, []);
+  assert.deepEqual(options.iceInterfaceAddresses, { udp4: '192.0.2.21' });
+  assert.equal(options.iceFilterCandidatePair({ remoteCandidate: { host: '192.0.2.20' } }), true);
+  for (const host of ['192.0.2.21', '198.51.100.1', '127.0.0.1', 'attacker.example', '::1']) {
+    assert.equal(options.iceFilterCandidatePair({ remoteCandidate: { host } }), false);
+    assert.equal(options.iceFilterStunResponse(null, [host, 5000]), false);
+  }
+  assert.equal(options.iceFilterStunResponse(null, ['192.0.2.20', 5000]), true);
   await f.stream.close();
+});
+
+test('native ICE refuses to start without a connected IPv4 management socket', async () => {
+  const f = fixture(); f.control.client = { socket: { remoteAddress: 'attacker.example', localAddress: '192.0.2.21' } };
+  const result = f.stream.start();
+  await assert.rejects(result, /invalid/i);
+  assert.equal(f.closed(), 1);
 });
 test('connected alone is not ready: native startup waits for the first decodable keyframe', async () => {
   const f = fixture(); let ready = false;
