@@ -4,6 +4,7 @@ import { removePacketCaptures } from './packet-capture.mjs';
 import { diagnosticReporter, diagnosticSecrets, diagnosticSeverity, dockerLogLines } from './session-diagnostics.mjs';
 import { ContainerPerformance } from './container-performance.mjs';
 import { DEFAULT_NVIDIA_CAPABILITIES, FARM_FLAGS, gpuKind } from './docker-options.mjs';
+import { MANAGEMENT_AGENT_MAC } from './network-policy.mjs';
 
 // Farm-built images (deploy/emulator) declare this label and read only RDF_* variables; the farm needs no
 // per-image flags, variable names or entrypoint tricks for them.
@@ -65,6 +66,10 @@ export function sessionNetworks(sessionId) {
 // (see deploy/firewall). Linux limits interface names to 15 characters.
 export function egressBridgeName(sessionId) {
   return 'rdfe' + createHash('sha256').update(String(sessionId)).digest('hex').slice(0, 11);
+}
+
+export function managementBridgeName(sessionId) {
+  return 'rdfm' + createHash('sha256').update(String(sessionId)).digest('hex').slice(0, 11);
 }
 
 const SDCARD_PATH = '/android-home/rdf-sdcard.img';
@@ -240,7 +245,9 @@ export class DockerClient {
             'remote-device-farm.purpose': purpose,
           },
           Options: purpose === 'management'
-            ? { 'com.docker.network.bridge.gateway_mode_ipv4': 'isolated' }
+            ? { 'com.docker.network.bridge.gateway_mode_ipv4': 'isolated',
+              'com.docker.network.bridge.enable_icc': 'false',
+              'com.docker.network.bridge.name': managementBridgeName(sessionId) }
             : { 'com.docker.network.bridge.name': egressBridgeName(sessionId) },
         });
       } catch (error) {
@@ -258,7 +265,9 @@ export class DockerClient {
     }
     if (current.Driver !== 'bridge' || current.EnableIPv6 ||
         (purpose === 'management' &&
-          (!current.Internal || current.Options?.['com.docker.network.bridge.gateway_mode_ipv4'] !== 'isolated')) ||
+          (!current.Internal || current.Options?.['com.docker.network.bridge.gateway_mode_ipv4'] !== 'isolated' ||
+          current.Options?.['com.docker.network.bridge.enable_icc'] !== 'false' ||
+          current.Options?.['com.docker.network.bridge.name'] !== managementBridgeName(sessionId))) ||
         (purpose === 'egress' && (current.Internal ||
           current.Options?.['com.docker.network.bridge.name'] !== egressBridgeName(sessionId)))) {
       throw new Error(diagnostic('docker.39674334a3', { p0: purpose }));
@@ -268,8 +277,16 @@ export class DockerClient {
 
   async connectAgentToManagement(name, selfContainerId) {
     const self = await this.inspect(selfContainerId);
-    if (self.NetworkSettings?.Networks?.[name]) return;
-    await this.request('POST', `/networks/${encodeURIComponent(name)}/connect`, { Container: selfContainerId });
+    const endpoint = self.NetworkSettings?.Networks?.[name];
+    if (endpoint) {
+      if (endpoint.MacAddress?.toLowerCase() !== MANAGEMENT_AGENT_MAC) {
+        throw new Error(diagnostic('docker.39674334a3', { p0: 'management endpoint' }));
+      }
+      return;
+    }
+    await this.request('POST', `/networks/${encodeURIComponent(name)}/connect`, {
+      Container: selfContainerId, EndpointConfig: { MacAddress: MANAGEMENT_AGENT_MAC },
+    });
   }
 
   async ensureSessionNetworks(sessionId, agentId, selfContainerId) {

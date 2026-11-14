@@ -185,8 +185,8 @@ test('configured NVIDIA Xorg modules bind read-only only for GPU sessions', asyn
   }), /AGENT_NVIDIA_XORG_MODULE_DIR/);
   assert.equal(created.length, 2);
 });
-test('egress networks get a firewall-friendly bridge name and management networks stay isolated', async () => {
-  const { egressBridgeName } = await import('./docker.mjs');
+test('both session bridges have firewall-matched names and management stays internal', async () => {
+  const { egressBridgeName, managementBridgeName } = await import('./docker.mjs');
   const name = egressBridgeName('3f0c1d2e-aaaa-bbbb-cccc-000000000001');
   assert.match(name, /^rdfe[0-9a-f]{11}$/);
   assert.equal(name.length, 15);
@@ -202,7 +202,47 @@ test('egress networks get a firewall-friendly bridge name and management network
   const management = created.find((call) => call.body?.Name === 'rdf-m-s1');
   assert.equal(egress.body.Options['com.docker.network.bridge.name'], egressBridgeName('s1'));
   assert.equal(management.body.Internal, true);
-  assert.equal(management.body.Options['com.docker.network.bridge.name'], undefined);
+  assert.equal(management.body.Options['com.docker.network.bridge.name'], managementBridgeName('s1'));
+  assert.equal(management.body.Options['com.docker.network.bridge.enable_icc'], 'false');
+  assert.match(managementBridgeName('s1'), /^rdfm[0-9a-f]{11}$/);
+  assert.notEqual(managementBridgeName('s1'), managementBridgeName('s2'));
+});
+
+test('agent management endpoints use the firewall identity and reject an unexpected identity', async () => {
+  const { MANAGEMENT_AGENT_MAC } = await import('./network-policy.mjs');
+  const docker = new DockerClient('/unused');
+  const calls = [];
+  let attached;
+  docker.inspect = async () => ({ NetworkSettings: { Networks: attached ? { management: attached } : {} } });
+  docker.request = async (method, path, body) => calls.push({ method, path, body });
+  await docker.connectAgentToManagement('management', 'agent');
+  assert.deepEqual(calls, [{ method: 'POST', path: '/networks/management/connect',
+    body: { Container: 'agent', EndpointConfig: { MacAddress: MANAGEMENT_AGENT_MAC } } }]);
+  attached = { MacAddress: MANAGEMENT_AGENT_MAC };
+  await docker.connectAgentToManagement('management', 'agent');
+  assert.equal(calls.length, 1);
+  attached = { MacAddress: '02:00:00:00:00:02' };
+  await assert.rejects(() => docker.connectAgentToManagement('management', 'agent'), /unsafe settings/);
+  assert.equal(calls.length, 1);
+});
+
+test('management validation rejects a legacy or incorrectly named bridge', async () => {
+  const { managementBridgeName } = await import('./docker.mjs');
+  const docker = new DockerClient('/unused');
+  const network = { Driver: 'bridge', Internal: true, EnableIPv6: false,
+    Options: { 'com.docker.network.bridge.gateway_mode_ipv4': 'isolated' },
+    Labels: { 'remote-device-farm.managed': 'true', 'remote-device-farm.agent': 'host-1',
+      'remote-device-farm.session': 's1', 'remote-device-farm.purpose': 'management' } };
+  docker.inspectNetwork = async () => network;
+  await assert.rejects(() => docker.ensureNetwork('rdf-m-s1', 's1', 'host-1', 'management'), /unsafe settings/);
+  network.Options['com.docker.network.bridge.name'] = managementBridgeName('s2');
+  await assert.rejects(() => docker.ensureNetwork('rdf-m-s1', 's1', 'host-1', 'management'), /unsafe settings/);
+  network.Options['com.docker.network.bridge.name'] = managementBridgeName('s1');
+  await assert.rejects(() => docker.ensureNetwork('rdf-m-s1', 's1', 'host-1', 'management'), /unsafe settings/);
+  network.Options['com.docker.network.bridge.enable_icc'] = 'true';
+  await assert.rejects(() => docker.ensureNetwork('rdf-m-s1', 's1', 'host-1', 'management'), /unsafe settings/);
+  network.Options['com.docker.network.bridge.enable_icc'] = 'false';
+  assert.equal(await docker.ensureNetwork('rdf-m-s1', 's1', 'host-1', 'management'), network);
 });
 
 test('egress validation requires the exact firewall-matched bridge name', async () => {
