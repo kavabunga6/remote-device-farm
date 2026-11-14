@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { DockerClient } from './docker.mjs';
 import { diagnosticSecrets, diagnosticSeverity, dockerLogLines, redactDiagnostic } from './session-diagnostics.mjs';
@@ -9,6 +10,13 @@ test('native signaling envelopes never persist ICE credentials or network candid
   }
 });
 const frame = (kind, text) => { const data=Buffer.from(text), header=Buffer.alloc(8);header[0]=kind;header.writeUInt32BE(data.length,4);return Buffer.concat([header,data]); };
+
+test('hostile diagnostic keys cannot block the process with regex backtracking', () => {
+  const source = `import {redactDiagnostic} from ${JSON.stringify(new URL('./session-diagnostics.mjs', import.meta.url).href)};
+    if(redactDiagnostic('token'.repeat(100000)+'x').length>4096)process.exit(1);`;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', source], { timeout: 5000, encoding: 'utf8', maxBuffer: 16384 });
+  assert.equal(result.status, 0, result.error?.message || result.stderr);
+});
 
 test('JSON-escaped credentials and known opaque values stay private in diagnostics', () => {
   const secret = 'private-prefix"private-tail\\value';

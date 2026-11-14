@@ -19,7 +19,9 @@ export function redactLog(message: string, secrets: readonly string[] = []): str
     .replace(/(\b(?:https?|postgres(?:ql)?|ldaps?):\/\/[^\s:@/]+:)[^\s@/]+@/gi, '$1[REDACTED]@')
     .replace(/\bBearer\s+[^\s,'"}]+/gi, 'Bearer [REDACTED]')
     .replace(/\b(?:rdf[a-z]?_[A-Za-z0-9_-]{8,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)\b/g, '[REDACTED TOKEN]')
-    .replace(/(?<![\w-])((?:[\w-]*(?:password|passwd|secret|token|authorization|cookie|api[_-]?key|private[_-]?key)[\w-]*)["']?\s*[:=]\s*)(?:"(?:\\.|[^"\\\r\n])*"|'(?:\\.|[^'\\\r\n])*'|[^\s,;}]+)/gi, '$1[REDACTED]');
+    // Keep the key-name check atomic to avoid quadratic backtracking on
+    // hostile log lines containing repeated secret-like words.
+    .replace(/(?<![\w-])(?=[\w-]*(?:password|passwd|secret|token|authorization|cookie|api[_-]?key|private[_-]?key))([\w-]+["']?\s*[:=]\s*)(?:"(?:\\.|[^"\\\r\n])*"|'(?:\\.|[^'\\\r\n])*'|[^\s,;}]+)/gi, '$1[REDACTED]');
   return value.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').replace(/[\x00-\x08\x0b-\x1f\x7f]/g, '').slice(0, 4096);
 }
 

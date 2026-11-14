@@ -43,7 +43,9 @@ export function redactDiagnostic(value, secrets = []) {
     .replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/gi, '$1[redacted]@')
     .replace(/\bBearer\s+\S+/gi, 'Bearer [redacted]')
     .replace(/\b(?:rdf_[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)\b/g, '[redacted]')
-    .replace(/(?<![\w-])((?:[\w-]*(?:password|passwd|secret|token|authorization|cookie|api[_-]?key|adbkey(?:_pub)?|private[_-]?key)[\w-]*)["']?\s*[=:]\s*)(?:"(?:\\.|[^"\\\r\n])*"|'(?:\\.|[^'\\\r\n])*'|[^\s,;}]+)/gi, '$1[redacted]')
+    // The lookahead is atomic: repeated secret-like words cannot backtrack
+    // through both sides of the key when no delimiter follows it.
+    .replace(/(?<![\w-])(?=[\w-]*(?:password|passwd|secret|token|authorization|cookie|api[_-]?key|adbkey(?:_pub)?|private[_-]?key))([\w-]+["']?\s*[=:]\s*)(?:"(?:\\.|[^"\\\r\n])*"|'(?:\\.|[^'\\\r\n])*'|[^\s,;}]+)/gi, '$1[redacted]')
     .replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
   return text.slice(0, 4096);
 }

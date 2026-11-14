@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import express from 'express';
 import { createServer } from 'node:http';
@@ -21,6 +22,14 @@ import { AuthService, newToken, tokenHash } from '../src/auth.js';
 import { ApiError } from '../src/http-common.js';
 import type { Config } from '../src/config.js';
 import type { AgentHub } from '../src/agent.js';
+
+test('hostile log keys cannot block the process with regex backtracking', () => {
+  const source = `import {redactLog} from ${JSON.stringify(new URL('../src/application-log.ts', import.meta.url).href)};
+    if(redactLog('token'.repeat(100000)+'x').length>4096)process.exit(1);`;
+  const result = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', source],
+    { timeout: 5000, encoding: 'utf8', maxBuffer: 16384 });
+  assert.equal(result.status, 0, result.error?.message || result.stderr);
+});
 
 test('JSON-escaped credentials and known opaque values are redacted completely', () => {
   const secret = 'private-prefix"private-tail\\value';
