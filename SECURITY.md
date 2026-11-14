@@ -25,6 +25,10 @@ limits. Source tests and audit fixes are not a penetration-test certification.
 
 The server checks session ownership and permissions for REST APIs, screen/control WebSockets and ADB access. Shared screen links require login, have limited capabilities, and can be revoked or expired. They do not grant ADB access.
 
+Screen captures and replies containing ADB, Logcat, device information, UI inspection, performance, WebView or network-inspector data, as well as Appium replies, recheck the requesting credential, current permissions and session access before delivery. This prevents a pending reply from retaining access after revocation; it cannot undo an action already accepted by Android.
+
+Authentication defaults to local accounts. `AUTH_MODE=none` deliberately admits anonymous users with separate browser identities; it does not authenticate them. Use it only in a controlled environment with trusted access. A separate administrator token is still required. Use `local`, `oidc` or `ldap` when exposing the service to users who must sign in.
+
 The ADB broker authenticates the selected session key before opening the device connection. Device ADB ports are not published directly. Ordinary ADB traffic is not encrypted after authentication; expose the broker only on a trusted network or through a VPN. Android shell grants broad access within the selected guest.
 
 ## Images, agents and hosts
