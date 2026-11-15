@@ -4,7 +4,7 @@ import { removePacketCaptures } from './packet-capture.mjs';
 import { diagnosticReporter, diagnosticSecrets, diagnosticSeverity, dockerLogLines } from './session-diagnostics.mjs';
 import { ContainerPerformance } from './container-performance.mjs';
 import { DEFAULT_NVIDIA_CAPABILITIES, FARM_FLAGS, gpuKind } from './docker-options.mjs';
-import { MANAGEMENT_AGENT_MAC } from './network-policy.mjs';
+import { MANAGEMENT_AGENT_MAC, verifyManagementEndpoint } from './network-policy.mjs';
 
 // Farm-built images (deploy/emulator) declare this label and read only RDF_* variables; the farm needs no
 // per-image flags, variable names or entrypoint tricks for them.
@@ -277,16 +277,16 @@ export class DockerClient {
 
   async connectAgentToManagement(name, selfContainerId) {
     const self = await this.inspect(selfContainerId);
-    const endpoint = self.NetworkSettings?.Networks?.[name];
-    if (endpoint) {
-      if (endpoint.MacAddress?.toLowerCase() !== MANAGEMENT_AGENT_MAC) {
-        throw new Error(diagnostic('docker.39674334a3', { p0: 'management endpoint' }));
-      }
-      return;
+    const existing = self.NetworkSettings?.Networks?.[name];
+    if (!existing) {
+      await this.request('POST', `/networks/${encodeURIComponent(name)}/connect`, {
+        Container: selfContainerId, EndpointConfig: { MacAddress: MANAGEMENT_AGENT_MAC },
+      });
     }
-    await this.request('POST', `/networks/${encodeURIComponent(name)}/connect`, {
-      Container: selfContainerId, EndpointConfig: { MacAddress: MANAGEMENT_AGENT_MAC },
-    });
+    // Inspect the actual interface, not only Docker's metadata: older Engines
+    // ignore EndpointConfig.MacAddress on network connect (fixed in API 1.54).
+    const attached = existing ?? (await this.inspect(selfContainerId)).NetworkSettings?.Networks?.[name];
+    await verifyManagementEndpoint(this, selfContainerId, attached, { newlyAttached: !existing });
   }
 
   async ensureSessionNetworks(sessionId, agentId, selfContainerId) {

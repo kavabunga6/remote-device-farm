@@ -208,22 +208,42 @@ test('both session bridges have firewall-matched names and management stays inte
   assert.notEqual(managementBridgeName('s1'), managementBridgeName('s2'));
 });
 
-test('agent management endpoints use the firewall identity and reject an unexpected identity', async () => {
-  const { MANAGEMENT_AGENT_MAC } = await import('./network-policy.mjs');
+for (const legacy of [false, true]) test(`management identity is verified after connect (legacy=${legacy})`, async () => {
+  const { MANAGEMENT_AGENT_MAC, MANAGEMENT_ENDPOINT_PROGRAM } = await import('./network-policy.mjs');
   const docker = new DockerClient('/unused');
   const calls = [];
   let attached;
   docker.inspect = async () => ({ NetworkSettings: { Networks: attached ? { management: attached } : {} } });
-  docker.request = async (method, path, body) => calls.push({ method, path, body });
+  docker.request = async (method, path, body) => {
+    calls.push({ method, path, body });
+    if (path.endsWith('/connect')) attached = { IPAddress: '172.25.0.2', MacAddress: legacy ? '02:00:00:00:00:02' : MANAGEMENT_AGENT_MAC };
+    if (path.endsWith('/exec')) return { Id: 'fixed-exec' };
+    if (path === '/exec/fixed-exec/json') return { Running: false, ExitCode: 0 };
+  };
+  docker.requestRaw = async (...args) => { calls.push({ raw: args }); };
   await docker.connectAgentToManagement('management', 'agent');
-  assert.deepEqual(calls, [{ method: 'POST', path: '/networks/management/connect',
-    body: { Container: 'agent', EndpointConfig: { MacAddress: MANAGEMENT_AGENT_MAC } } }]);
-  attached = { MacAddress: MANAGEMENT_AGENT_MAC };
+  assert.deepEqual(calls[0], { method: 'POST', path: '/networks/management/connect',
+    body: { Container: 'agent', EndpointConfig: { MacAddress: MANAGEMENT_AGENT_MAC } } });
+  assert.deepEqual(calls[1].body, { User: '0', Privileged: legacy, AttachStdout: false, AttachStderr: false,
+    Cmd: ['node', '--input-type=module', '-e', MANAGEMENT_ENDPOINT_PROGRAM, '172.25.0.2', MANAGEMENT_AGENT_MAC, legacy ? 'yes' : 'no'] });
+  calls.length = 0;
   await docker.connectAgentToManagement('management', 'agent');
-  assert.equal(calls.length, 1);
-  attached = { MacAddress: '02:00:00:00:00:02' };
+  assert.equal(calls.some(c => c.path?.endsWith('/connect')), false);
+  assert.equal(calls[0].body.Privileged, false, 'an existing endpoint is never repaired or elevated');
+});
+
+test('management identity rejects a missing endpoint and a failed kernel verification', async () => {
+  const docker = new DockerClient('/unused');
+  let endpoint;
+  docker.inspect = async () => ({ NetworkSettings: { Networks: endpoint ? { management: endpoint } : {} } });
+  docker.request = async (method, path) => {
+    if (path.endsWith('/exec')) return { Id: 'bad-exec' };
+    if (path.endsWith('/json')) return { Running: false, ExitCode: 1 };
+  };
+  docker.requestRaw = async () => {};
   await assert.rejects(() => docker.connectAgentToManagement('management', 'agent'), /unsafe settings/);
-  assert.equal(calls.length, 1);
+  endpoint = { IPAddress: '172.25.0.2', MacAddress: '02:00:00:00:00:02' };
+  await assert.rejects(() => docker.connectAgentToManagement('management', 'agent'), /unsafe settings/);
 });
 
 test('management validation rejects a legacy or incorrectly named bridge', async () => {

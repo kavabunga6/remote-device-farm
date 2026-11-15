@@ -2,7 +2,7 @@ ARG NODE_IMAGE=node:24-bookworm-slim
 FROM ${NODE_IMAGE}
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends adb ca-certificates curl unzip tcpdump openjdk-17-jre-headless \
+    && apt-get install -y --no-install-recommends adb ca-certificates curl unzip tcpdump iproute2 openjdk-17-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 ARG BUNDLETOOL_VERSION=1.18.3
