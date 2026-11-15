@@ -56,7 +56,7 @@ Open [http://localhost:8088](http://localhost:8088). Sign in as **admin** with `
 
 Initial image downloads and builds take several minutes. Later sessions use cached images.
 
-Install the [persistent Linux node firewall](deploy/firewall/README.md) before allocating devices. New management networks disable Docker inter-container communication; the policy enables agent-initiated control. The agent archive includes the firewall scripts and matching policy resource. When upgrading, install the policy first, update the agent, then recreate older sessions; legacy management networks are rejected.
+Install the [persistent Linux node firewall](deploy/firewall/README.md) before allocating devices. New management networks disable Docker inter-container communication; the policy enables agent-initiated control. The agent archive includes the firewall scripts and matching policy resource. When upgrading, install the policy first, update both `agent` and `agent-control`, then recreate older sessions; legacy management networks are rejected.
 
 > **Warning: prebuilt emulator images.** Third-party images, including vendor-published images, may disable ADB authentication or ignore supplied keys. A successful boot, a pinned digest or an ADB key environment variable does not establish that authentication is enforced. Before enabling a profile, verify that the emulator itself accepts a trusted key and rejects an independent untrusted client. Keep ADB, gRPC and emulator console endpoints isolated behind the service's access controls. [Image security requirements](docs/guides/images.md#готовые-сторонние-образы).
 
