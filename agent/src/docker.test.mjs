@@ -224,7 +224,7 @@ for (const legacy of [false, true]) test(`management identity is verified after 
   await docker.connectAgentToManagement('management', 'agent');
   assert.deepEqual(calls[0], { method: 'POST', path: '/networks/management/connect',
     body: { Container: 'agent', EndpointConfig: { MacAddress: MANAGEMENT_AGENT_MAC } } });
-  assert.deepEqual(calls[1].body, { User: '0', Privileged: legacy, AttachStdout: false, AttachStderr: false,
+  assert.deepEqual(calls[1].body, { User: '0', Privileged: legacy, AttachStdout: true, AttachStderr: true,
     Cmd: ['node', '--input-type=module', '-e', MANAGEMENT_ENDPOINT_PROGRAM, '172.25.0.2', MANAGEMENT_AGENT_MAC, legacy ? 'yes' : 'no'] });
   calls.length = 0;
   await docker.connectAgentToManagement('management', 'agent');

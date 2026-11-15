@@ -31,7 +31,7 @@ export async function verifyManagementEndpoint(docker, containerId, endpoint, { 
   if (!isIPv4(endpoint?.IPAddress)) throw fail();
   const repair = newlyAttached && endpoint.MacAddress?.toLowerCase() !== MANAGEMENT_AGENT_MAC;
   const exec = await docker.request('POST', `/containers/${encodeURIComponent(containerId)}/exec`, {
-    User: '0', Privileged: repair, AttachStdout: false, AttachStderr: false,
+    User: '0', Privileged: repair, AttachStdout: true, AttachStderr: true,
     Cmd: ['node', '--input-type=module', '-e', MANAGEMENT_ENDPOINT_PROGRAM,
       endpoint.IPAddress, MANAGEMENT_AGENT_MAC, repair ? 'yes' : 'no'],
   });
