@@ -407,17 +407,20 @@ test('concurrent catalogue loads share preparation and status follows real tools
   assert.equal(docker.calls.filter(call => call.path === '/containers/create').length, 1);
 });
 
-test('catalogue status reports tools preparation and failure, and a retry can recover', async () => {
-  let finish;
+test('catalogue status reports tools preparation and failure, and a retry can recover', { timeout: 5000 }, async t => {
+  let finish, entered;
+  const started = new Promise(resolve => { entered = resolve; });
   const wait = new Promise(resolve => { finish = resolve; });
+  t.after(() => finish());
   let fail = true;
   const images = testedImages({ docker: fakeDocker(), builder: { build: async (_tag, _args, options) => {
     options.onLine('Step 2/7 : RUN sdkmanager');
+    entered();
     await wait;
     if (fail) throw new Error('Synthetic tools build failure');
   } } });
   const first = images.catalog();
-  for (let i = 0; i < 100 && images.catalogStatus().phase !== 'preparing_tools'; i++) await new Promise(resolve => setTimeout(resolve, 5));
+  await started;
   assert.equal(images.catalogStatus().phase, 'preparing_tools');
   assert.equal(images.catalogStatus().progress.step, 2);
   finish();
