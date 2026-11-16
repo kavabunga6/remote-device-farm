@@ -352,6 +352,8 @@
   .session-layout:not([data-shared])[data-workspace-mode=split] .workspace-grid{--viewer-fit-width:var(--viewer-width);grid-template-columns:minmax(0,min(var(--viewer-fit-width),calc(100% - 320px - 1.5rem))) minmax(320px,1fr)}
   /* In a portrait session, keep room for the tools when the sidebar is open. */
   .session-layout:not([data-shared])[data-workspace-mode=split] .workspace-grid:not([data-landscape]){--viewer-fit-width:min(var(--viewer-width),max(320px,calc(50% - 1.5rem)))}
+  /* Wide devices get the main working area without inheriting portrait console preferences. */
+  .session-layout:not([data-shared])[data-workspace-mode=split] .workspace-grid[data-landscape]:not([data-console-resized]){--viewer-fit-width:min(var(--viewer-width),max(320px,calc(100% - min(var(--console-width),33%) - 1.5rem)))}
   /* A saved tool width can shrink the viewer, but must not add empty space around the device. */
   .session-layout:not([data-shared])[data-workspace-mode=split] .workspace-grid[data-console-resized]{grid-template-columns:minmax(0,min(var(--viewer-fit-width),max(320px,calc(100% - var(--console-width) - 1.5rem)))) minmax(320px,1fr)}
   .session-layout:not([data-shared])[data-workspace-mode=split] .console-width-handle{display:grid;left:-1.375rem;width:1.25rem}
@@ -402,3 +404,8 @@
 @container session-heading (max-width:650px){
   .session-layout .session-media-status{display:contents}
 }
+
+/* A TV or rotated device follows its frame, rather than stretching to the tools' height. */
+.session-layout[data-workspace-mode] .workspace-grid[data-landscape] .viewer-panel{align-self:start}
+.session-layout[data-workspace-mode] .workspace-grid[data-landscape] .viewer-stage:not(:fullscreen){box-sizing:content-box;height:auto;aspect-ratio:var(--device-aspect);max-height:max(200px,calc(var(--session-fit-height,600px) - var(--session-viewer-chrome,2px) - 24px));align-self:start}
+@media(min-width:1201px){.session-layout[data-shared] .workspace-grid[data-landscape]{grid-template-columns:minmax(0,min(100%,var(--viewer-width)))}}

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
 const CONSOLE_WIDTH_KEY = 'rdf-console-width';
+const LANDSCAPE_CONSOLE_WIDTH_KEY = 'rdf-console-width-landscape';
 const CONSOLE_HEIGHT_KEY = 'rdf-console-height';
 
 
@@ -34,23 +35,26 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, terminalOutput
     return () => media.removeEventListener('change', update);
   }, []);
   const changeWorkspaceMode = (mode: 'split' | 'screen' | 'tools') => setWorkspaceMode(mode);
-  const [consoleWidth, setConsoleWidth] = useState(() => {
-    const viewport = window.innerWidth;
-    const fallback = viewport >= 1800 ? 600 : viewport >= 1200 ? 460 : 470;
-    return readDimension(CONSOLE_WIDTH_KEY, fallback, 320, 5000);
-  });
-  const [consoleResized, setConsoleResized] = useState(() => {
-    try { return window.localStorage.getItem(CONSOLE_WIDTH_KEY) !== null; } catch { return false; }
-  });
+  const landscape = size.width > size.height;
+  const widthKey = landscape ? LANDSCAPE_CONSOLE_WIDTH_KEY : CONSOLE_WIDTH_KEY;
+  const [consoleWidths, setConsoleWidths] = useState<Record<string, number | null>>(() => ({
+    [CONSOLE_WIDTH_KEY]: readDimension(CONSOLE_WIDTH_KEY, 0, 320, 5000) || null,
+    [LANDSCAPE_CONSOLE_WIDTH_KEY]: readDimension(LANDSCAPE_CONSOLE_WIDTH_KEY, 0, 320, 5000) || null,
+  }));
+  const defaultConsoleWidth = window.innerWidth >= 1800 ? 600 : window.innerWidth >= 1200 ? 460 : 470;
+  const consoleWidth = consoleWidths[widthKey] ?? defaultConsoleWidth;
+  const consoleResized = consoleWidths[widthKey] !== null;
+  const setConsoleWidth = (width: number | null) => setConsoleWidths(previous => ({ ...previous, [widthKey]: width }));
   const [consoleHeight, setConsoleHeight] = useState(() => readDimension(CONSOLE_HEIGHT_KEY, 620, 180, 1000));
   const [consoleHeightResized, setConsoleHeightResized] = useState(() => {
     try { return window.localStorage.getItem(CONSOLE_HEIGHT_KEY) !== null; } catch { return false; }
   });
   const [visibleConsoleSize, setVisibleConsoleSize] = useState({ width: 0, height: 0 });
   const workspaceRef = useRef<HTMLDivElement>(null);
-  const widthResizeRef = useRef<{ pointerId: number; x: number; start: number; value: number } | null>(null);
+  const widthResizeRef = useRef<{ pointerId: number; x: number; start: number; value: number; key: string } | null>(null);
   const heightResizeRef = useRef<{ pointerId: number; y: number; start: number; value: number } | null>(null);
   const [stageSize, setStageSize] = useState({ width: 900, height: 650 });
+  const [availableStageHeight, setAvailableStageHeight] = useState(650);
   const [viewerInsets, setViewerInsets] = useState(0);
   const screenRef = useRef<HTMLDivElement>(null);
   const workspaceGap = () => workspaceRef.current ? Number.parseFloat(getComputedStyle(workspaceRef.current).columnGap) || 0 : 24;
@@ -74,11 +78,11 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, terminalOutput
   const clampConsoleHeight = (value: number) => Math.max(180, Math.min(maxConsoleHeight(), Math.round(value)));
 
   const resetConsoleSize = () => {
-    setConsoleResized(false);
+    setConsoleWidth(null);
     setConsoleHeightResized(false);
     setConsoleHeight(620);
     try {
-      window.localStorage.removeItem(CONSOLE_WIDTH_KEY);
+      window.localStorage.removeItem(widthKey);
       window.localStorage.removeItem(CONSOLE_HEIGHT_KEY);
     } catch { /* Storage may be unavailable. */ }
   };
@@ -94,9 +98,9 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, terminalOutput
     const minimum = dimension === 'width' ? minConsoleWidth() : 180;
     const maximum = dimension === 'width' ? maxConsoleWidth() : maxConsoleHeight();
     const next = Math.max(minimum, Math.min(maximum, Math.round(event.key === 'Home' ? minimum : event.key === 'End' ? maximum : current + (event.key === increase ? 24 : -24))));
-    if (dimension === 'width') { setConsoleResized(true); setConsoleWidth(next); }
+    if (dimension === 'width') setConsoleWidth(next);
     else { setConsoleHeightResized(true); setConsoleHeight(next); }
-    saveDimension(dimension === 'width' ? CONSOLE_WIDTH_KEY : CONSOLE_HEIGHT_KEY, next);
+    saveDimension(dimension === 'width' ? widthKey : CONSOLE_HEIGHT_KEY, next);
   };
 
   const startWidthResize = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -105,19 +109,19 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, terminalOutput
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus();
     const visibleWidth = clampConsoleWidth(workspaceRef.current?.querySelector<HTMLElement>('.terminal-panel')?.getBoundingClientRect().width ?? consoleWidth);
-    setConsoleResized(true); setConsoleWidth(visibleWidth);
-    widthResizeRef.current = { pointerId: event.pointerId, x: event.clientX, start: visibleWidth, value: visibleWidth };
+    setConsoleWidth(visibleWidth);
+    widthResizeRef.current = { pointerId: event.pointerId, x: event.clientX, start: visibleWidth, value: visibleWidth, key: widthKey };
   };
   const moveWidthResize = (event: React.PointerEvent<HTMLDivElement>) => {
     const drag = widthResizeRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (!drag || drag.pointerId !== event.pointerId || drag.key !== widthKey) return;
     drag.value = clampConsoleWidth(drag.start + drag.x - event.clientX);
     setConsoleWidth(drag.value);
   };
   const endWidthResize = (event: React.PointerEvent<HTMLDivElement>) => {
     const drag = widthResizeRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-    saveDimension(CONSOLE_WIDTH_KEY, drag.value);
+    saveDimension(drag.key, drag.value);
     widthResizeRef.current = null;
   };
   const startHeightResize = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -188,7 +192,10 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, terminalOutput
           chrome += box.height / scale;
         }
         setPx('--session-viewer-chrome', chrome);
-
+        const style = getComputedStyle(stage);
+        const padding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
+        // Use viewport space, not the fitted landscape stage, to avoid a resize feedback loop.
+        setAvailableStageHeight(Math.max(0, available - chrome - padding));
       }
       setPx('--session-fit-height', available);
       const output = terminalOutputRef.current;
@@ -228,7 +235,7 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, terminalOutput
   }, [toolTab, activeWorkspaceMode, workspaceMode, isPreparing]);
   const frameWidth = Math.max(1, size.width);
   const frameHeight = Math.max(1, size.height);
-  const viewerWidth = Math.max(320, Math.ceil(stageSize.height * frameWidth / frameHeight + viewerInsets + 2));
+  const viewerWidth = Math.max(320, Math.ceil((landscape ? availableStageHeight : stageSize.height) * frameWidth / frameHeight + viewerInsets + 2));
   const displayScale = Math.min(Math.max(0, stageSize.width) / frameWidth, Math.max(0, stageSize.height) / frameHeight);
 
   return { workspaceMode, activeWorkspaceMode, compactWorkspace, changeWorkspaceMode, consoleWidth, consoleResized, consoleHeight, consoleHeightResized, visibleConsoleSize, workspaceRef, screenRef, viewerWidth, displayScale, minConsoleWidth, maxConsoleWidth, maxConsoleHeight, resetConsoleSize, resizeConsoleWithKeyboard, startWidthResize, moveWidthResize, endWidthResize, startHeightResize, moveHeightResize, endHeightResize };

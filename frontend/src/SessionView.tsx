@@ -492,7 +492,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     {shared && <SharedBanner ownerName={session?.ownerName} mode={access === 'view' ? 'view' : 'control'} />}
     {sessionError && <div className="banner-error" role="alert"><Icon name="alert" size={17} />{localizeText(sessionError)}<button onClick={() => void refresh()}>{t('ui.5189135a6110')}</button></div>}
     {isPreparing ? <SessionStartupProgress progress={session?.startupProgress}/> : <>
-    <div className="workspace-grid" data-console-resized={consoleResized || undefined} data-landscape={landscape || undefined} ref={workspaceRef} style={{ '--console-width': consoleWidth + 'px', '--viewer-width': viewerWidth + 'px' } as CSSProperties}>
+    <div className="workspace-grid" data-console-resized={consoleResized || undefined} data-landscape={landscape || undefined} ref={workspaceRef} style={{ '--console-width': consoleWidth + 'px', '--viewer-width': viewerWidth + 'px', '--device-aspect': stream.size.width / Math.max(1, stream.size.height) } as CSSProperties}>
       <section className="viewer-panel" aria-label={t('ui.4547b46d3c0c')}>
         <DeviceControls onKey={navKey} canControl={canControl} capture={capture} captureReady={captureReady}
           textInput={!readOnly && <DeviceTextInput key={sessionId} active={shared || activeWorkspaceMode !== 'tools'} canSend={canControl}

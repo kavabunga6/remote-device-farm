@@ -5,7 +5,7 @@ const pcmConfig = { type: 'audio-config', codec: 'pcm-s16le', sampleRate: 48000,
 const silentFrame = { type: 'audio-frame', data: 'AAAAAA==' };
 const pcmFrame = { type: 'audio-frame', data: 'AEAAwA==' };
 
-async function mediaFixture(page: Page, options: { audioEnabled?: boolean; suspended?: boolean } = {}) {
+async function mediaFixture(page: Page, options: { audioEnabled?: boolean; suspended?: boolean; access?: 'view' | 'control' } = {}) {
   let audioEnabled = options.audioEnabled ?? true;
   let session: Record<string, unknown> | undefined;
   const toggles: boolean[] = [];
@@ -15,6 +15,7 @@ async function mediaFixture(page: Page, options: { audioEnabled?: boolean; suspe
     const target = window as any;
     const NativeSocket = window.WebSocket;
     target.__mediaSockets = [];
+    target.__mediaInputs = [];
     target.__audioPlayed = 0;
     target.__audioStopped = 0;
     class MediaSocket {
@@ -25,7 +26,7 @@ async function mediaFixture(page: Page, options: { audioEnabled?: boolean; suspe
       onclose: ((event: object) => void) | null = null;
       onerror = null;
       constructor() { target.__mediaSockets.push(this); }
-      send(raw: string) { const message = JSON.parse(raw); if (message.type === 'ping') queueMicrotask(() => this.onmessage?.({ data: JSON.stringify({ type: 'pong', id: message.id, serverTime: Date.now() }) })); }
+      send(raw: string) { const message = JSON.parse(raw); if (message.type === 'input') target.__mediaInputs.push(message); if (message.type === 'ping') queueMicrotask(() => this.onmessage?.({ data: JSON.stringify({ type: 'pong', id: message.id, serverTime: Date.now() }) })); }
       close() { this.readyState = 3; this.onclose?.({}); }
       addEventListener() {}
       removeEventListener() {}
@@ -75,7 +76,7 @@ async function mediaFixture(page: Page, options: { audioEnabled?: boolean; suspe
   await page.route('**/api/sessions/' + sessionId, async route => {
     const response = await route.fetch();
     const data = await response.json();
-    session = { ...data.session, audioEnabled, idleExpiresAt: new Date(Date.now() + 3600000).toISOString() };
+    session = { ...data.session, ...(options.access ? { access: options.access } : {}), audioEnabled, idleExpiresAt: new Date(Date.now() + 3600000).toISOString() };
     await route.fulfill({ response, json: { session } });
   });
   await page.route('**/api/sessions/' + sessionId + '/audio', async route => {
@@ -99,13 +100,23 @@ async function mediaFixture(page: Page, options: { audioEnabled?: boolean; suspe
 async function openMedia(page: Page) { await page.evaluate(() => (window as any).__openMedia()); }
 async function sendMedia(page: Page, message: object) { await page.evaluate(value => (window as any).__sendMedia(value), message); }
 
-async function sendImage(page: Page, mime: 'image/jpeg' | 'image/png', width = 720, height = 1280) {
-  await page.evaluate(({ type, width, height }) => {
+async function sendImage(page: Page, mime: 'image/jpeg' | 'image/png', width = 720, height = 1280, preview = false) {
+  await page.evaluate(({ type, width, height, preview }) => {
     const canvas = document.createElement('canvas');
     canvas.width = width; canvas.height = height;
+    if (preview) {
+      const context = canvas.getContext('2d')!;
+      context.fillStyle = '#142b35'; context.fillRect(0, 0, width, height);
+      context.fillStyle = '#e5eff3'; context.font = '48px sans-serif';
+      context.fillText('Android TV · 1920 × 1080', 80, 110);
+      context.font = '30px sans-serif'; context.fillText('Layout test', 80, 165);
+      ['#267779', '#425f91', '#78588b', '#966943'].forEach((color, index) => {
+        context.fillStyle = color; context.fillRect(80 + index * 440, 280, 400, 240);
+      });
+    }
     const data = canvas.toDataURL(type).split(',')[1];
     (window as any).__sendMedia({ type: 'frame', mime: type, width, height, data });
-  }, { type: mime, width, height });
+  }, { type: mime, width, height, preview });
 }
 
 test('device controls stay in one left column as phone, tablet, and TV frames change', async ({ page }, info) => {
@@ -348,3 +359,116 @@ for (const gesture of ['pointer', 'keyboard'] as const) {
     await expect(page.locator('.audio-notice')).toHaveCount(0);
   });
 }
+
+
+test('TV frames ignore a portrait console width and fit the card to the wide screen', async ({ page }) => {
+  await page.setViewportSize({ width: 2188, height: 1300 });
+  await page.addInitScript(() => localStorage.setItem('rdf-console-width', '1500'));
+  await mediaFixture(page, { audioEnabled: false }); await openMedia(page);
+  await page.getByRole('button', { name: 'Свернуть боковое меню' }).click();
+  await sendImage(page, 'image/png', 1920, 1080);
+  await expect(page.locator('.workspace-grid')).toHaveAttribute('data-landscape', 'true');
+  const measure = () => page.locator('.workspace-grid').evaluate(element => {
+    const rect = element.getBoundingClientRect(), viewer = element.querySelector('.viewer-panel')!.getBoundingClientRect(), frame = element.querySelector('.device-screen')!.getBoundingClientRect(), tools = element.querySelector('.terminal-panel')!.getBoundingClientRect();
+    return { viewerShare: viewer.width / rect.width, padding: viewer.height - frame.height, ratio: frame.width / frame.height, tools: tools.width, frameWidth: frame.width };
+  });
+  await expect.poll(async () => (await measure()).viewerShare).toBeGreaterThan(.6);
+  await expect.poll(async () => (await measure()).padding).toBeLessThanOrEqual(28);
+  expect((await measure()).ratio).toBeCloseTo(16 / 9, 2); expect((await measure()).tools).toBeGreaterThanOrEqual(320);
+  expect(await page.evaluate(() => localStorage.getItem('rdf-console-width'))).toBe('1500');
+  const touch = page.getByRole('application', { name: 'Сенсорный экран устройства' });
+  await touch.click({ position: { x: (await touch.boundingBox())!.width / 2, y: (await touch.boundingBox())!.height / 2 } });
+  const inputs = await page.evaluate(() => (window as any).__mediaInputs.filter((event: any) => event.kind === 'tap'));
+  expect(inputs.length).toBeGreaterThan(0); expect(inputs[0].x).toBeCloseTo(960, -1); expect(inputs[0].y).toBeCloseTo(540, -1);
+});
+
+
+test('landscape console resizing persists separately and survives orientation changes', async ({ page }) => {
+  await page.setViewportSize({ width: 2188, height: 1300 });
+  await page.addInitScript(() => localStorage.setItem('rdf-console-width', '1500'));
+  await mediaFixture(page, { audioEnabled: false }); await openMedia(page);
+  const width = page.getByRole('separator', { name: 'Изменить ширину консоли' });
+  const reset = page.getByRole('button', { name: 'Сбросить размер консоли' });
+  const panelWidth = () => page.locator('.terminal-panel').evaluate(element => element.getBoundingClientRect().width);
+  const savedWidth = () => page.evaluate(() => Number(localStorage.getItem('rdf-console-width-landscape')));
+  await sendImage(page, 'image/png', 1920, 1080);
+  await expect(reset).toBeDisabled();
+  const initial = await panelWidth();
+  await width.press('ArrowLeft');
+  await expect.poll(panelWidth).toBeCloseTo(initial + 24, 0);
+  const saved = await savedWidth();
+  expect(saved).toBeCloseTo(initial + 24, 0);
+  await sendImage(page, 'image/png', 1080, 1920);
+  await expect(page.locator('.workspace-grid')).not.toHaveAttribute('data-landscape');
+  await expect(page.locator('.workspace-grid')).toHaveCSS('--console-width', '1500px');
+  const maximum = Number(await width.getAttribute('aria-valuemax'));
+  await expect.poll(panelWidth).toBeCloseTo(Math.min(1500, maximum), 0);
+  await sendImage(page, 'image/png', 1920, 1080);
+  await expect.poll(panelWidth).toBeCloseTo(saved, 0);
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => (window as any).__mediaSockets.length)).toBeGreaterThan(0);
+  await openMedia(page); await sendImage(page, 'image/png', 1920, 1080);
+  await expect.poll(panelWidth).toBeCloseTo(saved, 0);
+  await reset.click();
+  await expect.poll(panelWidth).toBeCloseTo(initial, 0);
+  expect(await page.evaluate(() => localStorage.getItem('rdf-console-width-landscape'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('rdf-console-width'))).toBe('1500');
+});
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`wide frames fit desktop, compact and enlarged ${theme} workspaces`, async ({ page }) => {
+    await page.setViewportSize({ width: 2188, height: 1300 });
+    await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: {
+      theme, fontFamily: 'system', fontScale: 1.25, defaultAdbKeyId: null,
+    } } }));
+    await mediaFixture(page, { audioEnabled: false }); await openMedia(page);
+    await sendImage(page, 'image/png', 1920, 1080, true);
+    const geometry = () => page.locator('.workspace-grid').evaluate(element => {
+      const viewer = element.querySelector('.viewer-panel')!.getBoundingClientRect();
+      const frame = element.querySelector('.device-screen')!.getBoundingClientRect();
+      const stage = element.querySelector('.viewer-stage')!.getBoundingClientRect();
+      const rail = element.querySelector('.device-controls')!.getBoundingClientRect();
+      return { width: frame.width, ratio: frame.width / frame.height, padding: viewer.height - frame.height,
+        left: Math.abs(rail.right - stage.left), top: Math.abs(rail.top - stage.top),
+        bottom: viewer.bottom, overflow: document.documentElement.scrollWidth - innerWidth };
+    });
+    for (const viewport of [{ width: 2188, height: 1300 }, { width: 1366, height: 768 }, { width: 780, height: 600 }, { width: 2188, height: 1300 }]) {
+      await page.setViewportSize(viewport);
+      await page.evaluate(() => document.fonts.ready);
+      await page.clock.runFor(400);
+      await expect.poll(async () => (await geometry()).ratio).toBeCloseTo(16 / 9, 2);
+      await expect.poll(async () => (await geometry()).padding).toBeLessThanOrEqual(36);
+      const fitted = await geometry();
+      expect(fitted.left).toBeLessThanOrEqual(1); expect(fitted.top).toBeLessThanOrEqual(1);
+      expect(fitted.bottom).toBeLessThanOrEqual(viewport.height);
+      expect(fitted.overflow).toBeLessThanOrEqual(1);
+      if (viewport.width === 2188) expect(fitted.width).toBeGreaterThan(900);
+      await page.screenshot({ path: `../.tmp-ui/tv-layout/${theme}-${viewport.width}.png`, fullPage: true, animations: 'disabled' });
+    }
+    // Screen-only mode must continue fitting after a height change; it cannot retain the split width.
+    await page.getByRole('button', { name: 'Экран', exact: true }).click();
+    await expect.poll(async () => (await geometry()).width).toBeGreaterThan(1500);
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await expect.poll(async () => (await geometry()).bottom).toBeLessThanOrEqual(768);
+  });
+}
+
+
+test('shared TV frames fit the available viewport without a console', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await mediaFixture(page, { audioEnabled: false, access: 'view' }); await openMedia(page);
+  await sendImage(page, 'image/png', 1920, 1080);
+  await expect(page.locator('.session-layout')).toHaveAttribute('data-shared', 'view');
+  await expect(page.locator('.terminal-panel')).toHaveCount(0);
+  for (const viewport of [{ width: 1920, height: 1080 }, { width: 780, height: 600 }]) {
+    await page.setViewportSize(viewport);
+    await expect.poll(() => page.locator('.device-screen').evaluate(element => {
+      const frame = element.getBoundingClientRect();
+      return Math.abs(frame.width / frame.height - 16 / 9);
+    })).toBeLessThan(.01);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    const frame = await page.locator('.device-screen').boundingBox();
+    expect(frame!.x + frame!.width).toBeLessThanOrEqual(viewport.width);
+    expect(frame!.y + frame!.height).toBeLessThanOrEqual(viewport.height);
+  }
+});
