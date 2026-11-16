@@ -98,7 +98,7 @@ export class BoundedImageBuilder {
   }
   async build(tag, args, { contextTar, target, signal, proxy = null, onLine = () => {}, onSample = () => {}, onStage = () => {}, onHeartbeat = () => {} } = {}) {
     proxy = validateOutboundProxy(proxy);
-    const redact = text => redactDiagnostic(text, proxySecrets(proxy));
+    const redact = (text, options) => redactDiagnostic(text, proxySecrets(proxy), options);
     const reportLine = text => onLine(redact(text).slice(0, 512));
     if (this.cleanupBlocked) throw new BuildResourceError('build_cleanup_failed');
     if (this.active) throw new BuildResourceError('build_busy');
@@ -149,7 +149,7 @@ export class BoundedImageBuilder {
           onHeartbeat();
           for (const line of buildLogLines(last, text).slice(-80)) reportLine(line);
           last = text;
-          if (!state.Running) { if (state.ExitCode !== 0) { const error = new Error(redact(text).slice(-2000) || 'build_failed'); error.code = 'build_failed'; throw error; } break; }
+          if (!state.Running) { if (state.ExitCode !== 0) { const error = new Error(redact(text, { tail: true }).slice(-2000) || 'build_failed'); error.code = 'build_failed'; throw error; } break; }
           await delay(5000, undefined, { signal: combined });
         }
         onStage('importing');

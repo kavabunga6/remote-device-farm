@@ -37,6 +37,15 @@ test('a truncated private key block never persists in container diagnostics', as
   await docker.captureDiagnostics('owned', 's', 'a', event => events.push(event));
   assert.doesNotMatch(JSON.stringify(events), /synthetic-sensitive-material/);
 });
+
+test('diagnostic tails redact before truncation and retain a bounded terminal error', () => {
+  const text = 'startup\n'.repeat(600) + '-----BEGIN PRIVATE KEY-----\n' + 'sensitive-key-material\n'.repeat(400)
+    + '-----END PRIVATE KEY-----\nERROR_FINAL: password=hidden\n';
+  const cleaned = redactDiagnostic(text, [], { tail: true });
+  assert.match(cleaned, /ERROR_FINAL: password=\[redacted\]/);
+  assert.doesNotMatch(cleaned, /sensitive-key-material|hidden/);
+  assert.ok(cleaned.length <= 4096);
+});
 test('container diagnostics preserve fragmented UTF-8, exit status and stdout/stderr before removal and hide environment secrets', async () => {
   const docker = new DockerClient('/unused'), events=[], order=[];
   const bytes=Buffer.from('2026-10-07T10:00:00Z Ошибка GPU\n');

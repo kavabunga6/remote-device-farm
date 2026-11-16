@@ -97,6 +97,24 @@ test('catalog lists host-ABI images and caches the sdkmanager run', async () => 
   assert.ok(docker.calls.some(call => call.method === 'DELETE' && call.path.startsWith('/containers/tools1')));
 });
 
+test('failed SDK catalog reports the final error after a long download log without proxy credentials', async () => {
+  const docker = fakeDocker(), request = docker.request.bind(docker);
+  const password = 'catalog-private-credential';
+  docker.request = async (method, path, ...args) => {
+    if (path.endsWith('/wait')) return { StatusCode: 1 };
+    if (path.includes('/logs')) return Buffer.from('Downloading repository\n'.repeat(600)
+      + ('Download detail: ' + '.'.repeat(200) + '\n').repeat(3) + `ERROR_FINAL: upstream rejected ${password}\n`);
+    return request(method, path, ...args);
+  };
+  const images = testedImages({ docker });
+  await assert.rejects(images.catalog({ proxy: { url: 'http://proxy.example:3128', username: 'builder', password } }), error => {
+    assert.match(error.message, /ERROR_FINAL: upstream rejected \[redacted\]/);
+    assert.ok(!error.message.includes(password));
+    return true;
+  });
+  assert.ok(docker.calls.some(call => call.method === 'DELETE' && call.path.startsWith('/containers/tools1')));
+});
+
 test('builds run one at a time, report progress and failures, and carry the profiles to create', async () => {
   const docker = fakeDocker({ failBuild: 'system-images;android-30;android-tv;x86' });
   const images = testedImages({ docker, abi: 'x86_64' });

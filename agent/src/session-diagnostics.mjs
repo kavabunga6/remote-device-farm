@@ -31,7 +31,7 @@ export function diagnosticSeverity(line, stream = 'stdout') {
   return stream === 'stderr' ? 'warning' : 'info';
 }
 // Never persist credentials or keys in container diagnostics.
-export function redactDiagnostic(value, secrets = []) {
+export function redactDiagnostic(value, secrets = [], { tail = false } = {}) {
   // Emulator builds can log the entire signaling envelope, including ICE
   // credentials and agent addresses. It is never useful as a device log.
   if (/\b(?:acceptJsepMessage|RtcPacket|ice-pwd|ice-ufrag)\b|(?:^|\n)a=candidate:/i.test(String(value))) return '[redacted]';
@@ -47,7 +47,9 @@ export function redactDiagnostic(value, secrets = []) {
     // through both sides of the key when no delimiter follows it.
     .replace(/(?<![\w-])(?=[\w-]*(?:password|passwd|secret|token|authorization|cookie|api[_-]?key|adbkey(?:_pub)?|private[_-]?key))([\w-]+["']?\s*[=:]\s*)(?:"(?:\\.|[^"\\\r\n])*"|'(?:\\.|[^'\\\r\n])*'|[^\s,;}]+)/gi, '$1[redacted]')
     .replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
-  return text.slice(0, 4096);
+  // Redact the complete input before selecting a bounded head or tail: a key
+  // block or credential can cross the truncation boundary.
+  return tail ? text.slice(-4096) : text.slice(0, 4096);
 }
 export function diagnosticReporter(onLog, secrets = []) {
   return (code, message, severity = 'info', service = 'agent') => {

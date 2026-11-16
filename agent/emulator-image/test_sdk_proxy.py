@@ -215,12 +215,51 @@ class ProxyTests(unittest.TestCase):
         env = dict(os.environ, HTTP_PROXY='http://builder:fixture@proxy.example:3128', RDF_NO_PROXY='example.com,127.0.0.1,::1')
         cases = [('http://example.com/file', True), ('https://cdn.example.com/file', True),
                  ('http://badexample.com/file', False), ('http://127.0.0.1/file', True),
-                 ('http://foo.127.0.0.1/file', False), ('http://[::1]/file', True), ('http://[::2]/file', False)]
+                 ('http://foo.127.0.0.1/file', False), ('http://[::1]/file', True),
+                 ('http://[0:0:0:0:0:0:0:1]/file', True), ('http://[::2]/file', False)]
         for uri, direct in cases:
             value = subprocess.check_output(['sh', str(helper), uri], env=env, text=True).strip()
-            self.assertEqual(value, 'DIRECT' if direct else env['HTTP_PROXY'], uri)
+            self.assertEqual(value, 'DIRECT' if direct else '', uri)
         env['RDF_NO_PROXY'] = '*'
         self.assertEqual(subprocess.check_output(['sh', str(helper), 'https://other.example/file'], env=env, text=True).strip(), 'DIRECT')
+
+    @unittest.skipUnless(shutil.which('sh'), 'POSIX shell required for APT adapter')
+    def test_apt_detector_keeps_long_credentials_in_generic_proxy_environment(self):
+        helper = pathlib.Path(__file__).with_name('apt-proxy.sh')
+        address = 'http://builder:' + 'x' * 1000 + '@proxy.example:3128'
+        env = dict(os.environ, HTTP_PROXY=address, RDF_NO_PROXY='localhost')
+        value = subprocess.check_output(['sh', str(helper), 'http://archive.ubuntu.com/ubuntu/'], env=env)
+        self.assertEqual(value, b'', 'no detector output lets APT use the complete proxy URL from its environment')
+
+    @unittest.skipUnless(pathlib.Path('/usr/lib/apt/apt-helper').is_file(), 'APT required for authenticated download')
+    def test_apt_download_uses_complete_long_proxy_password(self):
+        password = 'x' * 1000
+        with serving(self.upstream()) as upstream, tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            helper = root / 'apt-proxy.sh'
+            shutil.copyfile(pathlib.Path(__file__).with_name('apt-proxy.sh'), helper)
+            helper.chmod(0o755)
+            address = 'http://builder:' + password + '@127.0.0.1:' + str(upstream.server_address[1])
+            env = dict(os.environ, HTTP_PROXY=address, http_proxy=address, RDF_NO_PROXY='localhost', NO_PROXY='', no_proxy='')
+            result = subprocess.run(['/usr/lib/apt/apt-helper', '-o', 'APT::Sandbox::User=root',
+                                     '-o', 'Acquire::http::Proxy-Auto-Detect=' + str(helper),
+                                     '-o', 'Acquire::Retries=0', 'download-file',
+                                     'http://example.invalid/repository', str(root / 'download')],
+                                    env=env, capture_output=True, timeout=15)
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            self.assertEqual((root / 'download').read_bytes(), b'OK')
+            self.assertEqual(len(upstream.requests), 1)
+            self.assertIn(b'Proxy-Authorization: Basic ' + base64.b64encode(('builder:' + password).encode()), upstream.requests[0])
+
+    @unittest.skipUnless(shutil.which('sh'), 'POSIX shell required for APT adapter')
+    def test_apt_bypass_matches_equivalent_ipv6_addresses(self):
+        helper = pathlib.Path(__file__).with_name('apt-proxy.sh')
+        env = dict(os.environ, HTTP_PROXY='http://proxy.example:3128', RDF_NO_PROXY='2001:db8::a,::ffff:7f00:1')
+        for host, direct in [('2001:0DB8:0000:0000:0000:0000:0000:000A', True),
+                             ('2001:db8::b', False), ('::ffff:127.0.0.1', True),
+                             ('0:0:0:0:0:ffff:7f00:1', True), ('::ffff:127.0.0.2', False)]:
+            value = subprocess.check_output(['sh', str(helper), 'http://[' + host + ']/file'], env=env, text=True)
+            self.assertEqual(value, 'DIRECT\n' if direct else '', host)
 
 
 if __name__ == '__main__':

@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { BoundedImageBuilder, BUILDKIT_ENTRYPOINT, buildLogLines } from './bounded-image-builder.mjs';
 const labels = { 'remote-device-farm.managed': 'true', 'remote-device-farm.agent': 'node-1', 'remote-device-farm.role': 'image-builder', 'remote-device-farm.image-build': 'identity' };
 const stream = text => { const data = Buffer.from(text), header = Buffer.alloc(8); header[0] = 1; header.writeUInt32BE(data.length, 4); return Buffer.concat([header, data]); };
-function fixture({ failImport = false, abortAt = false, failBuild = false } = {}) {
+function fixture({ failImport = false, abortAt = false, failBuild = false, buildLog = 'ready' } = {}) {
   const calls = []; let live = true, networkLive = true, imported = false;
-  const docker = { ensureImage: async (_image, onProgress) => { onProgress({ stage: 'checking_image' }); onProgress({ stage: 'downloading', detail: 'Downloading', percent: 42 }); }, importImageArchive: async () => { imported = true; if (failImport) throw new Error('import failed'); }, requestRaw: async () => stream('ready'), request: async (method, path, body, options) => {
+  const docker = { ensureImage: async (_image, onProgress) => { onProgress({ stage: 'checking_image' }); onProgress({ stage: 'downloading', detail: 'Downloading', percent: 42 }); }, importImageArchive: async () => { imported = true; if (failImport) throw new Error('import failed'); }, requestRaw: async () => stream(buildLog), request: async (method, path, body, options) => {
     calls.push({ method, path, body, options });
     if (path === '/volumes/rdf-buildkit-node-1') return { Driver: 'local', Labels: { ...labels, 'remote-device-farm.role': 'image-build-cache' } };
     if (path === '/networks/create') { Object.assign(labels, body.Labels); return { Id: 'network-id' }; }
@@ -72,6 +72,23 @@ test('worker process death reports failure and still removes its owned container
   await assert.rejects(f.builder.build('example/image:test', {}, { contextTar: Buffer.alloc(1024), onStage: stage => stages.push(stage), onHeartbeat: () => checks++ }), { code: 'build_failed' });
   assert.deepEqual(stages, ['preparing', 'starting', 'building']); assert.equal(checks, 1);
   assert.equal(f.imported, false); assert.equal(f.builder.active, null);
+  assert.ok(f.calls.some(call => call.path === '/networks/network-id' && call.method === 'DELETE'));
+});
+
+test('long build failures preserve the terminal error while redacting proxy credentials', async () => {
+  const password = 'private-proxy-credential';
+  const buildLog = 'Downloading image layer\n'.repeat(600) + `ERROR_FINAL: upstream rejected ${password}\n`;
+  const f = fixture({ failBuild: true, buildLog });
+  await assert.rejects(f.builder.build('example/image:test', {}, {
+    contextTar: Buffer.alloc(1024), proxy: { url: 'http://proxy.example:3128', username: 'builder', password },
+  }), error => {
+    assert.equal(error.code, 'build_failed');
+    assert.match(error.message, /ERROR_FINAL: upstream rejected \[redacted\]/);
+    assert.ok(error.message.length <= 2000);
+    assert.ok(!error.message.includes(password));
+    return true;
+  });
+  assert.equal(f.imported, false);
   assert.ok(f.calls.some(call => call.path === '/networks/network-id' && call.method === 'DELETE'));
 });
 

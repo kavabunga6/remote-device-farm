@@ -110,7 +110,7 @@ export class EmulatorImages {
       const result = await this.docker.request('POST', `/containers/${created.Id}/wait`, undefined, { timeoutMs: 10 * 60_000, signal });
       const output = await this.docker.request('GET', `/containers/${created.Id}/logs?stdout=1&stderr=1`, undefined, { raw: true, maxBytes: 4 * 1024 * 1024, signal });
       const text = Buffer.isBuffer(output) ? output.toString('utf8') : String(output ?? '');
-      if (result?.StatusCode !== 0) throw new Error(diagnostic('emulator-images.91b9ab5b57', { p0: redactDiagnostic(text, proxySecrets(proxy)).split('\n').slice(-5).join(' ').slice(0, 500) }));
+      if (result?.StatusCode !== 0) throw new Error(diagnostic('emulator-images.91b9ab5b57', { p0: redactDiagnostic(text, proxySecrets(proxy), { tail: true }).split('\n').slice(-5).join(' ').slice(-500) }));
       return text;
     } finally {
       await this.docker.request('DELETE', `/containers/${created.Id}?force=1`).catch(() => {});
