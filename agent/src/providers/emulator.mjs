@@ -78,7 +78,7 @@ export class EmulatorProvider extends DeviceProvider {
       'image-cache': params=>this.control.imageCache(params?.protectedRefs ?? []),
       'image-cache-remove': params=>this.control.imageCacheRemove(params?.ids,params?.protectedRefs ?? []),
       'image-prewarm': (params) => this.control.prewarmImage(params?.image, params?.auth ?? null),
-      'emulator-jobs': (params) => this.control.emulatorJobs(params?.acknowledged ?? []),
+      'emulator-jobs': (params) => this.control.emulatorJobs(params?.acknowledged ?? [], params?.jobId),
     };
   }
 

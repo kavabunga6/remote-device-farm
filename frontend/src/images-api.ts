@@ -34,6 +34,11 @@ export interface BuildJob {
   digest?: string | null;
   createdAt?: string;
   finishedAt?: string;
+  startedAt?: string;
+  updatedAt?: string;
+  lastLogAt?: string | null;
+  checkedAt?: string | null;
+  stage?: 'preparing' | 'starting' | 'building' | 'importing' | null;
 }
 
 export interface ImagePrewarmJob {
@@ -78,6 +83,8 @@ export const imagesApi = {
   catalog: (refresh = false, signal?: AbortSignal) => apiRequest<ImageCatalog>('/admin/emulator-images' + (refresh ? '?refresh=1' : ''), { signal, timeoutMs: 15 * 60_000 + 15_000 }),
   catalogStatus: (signal?: AbortSignal) => apiRequest<CatalogStatus>('/admin/emulator-images/catalog-status', { signal, timeoutMs: 10_000 }),
   build: (packages: string[]) => apiRequest<{ jobs: BuildJob[] }>('/admin/emulator-images/builds', { method: 'POST', ...json({ packages }) }),
+  buildJobs: (builderHostId: string, signal?: AbortSignal) => apiRequest<{ builder: { id: string; name: string }; observedAt: string; jobs: BuildJob[] }>(`/admin/emulator-images/builds?builderHostId=${encodeURIComponent(builderHostId)}`, { signal, timeoutMs: 12_000 }),
+  buildJob: (jobId: string, builderHostId: string, signal?: AbortSignal) => apiRequest<{ jobs: BuildJob[] }>(`/admin/emulator-images/builds/${encodeURIComponent(jobId)}?builderHostId=${encodeURIComponent(builderHostId)}`, { signal, timeoutMs: 12_000 }),
   cancelBuild: (jobId: string, builderHostId: string) => apiRequest<{ jobs: BuildJob[] }>(`/admin/emulator-images/builds/${encodeURIComponent(jobId)}/cancel`, { method: 'POST', ...json({ builderHostId }) }),
   apply: (pkg: string) => apiRequest<{ updated: string[] }>('/admin/emulator-images/apply', { method: 'POST', ...json({ package: pkg }) }),
   registry: () => apiRequest<{ registry: RegistrySettings }>('/admin/registry'),

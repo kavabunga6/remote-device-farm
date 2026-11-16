@@ -389,3 +389,33 @@ test('catalogue status reports tools preparation and failure, and a retry can re
   fail = false; await images.catalog();
   assert.equal(images.catalogStatus().phase, 'ready');
 });
+
+
+test('BuildKit progress is recognized without inventing a global completion percentage', () => {
+  assert.deepEqual(buildProgress('#9 [runtime 3/7] RUN sdkmanager'), { step: 3, steps: 7, percent: null });
+});
+
+test('live build logs are bounded, checkpointed and redacted before persistence and detail reads', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'rdf-live-build-'));
+  let finish, started; const ready = new Promise(resolve => { started = resolve; }); const held = new Promise(resolve => { finish = resolve; }); let now = 10000;
+  try {
+    const images = testedImages({ docker: fakeDocker(), now: () => now, stateDir: directory, builder: { build: async (_tag, args, { onLine, onStage, onHeartbeat }) => {
+      if (!args.SYSTEM_IMAGE) return;
+      onStage('building');
+      for (let i = 0; i < 95; i++) { now += 1000; onLine('#9 line ' + i); }
+      now += 6000; onLine('password=private-push-token https://rdf:private-push-token@farm.example.com/');
+      onHeartbeat(); started(); await held;
+      throw new Error('process died with private-push-token');
+    } } });
+    await images.catalog(); images.enqueue([buildPackage], buildTarget); await ready;
+    const summary = images.jobList()[0], detail = images.jobList({ jobId: summary.id })[0];
+    assert.equal(summary.log.length, 8); assert.equal(detail.log.length, 80);
+    assert.equal(detail.stage, 'building'); assert.equal(detail.lastLogAt, new Date(now).toISOString()); assert.equal(detail.checkedAt, detail.lastLogAt);
+    assert.ok(detail.log.at(-1).includes('[redacted]')); assert.ok(!JSON.stringify(detail).includes('private-push-token'));
+    const saved = readFileSync(join(directory, 'jobs.json'), 'utf8'); assert.ok(saved.includes('[redacted]')); assert.ok(!saved.includes('private-push-token'));
+    assert.deepEqual(images.jobList({ jobId: 'absent' }), []);
+    finish(); await waitForJobs(images);
+    assert.equal(images.jobList()[0].state, 'failed'); assert.ok(!images.jobList()[0].error.includes('private-push-token'));
+    assert.ok(!readFileSync(join(directory, 'jobs.json'), 'utf8').includes('private-push-token'));
+  } finally { finish?.(); rmSync(directory, { recursive: true, force: true }); }
+});

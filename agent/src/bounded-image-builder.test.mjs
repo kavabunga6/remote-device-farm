@@ -1,17 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BoundedImageBuilder, BUILDKIT_ENTRYPOINT } from './bounded-image-builder.mjs';
+import { BoundedImageBuilder, BUILDKIT_ENTRYPOINT, buildLogLines } from './bounded-image-builder.mjs';
 const labels = { 'remote-device-farm.managed': 'true', 'remote-device-farm.agent': 'node-1', 'remote-device-farm.role': 'image-builder', 'remote-device-farm.image-build': 'identity' };
 const stream = text => { const data = Buffer.from(text), header = Buffer.alloc(8); header[0] = 1; header.writeUInt32BE(data.length, 4); return Buffer.concat([header, data]); };
-function fixture({ failImport = false, abortAt = false } = {}) {
+function fixture({ failImport = false, abortAt = false, failBuild = false } = {}) {
   const calls = []; let live = true, networkLive = true, imported = false;
-  const docker = { ensureImage: async () => {}, importImageArchive: async () => { imported = true; if (failImport) throw new Error('import failed'); }, requestRaw: async () => stream('ready'), request: async (method, path, body) => {
+  const docker = { ensureImage: async (_image, onProgress) => { onProgress({ stage: 'checking_image' }); onProgress({ stage: 'downloading', detail: 'Downloading', percent: 42 }); }, importImageArchive: async () => { imported = true; if (failImport) throw new Error('import failed'); }, requestRaw: async () => stream('ready'), request: async (method, path, body) => {
     calls.push({ method, path, body });
     if (path === '/volumes/rdf-buildkit-node-1') return { Driver: 'local', Labels: { ...labels, 'remote-device-farm.role': 'image-build-cache' } };
     if (path === '/networks/create') { Object.assign(labels, body.Labels); return { Id: 'network-id' }; }
     if (path === '/networks/network-id') { if (method === 'DELETE') { networkLive = false; return {}; } if (!networkLive) throw new Error('No such network'); return { Id: 'network-id', Driver: 'bridge', Labels: labels, Containers: {} }; }
     if (path.startsWith('/containers/create')) { Object.assign(labels, body.Labels); return { Id: 'worker-id' }; }
-    if (path.endsWith('/exec')) return { Id: 'exec-id' };
+    if (path.endsWith('/exec')) return { Id: body.Cmd?.[0] === 'sh' ? 'build-exec' : 'exec-id' };
+    if (path === '/exec/build-exec/json') return { Running: false, ExitCode: failBuild ? 17 : 0 };
     if (path === '/exec/exec-id/json') return { Running: false, ExitCode: 0 };
     if (path === '/containers/worker-id/json') { if (!live) throw new Error('No such container'); return { Id: 'worker-id', Config: { Labels: labels } }; }
     if (method === 'DELETE') { live = false; return {}; }
@@ -55,4 +56,28 @@ test('a network containing any other container is preserved and blocks cleanup',
   const builder = new BoundedImageBuilder({ docker: { request: async (method) => { calls.push(method); return { Id: 'network-id', Driver: 'bridge', Labels: labels, Containers: { other: {} } }; } }, agentId: 'node-1', stateDir: '/' });
   await assert.rejects(builder.cleanupNetwork('network-id', labels['remote-device-farm.image-build']), { code: 'build_cleanup_failed' });
   assert.deepEqual(calls, ['GET']);
+});
+
+
+test('build log tails emit only new lines, including rotation and partial output', () => {
+  assert.deepEqual(buildLogLines('', '#1 RUN\n#2 DONE\n'), ['#1 RUN', '#2 DONE']);
+  assert.deepEqual(buildLogLines('#1 RUN\n', '#1 RUN\n'), []);
+  assert.deepEqual(buildLogLines('#1 RUN\n', '#1 RUN\n#2 DONE\n'), ['#2 DONE']);
+  assert.deepEqual(buildLogLines('#1 RUN\n#2 DONE\n', '#2 DONE\n#3 export\n'), ['#3 export']);
+  assert.deepEqual(buildLogLines('#1 down', '#1 downloading 42%\n'), ['#1 downloading 42%']);
+});
+
+test('worker process death reports failure and still removes its owned container and network', async () => {
+  const f = fixture({ failBuild: true }), stages = []; let checks = 0;
+  await assert.rejects(f.builder.build('example/image:test', {}, { contextTar: Buffer.alloc(1024), onStage: stage => stages.push(stage), onHeartbeat: () => checks++ }), { code: 'build_failed' });
+  assert.deepEqual(stages, ['preparing', 'starting', 'building']); assert.equal(checks, 1);
+  assert.equal(f.imported, false); assert.equal(f.builder.active, null);
+  assert.ok(f.calls.some(call => call.path === '/networks/network-id' && call.method === 'DELETE'));
+});
+
+
+test('worker image download events become readable log lines rather than object strings', async () => {
+  const f = fixture(), lines = [];
+  await f.builder.build('example/image:test', {}, { contextTar: Buffer.alloc(1024), onLine: line => lines.push(line) });
+  assert.ok(lines.includes('42% Downloading')); assert.ok(lines.every(line => typeof line === 'string' && !line.includes('[object Object]')));
 });

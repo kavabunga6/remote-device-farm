@@ -1029,6 +1029,24 @@ paths:
       operationId: getAdminEmulatorimages
       x-permission: images.view
   /api/admin/emulator-images/builds:
+    get:
+      tags: [ Emulator images ]
+      summary: Read current build states without loading the SDK catalog
+      description: Reads a bounded job snapshot from the specified original node. Does not start a build or download a catalog. Logs contain the latest eight lines per job.
+      operationId: getAdminEmulatorImageBuilds
+      x-permission: images.view
+      parameters:
+        - name: builderHostId
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        "200":
+          description: Fresh node snapshot
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmulatorBuildSnapshot" }
+        default: { $ref: "#/components/responses/Error" }
     post:
       tags: [ Emulator images ]
       summary: Queue image builds and pushes (administrator only)
@@ -1076,6 +1094,29 @@ paths:
                 $ref: "#/components/schemas/Error"
       operationId: postAdminEmulatorimagesBuilds
       x-permission: images.build
+  /api/admin/emulator-images/builds/{jobId}:
+    get:
+      tags: [ Emulator images ]
+      summary: Read one image build with its retained log
+      description: Returns at most 80 recent log lines, each limited to 512 characters. Registry credentials are redacted before logs are stored. An old node without detailed job support is reported as unavailable.
+      operationId: getAdminEmulatorImageBuild
+      x-permission: images.view
+      parameters:
+        - name: builderHostId
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[A-Za-z0-9-]{1,64}$' }
+      responses:
+        "200":
+          description: Job and retained log
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmulatorBuildSnapshot" }
+        default: { $ref: "#/components/responses/Error" }
   /api/admin/emulator-images/builds/{jobId}/cancel:
     post:
       tags: [ Emulator images ]
@@ -7927,6 +7968,20 @@ components:
           type: string
         finishedAt:
           type: string
+        startedAt:
+          type: string
+        updatedAt:
+          type: string
+        lastLogAt:
+          type: string
+          nullable: true
+        checkedAt:
+          type: string
+          nullable: true
+        stage:
+          type: string
+          nullable: true
+          enum: [ preparing, starting, building, importing, null ]
       required: [ id, package, image, state ]
     getAdminEmulatorimagesResponse:
       type: object
@@ -7952,6 +8007,20 @@ components:
           items:
             $ref: "#/components/schemas/getAdminEmulatorimagesResponseJobsItem"
       required: [ registry, builder, images, jobs ]
+    EmulatorBuildSnapshot:
+      type: object
+      required: [ builder, observedAt, jobs ]
+      properties:
+        builder:
+          $ref: "#/components/schemas/getAdminEmulatorimagesResponseBuilder1"
+        observedAt:
+          type: string
+          format: date-time
+        jobs:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/getAdminEmulatorimagesResponseJobsItem"
     postAdminEmulatorimagesBuildsResponse:
       type: object
       properties:

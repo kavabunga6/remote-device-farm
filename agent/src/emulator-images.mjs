@@ -1,5 +1,6 @@
 import { diagnostic } from './diagnostics.mjs';
 import { agentMessage } from './messages.mjs';
+import { redactDiagnostic } from './session-diagnostics.mjs';
 import { tarArchive } from './tar-archive.mjs';
 import { BoundedImageBuilder } from './bounded-image-builder.mjs';
 export { tarArchive } from './tar-archive.mjs';
@@ -21,14 +22,14 @@ const CONTEXT_FILES = [['Dockerfile', 0o644], ['rdf-emulator.sh', 0o755], ['adb-
 const CATALOG_TTL_MS = 60 * 60_000;
 const BUILD_TIMEOUT_MS = 2 * 60 * 60_000;
 const MAX_JOBS = 50;
-const MAX_LOG_LINES = 40;
+const MAX_LOG_LINES = 80;
 
 /** Host architecture as an Android ABI. */
 export const hostAbi = (arch = process.arch) => arch === 'arm64' ? 'arm64-v8a' : arch === 'x64' ? 'x86_64' : arch;
 
 /** Progress of a classic Docker build: "Step 4/12" and sdkmanager's "[===  ] 35% Downloading" lines. */
 export function buildProgress(line, previous = { step: 0, steps: 0, percent: null }) {
-  const step = /^Step (\d+)\/(\d+) :/.exec(line);
+  const step = /^Step (\d+)\/(\d+) :/.exec(line) ?? /^#\d+ \[[^\]]*? (\d+)\/(\d+)\]/.exec(line);
   if (step) return { step: Number(step[1]), steps: Number(step[2]), percent: null };
   const percent = /\b(\d{1,3})% (?:Downloading|Unzipping|Installing)/.exec(line);
   if (percent) return { ...previous, percent: Math.min(100, Number(percent[1])) };
@@ -53,7 +54,7 @@ export class EmulatorImages {
           : 'Build interrupted by agent-control restart. Request the build again.';
         job.errorCode = job.state === 'cancelling' ? 'build_cancelled' : 'build_interrupted';
         job.state = 'failed';
-        job.finishedAt = new Date(this.now()).toISOString();
+        job.finishedAt = job.updatedAt = new Date(this.now()).toISOString();
         interrupted = true;
       }
       delete job.auth;
@@ -69,9 +70,9 @@ export class EmulatorImages {
     return { tar: tarArchive(files), hash: hash.digest('hex').slice(0, 12) };
   }
 
-  async build(tag, buildArgs, { target, onLine = () => {}, signal } = {}) {
+  async build(tag, buildArgs, { target, onLine = () => {}, signal, onStage, onHeartbeat } = {}) {
     const { tar } = await this.context();
-    await this.builder.build(tag, buildArgs, { contextTar: tar, target, onLine, signal });
+    await this.builder.build(tag, buildArgs, { contextTar: tar, target, onLine, signal, onStage, onHeartbeat });
   }
 
   /** The tools stage (Java + sdkmanager), rebuilt only when the bundled Dockerfile changes. */
@@ -167,7 +168,7 @@ export class EmulatorImages {
       const active = next.find(job => job.package === entry.package && job.image === image && ['queued', 'building', 'validating', 'pushing', 'cancelling'].includes(job.state));
       if (active) { queued.push(active.id); continue; }
       const job = { id: randomUUID(), package: entry.package, image, state: 'queued', validation: null,
-        createdAt: new Date(this.now()).toISOString(), progress: { step: 0, steps: 0, percent: null }, log: [], error: null,
+        createdAt: new Date(this.now()).toISOString(), updatedAt: new Date(this.now()).toISOString(), lastLogAt: null, checkedAt: null, stage: null, progress: { step: 0, steps: 0, percent: null }, log: [], error: null,
         digest: null, sizeMb: null, profiles: buildManifest([entry], { registry: target.repository, abi: entry.abi }).profiles, entry,
         auth: target.auth ?? null };
       next.unshift(job);
@@ -185,11 +186,11 @@ export class EmulatorImages {
   }
 
   async check(job, signal) {
-    job.state = 'validating';
+    job.state = 'validating'; job.stage = null; this.touch(job);
     this.persist();
     const entry = job.entry ?? parsePackage(job.package);
     const result = await this.verify(job.image, { entry, profiles: job.profiles, signal, onLine: line => {
-      job.log.push(String(line).slice(0, 300)); if (job.log.length > MAX_LOG_LINES) job.log.shift();
+      this.appendLog(job, line);
     } });
     signal.throwIfAborted();
     const check = result?.checks?.off;
@@ -199,6 +200,26 @@ export class EmulatorImages {
     }
     job.validation = result;
     this.persist();
+  }
+
+  touch(job) { job.updatedAt = new Date(this.now()).toISOString(); }
+
+  cleanLog(job, text) {
+    const password = job.auth?.password;
+    const secrets = password ? [password, encodeURIComponent(password), Buffer.from(`${job.auth.username}:${password}`).toString('base64')] : [];
+    return redactDiagnostic(text, secrets);
+  }
+
+  appendLog(job, line) {
+    const text = this.cleanLog(job, line).slice(0, 512);
+    if (!text.trim()) return;
+    job.log.push(text);
+    if (job.log.length > MAX_LOG_LINES) job.log.splice(0, job.log.length - MAX_LOG_LINES);
+    this.touch(job); job.lastLogAt = job.updatedAt;
+    // Coalesce durable log checkpoints; never fsync on every BuildKit line.
+    if (this.now() - (this.lastLogCheckpoint ?? -Infinity) >= 5000) {
+      this.persist(); this.lastLogCheckpoint = this.now();
+    }
   }
 
   persist() {
@@ -225,7 +246,7 @@ export class EmulatorImages {
     if (!job) throw new Error(diagnostic('emulator-images.e568d340e7'));
     if (['queued', 'building', 'validating', 'pushing'].includes(job.state)) {
       const previous = { ...job };
-      job.cancelRequestedAt = new Date(this.now()).toISOString();
+      job.cancelRequestedAt = new Date(this.now()).toISOString(); this.touch(job);
       job.error = null;
       if (job.state === 'queued') {
         job.state = 'cancelled';
@@ -257,26 +278,24 @@ export class EmulatorImages {
       this.runningController = controller;
       const { signal } = controller;
       job.state = 'building';
-      job.startedAt = new Date(this.now()).toISOString();
+      job.startedAt = new Date(this.now()).toISOString(); this.touch(job);
       try {
         this.persist();
         await this.build(job.image, { SYSTEM_IMAGE: job.package }, {
           signal,
-          onLine: (line) => {
-            job.progress = buildProgress(line, job.progress);
-            job.log.push(line.slice(0, 300));
-            if (job.log.length > MAX_LOG_LINES) job.log.shift();
-          },
+          onLine: (line) => { job.progress = buildProgress(line, job.progress); this.appendLog(job, line); },
+          onStage: stage => { job.stage = stage; job.progress = { step: 0, steps: 0, percent: null }; this.touch(job); this.persist(); },
+          onHeartbeat: () => { job.checkedAt = new Date(this.now()).toISOString(); },
         });
         signal.throwIfAborted();
         await this.check(job, signal);
         const validatedImage = job.validation.imageId;
         const currentImage = await this.docker.request('GET',`/images/${encodeURIComponent(job.image)}/json`,undefined,{signal});
         if(typeof validatedImage !== 'string' || currentImage?.Id !== validatedImage)throw new Error(diagnostic('emulator-images.421feec8fd'));
-        job.state = 'pushing';
+        job.state = 'pushing'; job.stage = null; this.touch(job);
         job.progress = { ...job.progress, percent: null };
         this.persist();
-        job.digest = await this.push(job.image, job.auth, (line) => { job.log.push(line.slice(0, 300)); if (job.log.length > MAX_LOG_LINES) job.log.shift(); }, { signal });
+        job.digest = await this.push(job.image, job.auth, (line) => this.appendLog(job, line), { signal });
         signal.throwIfAborted();
         const inspect = await this.docker.request('GET', `/images/${encodeURIComponent(job.image)}/json`, undefined, { signal }).catch(() => null);
         signal.throwIfAborted();
@@ -285,10 +304,10 @@ export class EmulatorImages {
       } catch (error) {
         const phase = job.state;
         job.state = signal.aborted && !['image_check_cleanup', 'build_cleanup_failed'].includes(error.code) ? 'cancelled' : 'failed';
-        job.error = job.state === 'cancelled' ? null : String(error?.message || error).slice(0, 2000);
+        job.error = job.state === 'cancelled' ? null : this.cleanLog(job, String(error?.message || error)).slice(0, 2000);
         job.errorCode = job.state === 'cancelled' ? null : error.code ?? (!job.digest && job.validation === null && phase === 'validating' ? 'validation_unavailable' : 'build_failed');
       } finally {
-        job.finishedAt = new Date(this.now()).toISOString();
+        job.finishedAt = new Date(this.now()).toISOString(); this.touch(job);
         job.auth = null;
         this.running = null;
         this.runningController = null;
@@ -321,7 +340,8 @@ export class EmulatorImages {
     return digest;
   }
 
-  jobList() {
-    return this.jobs.map(({ entry, auth, acknowledged, ...job }) => ({ ...job, log: job.log.slice(-8) }));
+  jobList({ jobId } = {}) {
+    return this.jobs.filter(job => jobId === undefined || job.id === jobId)
+      .map(({ entry, auth, acknowledged, ...job }) => ({ ...job, log: job.log.slice(jobId ? -MAX_LOG_LINES : -8).map(line => redactDiagnostic(line).slice(0, jobId ? 512 : 300)) }));
   }
 }

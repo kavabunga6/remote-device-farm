@@ -158,7 +158,7 @@ export class AgentControl {
         return this.images.enqueue(request.packages, request.target);
       case 'emulatorCancel': return this.images.cancel(request.jobId);
       case 'prewarmImage': return this.prewarmImage(request.image, request.auth, { signal });
-      case 'emulatorJobs': return this.images.acknowledge(request.acknowledged);
+      case 'emulatorJobs': return request.jobId ? { jobs: this.images.jobList({ jobId: request.jobId }) } : this.images.acknowledge(request.acknowledged);
       case 'imageCache': return this.cache.list(request.protectedRefs, signal);
       case 'imageCacheRemove': return this.removeCachedImages(request.ids, request.protectedRefs, signal);
       default: throw new Error(diagnostic('agent-control.6b12683987'));

@@ -63,3 +63,11 @@ test('build result acknowledgements and prewarm IPC stay typed and bounded', () 
   assert.throws(() => validateControlRequest({ op: 'prewarmImage', image: 'farm.example.com/rdf-emulator:34', auth: null }), /digest/);
   assert.throws(() => validateControlRequest({ op: 'prewarmImage', image, auth: null, privileged: true }), /Unexpected/);
 });
+
+
+test('job detail IDs are optional for snapshots and strictly validated when supplied', () => {
+  assert.ok(validateControlRequest({ op: 'emulatorJobs' }));
+  assert.ok(validateControlRequest({ op: 'emulatorJobs', jobId: 'job-1' }));
+  for (const jobId of ['', '../job', 'x'.repeat(65), 123]) assert.throws(() => validateControlRequest({ op: 'emulatorJobs', jobId }));
+  assert.throws(() => validateControlRequest({ op: 'emulatorCancel' }));
+});

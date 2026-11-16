@@ -47,7 +47,7 @@ async function fixture() {
     commands.push({ hostId, action, params });
     if (action === 'emulator-jobs') {
       if (failJobs) throw new Error('agent disconnected');
-      return { jobs };
+      return { jobs: params.jobId ? jobs.filter(job => job.id === params.jobId) : jobs };
     }
     if (action === 'emulator-catalog') return { abi: 'x86_64', refreshedAt: new Date().toISOString(), images: selectEntries(catalog, { abi: 'x86_64' }).map((entry: Record<string, unknown>) => ({ package: entry.package, tag: imageTag(entry), device: entry.device, flavor: entry.flavor })), jobs };
     if (action === 'emulator-cancel') {
@@ -411,4 +411,42 @@ test('existing artifacts are preserved and not scheduled for checking',async()=>
     assert.equal((await f.db.query('SELECT validation FROM emulator_images')).rows[0]?.validation,null);
     assert.ok(!f.commands.some(command=>['emulator-verify','emulator-build'].includes(command.action)));
   } finally {await f.close();}
+});
+
+
+test('build snapshots and retained logs stay on the requested node and never load the SDK catalog', async () => {
+  const f = await fixture();
+  try {
+    const job = { id: 'job-live', package: PLAY, image: 'farm/rdf-emulator:one', state: 'building', stage: 'starting', updatedAt: new Date().toISOString(), log: ['starting buildkitd'] };
+    f.setJobs([job]);
+    const response = await f.request('/admin/emulator-images/builds?builderHostId=builder');
+    assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'no-store');
+    const body = await response.json(); assert.deepEqual(body.jobs, [job]); assert.equal(body.builder.id, 'builder'); assert.ok(Number.isFinite(Date.parse(body.observedAt)));
+    f.connected.add('other'); await f.db.query("UPDATE hosts SET image_builder=(id='other')");
+    const detail = await f.request('/admin/emulator-images/builds/job-live?builderHostId=builder');
+    assert.equal(detail.status, 200); assert.deepEqual((await detail.json()).jobs, [job]);
+    assert.equal(f.commands.at(-1)?.hostId, 'builder'); assert.deepEqual(f.commands.at(-1)?.params, { jobId: 'job-live' });
+    assert.ok(f.commands.every(command => command.action === 'emulator-jobs'));
+    assert.equal((await f.request('/admin/emulator-images/builds/missing?builderHostId=builder')).status, 404);
+    assert.equal((await f.request('/admin/emulator-images/builds')).status, 400);
+    f.connected.delete('builder'); assert.equal((await f.request('/admin/emulator-images/builds?builderHostId=builder')).status, 503);
+    f.connected.add('builder'); f.failJobs(true); assert.equal((await f.request('/admin/emulator-images/builds?builderHostId=builder')).status, 502);
+    const count = f.commands.length;
+    f.as(USER); assert.equal((await f.request('/admin/emulator-images/builds?builderHostId=builder')).status, 403);
+    f.as(null); assert.equal((await f.request('/admin/emulator-images/builds/job-live?builderHostId=builder')).status, 401);
+    assert.equal(f.commands.length, count);
+  } finally { await f.close(); }
+});
+
+
+test('a delayed build log is not delivered after the requesting login is revoked', async () => {
+  const f = await fixture(); let release!: () => void, entered!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; }), waiting = new Promise<void>(resolve => { entered = resolve; });
+  try {
+    f.hub.command = async () => { entered(); await gate; return { jobs: [{ id: 'job-live', log: ['private build output'] }] }; };
+    const request = f.request('/admin/emulator-images/builds/job-live?builderHostId=builder');
+    await waiting; f.as(null); release();
+    const response = await request; assert.equal(response.status, 401);
+    assert.ok(!(await response.text()).includes('private build output'));
+  } finally { release(); await f.close(); }
 });

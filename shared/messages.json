@@ -14986,5 +14986,77 @@
   "sessionVideo.nativeDetail": {
     "ru": "Видео из WebRTC-потока эмулятора передаётся через сервер.",
     "en": "The emulator’s WebRTC video stream is relayed through the server."
+  },
+  "build.log": {
+    "ru": "Журнал сборки",
+    "en": "Build log"
+  },
+  "build.logTail": {
+    "ru": "Последние строки: {count}",
+    "en": "Latest lines: {count}"
+  },
+  "build.emptyLog": {
+    "ru": "Вывод появится здесь после начала работы.",
+    "en": "Output will appear here when work starts."
+  },
+  "build.lastOutput": {
+    "ru": "Последний вывод: {time}",
+    "en": "Last output: {time}"
+  },
+  "build.processChecked": {
+    "ru": "Проверка процесса: {time}",
+    "en": "Process checked: {time}"
+  },
+  "build.quiet": {
+    "ru": "Давно нет нового вывода. Проверьте журнал; при необходимости сборку можно остановить.",
+    "en": "No new output for a while. Check the log; you can stop the build if needed."
+  },
+  "build.connectionLost": {
+    "ru": "Связь со сборщиком потеряна. Последние данные сохранены, повторяем подключение.",
+    "en": "Connection to the builder was lost. Previous data is preserved; reconnecting."
+  },
+  "build.statusUnavailable": {
+    "ru": "Не удалось получить состояние сборки. Повторите попытку.",
+    "en": "Could not retrieve the build status. Try again."
+  },
+  "build.unknownStatus": {
+    "ru": "Состояние не подтверждено",
+    "en": "Status unconfirmed"
+  },
+  "build.logUnavailable": {
+    "ru": "Не удалось обновить журнал. Последние полученные строки сохранены.",
+    "en": "Could not refresh the log. Previously received output is preserved."
+  },
+  "build.queuePosition": {
+    "ru": "Место в очереди: {position}",
+    "en": "Queue position: {position}"
+  },
+  "build.stage.preparing": {
+    "ru": "Подготавливаем сборщик",
+    "en": "Preparing the builder"
+  },
+  "build.stage.starting": {
+    "ru": "Запускаем сборщик",
+    "en": "Starting the builder"
+  },
+  "build.stage.building": {
+    "ru": "Собираем образ",
+    "en": "Building the image"
+  },
+  "build.stage.importing": {
+    "ru": "Сохраняем образ на узле",
+    "en": "Saving the image on the node"
+  },
+  "images.error.build_interrupted": {
+    "ru": "Сборка прервалась при перезапуске сборщика. Запустите её заново.",
+    "en": "The build was interrupted by a builder restart. Start it again."
+  },
+  "images.error.build_cancelled": {
+    "ru": "Сборщик перезапустился во время остановки. Проверьте узел перед новой сборкой.",
+    "en": "The builder restarted while stopping. Check the node before starting another build."
+  },
+  "build.step": {
+    "ru": "Шаг {step} из {total}",
+    "en": "Step {step} of {total}"
   }
 }

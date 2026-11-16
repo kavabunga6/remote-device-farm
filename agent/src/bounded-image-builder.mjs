@@ -27,6 +27,19 @@ printf '%s\\n' "$$" > /sys/fs/cgroup/rdf-worker/cgroup.procs
 exec /usr/bin/unshare --cgroup --mount /usr/bin/with-cgroupfs-remount /usr/bin/buildkitd "$@"
 `;
 
+/** Emit new tail lines without replaying an unchanged prefix on every poll. */
+export function buildLogLines(previous, current) {
+  if (current === previous) return [];
+  if (current.startsWith(previous)) {
+    const start = previous.endsWith('\n') ? previous.length : previous.lastIndexOf('\n') + 1;
+    return current.slice(start).split(/\r?\n/).filter(line => line.trim());
+  }
+  const before = previous.trimEnd().split(/\r?\n/), after = current.trimEnd().split(/\r?\n/);
+  let overlap = Math.min(before.length, after.length);
+  while (overlap && !before.slice(-overlap).every((line, index) => line === after[index])) overlap--;
+  return after.slice(overlap).filter(line => line.trim());
+}
+
 export class BoundedImageBuilder {
   constructor({ docker, agentId, stateDir, diskPath = '/', guard = () => new BuildResourceGuard({ path: diskPath }), image = BUILDKIT_IMAGE, cpu = 4, memory = 6 * 1024 ** 3 }) {
     if (!/^[A-Za-z0-9_-]{1,64}$/.test(agentId)) throw new Error(diagnostic('bounded-image-builder.d748efa9df'));
@@ -81,14 +94,17 @@ export class BoundedImageBuilder {
     const state = await this.docker.request('GET', `/exec/${created.Id}/json`, undefined, { signal });
     return { ...parseDockerStream(output, 1024 * 1024), exitCode: state.Running ? null : state.ExitCode };
   }
-  async build(tag, args, { contextTar, target, signal, onLine = () => {}, onSample = () => {} } = {}) {
+  async build(tag, args, { contextTar, target, signal, onLine = () => {}, onSample = () => {}, onStage = () => {}, onHeartbeat = () => {} } = {}) {
     if (this.cleanupBlocked) throw new BuildResourceError('build_cleanup_failed');
     if (this.active) throw new BuildResourceError('build_busy');
     const identity = randomUUID(); this.active = identity; let container, network;
     try {
       return await this.guard().run(async guardedSignal => {
         const deadline = AbortSignal.timeout(2 * 60 * 60_000), combined = AbortSignal.any([guardedSignal, deadline]);
-        await this.docker.ensureImage(this.image, () => {}, { signal: combined });
+        onStage('preparing');
+        await this.docker.ensureImage(this.image, progress => {
+          if (typeof progress.detail === 'string') onLine((progress.percent == null ? '' : progress.percent + '% ') + progress.detail);
+        }, { signal: combined });
         const cache = await this.cacheVolume();
         const networkCreated = await this.docker.request('POST', '/networks/create', { Name: 'rdf-build-' + this.agentId + '-' + identity, Driver: 'bridge', Labels: this.labels(identity) }, { signal: combined });
         network = networkCreated.Id;
@@ -104,12 +120,14 @@ export class BoundedImageBuilder {
         await upload(contextTar);
         await upload(tarArchive([{ name: 'rdf-buildkit.toml', mode: 0o600, data: Buffer.from(config) }, { name: 'rdf-buildkit-entrypoint.sh', mode: 0o700, data: Buffer.from(BUILDKIT_ENTRYPOINT) }]));
         await this.docker.request('POST', `/containers/${container}/start`, undefined, { signal: combined });
+        onStage('starting');
         for (let attempt = 0; ; attempt++) {
           const result = await this.exec(container, ['buildctl', 'debug', 'workers'], combined);
           if (result.exitCode === 0) break;
           if (attempt >= 30) throw new BuildResourceError('build_worker_unavailable');
           await delay(1000, undefined, { signal: combined });
         }
+        onStage('building');
         const opts = [...Object.entries(args).flatMap(([name, value]) => ['--opt', `build-arg:${name}=${value}`]), ...(target ? ['--opt', `target=${target}`] : [])];
         const command = ['buildctl', 'build', '--frontend', 'dockerfile.v0', '--local', 'context=/tmp', '--local', 'dockerfile=/tmp', ...opts, '--output', `type=docker,name=${tag},dest=/tmp/rdf-image.tar`, '--progress', 'plain'];
         // Detached exec writes a bounded log inside the quota-limited worker. Polling never buffers the whole build output.
@@ -121,11 +139,13 @@ export class BoundedImageBuilder {
           const state = await this.docker.request('GET', `/exec/${job.Id}/json`, undefined, { signal: combined });
           const tail = await this.exec(container, ['tail', '-c', '16384', '/tmp/rdf-build.log'], combined);
           const text = tail.stdout + tail.stderr;
-          if (text !== last) for (const line of text.trim().split(/\r?\n/).slice(-12)) onLine(line.slice(0, 300));
+          onHeartbeat();
+          for (const line of buildLogLines(last, text).slice(-80)) onLine(line.slice(0, 512));
           last = text;
           if (!state.Running) { if (state.ExitCode !== 0) { const error = new Error(text.slice(-2000) || 'build_failed'); error.code = 'build_failed'; throw error; } break; }
           await delay(5000, undefined, { signal: combined });
         }
+        onStage('importing');
         // Stop buildkitd first. The small exporter file remains available through Docker's archive API.
         await this.docker.request('POST', `/containers/${container}/stop?t=10`, undefined, { signal: combined });
         await this.docker.importImageArchive(container, { signal: combined });

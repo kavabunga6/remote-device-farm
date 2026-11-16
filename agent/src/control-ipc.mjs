@@ -44,10 +44,10 @@ export function validateControlRequest(request) {
     cameraImage: ['op', 'sessionId', 'params'], networkInspector: ['op', 'sessionId', 'params'],
     setPolicy: ['op', 'policy'],
     prewarmImage: ['op', 'image', 'auth'],
-    emulatorCatalogStatus: ['op'], emulatorCatalog: ['op', 'refresh'], emulatorBuild: ['op', 'packages', 'target'], emulatorJobs: ['op', 'acknowledged'], emulatorCancel: ['op', 'jobId'],
+    emulatorCatalogStatus: ['op'], emulatorCatalog: ['op', 'refresh'], emulatorBuild: ['op', 'packages', 'target'], emulatorJobs: ['op', 'acknowledged', 'jobId'], emulatorCancel: ['op', 'jobId'],
   }[request.op];
   if (Object.keys(request).some((key) => !fields.includes(key)) ||
-      fields.some((key) => key !== 'acknowledged' && !Object.hasOwn(request, key))) {
+      fields.some((key) => key !== 'acknowledged' && !(request.op === 'emulatorJobs' && key === 'jobId') && !Object.hasOwn(request, key))) {
     throw new Error(diagnostic('control-ipc.6c51bf0621'));
   }
   if (fields.includes('sessionId') &&
@@ -70,6 +70,7 @@ export function validateControlRequest(request) {
   }
   if (request.op === 'emulatorBuild') validateBuildRequest(request);
   if (request.op === 'emulatorCancel' && (typeof request.jobId !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(request.jobId))) throw new Error(diagnostic('control-ipc.fbbcc8cdb5'));
+  if (request.op === 'emulatorJobs' && request.jobId !== undefined && (typeof request.jobId !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(request.jobId))) throw new Error(diagnostic('control-ipc.bd727c5d26'));
   if (request.op === 'emulatorJobs' && request.acknowledged !== undefined && (!Array.isArray(request.acknowledged) || request.acknowledged.length > 50 || request.acknowledged.some(id => typeof id !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(id)))) throw new Error(diagnostic('control-ipc.bd727c5d26'));
   if (request.op === 'start' &&
       (!request.profile || typeof request.profile !== 'object' || Array.isArray(request.profile) ||
@@ -99,7 +100,8 @@ export class ControlClient {
     signal?.throwIfAborted();
     const message = JSON.stringify({ op, ...fields }) + '\n';
     const requestLimit=isLargeOperation(op)?MAX_CACHE_REQUEST_BYTES:MAX_MESSAGE_BYTES;
-    const responseLimit=isCacheOperation(op)||op==='networkInspector'?8*1024*1024:256*1024;
+    const responseLimit = isCacheOperation(op) || op === 'networkInspector' ? 8 * 1024 * 1024
+      : ['emulatorCatalog', 'emulatorJobs'].includes(op) ? 2 * 1024 * 1024 : 256 * 1024;
     if (Buffer.byteLength(message) > requestLimit) return Promise.reject(new Error(diagnostic('control-ipc.960f9d69cd')));
     return new Promise((resolve, reject) => {
       const socket = net.createConnection(this.socketPath);
@@ -166,7 +168,7 @@ export class ControlClient {
   prewarmImage(image, auth = null) { return this.request('prewarmImage', { image, auth }, 30 * 60_000); }
   emulatorCancel(jobId) { return this.request('emulatorCancel', { jobId }); }
 
-  emulatorJobs(acknowledged = []) { return this.request('emulatorJobs', { acknowledged }); }
+  emulatorJobs(acknowledged = [], jobId) { return this.request('emulatorJobs', { acknowledged, ...(jobId ? { jobId } : {}) }); }
 }
 
 export async function createControlServer(control, socketPath = CONTROL_SOCKET) {

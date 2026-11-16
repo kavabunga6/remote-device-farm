@@ -32,7 +32,31 @@ export default function handle(req, res, path, method, state, send) {
   return true;
 }
 
+function advanceBuild() {
+    for (const job of s.jobs) {
+      if (job.state === 'cancelling') { job.state = 'cancelled'; break; }
+      if (job.state === 'queued') { job.state = 'building'; job.progress = { step: 1, steps: 12, percent: null }; break; }
+      if (job.state === 'building') {
+        job.progress = { step: Math.min(12, job.progress.step + 4), steps: 12, percent: job.progress.step >= 5 ? 64 : null };
+        if (job.progress.step >= 12) job.state = 'validating';
+        break;
+      }
+      if (job.state === 'validating') { job.state='pushing';break; }
+      if (job.state === 'pushing') { job.state = 'done'; job.digest = 'sha256:' + 'c'.repeat(64); s.built.set(job.package, { digest: job.digest, sizeMb: 3100, update: false, validated:true }); break; }
+    }
+  for (const job of s.jobs) {
+    job.updatedAt = new Date().toISOString();
+    if (job.state === 'building') {
+      job.startedAt ??= job.updatedAt; job.checkedAt = job.updatedAt; job.lastLogAt = job.updatedAt; job.stage = 'building';
+      job.log = [...(job.log ?? []), `#9 [runtime 2/5] RUN sdkmanager — ${job.progress?.percent ?? 0}%`].slice(-80);
+    }
+  }
+}
+
 function respond(req, res, path, method, state, send, body) {
+  if (path === '/admin/emulator-images/builds' && method === 'GET') { advanceBuild(); send(res, 200, { builder: s.builder, observedAt: new Date().toISOString(), jobs: s.jobs }); return true; }
+  const detail = /^\/admin\/emulator-images\/builds\/([A-Za-z0-9-]+)$/.exec(path);
+  if (detail && method === 'GET') { send(res, 200, { jobs: s.jobs.filter(job => job.id === detail[1]) }); return true; }
   if (path === '/admin/emulator-images/catalog-status' && method === 'GET') { send(res, 200, { builder: s.builder, phase: s.builder ? 'ready' : 'unconfigured', startedAt: null, updatedAt: null, progress: null }); return true; }
   if (path === '/admin/registry' && method === 'GET') { send(res, 200, { registry: s.registry }); return true; }
   if (path === '/admin/registry' && method === 'PUT') {
@@ -48,17 +72,7 @@ function respond(req, res, path, method, state, send, body) {
     send(res, 200, { ok: true }); return true;
   }
   if (path === '/admin/emulator-images' && method === 'GET') {
-    for (const job of s.jobs) {
-      if (job.state === 'cancelling') { job.state = 'cancelled'; break; }
-      if (job.state === 'queued') { job.state = 'building'; job.progress = { step: 1, steps: 12, percent: null }; break; }
-      if (job.state === 'building') {
-        job.progress = { step: Math.min(12, job.progress.step + 4), steps: 12, percent: job.progress.step >= 5 ? 64 : null };
-        if (job.progress.step >= 12) job.state = 'validating';
-        break;
-      }
-      if (job.state === 'validating') { job.state='pushing';break; }
-      if (job.state === 'pushing') { job.state = 'done'; job.digest = 'sha256:' + 'c'.repeat(64); s.built.set(job.package, { digest: job.digest, sizeMb: 3100, update: false, validated:true }); break; }
-    }
+    advanceBuild();
     const address = s.registry.mode === 'external' ? s.registry.externalAddress : s.registry.builtinAddress;
     send(res, 200, {
       registry: s.registry, builder: s.builder, abi: 'x86_64', refreshedAt: new Date().toISOString(),

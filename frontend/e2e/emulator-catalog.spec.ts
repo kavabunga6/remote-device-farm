@@ -17,11 +17,13 @@ const catalog = {
   registry: { mode: 'builtin', builtinAddress: 'farm.internal.test', externalAddress: null, externalUsername: null, externalPasswordSet: false },
 };
 const catalogRoute = /\/api\/admin\/emulator-images(?:\?.*)?$/;
+const jobsRoute = /\/api\/admin\/emulator-images\/builds\?builderHostId=/;
 async function setup(page: Page, theme = 'light', fontScale = 1, initialCatalog: object = catalog) {
   await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: [] } }));
   await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: { theme, fontFamily: 'system', fontScale, defaultAdbKeyId: null } } }));
   await page.route('**/api/admin/emulator-images/prewarm', route => route.fulfill({ json: { items: [] } }));
   await page.route(catalogRoute, route => route.fulfill({ json: initialCatalog }));
+  await page.route(jobsRoute, route => route.fulfill({ json: { builder: catalog.builder, jobs: (initialCatalog as { jobs?: object[] }).jobs ?? [], observedAt: new Date().toISOString() } }));
   await page.goto('/#/admin/profiles');
   await page.getByRole('button', { name: 'Каталог образов', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Каталог образов Google', exact: true });
@@ -153,16 +155,17 @@ test('slow polls are coalesced and a stale catalog cannot erase an accepted buil
   let releaseStale!: () => void, releaseFresh!: () => void, reads = 0;
   const stale = new Promise<void>(resolve => { releaseStale = resolve; });
   const fresh = new Promise<void>(resolve => { releaseFresh = resolve; });
-  await page.route(catalogRoute, async route => {
+  await page.route(jobsRoute, async route => {
     const index = ++reads;
     await (index === 1 ? stale : fresh);
     await route.fulfill({ json: { ...catalog, jobs: index === 1 ? [backgroundJob] : [acceptedJob, backgroundJob] } });
   });
+  await page.route(catalogRoute, route => route.fulfill({ json: { ...catalog, jobs: [acceptedJob, backgroundJob] } }));
   await page.route('**/api/admin/emulator-images/builds', route => route.fulfill({ status: 202, json: { jobs: [acceptedJob] } }));
   try {
     await page.clock.runFor(4100);
     await expect.poll(() => reads).toBe(1);
-    await page.clock.runFor(12_000);
+    await page.clock.runFor(6000);
     expect(reads).toBe(1);
     await dialog.getByRole('checkbox', { name: 'Выбрать Android 16 · AOSP ATD', exact: true }).check();
     await dialog.getByRole('button', { name: 'Собрать (1)', exact: true }).click();
@@ -192,11 +195,12 @@ test('queued cancellation is immediate, sends the original builder and survives 
   const stale = new Promise<void>(resolve => { releaseStale = resolve; });
   const fresh = new Promise<void>(resolve => { releaseFresh = resolve; });
   let requests = 0, reads = 0;
-  await page.route(catalogRoute, async route => {
+  await page.route(jobsRoute, async route => {
     const index = ++reads;
     await (index === 1 ? stale : fresh);
     await route.fulfill({ json: { ...catalog, jobs: [index === 1 ? queued : cancelled] } });
   });
+  await page.route(catalogRoute, route => route.fulfill({ json: { ...catalog, jobs: [cancelled] } }));
   await page.route('**/api/admin/emulator-images/builds/build-0/cancel', async route => {
     requests++;
     expect(route.request().method()).toBe('POST');
@@ -222,7 +226,7 @@ test('queued cancellation is immediate, sends the original builder and survives 
     await expect(row.locator('.emulator-catalog-cancel')).toHaveCount(0);
     await expect(row.getByRole('checkbox')).toBeEnabled();
     releaseStale();
-    await expect.poll(() => reads).toBe(2);
+    expect(reads).toBe(1); // Terminal jobs stop polling; the obsolete request was aborted.
     await expect(row.locator('[role=status]')).toHaveText('Сборка отменена');
     releaseFresh();
     await expect(row.locator('[role=status]')).toHaveText('Сборка отменена');
@@ -234,6 +238,7 @@ test('running cancellation can retry errors and keeps polling until stopped', as
   let job = buildJob(0, 'pushing'), attempts = 0;
   const dialog = await setup(page, 'light', 1, { ...catalog, jobs: [job] });
   await page.route(catalogRoute, route => route.fulfill({ json: { ...catalog, jobs: [job] } }));
+  await page.route(jobsRoute, route => route.fulfill({ json: { builder: catalog.builder, jobs: [job] } }));
   await page.route('**/api/admin/emulator-images/builds/build-0/cancel', route => {
     if (++attempts === 1) return route.fulfill({ status: 502, json: { error: { code: 'image_build_cancel_failed', message: 'Node returned an invalid cancellation result' } } });
     job = { ...job, state: 'cancelling' };
@@ -382,4 +387,76 @@ test('missing catalog status response is shown separately from an active catalog
   await expect(dialog.locator('.catalog-loading')).toHaveAttribute('data-phase', 'connection_lost');
   await expect(dialog.locator('.catalog-loading')).toContainText('Нет ответа от сервера или сборщика');
   await dialog.locator('.emulator-catalog-footer').getByRole('button', { name: 'Закрыть', exact: true }).click(); await expect(dialog).toHaveCount(0); finish?.();
+});
+
+
+const observedJob = () => ({ ...buildJob(0, 'building'), stage: 'building', startedAt: new Date(Date.now() - 300_000).toISOString(), lastLogAt: new Date(Date.now() - 180_000).toISOString(), checkedAt: new Date().toISOString(), progress: { step: 2, steps: 5, percent: null }, log: ['#9 [runtime 2/5] RUN sdkmanager'] });
+
+test('live build details preserve output across connection loss and recover without loading the SDK catalog', async ({ page }) => {
+  await page.clock.install(); const job = observedJob();
+  const dialog = await setup(page, 'light', 1, { ...catalog, jobs: [job] });
+  let lost = false, polls = 0, detailReads = 0, catalogReads = 0;
+  await page.route(catalogRoute, route => { catalogReads++; return route.fulfill({ json: { ...catalog, jobs: [job] } }); });
+  await page.route(jobsRoute, route => {
+    polls++;
+    return lost ? route.fulfill({ status: 503, json: { error: { code: 'image_builder_offline', message: 'offline' } } })
+      : route.fulfill({ json: { builder: catalog.builder, jobs: [job], observedAt: new Date().toISOString() } });
+  });
+  await page.route('**/api/admin/emulator-images/builds/build-0?**', route => {
+    detailReads++;
+    return lost ? route.abort('connectionfailed') : route.fulfill({ json: { jobs: [{ ...job, log: Array.from({ length: 80 }, (_, i) => '#9 output ' + i) }] } });
+  });
+  const row = dialog.locator('.emulator-catalog-item').first();
+  await expect(row.locator('.catalog-build-warning')).toContainText('Давно нет нового вывода');
+  await expect(row.locator('.emulator-catalog-progress')).toHaveCount(0);
+  expect(detailReads).toBe(0);
+  await row.locator('.catalog-build-log > summary').click();
+  await expect(row.getByRole('region')).toHaveCount(0);
+  await expect(row.locator('pre')).toContainText('#9 output 79');
+  await expect(row).toContainText('Последние строки: 80');
+  lost = true; await page.clock.runFor(4100);
+  await expect(dialog.locator('.catalog-build-connection-warning')).toContainText('Связь со сборщиком потеряна');
+  await expect(row.locator('.emulator-catalog-state')).toHaveText('Состояние не подтверждено');
+  await expect(row.locator('pre')).toContainText('#9 output 79');
+  await expect(row.locator('.catalog-build-log-failure')).toBeVisible();
+  lost = false; await page.clock.runFor(4100);
+  await expect(dialog.locator('.catalog-build-connection-warning')).toHaveCount(0);
+  await expect(row.locator('.emulator-catalog-state')).toHaveText('Собираем образ');
+  await expect(row.locator('.catalog-build-log-failure')).toHaveCount(0);
+  expect(catalogReads).toBe(0); expect(polls).toBeGreaterThan(1);
+  await row.locator('.catalog-build-log > summary').click();
+  const closedReads = detailReads; await page.clock.runFor(4100); expect(detailReads).toBe(closedReads);
+});
+
+for (const [theme, width, fontScale, language] of [
+  ['light', 1366, 1, 'ru'], ['dark', 1366, 1, 'ru'], ['light', 390, 1, 'ru'], ['dark', 900, 1.5, 'de'], ['light', 1366, 1, 'ar'], ['dark', 390, 1.5, 'ar'],
+] as const) test(`build log layout: ${theme} ${width} ${fontScale} ${language}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1100 });
+  await page.addInitScript(lang => localStorage.setItem('rdf.language', lang), language);
+  const job = observedJob();
+  const initial = { ...catalog, jobs: [job] };
+  // setup uses Russian controls before a delayed language load; select by CSS for this matrix.
+  await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: [] } }));
+  await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: { theme, fontFamily: 'system', fontScale, defaultAdbKeyId: null } } }));
+  await page.route('**/api/admin/emulator-images/prewarm', route => route.fulfill({ json: { items: [] } }));
+  await page.route(catalogRoute, route => route.fulfill({ json: initial }));
+  await page.route(jobsRoute, route => route.fulfill({ json: { builder: catalog.builder, jobs: [job] } }));
+  await page.route('**/api/admin/emulator-images/builds/build-0?**', route => route.fulfill({ json: { jobs: [{ ...job, log: Array.from({ length: 50 }, (_, i) => `#9 ${i} GET https://example.test/${'long-build-path/'.repeat(18)} <script>output</script>`) }] } }));
+  await page.goto('/#/admin/profiles');
+  await page.locator('.admin-profile-heading-actions > button.outline').click();
+  const dialog = page.locator('.modal.emulator-catalog'); await expect(dialog).toBeVisible();
+  if (language !== 'ru') await expect(page.locator('html')).toHaveAttribute('lang', language);
+  const row = dialog.locator('.emulator-catalog-item').first(); await row.locator('.catalog-build-log > summary').click();
+  await expect(row.locator('pre')).toContainText('#9 49'); await page.evaluate(() => document.fonts.ready);
+  await row.scrollIntoViewIfNeeded();
+  const overflow = await dialog.evaluate(element => Math.max(element.scrollWidth - element.clientWidth, element.querySelector('.emulator-catalog-body')!.scrollWidth - element.querySelector('.emulator-catalog-body')!.clientWidth, document.documentElement.scrollWidth - innerWidth));
+  expect(overflow).toBeLessThanOrEqual(1);
+  const boundaries = await row.evaluate(element => {
+    const summary = element.querySelector('.catalog-build-log > summary')!, arrow = summary.lastElementChild!.getBoundingClientRect(), box = summary.getBoundingClientRect();
+    const pre = element.querySelector('pre')!, button = element.querySelector('.emulator-catalog-cancel')!, rect = button.getBoundingClientRect();
+    return { gap: getComputedStyle(summary).direction === 'rtl' ? arrow.left - box.left : box.right - arrow.right, preHeight: pre.getBoundingClientRect().height, font: parseFloat(getComputedStyle(pre).fontSize), buttonHeight: rect.height, dir: getComputedStyle(pre).direction };
+  });
+  expect(boundaries.gap).toBeLessThanOrEqual(1); expect(boundaries.dir).toBe('ltr'); expect(boundaries.preHeight).toBeLessThanOrEqual(500 * fontScale); expect(boundaries.font).toBeGreaterThanOrEqual(14);
+  expect(boundaries.buttonHeight).toBeGreaterThanOrEqual(width < 760 ? 44 : 40);
+  await page.screenshot({ path: capturePath(`build-log-${theme}-${width}-${fontScale}-${language}.png`) });
 });

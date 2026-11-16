@@ -13,7 +13,7 @@ const DIGEST = /^sha256:[0-9a-f]{64}$/;
 
 export interface AgentJob {
   id: string; package: string; image: string; state: 'queued' | 'building' | 'validating' | 'pushing' | 'cancelling' | 'cancelled' | 'done' | 'failed';
-  createdAt?: string; finishedAt?: string;
+  createdAt?: string; startedAt?: string; finishedAt?: string; updatedAt?: string; lastLogAt?: string | null; checkedAt?: string | null; stage?: string | null;
   digest?: string | null; sizeMb?: number | null; error?: string | null; progress?: unknown; log?: string[];
   profiles?: Array<Record<string, unknown>>;
   validation?: unknown;

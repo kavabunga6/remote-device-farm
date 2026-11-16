@@ -10,11 +10,13 @@ import { imagesApi, type BuildJob, type CatalogImage, type ImageCatalog, type Im
 import { useNotifications } from './notifications';
 import './EmulatorCatalogDialog.css';
 import { CatalogLoading, CatalogLoadFailure } from './CatalogLoading';
+import { BuildJobDetails } from './BuildJobDetails';
+import { useBuildMonitor } from './useBuildMonitor';
 
 const DEVICES: Record<CatalogImage['device'], string> = { get phone() { return t('ui.e5179e680c13'); }, get tv() { return t('ui.8794f1ba68df'); }, get automotive() { return t('ui.8dca2f783130'); }, get wear() { return t('ui.7e6da98020ac'); }, get desktop() { return t('device.desktop'); } };
 const FLAVORS: Record<CatalogImage['flavor'], string> = { get aosp() { return t('images.flavor.aosp'); }, get google_apis() { return t('images.flavor.google'); }, get google_play() { return t('images.flavor.play'); } };
 const PREWARM_LABELS: Record<ImagePrewarmJob['state'], string> = { get queued() { return t('ui.b22a2454bd69'); }, get pulling() { return t('ui.a1d278794b00'); }, get done() { return t('ui.d7638391d8f0'); }, get failed() { return t('ui.bd54852c0848'); } };
-const BUILD_ERRORS = new Set(['build_disk_reserve', 'build_memory_reserve', 'build_host_pressure', 'build_metrics_unavailable', 'build_worker_unavailable', 'build_cache_ownership', 'build_cleanup_failed', 'build_busy']);
+const BUILD_ERRORS = new Set(['build_disk_reserve', 'build_memory_reserve', 'build_host_pressure', 'build_metrics_unavailable', 'build_worker_unavailable', 'build_cache_ownership', 'build_cleanup_failed', 'build_busy', 'build_interrupted', 'build_cancelled']);
 const buildError = (job: BuildJob) => job.errorCode && BUILD_ERRORS.has(job.errorCode) ? t(('images.error.' + job.errorCode) as MessageKey) : localizeText(job.error ?? '');
 const CANCELLABLE: BuildJob['state'][] = ['queued', 'building', 'validating', 'pushing'];
 const ACTIVE: BuildJob['state'][] = [...CANCELLABLE, 'cancelling'];
@@ -28,6 +30,7 @@ function jobLabel(job: BuildJob): string {
   if (job.state === 'cancelled') return t('ui.0823a590adb7');
   if (job.state === 'failed') return t('ui.9641c283e58a');
   if (job.state === 'done') return t('ui.aebfbdcacbcf');
+  if (job.stage) return t(('build.stage.' + job.stage) as MessageKey);
   const step = job.progress?.steps ? t('ui.146ce47d22f0', { p0: job.progress.step, p1: job.progress.steps }) : t('ui.af2e97ea3bd5');
   return step + (job.progress?.percent != null ? t('ui.83b6a4e2fc3f', { p0: job.progress.percent }) : '');
 }
@@ -61,6 +64,8 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
   const cancelInFlight = useRef(new Set<string>());
   const [cancelSending, setCancelSending] = useState(new Set<string>());
   const [error, setError] = useState('');
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const catalogRef = useRef(catalog); catalogRef.current = catalog;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({ android: '', device: '', flavor: '', state: '' });
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -73,6 +78,7 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
   const mounted = useRef(true);
   const loadQueued = useRef(false);
   const refreshQueued = useRef(false);
+  const buildContact = useRef<() => void>(() => {});
   const changed = useRef(onChanged);
   changed.current = onChanged;
 
@@ -102,6 +108,7 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
         if (doneJobs.current && [...done].some(id => !doneJobs.current!.has(id))) changed.current();
         doneJobs.current = done;
         setCatalog(next);
+        if (next.builder) buildContact.current();
         setHosts(nodes);
         if (!next.builder || !(next.registry.mode === 'external' ? next.registry.externalAddress : next.registry.builtinAddress)) setSettingsOpen(true);
       } catch (cause) {
@@ -124,12 +131,20 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
     return () => { mounted.current = false; loadGeneration.current++; loadAbort.current?.abort(); loadInFlight.current = null; };
   }, [load]);
   const building = Boolean(catalog?.jobs.some(job => ACTIVE.includes(job.state)));
+  const monitor = useBuildMonitor(catalog?.builder?.id, building, loadGeneration, (jobs, hostId) => {
+    const previous = catalogRef.current;
+    if (previous?.builder?.id !== hostId) return;
+    const completed = jobs.some(job => job.state === 'done' && previous?.jobs.find(item => item.id === job.id)?.state !== 'done');
+    setCatalog(current => current?.builder?.id === hostId ? { ...current, jobs } : current);
+    if (completed) void load(false, true);
+  });
+  buildContact.current = monitor.confirmed;
   const downloading = prewarmJobs.some(job => job.state === 'queued' || job.state === 'pulling');
   useEffect(() => {
-    if (!building && !downloading) return;
+    if (!downloading) return;
     const timer = window.setInterval(() => void load(), 4000);
     return () => window.clearInterval(timer);
-  }, [building, downloading, load]);
+  }, [downloading, load]);
 
   const jobsByPackage = useMemo(() => {
     const map = new Map<string, BuildJob>();
@@ -160,6 +175,7 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
     setBuildSending(true); setBusy(true); setError('');
     try {
       const { jobs } = await imagesApi.build([...selected]);
+      monitor.confirmed();
       // Show the accepted jobs immediately; refreshing the SDK catalog can take minutes.
       setCatalog(previous => previous ? { ...previous, jobs: [...jobs, ...previous.jobs.filter(job => !jobs.some(next => next.id === job.id))] } : previous);
       setSelected(new Set());
@@ -180,6 +196,7 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
       const { jobs } = await imagesApi.cancelBuild(job.id, builderHostId);
       const updated = jobs.find(item => item.id === job.id);
       if (!updated) throw new Error(t('ui.5d1c2fcc73d8'));
+      monitor.confirmed();
       // Update only this job: parallel cancellations can return snapshots in a different order.
       setCatalog(previous => previous?.builder?.id === builderHostId
         ? { ...previous, jobs: previous.jobs.map(item => item.id === job.id ? updated : item) } : previous);
@@ -320,6 +337,7 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
         </fieldset>
 
         {error && <div className="inline-error" role="alert">{localizeText(error)}</div>}
+        {monitor.unconfirmed && <div className="catalog-build-connection-warning" role="alert"><Icon name="alert" size={18}/><div><p>{t('build.connectionLost')}</p><span>{t('catalog.lastContact', { p0: Math.max(0, Math.floor((monitor.now - monitor.contact) / 1000)) })}</span></div></div>}
         {!catalog?.builder ? <div className="emulator-catalog-empty">{t('ui.4d25ee11800a')}</div>
           : !visible.length ? <div className="emulator-catalog-empty">{t('ui.1a1e4991c2e8')}</div>
           : <ul className="emulator-catalog-list" aria-label={t('ui.0627b8d2c490')}>{visible.map(image => {
@@ -337,11 +355,11 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
                 <div className="emulator-catalog-badges"><span><TranslatedText message="copy.EmulatorCatalogDialog.34d6a376" values={{ p0: image.api, p1: image.minor != null ? '.' + image.minor : '' }} /></span><span>{image.abi}</span><span>{DEVICES[image.device]}</span><span>{systemTag(image)}</span></div>
                 <p className="emulator-catalog-variant">{isAtd(image) ? t('ui.806d2eeecbf9') : STANDARD_TAGS.has(systemTag(image)) ? t('ui.0d67bfafc1fe') : image.description || t('ui.3cfe1c13dab7')}</p>
                 <div className="emulator-catalog-package"><code>{image.package}</code><button type="button" className="icon-button" aria-label={t('copy.EmulatorCatalogDialog.c50eab14', { p0: image.package })} onClick={() => void copyPackage(image)}><Icon name="copy" size={15}/></button></div>
-                {active && !stopping && !cancelling && job.state !== 'queued' && job.state !== 'validating' && <div className="emulator-catalog-progress"><span style={{ width: (job.progress?.steps ? Math.round(job.progress.step / job.progress.steps * 100) : 5) + '%' }}/></div>}
+                {active && !stopping && !cancelling && job.state === 'building' && job.progress?.percent != null && <div className="emulator-catalog-progress" role="progressbar" aria-label={t('catalog.downloadPercent', { p0: job.progress.percent })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={job.progress.percent}><span style={{ width: job.progress.percent + '%' }}/></div>}
                 {job?.state === 'failed' && <p className="emulator-catalog-error">{buildError(job)}</p>}
               </div>
               <div className="emulator-catalog-status">
-                <span className="emulator-catalog-state" role="status" aria-live="polite">{(cancelling || active && job?.state !== 'queued') && <ActivityIndicator />}{cancelling ? job?.state === 'queued' ? t('ui.4ba8a8d87b3e') : t('ui.4046ae274af7') : active || cancelled || job?.state === 'failed' || job?.state === 'done' ? (job?.state === 'done' && image.validated ? t('ui.08f7f604ed9d') : jobLabel(job!)) : image.built ? image.validated ? t('ui.08f7f604ed9d') : t('ui.aebfbdcacbcf') : t('ui.7a6e3892843b')}</span>
+                <span className="emulator-catalog-state" data-unconfirmed={active && monitor.unconfirmed || undefined} role="status" aria-live="polite">{(cancelling || active && job?.state !== 'queued') && !monitor.unconfirmed && <ActivityIndicator />}{cancelling ? job?.state === 'queued' ? t('ui.4ba8a8d87b3e') : t('ui.4046ae274af7') : active && monitor.unconfirmed ? t('build.unknownStatus') : active || cancelled || job?.state === 'failed' || job?.state === 'done' ? (job?.state === 'done' && image.validated ? t('ui.08f7f604ed9d') : jobLabel(job!)) : image.built ? image.validated ? t('ui.08f7f604ed9d') : t('ui.aebfbdcacbcf') : t('ui.7a6e3892843b')}</span>
                 {(cancelled || job?.state === 'failed') && image.built && <small>{t('ui.cb6685e38d42')}</small>}
                 {can('images.build') && active && <button type="button" className="button outline small emulator-catalog-cancel" disabled={!can('images.build') || busy || cancelling || stopping || !catalog?.builder} aria-busy={cancelling || stopping} aria-label={t('copy.EmulatorCatalogDialog.470714fc', { p0: (job.state === 'queued' ? t('ui.7c47f7292ba4') : t('ui.3396400da0c4')), p1: imageName(image) })} onClick={() => void cancelBuild(job)}>
                   {cancelling || stopping ? <span className="mini-spinner" aria-hidden="true"/> : <Icon name={job.state === 'queued' ? 'close' : 'stop'} size={14}/>}
@@ -350,6 +368,9 @@ export function EmulatorCatalogDialog({ onClose, onChanged }: { onClose: () => v
                 {image.updateAvailable && <button type="button" className="button outline small" disabled={busy || !can('images.build')} onClick={() => void apply(image)}>{t('ui.2a8ae5e346cb')}</button>}
                 {image.built && <small>{image.sizeMb ? t('copy.EmulatorCatalogDialog.7351fbac', { p0: Math.round(image.sizeMb / 102.4) / 10 }) : ''}{image.profiles.length ? t('copy.EmulatorCatalogDialog.26cf8465', { p0: image.profiles.length }) : t('ui.b7b19eedd07d')}</small>}
               </div>
+              {job && catalog?.builder && <BuildJobDetails key={job.id} job={job} builderId={catalog.builder.id} now={monitor.now} unconfirmed={monitor.unconfirmed}
+                expanded={expandedJobId === job.id} onExpanded={open => setExpandedJobId(open ? job.id : null)}
+                queuePosition={[...(catalog.jobs ?? [])].reverse().filter(item => item.state === 'queued').findIndex(item => item.id === job.id) + 1}/>}
             </li>;
           })}</ul>}
         </>}

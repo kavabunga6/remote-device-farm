@@ -5,7 +5,7 @@ import { completeImageCheck } from '../image-readiness.js';
 import type { Express } from 'express';
 import type { Pool } from 'pg';
 import type { AgentHub } from '../agent.js';
-import type { ServerContext } from '../server-context.js';
+import { revalidateRequestAuth, type ServerContext } from '../server-context.js';
 import { ImageBuildWorker, type AgentJob } from '../image-build-worker.js';
 import { ApiError, route } from '../http-common.js';
 import { transaction } from '../db.js';
@@ -110,6 +110,38 @@ export function registerImageRoutes(app: Express, context: ServerContext, worker
       }),
       jobs: catalog.jobs ?? [],
     });
+  }));
+
+  // Status polling never rebuilds the SDK catalog. Pin reads to the original
+  // builder, including when the administrator selects a different one.
+  async function buildSnapshot(hostId: unknown, jobId?: string) {
+    if (typeof hostId !== 'string' || !hostId.length || hostId.length > 200 || hostId.trim() !== hostId || /[\x00-\x1f\x7f]/.test(hostId) ||
+        (jobId !== undefined && !/^[A-Za-z0-9-]{1,64}$/.test(jobId))) {
+      throw new ApiError(400, 'invalid_build_snapshot', uiMessage('ui.836de7d8cb7f', {}, 'en'));
+    }
+    const host = (await pool.query('SELECT id, coalesce(display_name, name) AS name FROM hosts WHERE id=$1 AND removed_at IS NULL', [hostId])).rows[0];
+    if (!host) throw new ApiError(404, 'not_found', uiMessage('ui.aa0a65c4fcfd', {}, 'en'));
+    if (!hub.hasAgent(hostId)) throw new ApiError(503, 'image_builder_offline', uiMessage('catalog.offline'));
+    const result = await hub.command(hostId, hostId, 'emulator-jobs', jobId ? { jobId } : {}, 10_000).catch(() => {
+      throw new ApiError(502, 'image_build_status_unavailable', uiMessage('build.statusUnavailable'));
+    });
+    if (!Array.isArray(result.jobs)) throw new ApiError(502, 'image_build_status_unavailable', uiMessage('build.statusUnavailable'));
+    if (jobId && (result.jobs.length !== 1 || result.jobs[0]?.id !== jobId)) throw new ApiError(404, 'image_build_not_found', uiMessage('ui.b8e9c4ee4ceb', {}, 'en'));
+    return { builder: { id: String(host.id), name: String(host.name) }, observedAt: new Date().toISOString(), jobs: result.jobs };
+  }
+
+  app.get('/api/admin/emulator-images/builds', requireAuth, requireAdmin, route(async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const result = await buildSnapshot(req.query.builderHostId);
+    await revalidateRequestAuth(context, req, res);
+    res.json(result);
+  }));
+
+  app.get('/api/admin/emulator-images/builds/:jobId', requireAuth, requireAdmin, route(async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const result = await buildSnapshot(req.query.builderHostId, req.params.jobId!);
+    await revalidateRequestAuth(context, req, res);
+    res.json(result);
   }));
 
   app.post('/api/admin/emulator-images/builds', requireAuth, requireAdmin, route(async (req, res) => {
