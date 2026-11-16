@@ -93,3 +93,4 @@ ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/rdf-emulator"]
 COPY --from=sdk /opt/android/platform-tools /opt/android/platform-tools
 COPY --from=sdk /opt/android/emulator /opt/android/emulator
 COPY --from=sdk /opt/android/system-images /opt/android/system-images
+RUN /usr/local/bin/rdf-emulator --check-image

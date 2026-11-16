@@ -24,6 +24,9 @@ SDCARD=/android-home/sdcard.img
 fail() { echo "rdf-emulator: $*" >&2; exit 64; }
 int_in() { [[ "$1" =~ ^[0-9]+$ ]] && (( $1 >= $2 && $1 <= $3 )); }
 
+# SDK installation and extraction belong to the builder, never to a session.
+[[ ! -e "$SDK/emulator.tar.gz" && ! -e "$SDK/system-images.tar.gz" ]] || fail "SDK archives are not a ready runtime image; rebuild with extracted SDK files"
+
 # The single system image copied into this container: system-images/android-NN/TAG/ABI
 system_image_dir() {
   local dirs=() dir
@@ -35,7 +38,9 @@ system_image_dir() {
 if [[ "${1:-}" == --check-image ]]; then
   test -x "$EMULATOR" || fail "emulator binary is missing"
   test -x "$SDK/platform-tools/adb" || fail "SDK platform-tools/adb is missing"
-  system_image_dir >/dev/null
+  checked_image=$(system_image_dir)
+  [[ -s "$checked_image/system.img" || -s "$checked_image/system.img.qcow2" ]] || fail "Android system disk is missing"
+  [[ -s "$checked_image/ramdisk.img" ]] || fail "Android ramdisk is missing"
   echo "rdf-emulator: image layout is valid"
   exit 0
 fi
