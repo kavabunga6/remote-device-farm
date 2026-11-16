@@ -2,15 +2,24 @@ import {expect,test} from '@playwright/test';
 
 for(const theme of ['light','dark'] as const)for(const width of [1366,390])test(`new build remains checking before publication: ${theme} ${width}`,async({page})=>{
   await page.setViewportSize({width,height:900});
-  let done=false;
+  let done=false, catalogReads=0, snapshotReads=0;
   await page.route('**/api/me/notifications',route=>route.fulfill({json:{notifications:[]}}));
   await page.route('**/api/me/preferences',route=>route.fulfill({json:{preferences:{theme,fontFamily:'system',fontScale:1,defaultAdbKeyId:null}}}));
-  await page.route('**/api/admin/emulator-images',route=>route.fulfill({json:{
+  const catalog=()=>({
     registry:{mode:'builtin',builtinAddress:'registry.example.test',externalAddress:null,externalUsername:null,externalPasswordSet:false},
     builder:{id:'h1',name:'builder'},
     images:[{package:'system-images;android-34;google_apis;x86_64',tag:'34-google_apis-x86_64',api:34,minor:null,androidVersion:'14',device:'phone',flavor:'google_apis',abi:'x86_64',built:done,validated:done,digest:done?'sha256:'+'a'.repeat(64):null,builtAt:null,sizeMb:null,profiles:[],updateAvailable:false}],
     jobs:[{id:'runtime-job',package:'system-images;android-34;google_apis;x86_64',image:'registry.example.test/rdf-emulator:34-google_apis-x86_64',state:done?'done':'validating',progress:{step:28,steps:28,percent:100},log:[]}],
-  }}));
+  });
+  await page.route('**/api/admin/emulator-images',route=>{
+    catalogReads++;
+    return route.fulfill({json:catalog()});
+  });
+  await page.route(/\/api\/admin\/emulator-images\/builds\?builderHostId=h1$/,route=>{
+    snapshotReads++;
+    const {builder,jobs}=catalog();
+    return route.fulfill({json:{builder,jobs,observedAt:new Date().toISOString()}});
+  });
   await page.goto('/#/admin/profiles');
   await page.getByRole('button',{name:'Каталог образов',exact:true}).click();
   const dialog=page.getByRole('dialog',{name:'Каталог образов Google',exact:true});
@@ -32,9 +41,12 @@ for(const theme of ['light','dark'] as const)for(const width of [1366,390])test(
   await dialog.getByRole('combobox',{name:'Состояние',exact:true}).selectOption('active');
   await expect(row).toHaveCount(1);
   await dialog.getByRole('combobox',{name:'Состояние',exact:true}).selectOption('');
+  const readsBeforeCompletion=catalogReads;
   done=true;
   await expect(row).toContainText('Собран и проверен',{timeout:7000});
   await expect(row.getByRole('checkbox')).toBeEnabled();
   await expect(row.locator('.emulator-catalog-state .activity-indicator')).toHaveCount(0);
   await expect(row.locator('.emulator-catalog-cancel')).toHaveCount(0);
+  expect(snapshotReads).toBeGreaterThan(0);
+  expect(catalogReads).toBeGreaterThan(readsBeforeCompletion);
 });

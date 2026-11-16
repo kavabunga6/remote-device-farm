@@ -283,6 +283,13 @@ jobs:
           PLAYWRIGHT_CHANNEL: chrome
         if: matrix.component == 'frontend'
         run: npm run e2e
+      - name: Retain frontend failure diagnostics
+        if: failure() && matrix.component == 'frontend'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: frontend-test-traces-${{ github.run_attempt }}
+          path: frontend/test-results/
+          retention-days: 7
 
   media-transports:
     runs-on: ubuntu-24.04

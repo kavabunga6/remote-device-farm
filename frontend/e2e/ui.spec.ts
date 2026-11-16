@@ -131,7 +131,8 @@ test('admin sidebar links retain native keyboard navigation and addressable rout
   const nav = page.getByRole('navigation', { name: 'Администрирование', exact: true });
   const sections = [
     ['sessions', 'Все сессии'], ['nodes', 'Узлы'], ['profiles', 'Профили устройств'],
-    ['images', 'Образы'], ['roles', 'Роли и права'], ['users', 'Пользователи'], ['ops', 'Нагрузка'], ['journal', 'Журнал'],
+    ['images', 'Образы'], ['roles', 'Роли и права'], ['users', 'Пользователи'], ['ops', 'Нагрузка'],
+    ['settings', 'Настройки сервера'], ['journal', 'Журнал'],
   ] as const;
   await expect(nav.getByRole('link')).toHaveCount(sections.length);
   for (const [id, label] of sections) {
