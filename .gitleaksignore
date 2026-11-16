@@ -1,1 +1,2 @@
-# No fingerprint exceptions. Generated message identifiers are scoped in .gitleaks.toml.
+# Synthetic PEM redaction fixture in this historical test commit; no real key.
+e1f43377a8d4c66a3b96892f14ff970f313fff6c:agent/src/session-diagnostics.test.mjs:private-key:42

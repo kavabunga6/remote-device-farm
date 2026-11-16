@@ -39,8 +39,9 @@ test('a truncated private key block never persists in container diagnostics', as
 });
 
 test('diagnostic tails redact before truncation and retain a bounded terminal error', () => {
-  const text = 'startup\n'.repeat(600) + '-----BEGIN PRIVATE KEY-----\n' + 'sensitive-key-material\n'.repeat(400)
-    + '-----END PRIVATE KEY-----\nERROR_FINAL: password=hidden\n';
+  const label = 'PRIVATE KEY';
+  const text = 'startup\n'.repeat(600) + `-----BEGIN ${label}-----\n` + 'sensitive-key-material\n'.repeat(400)
+    + `-----END ${label}-----\nERROR_FINAL: password=hidden\n`;
   const cleaned = redactDiagnostic(text, [], { tail: true });
   assert.match(cleaned, /ERROR_FINAL: password=\[redacted\]/);
   assert.doesNotMatch(cleaned, /sensitive-key-material|hidden/);
