@@ -1,3 +1,4 @@
+import { validateOutboundProxy } from './outbound-proxy.mjs';
 import { diagnostic } from './diagnostics.mjs';
 import net from 'node:net';
 import { validateNetworkInspectorParams } from './network-inspector.mjs';
@@ -44,10 +45,10 @@ export function validateControlRequest(request) {
     cameraImage: ['op', 'sessionId', 'params'], networkInspector: ['op', 'sessionId', 'params'],
     setPolicy: ['op', 'policy'],
     prewarmImage: ['op', 'image', 'auth'],
-    emulatorCatalogStatus: ['op'], emulatorCatalog: ['op', 'refresh'], emulatorBuild: ['op', 'packages', 'target'], emulatorJobs: ['op', 'acknowledged', 'jobId'], emulatorCancel: ['op', 'jobId'],
+    emulatorCatalogStatus: ['op'], emulatorCatalog: ['op', 'refresh', 'proxy'], emulatorBuild: ['op', 'packages', 'target', 'proxy'], emulatorJobs: ['op', 'acknowledged', 'jobId'], emulatorCancel: ['op', 'jobId'],
   }[request.op];
   if (Object.keys(request).some((key) => !fields.includes(key)) ||
-      fields.some((key) => key !== 'acknowledged' && !(request.op === 'emulatorJobs' && key === 'jobId') && !Object.hasOwn(request, key))) {
+      fields.some((key) => key !== 'acknowledged' && key !== 'proxy' && !(request.op === 'emulatorJobs' && key === 'jobId') && !Object.hasOwn(request, key))) {
     throw new Error(diagnostic('control-ipc.6c51bf0621'));
   }
   if (fields.includes('sessionId') &&
@@ -68,6 +69,7 @@ export function validateControlRequest(request) {
     if (typeof request.image !== 'string' || request.image.length > 256 || !/@sha256:[0-9a-f]{64}$/.test(request.image)) throw new Error(diagnostic('control-ipc.75deb7947f'));
     validateRegistryAuth(request.auth);
   }
+  if (['emulatorBuild', 'emulatorCatalog'].includes(request.op)) validateOutboundProxy(request.proxy);
   if (request.op === 'emulatorBuild') validateBuildRequest(request);
   if (request.op === 'emulatorCancel' && (typeof request.jobId !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(request.jobId))) throw new Error(diagnostic('control-ipc.fbbcc8cdb5'));
   if (request.op === 'emulatorJobs' && request.jobId !== undefined && (typeof request.jobId !== 'string' || !/^[a-zA-Z0-9-]{1,64}$/.test(request.jobId))) throw new Error(diagnostic('control-ipc.bd727c5d26'));
@@ -163,8 +165,8 @@ export class ControlClient {
   setPolicy(policy) { return this.request('setPolicy', { policy }); }
   // The first catalog call builds the sdkmanager tools image, which takes a few minutes.
   emulatorCatalogStatus() { return this.request('emulatorCatalogStatus', {}, 10_000); }
-  emulatorCatalog(refresh = false) { return this.request('emulatorCatalog', { refresh }, 15 * 60_000); }
-  emulatorBuild(packages, target) { return this.request('emulatorBuild', { packages, target }, 60_000); }
+  emulatorCatalog(refresh = false, proxy) { return this.request('emulatorCatalog', { refresh, ...(proxy ? { proxy } : {}) }, 15 * 60_000); }
+  emulatorBuild(packages, target, proxy) { return this.request('emulatorBuild', { packages, target, ...(proxy ? { proxy } : {}) }, 60_000); }
   prewarmImage(image, auth = null) { return this.request('prewarmImage', { image, auth }, 30 * 60_000); }
   emulatorCancel(jobId) { return this.request('emulatorCancel', { jobId }); }
 

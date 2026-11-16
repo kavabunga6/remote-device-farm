@@ -72,8 +72,8 @@ export class EmulatorProvider extends DeviceProvider {
       'set-policy': (params) => this.applyPolicy(params?.policy),
       // Image catalog of the image builder node: Google system images, builds and pushes to the registry.
       'emulator-catalog-status': () => this.control.emulatorCatalogStatus(),
-      'emulator-catalog': (params) => this.control.emulatorCatalog(params?.refresh === true),
-      'emulator-build': (params) => this.control.emulatorBuild(params?.packages, params?.target),
+      'emulator-catalog': (params) => this.control.emulatorCatalog(params?.refresh === true, params?.proxy),
+      'emulator-build': (params) => this.control.emulatorBuild(params?.packages, params?.target, params?.proxy),
       'emulator-cancel': (params) => this.control.emulatorCancel(params?.jobId),
       'image-cache': params=>this.control.imageCache(params?.protectedRefs ?? []),
       'image-cache-remove': params=>this.control.imageCacheRemove(params?.ids,params?.protectedRefs ?? []),

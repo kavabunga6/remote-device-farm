@@ -1,7 +1,7 @@
 import { t } from './i18n';
 import type { IconName } from './icons';
 
-export type AdminSection = 'sessions' | 'nodes' | 'profiles' | 'images' | 'users' | 'roles' | 'ops' | 'journal';
+export type AdminSection = 'sessions' | 'nodes' | 'profiles' | 'images' | 'users' | 'roles' | 'ops' | 'journal' | 'settings';
 
 export const adminSections: ReadonlyArray<{ id: AdminSection; label: string; icon: IconName }> = [
   { id: 'sessions', get label() { return t('ui.156552b7ff38'); }, icon: 'list' },
@@ -11,6 +11,7 @@ export const adminSections: ReadonlyArray<{ id: AdminSection; label: string; ico
   { id: 'users', get label() { return t('ui.845595d6e899'); }, icon: 'user' },
   { id: 'roles', get label() { return t('roles.title'); }, icon: 'shield' },
   { id: 'ops', get label() { return t('ui.37663aa93839'); }, icon: 'bolt' },
+  { id: 'settings', get label() { return t('server.title'); }, icon: 'sliders' },
   { id: 'journal', get label() { return t('ui.97c459a6bb7c'); }, icon: 'terminal' },
 ];
 
@@ -22,10 +23,11 @@ export const adminSectionInfo: Record<AdminSection, { title: string; description
   users: { get title() { return t('ui.845595d6e899'); }, get description() { return t('ui.bdfbfd2b9a51'); } },
   roles: { get title() { return t('roles.title'); }, get description() { return t('roles.description'); } },
   ops: { get title() { return t('ui.37663aa93839'); }, get description() { return t('ui.fabbaaa3283b'); } },
+  settings: { get title() { return t('server.title'); }, get description() { return t('server.description'); } },
   journal: { get title() { return t('ui.97c459a6bb7c'); }, get description() { return t('ui.ace7b869cf5a'); } },
 };
 
-export const sectionPermission: Record<AdminSection, string> = { sessions: 'sessions.viewAll', nodes: 'nodes.view', profiles: 'profiles.view', images: 'images.view', users: 'users.view', roles: 'roles.view', ops: 'ops.view', journal: 'logs.view' };
+export const sectionPermission: Record<AdminSection, string> = { sessions: 'sessions.viewAll', nodes: 'nodes.view', profiles: 'profiles.view', images: 'images.view', users: 'users.view', roles: 'roles.view', ops: 'ops.view', journal: 'logs.view', settings: 'server.settings' };
 
 export function adminSectionFromHash(hash: string): AdminSection {
   const path = hash.replace(/^#\/?/, '').split('?')[0];

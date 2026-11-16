@@ -82,3 +82,15 @@ Remote Device Farm находится в состоянии **alpha**. Пров�
 Тесты проверяют серверные API, права доступа, миграции, жизненный цикл агента, ограничение ресурсов, транспорт ADB и интерфейс. Наборы с mock API и моделью Android-протокола не подтверждают загрузку Android, аппаратный рендеринг или очистку физического устройства.
 
 Команды находятся в [руководстве по разработке](development.md). При установке используйте [чек-лист проверки](release-checklist.md) и [требования безопасности](../SECURITY.md).
+
+
+### Outbound proxy
+
+Local API tests cover permission checks, encrypted write-only credentials, partial updates,
+validation and forwarding settings to the selected builder. Local relay tests exercise HTTP reads,
+authenticated CONNECT, HTTPS-proxy CA/hostname verification, rejected authentication without direct fallback, child-process arguments
+and direct mode. Build-worker tests check secret mounts, credential-free build arguments and
+cleanup; catalog tests cover proxy-specific cache keys and redacted, credential-free checkpoints.
+Browser tests cover save, retain, explicit removal and reset, both themes, narrow layouts, larger
+text and RTL. **Not tested:** real Google SDK downloads through an authenticated corporate proxy,
+corporate CA installation and a complete image build through that proxy.

@@ -1,3 +1,5 @@
+import { proxyAddress, proxyEnvironment, proxySecrets, validateOutboundProxy, readProxyTrust } from './outbound-proxy.mjs';
+import { redactDiagnostic } from './session-diagnostics.mjs';
 import { diagnostic } from './diagnostics.mjs';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -41,9 +43,9 @@ export function buildLogLines(previous, current) {
 }
 
 export class BoundedImageBuilder {
-  constructor({ docker, agentId, stateDir, diskPath = '/', guard = () => new BuildResourceGuard({ path: diskPath }), image = BUILDKIT_IMAGE, cpu = 4, memory = 6 * 1024 ** 3 }) {
+  constructor({ docker, agentId, stateDir, diskPath = '/', guard = () => new BuildResourceGuard({ path: diskPath }), image = BUILDKIT_IMAGE, cpu = 4, memory = 6 * 1024 ** 3, readTrust = readProxyTrust }) {
     if (!/^[A-Za-z0-9_-]{1,64}$/.test(agentId)) throw new Error(diagnostic('bounded-image-builder.d748efa9df'));
-    Object.assign(this, { docker, agentId, stateDir, diskPath, guard, image, cpu, memory });
+    Object.assign(this, { docker, agentId, stateDir, diskPath, guard, image, cpu, memory, readTrust });
     this.active = null; this.cleanupBlocked = false;
   }
   labels(identity) { return { [managed]: 'true', [agent]: this.agentId, [role]: 'image-builder', [owner]: identity }; }
@@ -94,31 +96,36 @@ export class BoundedImageBuilder {
     const state = await this.docker.request('GET', `/exec/${created.Id}/json`, undefined, { signal });
     return { ...parseDockerStream(output, 1024 * 1024), exitCode: state.Running ? null : state.ExitCode };
   }
-  async build(tag, args, { contextTar, target, signal, onLine = () => {}, onSample = () => {}, onStage = () => {}, onHeartbeat = () => {} } = {}) {
+  async build(tag, args, { contextTar, target, signal, proxy = null, onLine = () => {}, onSample = () => {}, onStage = () => {}, onHeartbeat = () => {} } = {}) {
+    proxy = validateOutboundProxy(proxy);
+    const redact = text => redactDiagnostic(text, proxySecrets(proxy));
+    const reportLine = text => onLine(redact(text).slice(0, 512));
     if (this.cleanupBlocked) throw new BuildResourceError('build_cleanup_failed');
     if (this.active) throw new BuildResourceError('build_busy');
     const identity = randomUUID(); this.active = identity; let container, network;
     try {
+      const trust = await this.readTrust(proxy);
       return await this.guard().run(async guardedSignal => {
         const deadline = AbortSignal.timeout(2 * 60 * 60_000), combined = AbortSignal.any([guardedSignal, deadline]);
         onStage('preparing');
         await this.docker.ensureImage(this.image, progress => {
-          if (typeof progress.detail === 'string') onLine((progress.percent == null ? '' : progress.percent + '% ') + progress.detail);
+          if (typeof progress.detail === 'string') reportLine((progress.percent == null ? '' : progress.percent + '% ') + progress.detail);
         }, { signal: combined });
         const cache = await this.cacheVolume();
         const networkCreated = await this.docker.request('POST', '/networks/create', { Name: 'rdf-build-' + this.agentId + '-' + identity, Driver: 'bridge', Labels: this.labels(identity) }, { signal: combined });
         network = networkCreated.Id;
         container = 'rdf-build-' + this.agentId + '-' + identity;
         const created = await this.docker.request('POST', '/containers/create?name=' + container, {
-          Image: this.image, Entrypoint: ['/bin/sh'], Cmd: ['/tmp/rdf-buildkit-entrypoint.sh', '--config=/tmp/rdf-buildkit.toml'], Labels: this.labels(identity),
+          Image: this.image, ...(proxy ? { Env: [...proxyEnvironment(proxy), ...(trust ? ['SSL_CERT_FILE=/run/rdf-proxy-ca.pem'] : [])] } : {}), Entrypoint: ['/bin/sh'], Cmd: ['/tmp/rdf-buildkit-entrypoint.sh', '--config=/tmp/rdf-buildkit.toml'], Labels: this.labels(identity),
           HostConfig: { NetworkMode: network, NanoCpus: this.cpu * 1e9, Memory: this.memory, MemorySwap: this.memory, PidsLimit: 1024,
             CgroupnsMode: 'private', CapAdd: ['SYS_ADMIN', 'NET_ADMIN'], SecurityOpt: ['seccomp=unconfined', 'apparmor=unconfined'],
             Mounts: [{ Type: 'volume', Source: cache, Target: '/var/lib/buildkit' }], LogConfig: { Type: 'json-file', Config: { 'max-size': '5m', 'max-file': '2' } } },
         }, { signal: combined });
         container = created.Id;
-        const upload = (tar) => this.docker.request('PUT', `/containers/${container}/archive?path=/tmp`, undefined, { rawBody: tar, contentType: 'application/x-tar', signal: combined });
+        const upload = (tar, path = '/tmp') => this.docker.request('PUT', `/containers/${container}/archive?path=${path}`, undefined, { rawBody: tar, contentType: 'application/x-tar', signal: combined });
         await upload(contextTar);
         await upload(tarArchive([{ name: 'rdf-buildkit.toml', mode: 0o600, data: Buffer.from(config) }, { name: 'rdf-buildkit-entrypoint.sh', mode: 0o700, data: Buffer.from(BUILDKIT_ENTRYPOINT) }]));
+        if (proxy) await upload(tarArchive([{ name: 'rdf-proxy', mode: 0o600, data: Buffer.from(proxyAddress(proxy)) }, ...(trust ? [{ name: 'rdf-proxy-ca.pem', mode: 0o600, data: trust }] : [])]), '/run');
         await this.docker.request('POST', `/containers/${container}/start`, undefined, { signal: combined });
         onStage('starting');
         for (let attempt = 0; ; attempt++) {
@@ -128,7 +135,7 @@ export class BoundedImageBuilder {
           await delay(1000, undefined, { signal: combined });
         }
         onStage('building');
-        const opts = [...Object.entries(args).flatMap(([name, value]) => ['--opt', `build-arg:${name}=${value}`]), ...(target ? ['--opt', `target=${target}`] : [])];
+        const opts = [...(proxy ? ['--secret', 'id=rdf_proxy,src=/run/rdf-proxy'] : []), ...(trust ? ['--secret', 'id=rdf_proxy_ca,src=/run/rdf-proxy-ca.pem'] : []), ...Object.entries(args).flatMap(([name, value]) => ['--opt', `build-arg:${name}=${value}`]), ...(target ? ['--opt', `target=${target}`] : [])];
         const command = ['buildctl', 'build', '--frontend', 'dockerfile.v0', '--local', 'context=/tmp', '--local', 'dockerfile=/tmp', ...opts, '--output', `type=docker,name=${tag},dest=/tmp/rdf-image.tar`, '--progress', 'plain'];
         // Detached exec writes a bounded log inside the quota-limited worker. Polling never buffers the whole build output.
         const job = await this.docker.request('POST', `/containers/${container}/exec`, { AttachStdout: false, AttachStderr: false, Cmd: ['sh', '-c', 'exec "$@" > /tmp/rdf-build.log 2>&1', 'sh', ...command] }, { signal: combined });
@@ -140,9 +147,9 @@ export class BoundedImageBuilder {
           const tail = await this.exec(container, ['tail', '-c', '16384', '/tmp/rdf-build.log'], combined);
           const text = tail.stdout + tail.stderr;
           onHeartbeat();
-          for (const line of buildLogLines(last, text).slice(-80)) onLine(line.slice(0, 512));
+          for (const line of buildLogLines(last, text).slice(-80)) reportLine(line);
           last = text;
-          if (!state.Running) { if (state.ExitCode !== 0) { const error = new Error(text.slice(-2000) || 'build_failed'); error.code = 'build_failed'; throw error; } break; }
+          if (!state.Running) { if (state.ExitCode !== 0) { const error = new Error(redact(text).slice(-2000) || 'build_failed'); error.code = 'build_failed'; throw error; } break; }
           await delay(5000, undefined, { signal: combined });
         }
         onStage('importing');

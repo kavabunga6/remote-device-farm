@@ -61,6 +61,7 @@ const actionLabels: Record<string, string> = {
   get 'account.adb_public_key_deleted'() { return t('ui.5b23d58d209f'); },
   get 'account.token_created'() { return t('ui.2bb69c9aa5a4'); },
   get 'account.token_revoked'() { return t('ui.c0f182bce2cc'); },
+  get 'outbound_proxy.updated'() { return t('proxy.saved'); },
   get 'admin.launch_settings_updated'() { return t('ui.b8a01c3d56ad'); },
   get 'admin.host_settings_updated'() { return t('ui.1cc683ed2c05'); },
   get 'admin.node_removed'() { return t('ui.fd72544edd6a'); },

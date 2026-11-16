@@ -297,6 +297,17 @@
           ]
         }
       ]
+    },
+    {
+      "id": "server",
+      "labelKey": "server.title",
+      "actions": [
+        {
+          "id": "server.settings",
+          "labelKey": "permissions.server.settings",
+          "requires": []
+        }
+      ]
     }
   ],
   "user": [

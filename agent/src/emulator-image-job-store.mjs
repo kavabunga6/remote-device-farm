@@ -2,7 +2,7 @@ import { diagnostic } from './diagnostics.mjs';
 import { closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-/** Atomic, private build ledger. Registry credentials deliberately never reach disk. */
+/** Atomic, private build ledger. Registry and proxy credentials deliberately never reach disk. */
 export class ImageJobStore {
   constructor(directory) {
     mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -25,8 +25,8 @@ export class ImageJobStore {
 
   write(jobs) {
     const temporary = this.path + '.tmp';
-    // Persist only the public build record and its acknowledgement, never push tokens or SDK entries.
-    const records = jobs.map(({ auth, entry, ...job }) => job);
+    // Persist only the public build record and its acknowledgement, never credentials or SDK entries.
+    const records = jobs.map(({ auth, proxy, entry, ...job }) => job);
     let fd;
     try {
       fd = openSync(temporary, 'w', 0o600);

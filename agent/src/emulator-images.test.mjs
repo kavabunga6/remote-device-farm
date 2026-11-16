@@ -49,7 +49,7 @@ test('the build context is a valid tar of the bundled image files', async () => 
   const images = testedImages({ docker: fakeDocker() });
   const { tar, hash } = await images.context();
   const listing = execFileSync('tar', ['-tvf', '-'], { input: tar, encoding: 'utf8' });
-  for (const name of ['Dockerfile', 'rdf-emulator.sh', 'adb-auth-gate.sh', 'secure-ramdisk.py', 'ramdisk.py', 'xorg.conf']) assert.match(listing, new RegExp(name.replace('.', '\\.')));
+  for (const name of ['Dockerfile', 'rdf-emulator.sh', 'adb-auth-gate.sh', 'secure-ramdisk.py', 'ramdisk.py', 'xorg.conf', 'proxy-env.sh', 'sdk-proxy.py']) assert.match(listing, new RegExp(name.replace('.', '\\.')));
   assert.match(listing, /-rwxr-xr-x .* rdf-emulator\.sh/);
   assert.match(listing, /-rwxr-xr-x .* adb-auth-gate\.sh/);
   assert.match(hash, /^[0-9a-f]{12}$/);
@@ -418,4 +418,73 @@ test('live build logs are bounded, checkpointed and redacted before persistence 
     assert.equal(images.jobList()[0].state, 'failed'); assert.ok(!images.jobList()[0].error.includes('private-push-token'));
     assert.ok(!readFileSync(join(directory, 'jobs.json'), 'utf8').includes('private-push-token'));
   } finally { finish?.(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+
+test('catalog cache follows proxy settings and build credentials never enter snapshots or checkpoints', async () => {
+  const docker = fakeDocker(), images = testedImages({ docker });
+  const proxy = { url: 'http://proxy.example:3128', username: 'builder', password: 'private-proxy-credential' };
+  await images.catalog({ proxy });
+  let calls = docker.calls.filter(call => call.path === '/containers/create');
+  assert.equal(calls.length, 1); assert.ok(calls[0].body.Env.some(value => value.startsWith('HTTPS_PROXY=http://builder:')));
+  assert.ok(calls[0].body.Cmd.includes('/usr/local/lib/rdf-sdk/sdk-proxy.py'));
+  await images.catalog({ proxy });
+  assert.equal(docker.calls.filter(call => call.path === '/containers/create').length, 1);
+  await images.catalog({ proxy: null });
+  assert.equal(docker.calls.filter(call => call.path === '/containers/create').length, 2);
+  const directory = mkdtempSync(join(tmpdir(), 'rdf-proxy-store-'));
+  try {
+    const store = new ImageJobStore(directory);
+    const job = { id: 'safe-job', package: 'system-images;android-34;google_apis;x86_64', image: 'example/test:tag', state: 'queued', log: [], profiles: [], proxy, auth: null };
+    store.write([job]); assert.equal(readFileSync(store.path, 'utf8').includes(proxy.password), false);
+    images.jobs = [job]; assert.equal(JSON.stringify(images.jobList()).includes(proxy.password), false);
+    assert.equal(images.cleanLog(job, proxy.password).includes(proxy.password), false);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+
+test('queued builds carry their proxy snapshot and redact its password on both output and failure', async () => {
+  const proxy = { url: 'http://proxy.example:3128', username: 'builder', password: 'private-job-proxy-value' };
+  let observed;
+  const images = new EmulatorImages({ docker: fakeDocker(), builder: { build: async (_image, _args, options) => {
+    if (options.target === 'tools') return;
+    observed = options.proxy; options.onLine('upstream ' + proxy.password);
+    throw new Error('upstream ' + encodeURIComponent(proxy.password));
+  } } });
+  await images.catalog({ proxy });
+  const result = images.enqueue(['system-images;android-34;google_apis_playstore;x86_64'], { repository: 'example.test/rdf-emulator', auth: { username: 'rdf', password: 'registry-value' } }, proxy);
+  for (let attempt = 0; attempt < 100 && images.running; attempt++) await new Promise(resolve => setTimeout(resolve, 5));
+  assert.deepEqual(observed, proxy); assert.equal(images.jobs[0].state, 'failed');
+  assert.equal(images.jobs[0].proxy, null); assert.equal(JSON.stringify(images.jobList()).includes(proxy.password), false);
+  assert.equal(result.jobs[0].proxy, undefined);
+});
+
+test('a changed proxy cancels an in-flight catalog instead of reusing its request or cached result', async () => {
+  const images = new EmulatorImages({ docker: fakeDocker() });
+  const proxy = { url: 'http://proxy.example:3128', username: '', password: '' };
+  let waiting;
+  const started = new Promise(resolve => { waiting = resolve; });
+  images.sdkList = async ({ proxy: current, signal }) => {
+    if (current) return list;
+    waiting(); return new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+  };
+  const first = images.catalog(); const failure = assert.rejects(first, /proxy_settings_changed/); await started;
+  const result = await images.catalog({ proxy }); await failure;
+  assert.ok(result.images.length); assert.equal(images.catalogStatus().phase, 'ready');
+});
+
+test('HTTPS catalog proxy uses node trust only inside the disposable tools container', async () => {
+  const docker = fakeDocker(), trust = Buffer.from('test public CA bundle');
+  const proxy = { url: 'https://proxy.example:8443', username: '', password: '' };
+  const images = testedImages({ docker, readTrust: async current => current ? trust : null });
+  await images.catalog({ proxy });
+  const create = docker.calls.find(call => call.path === '/containers/create').body;
+  assert.ok(create.Env.includes('SSL_CERT_FILE=/tmp/rdf-proxy-ca.pem'));
+  const upload = docker.calls.find(call => call.path.endsWith('/archive?path=/tmp'));
+  assert.ok(upload.options.rawBody.includes(trust));
+  assert.ok(docker.calls.indexOf(upload) < docker.calls.findIndex(call => call.path.endsWith('/start')));
+  assert.ok(docker.calls.some(call => call.method === 'DELETE' && call.path === '/containers/tools1?force=1'));
+  await images.catalog();
+  assert.equal(docker.calls.filter(call => call.path.includes('/archive?')).length, 1);
+  assert.equal(docker.calls.filter(call => call.path === '/containers/create')[1].body.Env.length, 0);
 });

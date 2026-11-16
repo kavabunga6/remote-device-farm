@@ -1,3 +1,4 @@
+import { proxyEnvironment, proxyFingerprint, proxySecrets, validateOutboundProxy, readProxyTrust } from './outbound-proxy.mjs';
 import { diagnostic } from './diagnostics.mjs';
 import { agentMessage } from './messages.mjs';
 import { redactDiagnostic } from './session-diagnostics.mjs';
@@ -18,7 +19,7 @@ import { emulatorPushDigest } from './emulator-push-digest.mjs';
 export const CONTRACT_LABEL = 'remote-device-farm.contract';
 export const SYSTEM_IMAGE_LABEL = 'remote-device-farm.system-image';
 
-const CONTEXT_FILES = [['Dockerfile', 0o644], ['rdf-emulator.sh', 0o755], ['adb-auth-gate.sh', 0o755], ['secure-ramdisk.py', 0o644], ['ramdisk.py', 0o644], ['xorg.conf', 0o644]];
+export const CONTEXT_FILES = [['Dockerfile', 0o644], ['rdf-emulator.sh', 0o755], ['adb-auth-gate.sh', 0o755], ['secure-ramdisk.py', 0o644], ['ramdisk.py', 0o644], ['xorg.conf', 0o644], ['proxy-env.sh', 0o644], ['sdk-proxy.py', 0o644]];
 const CATALOG_TTL_MS = 60 * 60_000;
 const BUILD_TIMEOUT_MS = 2 * 60 * 60_000;
 const MAX_JOBS = 50;
@@ -37,8 +38,8 @@ export function buildProgress(line, previous = { step: 0, steps: 0, percent: nul
 }
 
 export class EmulatorImages {
-  constructor({ docker, verify = async () => { throw new Error(diagnostic('emulator-images.c5a3271096')); }, abi = hostAbi(), contextDir = new URL('../emulator-image/', import.meta.url), now = Date.now, stateDir, store = stateDir ? new ImageJobStore(stateDir) : null, builder = new BoundedImageBuilder({ docker, agentId: 'standalone', stateDir: stateDir ?? '/var/lib/rdf-image-builds' }) }) {
-    Object.assign(this, { docker, verify, abi, contextDir, now, store, builder });
+  constructor({ docker, readTrust = readProxyTrust, verify = async () => { throw new Error(diagnostic('emulator-images.c5a3271096')); }, abi = hostAbi(), contextDir = new URL('../emulator-image/', import.meta.url), now = Date.now, stateDir, store = stateDir ? new ImageJobStore(stateDir) : null, builder = new BoundedImageBuilder({ docker, agentId: 'standalone', stateDir: stateDir ?? '/var/lib/rdf-image-builds' }) }) {
+    Object.assign(this, { docker, verify, abi, contextDir, now, store, builder, readTrust });
     this.cache = null;
     this.catalogLoading = null;
     this.catalogState = { phase: 'idle', startedAt: null, updatedAt: null, progress: null };
@@ -57,7 +58,7 @@ export class EmulatorImages {
         job.finishedAt = job.updatedAt = new Date(this.now()).toISOString();
         interrupted = true;
       }
-      delete job.auth;
+      delete job.auth; delete job.proxy;
       delete job.entry;
     }
     if (interrupted) this.persist();
@@ -70,40 +71,42 @@ export class EmulatorImages {
     return { tar: tarArchive(files), hash: hash.digest('hex').slice(0, 12) };
   }
 
-  async build(tag, buildArgs, { target, onLine = () => {}, signal, onStage, onHeartbeat } = {}) {
+  async build(tag, buildArgs, { target, onLine = () => {}, signal, onStage, onHeartbeat, proxy } = {}) {
     const { tar } = await this.context();
-    await this.builder.build(tag, buildArgs, { contextTar: tar, target, onLine, signal, onStage, onHeartbeat });
+    await this.builder.build(tag, buildArgs, { contextTar: tar, target, onLine, signal, onStage, onHeartbeat, proxy });
   }
 
   /** The tools stage (Java + sdkmanager), rebuilt only when the bundled Dockerfile changes. */
-  async toolsImage({ signal } = {}) {
+  async toolsImage({ signal, proxy } = {}) {
     this.catalogStage('checking_tools');
     const { hash } = await this.context();
     const tag = `rdf-emulator-tools:${hash}`;
     try { await this.docker.request('GET', `/images/${encodeURIComponent(tag)}/json`); return tag; }
     catch (error) { if (!/No such image|404/.test(String(error.message))) throw error; }
     this.catalogStage('preparing_tools');
-    await this.build(tag, {}, { target: 'tools', signal, onLine: line => {
+    await this.build(tag, {}, { target: 'tools', signal, proxy, onLine: line => {
       this.catalogStage('preparing_tools', buildProgress(line, this.catalogState.progress ?? undefined));
     } });
     return tag;
   }
 
   /** `sdkmanager --list` in a short-lived tools container; the network is only used to read Google's repository. */
-  async sdkList({ signal } = {}) {
-    const image = await this.toolsImage({ signal });
+  async sdkList({ signal, proxy } = {}) {
+    const image = await this.toolsImage({ signal, proxy });
     this.catalogStage('fetching');
+    const trust = await this.readTrust(proxy);
     const created = await this.docker.request('POST', '/containers/create', {
-      Image: image, Cmd: ['sdkmanager', '--list', '--channel=0'], Tty: true,
+      Image: image, Cmd: ['python3', '/usr/local/lib/rdf-sdk/sdk-proxy.py', 'sdkmanager', '--list', '--channel=0'], Env: [...proxyEnvironment(proxy), ...(trust ? ['SSL_CERT_FILE=/tmp/rdf-proxy-ca.pem'] : [])], Tty: true,
       Labels: { 'remote-device-farm.managed': 'true', 'remote-device-farm.role': 'image-catalog' },
       HostConfig: { AutoRemove: false, CapDrop: ['ALL'], SecurityOpt: ['no-new-privileges:true'], Memory: 1024 * 1024 * 1024, NanoCpus: 1000000000, PidsLimit: 128 },
     }, { signal });
     try {
+      if (trust) await this.docker.request('PUT', `/containers/${created.Id}/archive?path=/tmp`, undefined, { rawBody: tarArchive([{ name: 'rdf-proxy-ca.pem', mode: 0o600, data: trust }]), contentType: 'application/x-tar', signal });
       await this.docker.request('POST', `/containers/${created.Id}/start`, undefined, { signal });
       const result = await this.docker.request('POST', `/containers/${created.Id}/wait`, undefined, { timeoutMs: 10 * 60_000, signal });
       const output = await this.docker.request('GET', `/containers/${created.Id}/logs?stdout=1&stderr=1`, undefined, { raw: true, maxBytes: 4 * 1024 * 1024, signal });
       const text = Buffer.isBuffer(output) ? output.toString('utf8') : String(output ?? '');
-      if (result?.StatusCode !== 0) throw new Error(diagnostic('emulator-images.91b9ab5b57', { p0: text.split('\n').slice(-5).join(' ').slice(0, 500) }));
+      if (result?.StatusCode !== 0) throw new Error(diagnostic('emulator-images.91b9ab5b57', { p0: redactDiagnostic(text, proxySecrets(proxy)).split('\n').slice(-5).join(' ').slice(0, 500) }));
       return text;
     } finally {
       await this.docker.request('DELETE', `/containers/${created.Id}?force=1`).catch(() => {});
@@ -116,19 +119,27 @@ export class EmulatorImages {
 
   catalogStatus() { return { ...this.catalogState, progress: this.catalogState.progress ? { ...this.catalogState.progress } : null }; }
 
-  async catalog({ refresh = false } = {}) {
-    if (this.catalogLoading) return this.catalogLoading;
-    if (!refresh && this.cache && this.now() - this.cache.at <= CATALOG_TTL_MS) return this.catalogSnapshot();
+  async catalog({ refresh = false, proxy = null } = {}) {
+    proxy = validateOutboundProxy(proxy);
+    const key = proxyFingerprint(proxy);
+    if (this.catalogLoading) {
+      if (this.catalogProxyKey === key) return this.catalogLoading;
+      this.catalogController?.abort(new Error('proxy_settings_changed'));
+      await this.catalogLoading.catch(() => {});
+      return this.catalog({ refresh, proxy });
+    }
+    if (!refresh && this.cache && (this.cache.proxyKey ?? proxyFingerprint(null)) === key && this.now() - this.cache.at <= CATALOG_TTL_MS) return this.catalogSnapshot();
     const controller = new AbortController();
+    this.catalogController = controller; this.catalogProxyKey = key;
     const timeout = setTimeout(() => controller.abort(new Error(agentMessage('agent.catalog.timeout'))), 14 * 60_000);
     this.catalogState = { phase: 'checking_tools', startedAt: new Date(this.now()).toISOString(), updatedAt: new Date(this.now()).toISOString(), progress: null };
     this.catalogLoading = (async () => {
       try {
-        const list = await this.sdkList({ signal: controller.signal });
+        const list = await this.sdkList({ signal: controller.signal, proxy });
         this.catalogStage('parsing');
         const entries = selectEntries(parseSdkList(list), { abi: this.abi });
         if (!entries.length) throw new Error(agentMessage('agent.catalog.empty'));
-        this.cache = { at: this.now(), entries };
+        this.cache = { at: this.now(), entries, proxyKey: key };
         this.catalogStage('ready');
         return this.catalogSnapshot();
       } catch (error) { this.catalogStage('failed'); throw error; }
@@ -150,7 +161,8 @@ export class EmulatorImages {
   }
 
   /** Queues builds of catalog entries for one registry repository; anything not in the current catalog is refused. */
-  enqueue(packages, target) {
+  enqueue(packages, target, proxy = null) {
+    proxy = validateOutboundProxy(proxy);
     if (!target?.repository) throw new Error(diagnostic('emulator-images.2c0ca7311b'));
     if (!Array.isArray(packages) || !packages.length || packages.length > 50) throw new Error(diagnostic('emulator-images.edc4673562'));
     if (!this.cache) throw new Error(diagnostic('emulator-images.aabd70ad39'));
@@ -170,7 +182,7 @@ export class EmulatorImages {
       const job = { id: randomUUID(), package: entry.package, image, state: 'queued', validation: null,
         createdAt: new Date(this.now()).toISOString(), updatedAt: new Date(this.now()).toISOString(), lastLogAt: null, checkedAt: null, stage: null, progress: { step: 0, steps: 0, percent: null }, log: [], error: null,
         digest: null, sizeMb: null, profiles: buildManifest([entry], { registry: target.repository, abi: entry.abi }).profiles, entry,
-        auth: target.auth ?? null };
+        auth: target.auth ?? null, proxy };
       next.unshift(job);
       queued.push(job.id);
     }
@@ -207,7 +219,7 @@ export class EmulatorImages {
   cleanLog(job, text) {
     const password = job.auth?.password;
     const secrets = password ? [password, encodeURIComponent(password), Buffer.from(`${job.auth.username}:${password}`).toString('base64')] : [];
-    return redactDiagnostic(text, secrets);
+    return redactDiagnostic(text, [...secrets, ...proxySecrets(job.proxy)]);
   }
 
   appendLog(job, line) {
@@ -251,7 +263,7 @@ export class EmulatorImages {
       if (job.state === 'queued') {
         job.state = 'cancelled';
         job.finishedAt = job.cancelRequestedAt;
-        job.auth = null;
+        job.auth = null; job.proxy = null;
       } else {
         job.state = 'cancelling';
       }
@@ -282,7 +294,7 @@ export class EmulatorImages {
       try {
         this.persist();
         await this.build(job.image, { SYSTEM_IMAGE: job.package }, {
-          signal,
+          signal, proxy: job.proxy,
           onLine: (line) => { job.progress = buildProgress(line, job.progress); this.appendLog(job, line); },
           onStage: stage => { job.stage = stage; job.progress = { step: 0, steps: 0, percent: null }; this.touch(job); this.persist(); },
           onHeartbeat: () => { job.checkedAt = new Date(this.now()).toISOString(); },
@@ -308,7 +320,7 @@ export class EmulatorImages {
         job.errorCode = job.state === 'cancelled' ? null : error.code ?? (!job.digest && job.validation === null && phase === 'validating' ? 'validation_unavailable' : 'build_failed');
       } finally {
         job.finishedAt = new Date(this.now()).toISOString(); this.touch(job);
-        job.auth = null;
+        job.auth = null; job.proxy = null;
         this.running = null;
         this.runningController = null;
         try { this.persist(); }
@@ -342,6 +354,6 @@ export class EmulatorImages {
 
   jobList({ jobId } = {}) {
     return this.jobs.filter(job => jobId === undefined || job.id === jobId)
-      .map(({ entry, auth, acknowledged, ...job }) => ({ ...job, log: job.log.slice(jobId ? -MAX_LOG_LINES : -8).map(line => redactDiagnostic(line).slice(0, jobId ? 512 : 300)) }));
+      .map(({ entry, auth, proxy, acknowledged, ...job }) => ({ ...job, log: job.log.slice(jobId ? -MAX_LOG_LINES : -8).map(line => redactDiagnostic(line).slice(0, jobId ? 512 : 300)) }));
   }
 }

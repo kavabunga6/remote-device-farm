@@ -1,3 +1,4 @@
+import { ServerSettings } from './ServerSettings';
 import { ImageManagement } from './ImageManagement';
 import { useAccess } from './permissions';
 import { RoleManagement } from './RoleManagement';
@@ -57,6 +58,7 @@ export function AdminWorkspace(props: Props) {
       {(section === 'profiles' || section === 'users') && <AdminTools key={section} section={section} profiles={props.profiles} allowLocalUsers={props.allowLocalUsers} onRefresh={props.onRefresh} />}
       {section === 'images' && <ImageManagement hosts={props.hosts} onChanged={props.onRefresh}/> }
       {section === 'roles' && <RoleManagement onChanged={props.onRefresh} />}
+      {section === 'settings' && <ServerSettings />}
       {section === 'ops' && <AdminOps />}
       {section === 'journal' && <AdminJournal hosts={props.hosts} sessions={props.sessions} />}
     </section>

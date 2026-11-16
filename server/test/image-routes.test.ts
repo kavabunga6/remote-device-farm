@@ -450,3 +450,53 @@ test('a delayed build log is not delivered after the requesting login is revoked
     assert.ok(!(await response.text()).includes('private build output'));
   } finally { release(); await f.close(); }
 });
+
+
+test('outbound proxy settings are permission protected and credentials are encrypted and write-only', async () => {
+  const f = await fixture();
+  try {
+    const path = '/admin/outbound-proxy';
+    f.as(null); assert.equal((await f.request(path)).status, 401);
+    f.as(USER); assert.equal((await f.request(path)).status, 403);
+    assert.equal((await f.request(path, 'PUT', { enabled: false })).status, 403);
+    f.as(ADMIN);
+    let response = await f.request(path); assert.equal(response.status, 200, await response.clone().text());
+    assert.equal((await response.json()).proxy.enabled, false);
+    const password = 'proxy p@ss:%word';
+    response = await f.request(path, 'PUT', { enabled: true, url: 'https://proxy.example:8443', username: 'builder', password });
+    assert.equal(response.status, 200);
+    const saved = (await response.json()).proxy;
+    assert.equal(saved.passwordSet, true); assert.equal(saved.url, 'https://proxy.example:8443');
+    assert.equal(JSON.stringify(saved).includes(password), false); assert.equal(saved.password, undefined);
+    const row = (await f.pool.query('SELECT password FROM outbound_proxy_settings WHERE id')).rows[0];
+    assert.notEqual(row.password, password);
+    assert.equal((await getSecretBox(f.pool)).open(row.password), password);
+    await f.db.query("UPDATE hosts SET image_builder=true WHERE id='builder'");
+    await f.request('/admin/emulator-images');
+    const command = f.commands.findLast(item => item.action === 'emulator-catalog');
+    assert.deepEqual(command?.params.proxy, { url: 'https://proxy.example:8443', username: 'builder', password });
+    await f.request(path, 'PUT', { url: 'http://proxy.example:3128' });
+    assert.equal((await (await f.request(path)).json()).proxy.passwordSet, true);
+    await f.request(path, 'PUT', { enabled: false });
+    await f.request('/admin/emulator-images');
+    assert.equal(f.commands.findLast(item => item.action === 'emulator-catalog')?.params.proxy, null);
+    await f.request(path, 'PUT', { password: '', username: '' });
+    assert.equal((await (await f.request(path)).json()).proxy.passwordSet, false);
+    const audit = await f.pool.query("SELECT * FROM audit_events WHERE action='outbound_proxy.updated'");
+    assert.ok(audit.rows.length); assert.equal(JSON.stringify(audit.rows).includes(password), false);
+  } finally { await f.close(); }
+});
+
+test('outbound proxy rejects malformed addresses and credential injection without changing saved settings', async () => {
+  const f = await fixture();
+  try {
+    for (const url of ['socks5://proxy.example:1080', 'file:///etc/passwd', 'http://user:pass@proxy.example', 'http://proxy.example/path', 'http://proxy.example?x=1', 'http://proxy.example/#x', 'http://proxy.example\n']) {
+      assert.equal((await f.request('/admin/outbound-proxy', 'PUT', { enabled: true, url })).status, 400, url);
+    }
+    assert.equal((await f.request('/admin/outbound-proxy', 'PUT', { enabled: true })).status, 400);
+    assert.equal((await f.request('/admin/outbound-proxy', 'PUT', { password: 'bad\nvalue' })).status, 400);
+    assert.equal((await f.request('/admin/outbound-proxy', 'PUT', { username: 'name:other' })).status, 400);
+    assert.equal((await f.request('/admin/outbound-proxy', 'PUT', { surprise: true })).status, 400);
+    assert.equal((await (await f.request('/admin/outbound-proxy')).json()).proxy.enabled, false);
+  } finally { await f.close(); }
+});

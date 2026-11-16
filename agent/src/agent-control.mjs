@@ -152,10 +152,10 @@ export class AgentControl {
       case 'emuConsole': return this.emuConsole(request.sessionId, request.args);
       case 'setPolicy': return this.serialPolicy(request.policy);
       case 'emulatorCatalogStatus': return this.images.catalogStatus();
-      case 'emulatorCatalog': return this.images.catalog({ refresh: request.refresh });
+      case 'emulatorCatalog': return this.images.catalog({ refresh: request.refresh, proxy: request.proxy });
       case 'emulatorBuild':
         if (this.cacheCleanup) throw new Error('image_cache_busy');
-        return this.images.enqueue(request.packages, request.target);
+        return this.images.enqueue(request.packages, request.target, request.proxy);
       case 'emulatorCancel': return this.images.cancel(request.jobId);
       case 'prewarmImage': return this.prewarmImage(request.image, request.auth, { signal });
       case 'emulatorJobs': return request.jobId ? { jobs: this.images.jobList({ jobId: request.jobId }) } : this.images.acknowledge(request.acknowledged);

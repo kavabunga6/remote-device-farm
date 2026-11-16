@@ -11,6 +11,7 @@ const IMAGES = [
 
 function initial() {
   return {
+    proxy: { enabled: false, url: '', username: '', passwordSet: false },
     registry: { mode: 'builtin', builtinAddress: null, externalAddress: null, externalUsername: null, externalPasswordSet: false },
     builder: null,
     built: new Map([['system-images;android-34;google_apis_playstore;x86_64', { digest: 'sha256:' + 'a'.repeat(64), sizeMb: 3420, update: false }]]),
@@ -26,7 +27,7 @@ const readBody = (req) => new Promise((resolve) => {
 });
 
 export default function handle(req, res, path, method, state, send) {
-  if (!path.startsWith('/admin/registry') && !path.startsWith('/admin/emulator-images') && !/\/image-builder$/.test(path)) return false;
+  if (!path.startsWith('/admin/outbound-proxy') && !path.startsWith('/admin/registry') && !path.startsWith('/admin/emulator-images') && !/\/image-builder$/.test(path)) return false;
   if (method === 'GET') { respond(req, res, path, method, state, send, null); return true; }
   void readBody(req).then(body => respond(req, res, path, method, state, send, body));
   return true;
@@ -54,6 +55,10 @@ function advanceBuild() {
 }
 
 function respond(req, res, path, method, state, send, body) {
+  if (path === '/admin/outbound-proxy') {
+    if (method === 'PUT') { const { password, ...patch } = body; Object.assign(s.proxy, patch); if (password !== undefined) s.proxy.passwordSet = Boolean(password); }
+    send(res, 200, { proxy: s.proxy }); return true;
+  }
   if (path === '/admin/emulator-images/builds' && method === 'GET') { advanceBuild(); send(res, 200, { builder: s.builder, observedAt: new Date().toISOString(), jobs: s.jobs }); return true; }
   const detail = /^\/admin\/emulator-images\/builds\/([A-Za-z0-9-]+)$/.exec(path);
   if (detail && method === 'GET') { send(res, 200, { jobs: s.jobs.filter(job => job.id === detail[1]) }); return true; }

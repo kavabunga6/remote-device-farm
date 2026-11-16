@@ -15058,5 +15058,81 @@
   "build.step": {
     "ru": "Шаг {step} из {total}",
     "en": "Step {step} of {total}"
+  },
+  "server.title": {
+    "ru": "Настройки сервера",
+    "en": "Server settings"
+  },
+  "server.description": {
+    "ru": "Подключения сервиса к внешним ресурсам.",
+    "en": "Connections to external services."
+  },
+  "permissions.server.settings": {
+    "ru": "Изменять настройки исходящего прокси",
+    "en": "Change outbound proxy settings"
+  },
+  "proxy.title": {
+    "ru": "Исходящий прокси",
+    "en": "Outbound proxy"
+  },
+  "proxy.description": {
+    "ru": "Если Google недоступен напрямую, укажите прокси, доступный с узла-сборщика.",
+    "en": "If Google is not reachable directly, use a proxy the image builder node can reach."
+  },
+  "proxy.enable": {
+    "ru": "Использовать прокси",
+    "en": "Use a proxy"
+  },
+  "proxy.address": {
+    "ru": "Адрес прокси",
+    "en": "Proxy address"
+  },
+  "proxy.username": {
+    "ru": "Логин (необязательно)",
+    "en": "Username (optional)"
+  },
+  "proxy.password": {
+    "ru": "Пароль",
+    "en": "Password"
+  },
+  "proxy.passwordKeep": {
+    "ru": "Пароль сохранён. Оставьте поле пустым, чтобы не менять его.",
+    "en": "A password is saved. Leave this field blank to keep it."
+  },
+  "proxy.passwordOptional": {
+    "ru": "Оставьте пустым, если пароль не нужен.",
+    "en": "Leave blank if no password is required."
+  },
+  "proxy.clearPassword": {
+    "ru": "Удалить сохранённый пароль",
+    "en": "Remove saved password"
+  },
+  "proxy.passwordCleared": {
+    "ru": "Пароль будет удалён после сохранения.",
+    "en": "The password will be removed when you save."
+  },
+  "proxy.saved": {
+    "ru": "Настройки прокси сохранены.",
+    "en": "Proxy settings saved."
+  },
+  "proxy.invalid": {
+    "ru": "Укажите HTTP или HTTPS-прокси без пути и учётных данных в адресе. Логин и пароль заполните отдельно.",
+    "en": "Use an HTTP or HTTPS proxy address without a path or credentials. Enter the username and password separately."
+  },
+  "proxy.scope": {
+    "ru": "Прокси используется для каталога Google, Android SDK и загрузок внутри сборки.",
+    "en": "The proxy is used for the Google catalog, Android SDK, and downloads during image builds."
+  },
+  "proxy.dockerNote": {
+    "ru": "Скачивание самого BuildKit-образа использует настройки прокси Docker на узле.",
+    "en": "Downloading the BuildKit image itself uses the Docker daemon’s proxy settings on the node."
+  },
+  "proxy.pending": {
+    "ru": "Новые настройки действуют для следующих загрузок. Уже запущенные задачи продолжат работу с прежними настройками.",
+    "en": "Changes apply to subsequent downloads. Tasks already in progress keep their current settings."
+  },
+  "proxy.reset": {
+    "ru": "Отменить изменения",
+    "en": "Discard changes"
   }
 }

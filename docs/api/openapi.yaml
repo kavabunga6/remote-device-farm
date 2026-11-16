@@ -881,6 +881,70 @@ paths:
                 $ref: "#/components/schemas/Error"
       operationId: postAdminUsersByIdPassword
       x-permission: users.password
+  /api/admin/outbound-proxy:
+    get:
+      tags: [ Administration ]
+      operationId: getAdminOutboundProxy
+      summary: Read outbound proxy settings without returning the password
+      x-permission: server.settings
+      responses:
+        "200":
+          description: Current configuration; credentials are write-only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutboundProxyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      tags: [ Administration ]
+      operationId: putAdminOutboundProxy
+      summary: Partially update the proxy used by catalog and image downloads
+      description: HTTP or HTTPS proxy reachable from the builder node. Changes apply to subsequent operations.
+        Omit password to retain it; an empty password clears it. This does not configure the host Docker daemon,
+        device networking, APK URL downloads, or registry push and pull operations.
+      x-permission: server.settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                enabled:
+                  type: boolean
+                url:
+                  type: string
+                  maxLength: 1000
+                  example: https://proxy.example.com:8443
+                  description: HTTP(S) origin without path, query, fragment, or embedded credentials. Required when enabled.
+                username:
+                  type: string
+                  maxLength: 256
+                password:
+                  type: string
+                  maxLength: 1000
+                  writeOnly: true
+      responses:
+        "200":
+          description: Saved configuration without the password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutboundProxyResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Error"
   /api/admin/registry:
     get:
       tags: [ Registry ]
@@ -5005,6 +5069,24 @@ components:
         type: string
         format: uuid
   schemas:
+    OutboundProxyResponse:
+      type: object
+      additionalProperties: false
+      required: [ proxy ]
+      properties:
+        proxy:
+          type: object
+          additionalProperties: false
+          required: [ enabled, url, username, passwordSet ]
+          properties:
+            enabled:
+              type: boolean
+            url:
+              type: string
+            username:
+              type: string
+            passwordSet:
+              type: boolean
     SessionPerformanceSample:
       type: object
       additionalProperties: false

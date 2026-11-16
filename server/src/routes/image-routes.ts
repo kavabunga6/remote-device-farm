@@ -1,3 +1,4 @@
+import { readOutboundProxy, updateOutboundProxy, outboundProxyFor } from '../outbound-proxy.js';
 import { uiMessage } from '../messages.js';
 import { recordServiceLog } from '../service-log.js';
 import { operationalError } from '../startup.js';
@@ -34,6 +35,16 @@ export async function builderHost(pool: Pool, hub: Pick<AgentHub, 'hasAgent'>, a
 
 export function registerImageRoutes(app: Express, context: ServerContext, worker = new ImageBuildWorker(context.pool, context.hub, context.config.secretsKey)): void {
   const { pool, config, hub, requireAuth, requireAdmin, current } = context;
+
+  app.get('/api/admin/outbound-proxy', requireAuth, requireAdmin, route(async (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ proxy: await readOutboundProxy(pool) });
+  }));
+  app.put('/api/admin/outbound-proxy', requireAuth, requireAdmin, route(async (req, res) => {
+    const proxy = await updateOutboundProxy(pool, await getSecretBox(pool, config.secretsKey), req.body);
+    await recordAuditEvent(pool, { action: 'outbound_proxy.updated', actor: current(res).user, targetType: 'server', targetId: 'outbound_proxy' });
+    res.setHeader('Cache-Control', 'no-store'); res.json({ proxy });
+  }));
 
   // nginx auth_request for the built-in registry under /v2/ (see frontend/nginx.conf).
   app.get('/api/registry/auth', route(async (req, res) => {
@@ -91,7 +102,7 @@ export function registerImageRoutes(app: Express, context: ServerContext, worker
     const builder = await builderHost(pool, hub, config.autoImageBuilder);
     if (!builder) { res.json({ registry, builder: null, images: [], jobs: [] }); return; }
     if (!hub.hasAgent(builder.id)) throw new ApiError(503, 'image_builder_offline', uiMessage('catalog.offline'));
-    const catalog = await hub.command(builder.id, builder.id, 'emulator-catalog', { refresh: req.query.refresh === '1' }, 15 * 60_000).catch(async error => {
+    const catalog = await hub.command(builder.id, builder.id, 'emulator-catalog', { refresh: req.query.refresh === '1', proxy: await outboundProxyFor(pool, config.secretsKey) }, 15 * 60_000).catch(async error => {
       await recordServiceLog(pool, { service: 'server', severity: 'error', code: 'emulator_images.catalog_failed', hostId: builder.id, message: operationalError(error, 'api') }).catch(() => {});
       throw new ApiError(502, 'catalog_load_failed', uiMessage('catalog.failedHint'));
     }) as { abi?: string; refreshedAt?: string; images?: Array<Record<string, unknown>>; jobs?: AgentJob[] };
@@ -157,7 +168,7 @@ export function registerImageRoutes(app: Express, context: ServerContext, worker
     const repository = `${address}/${IMAGE_REPOSITORY}`;
     const auth = await registryAuthFor(pool, await getSecretBox(pool, config.secretsKey), repository, 'push', builder.id);
     if (!auth) throw new ApiError(409, 'registry_not_configured', uiMessage('ui.15558d622182', {}, 'en'));
-    const result = await hub.command(builder.id, builder.id, 'emulator-build', { packages, target: { repository, auth } }, 60_000);
+    const result = await hub.command(builder.id, builder.id, 'emulator-build', { packages, target: { repository, auth }, proxy: await outboundProxyFor(pool, config.secretsKey) }, 60_000);
     await recordAuditEvent(pool, { action: 'emulator_image.build_requested', actor: current(res).user, targetType: 'host', targetId: builder.id }).catch(() => {});
     res.status(202).json(result);
   }));

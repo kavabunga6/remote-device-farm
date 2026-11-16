@@ -1,3 +1,4 @@
+import { CONTEXT_FILES } from '../../agent/src/emulator-images.mjs';
 import { readFile, open, mkdir, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -27,8 +28,7 @@ try {
   const agentId = 'cli-' + createHash('sha256').update(resolve('.')).digest('hex').slice(0, 16);
   const builder = new BoundedImageBuilder({ docker, agentId, diskPath });
   await builder.recover();
-  const names = ['Dockerfile', 'rdf-emulator.sh', 'adb-auth-gate.sh', 'secure-ramdisk.py', 'ramdisk.py', 'xorg.conf'];
-  const files = await Promise.all(names.map(async name => ({ name, mode: 0o755, data: await readFile(new URL('../../agent/emulator-image/' + name, import.meta.url)) })));
+  const files = await Promise.all(CONTEXT_FILES.map(async ([name, mode]) => ({ name, mode, data: await readFile(new URL('../../agent/emulator-image/' + name, import.meta.url)) })));
   await builder.build(tag, target ? {} : { SYSTEM_IMAGE: systemImage }, { target: target || undefined, contextTar: tarArchive(files), signal: controller.signal,
     onLine: line => console.log(line), onSample: ({ freeGiB, availableGiB, cpuPercent, ioPressure }) => console.log(JSON.stringify({ event: 'build.resources', freeGiB, availableGiB, cpuPercent, ioPressure })) });
 } catch (error) { console.error(JSON.stringify({ event: 'build.failed', code: error.code ?? 'build_failed' })); process.exitCode = 1; }

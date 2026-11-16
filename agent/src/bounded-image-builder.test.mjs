@@ -5,8 +5,8 @@ const labels = { 'remote-device-farm.managed': 'true', 'remote-device-farm.agent
 const stream = text => { const data = Buffer.from(text), header = Buffer.alloc(8); header[0] = 1; header.writeUInt32BE(data.length, 4); return Buffer.concat([header, data]); };
 function fixture({ failImport = false, abortAt = false, failBuild = false } = {}) {
   const calls = []; let live = true, networkLive = true, imported = false;
-  const docker = { ensureImage: async (_image, onProgress) => { onProgress({ stage: 'checking_image' }); onProgress({ stage: 'downloading', detail: 'Downloading', percent: 42 }); }, importImageArchive: async () => { imported = true; if (failImport) throw new Error('import failed'); }, requestRaw: async () => stream('ready'), request: async (method, path, body) => {
-    calls.push({ method, path, body });
+  const docker = { ensureImage: async (_image, onProgress) => { onProgress({ stage: 'checking_image' }); onProgress({ stage: 'downloading', detail: 'Downloading', percent: 42 }); }, importImageArchive: async () => { imported = true; if (failImport) throw new Error('import failed'); }, requestRaw: async () => stream('ready'), request: async (method, path, body, options) => {
+    calls.push({ method, path, body, options });
     if (path === '/volumes/rdf-buildkit-node-1') return { Driver: 'local', Labels: { ...labels, 'remote-device-farm.role': 'image-build-cache' } };
     if (path === '/networks/create') { Object.assign(labels, body.Labels); return { Id: 'network-id' }; }
     if (path === '/networks/network-id') { if (method === 'DELETE') { networkLive = false; return {}; } if (!networkLive) throw new Error('No such network'); return { Id: 'network-id', Driver: 'bridge', Labels: labels, Containers: {} }; }
@@ -18,7 +18,7 @@ function fixture({ failImport = false, abortAt = false, failBuild = false } = {}
     if (method === 'DELETE') { live = false; return {}; }
     return {};
   } };
-  const builder = new BoundedImageBuilder({ docker, agentId: 'node-1', stateDir: '/', guard: () => ({ run: async work => { const control = new AbortController(); if (abortAt) control.abort(new Error('guard stopped')); return work(control.signal); } }) });
+  const builder = new BoundedImageBuilder({ docker, agentId: 'node-1', stateDir: '/', readTrust: async proxy => proxy?.url.startsWith('https:') ? Buffer.from('test public CA bundle') : null, guard: () => ({ run: async work => { const control = new AbortController(); if (abortAt) control.abort(new Error('guard stopped')); return work(control.signal); } }) });
   return { builder, calls, get imported() { return imported; } };
 }
 test('complete builds use one quota-limited worker, no host namespaces/socket/binds, and stop before streaming import', async () => {
@@ -80,4 +80,32 @@ test('worker image download events become readable log lines rather than object 
   const f = fixture(), lines = [];
   await f.builder.build('example/image:test', {}, { contextTar: Buffer.alloc(1024), onLine: line => lines.push(line) });
   assert.ok(lines.includes('42% Downloading')); assert.ok(lines.every(line => typeof line === 'string' && !line.includes('[object Object]')));
+});
+
+
+test('proxy credentials use a private BuildKit secret and daemon environment, never build arguments', async () => {
+  const f = fixture(), proxy = { url: 'https://proxy.example:8443', username: 'builder', password: 'password-no-history' };
+  await f.builder.build('example/image:test', {}, { contextTar: Buffer.alloc(1024), proxy });
+  const create = f.calls.find(call => call.path.startsWith('/containers/create')).body;
+  assert.ok(create.Env.some(value => value.startsWith('HTTPS_PROXY=https://builder:')));
+  const job = f.calls.find(call => call.body?.Cmd?.includes('dockerfile.v0')).body.Cmd;
+  assert.ok(job.includes('id=rdf_proxy,src=/run/rdf-proxy'));
+  assert.ok(job.includes('id=rdf_proxy_ca,src=/run/rdf-proxy-ca.pem'));
+  assert.ok(create.Env.includes('SSL_CERT_FILE=/run/rdf-proxy-ca.pem'));
+  assert.equal(job.join(' ').includes(proxy.password), false);
+  const contextUploads = f.calls.filter(call => call.path.endsWith('archive?path=/tmp'));
+  assert.ok(contextUploads.every(call => !call.options.rawBody.includes(Buffer.from(proxy.password))));
+  assert.ok(f.calls.find(call => call.path.endsWith('archive?path=/run')).options.rawBody.includes(Buffer.from(proxy.password)));
+  assert.ok(f.calls.some(call => call.method === 'DELETE' && call.path === '/networks/network-id'));
+});
+
+test('reading proxy trust reserves the builder and a trust failure releases it', async () => {
+  const f = fixture(); let release;
+  f.builder.readTrust = () => new Promise(resolve => { release = resolve; });
+  const first = f.builder.build('example/image:test', {}, { contextTar: Buffer.alloc(1024) });
+  await assert.rejects(f.builder.build('example/image:second', {}, { contextTar: Buffer.alloc(1024) }), { code: 'build_busy' });
+  release(null); await first; assert.equal(f.builder.active, null);
+  f.builder.readTrust = async () => { throw new Error('proxy_trust_unavailable'); };
+  await assert.rejects(f.builder.build('example/image:test', {}, { contextTar: Buffer.alloc(1024) }), /proxy_trust_unavailable/);
+  assert.equal(f.builder.active, null);
 });
