@@ -47,9 +47,10 @@ RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=04
 # and patching after SDK downloads so this change reuses their cached layers.
 RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=0444 --mount=type=secret,id=rdf_no_proxy . /usr/local/lib/rdf-sdk/proxy-env.sh && rdf_apt_get update && rdf_apt_get install -y --no-install-recommends python3 lz4 \
     && rm -rf /var/lib/apt/lists/*
-COPY secure-ramdisk.py ramdisk.py /tmp/
+COPY secure-ramdisk.py ramdisk.py rdf-emulator.sh /tmp/
 RUN python3 /tmp/secure-ramdisk.py "$(find /opt/android/system-images -name ramdisk.img -print -quit)" \
-    && rm /tmp/secure-ramdisk.py /tmp/ramdisk.py
+    && bash /tmp/rdf-emulator.sh --check-image \
+    && rm /tmp/secure-ramdisk.py /tmp/ramdisk.py /tmp/rdf-emulator.sh
 
 # ---- Stage 3: runtime. No Java or SDK manager; official emulator/platform-tools, system image and launcher ----
 FROM ${BASE_IMAGE}
@@ -93,4 +94,3 @@ ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/rdf-emulator"]
 COPY --from=sdk /opt/android/platform-tools /opt/android/platform-tools
 COPY --from=sdk /opt/android/emulator /opt/android/emulator
 COPY --from=sdk /opt/android/system-images /opt/android/system-images
-RUN /usr/local/bin/rdf-emulator --check-image
