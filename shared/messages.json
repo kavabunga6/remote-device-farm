@@ -15134,5 +15134,13 @@
   "proxy.reset": {
     "ru": "Отменить изменения",
     "en": "Discard changes"
+  },
+  "proxy.noProxy": {
+    "ru": "Без прокси (NO_PROXY)",
+    "en": "Bypass proxy (NO_PROXY)"
+  },
+  "proxy.noProxyHelp": {
+    "ru": "Домены и IP-адреса через запятую. Домен включает его поддомены; * — все адреса. Без портов и CIDR.",
+    "en": "Comma-separated domains and IP addresses. A domain includes its subdomains; * matches all addresses. Ports and CIDR are not supported."
   }
 }

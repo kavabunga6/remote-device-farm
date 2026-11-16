@@ -91,6 +91,14 @@ validation and forwarding settings to the selected builder. Local relay tests ex
 authenticated CONNECT, HTTPS-proxy CA/hostname verification, rejected authentication without direct fallback, child-process arguments
 and direct mode. Build-worker tests check secret mounts, credential-free build arguments and
 cleanup; catalog tests cover proxy-specific cache keys and redacted, credential-free checkpoints.
+NO_PROXY tests cover normalization, persistence and removal, domain/subdomain and IP bypass,
+lookalike-host rejection and absence of proxy credentials in direct origin requests.
 Browser tests cover save, retain, explicit removal and reset, both themes, narrow layouts, larger
-text and RTL. **Not tested:** real Google SDK downloads through an authenticated corporate proxy,
-corporate CA installation and a complete image build through that proxy.
+text and RTL. Real Google SDK catalog enumeration through an authenticated HTTP proxy and
+NO_PROXY bypass is verified with native command-line tools on Windows and Linux. Concurrent
+manifest tests keep 48 connections open together. Build contexts normalize Windows line endings
+before packaging shell scripts. Linux checks also cover identical curl downloads with and without
+proxy bypass, and APT repository refresh through NO_PROXY with an unreachable configured proxy.
+APT bypass uses an explicit host matcher to avoid release-dependent suffix and wildcard behavior.
+**Not tested:** corporate TLS interception, corporate CA installation
+and a complete emulator image build through that proxy.

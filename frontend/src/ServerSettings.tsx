@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import examples from '../../shared/interface-examples.json';
 import { localizeText, t } from './i18n';
 import { useAccess } from './permissions';
 import { ActivityIndicator } from './ActivityIndicator';
@@ -21,7 +22,7 @@ export function ServerSettings() {
     }).catch(cause => { if (!control.signal.aborted) setError(cause.message); });
     return () => control.abort();
   }, [attempt]);
-  const dirty = Boolean(draft && saved && (draft.enabled !== saved.enabled || draft.url !== saved.url || draft.username !== saved.username || password !== null));
+  const dirty = Boolean(draft && saved && (draft.enabled !== saved.enabled || draft.url !== saved.url || draft.username !== saved.username || draft.noProxy !== saved.noProxy || password !== null));
   const editable = can('server.settings') && !busy;
   const change = (value: Partial<ProxySettings>) => { setDraft(previous => previous && { ...previous, ...value }); setDone(false); };
   const reset = () => { setDraft(saved); setPassword(null); setError(''); setDone(false); };
@@ -29,7 +30,7 @@ export function ServerSettings() {
     event.preventDefault(); if (!draft || !dirty || !editable) return;
     setBusy(true); setError(''); setDone(false);
     try {
-      const { proxy } = await outboundProxyApi.save({ enabled: draft.enabled, url: draft.url, username: draft.username, ...(password !== null ? { password } : {}) });
+      const { proxy } = await outboundProxyApi.save({ enabled: draft.enabled, url: draft.url, username: draft.username, noProxy: draft.noProxy, ...(password !== null ? { password } : {}) });
       setSaved(proxy); setDraft(proxy); setPassword(null); setDone(true);
     } catch (cause) { setError(cause instanceof Error ? cause.message : t('ui.8f9c4884b8f9')); }
     finally { setBusy(false); }
@@ -40,6 +41,7 @@ export function ServerSettings() {
     {draft && <form id="outbound-proxy-form" onSubmit={event => void save(event)} aria-busy={busy}>
       <label className="registration-toggle"><span>{t('proxy.enable')}</span><input type="checkbox" role="switch" checked={draft.enabled} disabled={!editable} onChange={event => change({ enabled: event.target.checked })} /></label>
       <label className="proxy-field"><span>{t('proxy.address')}</span><input type="url" dir="ltr" value={draft.url} required={draft.enabled} disabled={!editable} autoComplete="off" placeholder="http://proxy.example:3128" onChange={event => change({ url: event.target.value })} /></label>
+      <div className="proxy-field"><label htmlFor="proxy-bypass-input">{t('proxy.noProxy')}</label><input id="proxy-bypass-input" dir="ltr" value={draft.noProxy} maxLength={4096} disabled={!editable} autoComplete="off" placeholder={examples.noProxy} aria-describedby="proxy-bypass-hint" onChange={event => change({ noProxy: event.target.value })}/><small id="proxy-bypass-hint">{t('proxy.noProxyHelp')}</small></div>
       <div className="proxy-credentials">
         <label className="proxy-field"><span>{t('proxy.username')}</span><input dir="auto" value={draft.username} disabled={!editable} autoComplete="off" onChange={event => change({ username: event.target.value })} /></label>
         <label className="proxy-field"><span>{t('proxy.password')}</span><input type="password" value={password ?? ''} disabled={!editable} autoComplete="new-password" aria-describedby="proxy-password-hint" onChange={event => { setPassword(event.target.value || null); setDone(false); }} /></label>

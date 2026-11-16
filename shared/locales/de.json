@@ -3782,5 +3782,7 @@
   "proxy.scope": "Der Proxy wird für den Google-Katalog, das Android SDK und Downloads beim Erstellen von Images verwendet.",
   "proxy.dockerNote": "Zum Herunterladen des BuildKit-Images selbst werden die Proxy-Einstellungen des Docker-Daemons auf dem Knoten verwendet.",
   "proxy.pending": "Änderungen gelten für künftige Downloads. Laufende Aufgaben verwenden weiterhin ihre bisherigen Einstellungen.",
-  "proxy.reset": "Änderungen verwerfen"
+  "proxy.reset": "Änderungen verwerfen",
+  "proxy.noProxy": "Proxy umgehen (NO_PROXY)",
+  "proxy.noProxyHelp": "Domains und IP-Adressen durch Kommas trennen. Jede Domain schließt ihre Subdomains ein; * gilt für alle Adressen. Ports und CIDR werden nicht unterstützt."
 }

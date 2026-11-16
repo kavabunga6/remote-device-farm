@@ -5,6 +5,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
+COPY --from=rdf_agent_sources /src/no-proxy.mjs /src/no-proxy.d.mts /agent/src/
 COPY --from=rdf_ui_messages / /shared/
 RUN npm run build
 
@@ -33,6 +34,7 @@ WORKDIR /app
 COPY --chown=node:node package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --chown=node:node --from=build /app/dist ./dist
+COPY --chown=node:node --from=rdf_agent_sources /src/no-proxy.mjs /agent/src/no-proxy.mjs
 COPY --chown=node:node --from=rdf_ui_messages / /shared/
 COPY --chown=node:node migrations ./migrations
 COPY --chown=node:node licenses /usr/share/doc/remote-device-farm

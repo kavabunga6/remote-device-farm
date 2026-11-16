@@ -125,7 +125,7 @@ export class BoundedImageBuilder {
         const upload = (tar, path = '/tmp') => this.docker.request('PUT', `/containers/${container}/archive?path=${path}`, undefined, { rawBody: tar, contentType: 'application/x-tar', signal: combined });
         await upload(contextTar);
         await upload(tarArchive([{ name: 'rdf-buildkit.toml', mode: 0o600, data: Buffer.from(config) }, { name: 'rdf-buildkit-entrypoint.sh', mode: 0o700, data: Buffer.from(BUILDKIT_ENTRYPOINT) }]));
-        if (proxy) await upload(tarArchive([{ name: 'rdf-proxy', mode: 0o600, data: Buffer.from(proxyAddress(proxy)) }, ...(trust ? [{ name: 'rdf-proxy-ca.pem', mode: 0o600, data: trust }] : [])]), '/run');
+        if (proxy) await upload(tarArchive([{ name: 'rdf-proxy', mode: 0o600, data: Buffer.from(proxyAddress(proxy)) }, { name: 'rdf-no-proxy', mode: 0o600, data: Buffer.from(proxy.noProxy ?? '') }, ...(trust ? [{ name: 'rdf-proxy-ca.pem', mode: 0o600, data: trust }] : [])]), '/run');
         await this.docker.request('POST', `/containers/${container}/start`, undefined, { signal: combined });
         onStage('starting');
         for (let attempt = 0; ; attempt++) {
@@ -135,7 +135,7 @@ export class BoundedImageBuilder {
           await delay(1000, undefined, { signal: combined });
         }
         onStage('building');
-        const opts = [...(proxy ? ['--secret', 'id=rdf_proxy,src=/run/rdf-proxy'] : []), ...(trust ? ['--secret', 'id=rdf_proxy_ca,src=/run/rdf-proxy-ca.pem'] : []), ...Object.entries(args).flatMap(([name, value]) => ['--opt', `build-arg:${name}=${value}`]), ...(target ? ['--opt', `target=${target}`] : [])];
+        const opts = [...(proxy ? ['--secret', 'id=rdf_proxy,src=/run/rdf-proxy', '--secret', 'id=rdf_no_proxy,src=/run/rdf-no-proxy'] : []), ...(trust ? ['--secret', 'id=rdf_proxy_ca,src=/run/rdf-proxy-ca.pem'] : []), ...Object.entries(args).flatMap(([name, value]) => ['--opt', `build-arg:${name}=${value}`]), ...(target ? ['--opt', `target=${target}`] : [])];
         const command = ['buildctl', 'build', '--frontend', 'dockerfile.v0', '--local', 'context=/tmp', '--local', 'dockerfile=/tmp', ...opts, '--output', `type=docker,name=${tag},dest=/tmp/rdf-image.tar`, '--progress', 'plain'];
         // Detached exec writes a bounded log inside the quota-limited worker. Polling never buffers the whole build output.
         const job = await this.docker.request('POST', `/containers/${container}/exec`, { AttachStdout: false, AttachStderr: false, Cmd: ['sh', '-c', 'exec "$@" > /tmp/rdf-build.log 2>&1', 'sh', ...command] }, { signal: combined });

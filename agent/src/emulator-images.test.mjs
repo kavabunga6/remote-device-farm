@@ -4,8 +4,9 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { ImageJobStore } from './emulator-image-job-store.mjs';
-import { EmulatorImages, buildProgress, hostAbi, tarArchive } from './emulator-images.mjs';
+import { EmulatorImages, CONTEXT_FILES, buildProgress, hostAbi, tarArchive } from './emulator-images.mjs';
 
 const evidence = { version: 1, imageId:'sha256:test-image', checks: { off: Object.fromEntries(['bootCompleted','adbSecure','unauthorizedAdb','rendererVerified','deviceVerified','resourcesVerified'].map(k=>[k,true])) } };
 const testedImages = options => new EmulatorImages({ verify: async()=>structuredClone(evidence), builder: { build: async (tag, args, { contextTar, target, onLine, signal }) => {
@@ -54,6 +55,21 @@ test('the build context is a valid tar of the bundled image files', async () => 
   assert.match(listing, /-rwxr-xr-x .* adb-auth-gate\.sh/);
   assert.match(hash, /^[0-9a-f]{12}$/);
   assert.throws(() => tarArchive([{ name: '../x', mode: 0o644, data: Buffer.alloc(0) }]));
+});
+
+test('Windows text line endings produce the same runnable Linux build context', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'rdf-context-lines-'));
+  try {
+    for (const [name] of CONTEXT_FILES) {
+      const data = readFileSync(new URL('../emulator-image/' + name, import.meta.url), 'utf8');
+      writeFileSync(join(directory, name), data.replace(/\r?\n/g, '\r\n'));
+    }
+    const windows = await testedImages({ docker: fakeDocker(), contextDir: pathToFileURL(directory + '/') }).context();
+    const linux = await testedImages({ docker: fakeDocker() }).context();
+    assert.equal(windows.hash, linux.hash); assert.deepEqual(windows.tar, linux.tar);
+    const script = execFileSync('tar', ['-xOf', '-', 'proxy-env.sh'], { input: windows.tar });
+    assert.equal(script.includes(Buffer.from('\r\n')), false);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
 test('progress follows Docker steps and sdkmanager downloads', () => {

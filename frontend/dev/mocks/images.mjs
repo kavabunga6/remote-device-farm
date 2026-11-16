@@ -11,7 +11,7 @@ const IMAGES = [
 
 function initial() {
   return {
-    proxy: { enabled: false, url: '', username: '', passwordSet: false },
+    proxy: { enabled: false, url: '', username: '', passwordSet: false, noProxy: '' },
     registry: { mode: 'builtin', builtinAddress: null, externalAddress: null, externalUsername: null, externalPasswordSet: false },
     builder: null,
     built: new Map([['system-images;android-34;google_apis_playstore;x86_64', { digest: 'sha256:' + 'a'.repeat(64), sizeMb: 3420, update: false }]]),

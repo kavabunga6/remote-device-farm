@@ -3782,5 +3782,7 @@
   "proxy.scope": "Proksi digunakan untuk katalog Google, Android SDK, dan unduhan selama pembuatan image.",
   "proxy.dockerNote": "Pengunduhan image BuildKit sendiri menggunakan pengaturan proksi daemon Docker pada node.",
   "proxy.pending": "Perubahan berlaku untuk unduhan berikutnya. Tugas yang sedang berjalan tetap menggunakan pengaturannya saat ini.",
-  "proxy.reset": "Batalkan perubahan"
+  "proxy.reset": "Batalkan perubahan",
+  "proxy.noProxy": "Lewati proxy (NO_PROXY)",
+  "proxy.noProxyHelp": "Pisahkan domain dan alamat IP dengan koma. Setiap domain mencakup subdomainnya; * berlaku untuk semua alamat. Port dan CIDR tidak didukung."
 }

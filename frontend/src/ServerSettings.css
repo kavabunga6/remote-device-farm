@@ -8,7 +8,7 @@
 .server-settings .proxy-credentials{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem 1rem}
 .server-settings .proxy-credentials .proxy-field{grid-row:span 2;grid-template-rows:subgrid}
 .server-settings .proxy-password-state{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
-.server-settings small{font-size:.875rem;line-height:1.5;color:var(--ui-subtle)}
+.server-settings small{font-size:.875rem;line-height:1.5;font-weight:400;color:var(--ui-subtle)}
 .server-settings .proxy-scope{display:grid;gap:.625rem;padding-block:1rem;border-block:1px solid var(--ui-border);font-size:.875rem}
 .server-settings .proxy-actions{display:flex;align-items:center;flex-wrap:wrap;gap:.75rem}
 .server-settings .proxy-actions .form-save-actions{margin:0}

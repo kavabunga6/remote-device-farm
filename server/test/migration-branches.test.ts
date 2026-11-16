@@ -27,7 +27,7 @@ async function fixture(through: number) {
   await db.query("INSERT INTO hosts(id,name,slots) VALUES('host','Host',1)");
   await db.query("INSERT INTO sessions(id,owner_user_id,host_id,profile_id,state) VALUES($1,$2,'host','android-30','running')", [SESSION, OWNER]);
   await db.query("INSERT INTO queue_entries(id,user_id,profile_id,expires_at) VALUES($1,$2,'android-30',now()+interval '1 hour')", [QUEUE, OWNER]);
-  await db.query("INSERT INTO user_profile_presets(id,owner_user_id,name,profile_id,gpu_mode) VALUES($1,$2,'Saved','android-30','software')", [PRESET, OWNER]);
+  if (through < 34) await db.query("INSERT INTO user_profile_presets(id,owner_user_id,name,profile_id,gpu_mode) VALUES($1,$2,'Saved','android-30','software')", [PRESET, OWNER]);
   return { db, pool };
 }
 
@@ -70,7 +70,7 @@ test('legacy catalog 27 and lease/queue/options 29–31 upgrade without losing s
     const profile = (await db.query("SELECT * FROM profiles WHERE id='android-30'")).rows[0]!;
     assert.equal('image_status' in profile, false); assert.deepEqual(profile.container_env, {});
     const versions = (await db.query('SELECT version,applied_at FROM schema_migrations WHERE version>=27 ORDER BY version')).rows;
-    assert.deepEqual(versions.map(row => row.version), [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55]);
+    assert.deepEqual(versions.map(row => row.version), [27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56]);
     assert.equal(new Date(String(versions.find(row => row.version === 31)?.applied_at)).toISOString(), '2026-10-02T00:00:00.000Z');
     assert.equal(new Date(String(versions.find(row => row.version === 32)?.applied_at)).toISOString(), '2026-10-03T00:00:00.000Z');
   } finally { await db.close(); }
@@ -95,7 +95,7 @@ test('registered diagnostic migration upgrades existing service logs and remains
   try {
     await db.query("INSERT INTO service_logs(service,severity,code,host_id,session_id) VALUES('agent','info','session.starting','host',$1)", [SESSION]);
     await migrate(pool); await migrate(pool);
-    assert.equal((await db.query('SELECT max(version) AS version FROM schema_migrations')).rows[0]?.version, 55);
+    assert.equal((await db.query('SELECT max(version) AS version FROM schema_migrations')).rows[0]?.version, 56);
     assert.equal((await db.query('SELECT enabled FROM registration_settings')).rows[0]?.enabled, false);
     assert.deepEqual((await db.query('SELECT enabled,password FROM outbound_proxy_settings')).rows, [{ enabled: false, password: null }]);
     assert.equal((await db.query("SELECT message FROM service_logs WHERE code='session.starting'")).rows[0]?.message, '');
@@ -104,5 +104,15 @@ test('registered diagnostic migration upgrades existing service logs and remains
     assert.equal((await db.query("SELECT message FROM service_logs WHERE code='container.stderr'")).rows[0]?.message, 'Vulkan initialization failed');
     assert.ok((await db.query("SELECT to_regclass('service_logs_session_idx') AS idx")).rows[0]?.idx);
     await assert.rejects(db.query("UPDATE service_logs SET message=$1 WHERE code='container.stderr'", ['x'.repeat(4097)]));
+  } finally { await db.close(); }
+});
+
+test('NO_PROXY migration preserves an existing proxy and encrypted credential', async () => {
+  const { db, pool } = await fixture(55);
+  try {
+    await db.query("UPDATE outbound_proxy_settings SET enabled=true,url='https://proxy.example:8443',username='builder',password='encrypted-value'");
+    await migrate(pool); await migrate(pool);
+    assert.deepEqual((await db.query('SELECT enabled,url,username,password,no_proxy FROM outbound_proxy_settings')).rows,
+      [{ enabled: true, url: 'https://proxy.example:8443', username: 'builder', password: 'encrypted-value', no_proxy: '' }]);
   } finally { await db.close(); }
 });

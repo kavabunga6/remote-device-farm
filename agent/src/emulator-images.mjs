@@ -19,7 +19,14 @@ import { emulatorPushDigest } from './emulator-push-digest.mjs';
 export const CONTRACT_LABEL = 'remote-device-farm.contract';
 export const SYSTEM_IMAGE_LABEL = 'remote-device-farm.system-image';
 
-export const CONTEXT_FILES = [['Dockerfile', 0o644], ['rdf-emulator.sh', 0o755], ['adb-auth-gate.sh', 0o755], ['secure-ramdisk.py', 0o644], ['ramdisk.py', 0o644], ['xorg.conf', 0o644], ['proxy-env.sh', 0o644], ['sdk-proxy.py', 0o644]];
+export const CONTEXT_FILES = [['Dockerfile', 0o644], ['rdf-emulator.sh', 0o755], ['adb-auth-gate.sh', 0o755], ['secure-ramdisk.py', 0o644], ['ramdisk.py', 0o644], ['xorg.conf', 0o644], ['proxy-env.sh', 0o644], ['sdk-proxy.py', 0o644], ['apt-proxy.sh', 0o755]];
+
+export async function readImageContext(contextDir = new URL('../emulator-image/', import.meta.url)) {
+  const files = await Promise.all(CONTEXT_FILES.map(async ([name, mode]) => ({ name, mode, data: Buffer.from((await readFile(new URL(name, contextDir), 'utf8')).replace(/\r\n/g, '\n')) })));
+  const hash = createHash('sha256');
+  for (const file of files) hash.update(file.name).update('\0').update(file.data);
+  return { tar: tarArchive(files), hash: hash.digest('hex').slice(0, 12) };
+}
 const CATALOG_TTL_MS = 60 * 60_000;
 const BUILD_TIMEOUT_MS = 2 * 60 * 60_000;
 const MAX_JOBS = 50;
@@ -65,10 +72,7 @@ export class EmulatorImages {
   }
 
   async context() {
-    const files = await Promise.all(CONTEXT_FILES.map(async ([name, mode]) => ({ name, mode, data: await readFile(new URL(name, this.contextDir)) })));
-    const hash = createHash('sha256');
-    for (const file of files) hash.update(file.name).update('\0').update(file.data);
-    return { tar: tarArchive(files), hash: hash.digest('hex').slice(0, 12) };
+    return readImageContext(this.contextDir);
   }
 
   async build(tag, buildArgs, { target, onLine = () => {}, signal, onStage, onHeartbeat, proxy } = {}) {

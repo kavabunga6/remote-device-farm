@@ -3782,5 +3782,7 @@
   "proxy.scope": "代理用于访问 Google 目录、Android SDK 及镜像构建过程中的下载。",
   "proxy.dockerNote": "下载 BuildKit 镜像本身时，使用节点上 Docker 守护进程的代理设置。",
   "proxy.pending": "更改将用于后续下载。正在运行的任务继续使用原来的设置。",
-  "proxy.reset": "放弃更改"
+  "proxy.reset": "放弃更改",
+  "proxy.noProxy": "不使用代理（NO_PROXY）",
+  "proxy.noProxyHelp": "用逗号分隔域名和 IP 地址。域名包含其子域名；* 表示所有地址。不支持端口和 CIDR。"
 }

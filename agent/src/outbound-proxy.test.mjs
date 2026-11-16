@@ -26,3 +26,15 @@ test('catalog and build IPC accept validated proxy settings while other commands
   assert.throws(() => validateControlRequest({ op: 'emulatorCatalog', refresh: false, proxy: { ...proxy, url: 'file:///tmp' } }), /invalid_outbound_proxy/);
   assert.throws(() => validateControlRequest({ op: 'emulatorJobs', proxy }), /Invalid|Unexpected|request/i);
 });
+
+test('NO_PROXY is normalized, bounded and forwarded in both environment spellings', () => {
+  const value = validateOutboundProxy({ ...proxy, noProxy: ' localhost, .Example.COM,127.0.0.1, [::1],localhost ' });
+  assert.equal(value.noProxy, 'localhost,example.com,127.0.0.1,::1');
+  assert.ok(proxyEnvironment(value).includes('NO_PROXY=' + value.noProxy));
+  assert.ok(proxyEnvironment(value).includes('no_proxy=' + value.noProxy));
+  assert.notEqual(proxyFingerprint(proxy), proxyFingerprint(value));
+  for (const noProxy of ['http://example.com', 'name:80', '10.0.0.0/8', 'user@host', '*.example.com', 'bad\nvalue', 'x'.repeat(4097), null]) {
+    assert.throws(() => validateOutboundProxy({ ...proxy, noProxy }), /invalid_outbound_proxy/);
+  }
+  assert.equal(validateOutboundProxy({ ...proxy, noProxy: '*' }).noProxy, '*');
+});

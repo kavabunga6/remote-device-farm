@@ -247,7 +247,8 @@ test('authentication rejection prevents commands and cannot disclose a token ech
 test('silent command is bounded by an in-container timeout, with no false success or replay', protocolOptions, async t => {
   const lab = await consoleLab(t, { silentCommand: true });
   const started = Date.now();
-  const result = await lab.run('network status', 1);
+  // Leave room for Windows Bash startup and the fragmented greeting under a full test run.
+  const result = await lab.run('network status', 2);
   assert.ok([124, 137].includes(result.exitCode), JSON.stringify(result));
   assert.equal(result.stdout, '');
   assert.ok(Date.now() - started < 5000);

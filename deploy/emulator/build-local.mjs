@@ -1,10 +1,9 @@
-import { CONTEXT_FILES } from '../../agent/src/emulator-images.mjs';
-import { readFile, open, mkdir, unlink } from 'node:fs/promises';
+import { readImageContext } from '../../agent/src/emulator-images.mjs';
+import { open, mkdir, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { DockerClient } from '../../agent/src/docker.mjs';
 import { BoundedImageBuilder } from '../../agent/src/bounded-image-builder.mjs';
-import { tarArchive } from '../../agent/src/tar-archive.mjs';
 import { parsePackage } from '../../agent/src/emulator-catalog.mjs';
 import { validateImage } from '../../agent/src/config.mjs';
 
@@ -28,8 +27,8 @@ try {
   const agentId = 'cli-' + createHash('sha256').update(resolve('.')).digest('hex').slice(0, 16);
   const builder = new BoundedImageBuilder({ docker, agentId, diskPath });
   await builder.recover();
-  const files = await Promise.all(CONTEXT_FILES.map(async ([name, mode]) => ({ name, mode, data: await readFile(new URL('../../agent/emulator-image/' + name, import.meta.url)) })));
-  await builder.build(tag, target ? {} : { SYSTEM_IMAGE: systemImage }, { target: target || undefined, contextTar: tarArchive(files), signal: controller.signal,
+  const { tar } = await readImageContext();
+  await builder.build(tag, target ? {} : { SYSTEM_IMAGE: systemImage }, { target: target || undefined, contextTar: tar, signal: controller.signal,
     onLine: line => console.log(line), onSample: ({ freeGiB, availableGiB, cpuPercent, ioPressure }) => console.log(JSON.stringify({ event: 'build.resources', freeGiB, availableGiB, cpuPercent, ioPressure })) });
 } catch (error) { console.error(JSON.stringify({ event: 'build.failed', code: error.code ?? 'build_failed' })); process.exitCode = 1; }
 finally { await held.close(); await unlink(lock); process.off('SIGINT', abort); process.off('SIGTERM', abort); }

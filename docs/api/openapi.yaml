@@ -926,6 +926,10 @@ paths:
                 username:
                   type: string
                   maxLength: 256
+                noProxy:
+                  type: string
+                  maxLength: 4096
+                  description: Comma-separated domains (including their subdomains) and individual IPv4/IPv6 addresses; * bypasses every address. No ports or CIDR.
                 password:
                   type: string
                   maxLength: 1000
@@ -5077,7 +5081,7 @@ components:
         proxy:
           type: object
           additionalProperties: false
-          required: [ enabled, url, username, passwordSet ]
+          required: [ enabled, url, username, passwordSet, noProxy ]
           properties:
             enabled:
               type: boolean
@@ -5087,6 +5091,8 @@ components:
               type: string
             passwordSet:
               type: boolean
+            noProxy:
+              type: string
     SessionPerformanceSample:
       type: object
       additionalProperties: false

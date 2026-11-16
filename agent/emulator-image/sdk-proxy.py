@@ -3,6 +3,7 @@
 import base64
 import contextlib
 import http.server
+import ipaddress
 import os
 import select
 import socket
@@ -33,8 +34,9 @@ def response_head(stream):
 class Relay(http.server.ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False
+    request_queue_size = 128
 
-    def __init__(self, address):
+    def __init__(self, address, no_proxy=''):
         self.proxy = urllib.parse.urlsplit(address)
         if self.proxy.scheme not in ('http', 'https') or not self.proxy.hostname or self.proxy.path not in ('', '/') or self.proxy.query or self.proxy.fragment:
             raise ValueError('proxy_invalid')
@@ -43,7 +45,14 @@ class Relay(http.server.ThreadingHTTPServer):
         if any(ord(char) < 32 or ord(char) == 127 for char in user + password) or ':' in user:
             raise ValueError('proxy_invalid')
         self.authorization = ('Basic ' + base64.b64encode((user + ':' + password).encode()).decode()) if user else None
-        self.slots = threading.BoundedSemaphore(32)
+        self.excluded = [host.strip().lower().lstrip('.').rstrip('.').strip('[]') for host in no_proxy.split(',') if host.strip()]
+        self.excluded_ips, self.excluded_domains = set(), set()
+        for host in self.excluded:
+            try:
+                self.excluded_ips.add(str(ipaddress.ip_address(host)))
+            except ValueError:
+                self.excluded_domains.add(host)
+        self.slots = threading.BoundedSemaphore(64)
         super().__init__(('127.0.0.1', 0), Handler)
 
     def process_request(self, request, client_address):
@@ -75,6 +84,25 @@ class Relay(http.server.ThreadingHTTPServer):
         finally:
             stream.close()
 
+    def bypass(self, hostname):
+        if '*' in self.excluded_domains:
+            return True
+        host = hostname.lower().rstrip('.')
+        try:
+            host = str(ipaddress.ip_address(host))
+            return host in self.excluded_ips
+        except ValueError:
+            return any(host == entry or host.endswith('.' + entry) for entry in self.excluded_domains)
+
+    @contextlib.contextmanager
+    def destination(self, hostname, port):
+        if self.bypass(hostname):
+            with socket.create_connection((hostname, port), timeout=30) as stream:
+                yield stream, True
+        else:
+            with self.upstream() as stream:
+                yield stream, False
+
 
 class Handler(http.server.BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.0'
@@ -86,9 +114,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         super().setup()
         self.connection.settimeout(60)
 
-    def send_upstream(self, stream, method, target, headers):
+    def send_upstream(self, stream, method, target, headers, direct=False):
         lines = [method + ' ' + target + ' HTTP/1.1', *headers, 'Connection: close']
-        if self.server.authorization:
+        if self.server.authorization and not direct:
             lines.append('Proxy-Authorization: ' + self.server.authorization)
         stream.sendall(('\r\n'.join(lines) + '\r\n\r\n').encode('latin-1'))
 
@@ -97,12 +125,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             target = urllib.parse.urlsplit('http://' + self.path)
             if not target.hostname or target.port not in (80, 443) or target.username or target.password or target.path or target.query or target.fragment:
                 raise ValueError('proxy_target_invalid')
-            with self.server.upstream() as upstream:
-                self.send_upstream(upstream, 'CONNECT', self.path, ['Host: ' + self.path])
-                status, _ = response_head(upstream)
-                if status != 200:
-                    self.send_error(502, 'proxy_connect_failed')
-                    return
+            with self.server.destination(target.hostname, target.port) as (upstream, direct):
+                if not direct:
+                    self.send_upstream(upstream, 'CONNECT', self.path, ['Host: ' + self.path])
+                    status, _ = response_head(upstream)
+                    if status != 200:
+                        self.send_error(502, 'proxy_connect_failed')
+                        return
                 self.send_response(200, 'Connection established'); self.end_headers()
                 self.close_connection = True
                 while True:
@@ -130,8 +159,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if target.scheme != 'http' or not target.hostname or target.username or target.password or target.fragment or int(self.headers.get('Content-Length', '0')) != 0:
                 raise ValueError('proxy_target_invalid')
             headers = [name + ': ' + value for name, value in self.headers.items() if name.lower() not in HOP_HEADERS]
-            with self.server.upstream() as upstream:
-                self.send_upstream(upstream, self.command, self.path, headers)
+            with self.server.destination(target.hostname, target.port or 80) as (upstream, direct):
+                path = urllib.parse.urlunsplit(('', '', target.path or '/', target.query, '')) if direct else self.path
+                self.send_upstream(upstream, self.command, path, headers, direct=direct)
                 status, head = response_head(upstream)
                 if status == 407:
                     self.send_error(502, 'proxy_auth_failed')
@@ -152,7 +182,7 @@ def run(argv, env=None):
     address = env.get('HTTPS_PROXY') or env.get('https_proxy') or env.get('HTTP_PROXY') or env.get('http_proxy')
     if not address:
         return subprocess.call(argv, env=env)
-    with Relay(address) as relay:
+    with Relay(address, env.get('NO_PROXY') or env.get('no_proxy') or '') as relay:
         thread = threading.Thread(target=relay.serve_forever, daemon=True); thread.start()
         local = 'http://127.0.0.1:' + str(relay.server_port)
         for key in ('HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy'):

@@ -12,17 +12,18 @@ ARG BASE_IMAGE=ubuntu:22.04
 FROM ${BASE_IMAGE} AS tools
 ARG CMDLINE_TOOLS_URL=https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
 COPY proxy-env.sh sdk-proxy.py /usr/local/lib/rdf-sdk/
+COPY --chmod=0755 apt-proxy.sh /usr/local/lib/rdf-sdk/apt-proxy.sh
 ENV DEBIAN_FRONTEND=noninteractive ANDROID_SDK_ROOT=/opt/android
-RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca . /usr/local/lib/rdf-sdk/proxy-env.sh && apt-get ${RDF_APT_CA_OPT:-} update \
-    && apt-get ${RDF_APT_CA_OPT:-} install -y --no-install-recommends openjdk-17-jre-headless python3 curl unzip ca-certificates \
+RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=0444 --mount=type=secret,id=rdf_no_proxy . /usr/local/lib/rdf-sdk/proxy-env.sh && rdf_apt_get update \
+    && rdf_apt_get install -y --no-install-recommends openjdk-17-jre-headless python3 curl unzip ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca . /usr/local/lib/rdf-sdk/proxy-env.sh && curl ${RDF_CURL_CA_OPT:-} -fsSL "$CMDLINE_TOOLS_URL" -o /tmp/tools.zip \
+RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=0444 --mount=type=secret,id=rdf_no_proxy . /usr/local/lib/rdf-sdk/proxy-env.sh && curl ${RDF_CURL_CA_OPT:-} -fsSL "$CMDLINE_TOOLS_URL" -o /tmp/tools.zip \
     && mkdir -p /opt/android/cmdline-tools \
     && unzip -q /tmp/tools.zip -d /opt/android/cmdline-tools \
     && mv /opt/android/cmdline-tools/cmdline-tools /opt/android/cmdline-tools/latest \
     && rm /tmp/tools.zip
 ENV PATH=/opt/android/cmdline-tools/latest/bin:$PATH
-RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca . /usr/local/lib/rdf-sdk/proxy-env.sh && yes | python3 /usr/local/lib/rdf-sdk/sdk-proxy.py sdkmanager --licenses >/dev/null
+RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=0444 --mount=type=secret,id=rdf_no_proxy . /usr/local/lib/rdf-sdk/proxy-env.sh && yes | python3 /usr/local/lib/rdf-sdk/sdk-proxy.py sdkmanager --licenses >/dev/null
 
 # ---- Stage 2: download the emulator and exactly one system image ----
 FROM tools AS sdk
@@ -30,21 +31,21 @@ ARG SYSTEM_IMAGE
 # 0 = stable channel. Previews of the next Android release need 1 (beta) or 3 (canary).
 ARG SDK_CHANNEL=0
 RUN test -n "$SYSTEM_IMAGE" || { echo 'Pass --build-arg SYSTEM_IMAGE=system-images;android-NN;TAG;ABI' >&2; exit 2; }
-RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca . /usr/local/lib/rdf-sdk/proxy-env.sh && python3 /usr/local/lib/rdf-sdk/sdk-proxy.py sdkmanager --channel="$SDK_CHANNEL" emulator "$SYSTEM_IMAGE" \
+RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=0444 --mount=type=secret,id=rdf_no_proxy . /usr/local/lib/rdf-sdk/proxy-env.sh && python3 /usr/local/lib/rdf-sdk/sdk-proxy.py sdkmanager --channel="$SDK_CHANNEL" emulator "$SYSTEM_IMAGE" \
     && test -x /opt/android/emulator/emulator \
     && test -n "$(find /opt/android/system-images -name system.img -o -name system.img.qcow2 | head -n 1)"
 # The emulator requires the official platform-tools SDK package at runtime.
 # Keep this after the large download above so adding it reuses that cached layer.
 # Validate the same layout as rdf-emulator --check-image without copying launcher
 # code into this stage and invalidating SDK downloads whenever it changes.
-RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca . /usr/local/lib/rdf-sdk/proxy-env.sh && python3 /usr/local/lib/rdf-sdk/sdk-proxy.py sdkmanager --channel="$SDK_CHANNEL" platform-tools \
+RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=0444 --mount=type=secret,id=rdf_no_proxy . /usr/local/lib/rdf-sdk/proxy-env.sh && python3 /usr/local/lib/rdf-sdk/sdk-proxy.py sdkmanager --channel="$SDK_CHANNEL" platform-tools \
     && test -x /opt/android/platform-tools/adb \
     && test "$(find /opt/android/system-images -mindepth 3 -maxdepth 3 -type d | wc -l)" -eq 1
 
 # Google userdebug system images may disable ADB authentication. Enable it
 # in init's early ramdisk property override, before adbd starts. Keep tools
 # and patching after SDK downloads so this change reuses their cached layers.
-RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca . /usr/local/lib/rdf-sdk/proxy-env.sh && apt-get ${RDF_APT_CA_OPT:-} update && apt-get ${RDF_APT_CA_OPT:-} install -y --no-install-recommends python3 lz4 \
+RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=0444 --mount=type=secret,id=rdf_no_proxy . /usr/local/lib/rdf-sdk/proxy-env.sh && rdf_apt_get update && rdf_apt_get install -y --no-install-recommends python3 lz4 \
     && rm -rf /var/lib/apt/lists/*
 COPY secure-ramdisk.py ramdisk.py /tmp/
 RUN python3 /tmp/secure-ramdisk.py "$(find /opt/android/system-images -name ramdisk.img -print -quit)" \
@@ -54,10 +55,11 @@ RUN python3 /tmp/secure-ramdisk.py "$(find /opt/android/system-images -name ramd
 FROM ${BASE_IMAGE}
 ARG SYSTEM_IMAGE
 COPY proxy-env.sh /usr/local/lib/rdf-sdk/proxy-env.sh
+COPY --chmod=0755 apt-proxy.sh /usr/local/lib/rdf-sdk/apt-proxy.sh
 ENV DEBIAN_FRONTEND=noninteractive
 # Libraries the headless emulator links against, socat for the two forwarded ports, Xorg for optional NVIDIA rendering.
-RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca . /usr/local/lib/rdf-sdk/proxy-env.sh && apt-get ${RDF_APT_CA_OPT:-} update \
-    && apt-get ${RDF_APT_CA_OPT:-} install -y --no-install-recommends \
+RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=0444 --mount=type=secret,id=rdf_no_proxy . /usr/local/lib/rdf-sdk/proxy-env.sh && rdf_apt_get update \
+    && rdf_apt_get install -y --no-install-recommends \
        bash coreutils iproute2 socat tini ca-certificates python3 \
        libpulse0 libnss3 libxcomposite1 libxcursor1 libxi6 libxtst6 libxdamage1 libxrandr2 libxkbfile1 libxkbcommon0 \
        libasound2 libbsd0 libdrm2 libgbm1 libgl1 libegl1 libgles2 libglx0 libvulkan1 libx11-xcb1 libxcb1 \

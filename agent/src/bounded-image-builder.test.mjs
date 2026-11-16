@@ -84,7 +84,7 @@ test('worker image download events become readable log lines rather than object 
 
 
 test('proxy credentials use a private BuildKit secret and daemon environment, never build arguments', async () => {
-  const f = fixture(), proxy = { url: 'https://proxy.example:8443', username: 'builder', password: 'password-no-history' };
+  const f = fixture(), proxy = { url: 'https://proxy.example:8443', username: 'builder', password: 'password-no-history', noProxy: 'example.com,127.0.0.1' };
   await f.builder.build('example/image:test', {}, { contextTar: Buffer.alloc(1024), proxy });
   const create = f.calls.find(call => call.path.startsWith('/containers/create')).body;
   assert.ok(create.Env.some(value => value.startsWith('HTTPS_PROXY=https://builder:')));
@@ -92,6 +92,8 @@ test('proxy credentials use a private BuildKit secret and daemon environment, ne
   assert.ok(job.includes('id=rdf_proxy,src=/run/rdf-proxy'));
   assert.ok(job.includes('id=rdf_proxy_ca,src=/run/rdf-proxy-ca.pem'));
   assert.ok(create.Env.includes('SSL_CERT_FILE=/run/rdf-proxy-ca.pem'));
+  assert.ok(create.Env.includes('NO_PROXY=' + proxy.noProxy));
+  assert.ok(job.includes('id=rdf_no_proxy,src=/run/rdf-no-proxy'));
   assert.equal(job.join(' ').includes(proxy.password), false);
   const contextUploads = f.calls.filter(call => call.path.endsWith('archive?path=/tmp'));
   assert.ok(contextUploads.every(call => !call.options.rawBody.includes(Buffer.from(proxy.password))));

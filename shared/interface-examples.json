@@ -8,5 +8,6 @@
     "warning": "WARN",
     "error": "ERROR"
   },
-  "serverLogSource": "server"
+  "serverLogSource": "server",
+  "noProxy": "localhost,127.0.0.1,::1,example.com"
 }

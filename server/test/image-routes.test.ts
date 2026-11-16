@@ -463,10 +463,11 @@ test('outbound proxy settings are permission protected and credentials are encry
     let response = await f.request(path); assert.equal(response.status, 200, await response.clone().text());
     assert.equal((await response.json()).proxy.enabled, false);
     const password = 'proxy p@ss:%word';
-    response = await f.request(path, 'PUT', { enabled: true, url: 'https://proxy.example:8443', username: 'builder', password });
+    response = await f.request(path, 'PUT', { enabled: true, url: 'https://proxy.example:8443', username: 'builder', password, noProxy: 'localhost, .Example.COM,127.0.0.1' });
     assert.equal(response.status, 200);
     const saved = (await response.json()).proxy;
     assert.equal(saved.passwordSet, true); assert.equal(saved.url, 'https://proxy.example:8443');
+    assert.equal(saved.noProxy, 'localhost,example.com,127.0.0.1');
     assert.equal(JSON.stringify(saved).includes(password), false); assert.equal(saved.password, undefined);
     const row = (await f.pool.query('SELECT password FROM outbound_proxy_settings WHERE id')).rows[0];
     assert.notEqual(row.password, password);
@@ -474,9 +475,12 @@ test('outbound proxy settings are permission protected and credentials are encry
     await f.db.query("UPDATE hosts SET image_builder=true WHERE id='builder'");
     await f.request('/admin/emulator-images');
     const command = f.commands.findLast(item => item.action === 'emulator-catalog');
-    assert.deepEqual(command?.params.proxy, { url: 'https://proxy.example:8443', username: 'builder', password });
+    assert.deepEqual(command?.params.proxy, { url: 'https://proxy.example:8443', username: 'builder', password, noProxy: saved.noProxy });
     await f.request(path, 'PUT', { url: 'http://proxy.example:3128' });
     assert.equal((await (await f.request(path)).json()).proxy.passwordSet, true);
+    assert.equal((await (await f.request(path)).json()).proxy.noProxy, saved.noProxy);
+    await f.request(path, 'PUT', { noProxy: '' });
+    assert.equal((await (await f.request(path)).json()).proxy.noProxy, '');
     await f.request(path, 'PUT', { enabled: false });
     await f.request('/admin/emulator-images');
     assert.equal(f.commands.findLast(item => item.action === 'emulator-catalog')?.params.proxy, null);
@@ -497,6 +501,9 @@ test('outbound proxy rejects malformed addresses and credential injection withou
     assert.equal((await f.request('/admin/outbound-proxy', 'PUT', { password: 'bad\nvalue' })).status, 400);
     assert.equal((await f.request('/admin/outbound-proxy', 'PUT', { username: 'name:other' })).status, 400);
     assert.equal((await f.request('/admin/outbound-proxy', 'PUT', { surprise: true })).status, 400);
+    for (const noProxy of ['https://example.com', 'name:80', '10.0.0.0/8', 'bad\nvalue', null]) {
+      assert.equal((await f.request('/admin/outbound-proxy', 'PUT', { noProxy })).status, 400);
+    }
     assert.equal((await (await f.request('/admin/outbound-proxy')).json()).proxy.enabled, false);
   } finally { await f.close(); }
 });
