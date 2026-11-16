@@ -24,7 +24,8 @@ class SdkLayoutTest(unittest.TestCase):
             path.chmod(0o755)
         self.image = self.sdk / "system-images/android-34/google_apis/x86_64"
         self.image.mkdir(parents=True)
-        (self.image / "system.img").touch()
+        (self.image / "system.img").write_bytes(b"system-disk")
+        (self.image / "ramdisk.img").write_bytes(b"ramdisk")
 
     def check(self):
         return subprocess.run([BASH, (HERE / "rdf-emulator.sh").as_posix(), "--check-image"],
@@ -48,6 +49,27 @@ class SdkLayoutTest(unittest.TestCase):
         self.assertEqual(result.returncode, 64)
         self.assertIn("emulator binary is missing", result.stderr)
 
+    def test_missing_or_empty_android_disk_is_rejected(self):
+        (self.image / "system.img").write_bytes(b"")
+        self.assertEqual(self.check().returncode, 64)
+        (self.image / "system.img").unlink()
+        self.assertEqual(self.check().returncode, 64)
+        (self.image / "system.img.qcow2").write_bytes(b"disk")
+        self.assertEqual(self.check().returncode, 0)
+
+    def test_missing_ramdisk_is_rejected(self):
+        (self.image / "ramdisk.img").unlink()
+        self.assertEqual(self.check().returncode, 64)
+
+    def test_runtime_sdk_archives_are_rejected_even_with_prepared_trees(self):
+        for name in ["emulator.tar.gz", "system-images.tar.gz"]:
+            with self.subTest(archive=name):
+                archive = self.sdk / name
+                archive.write_bytes(b"must never be extracted at startup")
+                self.assertEqual(self.check().returncode, 64)
+                self.assertEqual(archive.read_bytes(), b"must never be extracted at startup")
+                archive.unlink()
+
     def test_zero_or_multiple_system_images_are_rejected(self):
         extra = self.sdk / "system-images/android-35/default/x86_64"
         extra.mkdir(parents=True)
@@ -56,6 +78,7 @@ class SdkLayoutTest(unittest.TestCase):
         self.assertIn("expected exactly one system image, found 2", result.stderr)
         extra.rmdir()
         (self.image / "system.img").unlink()
+        (self.image / "ramdisk.img").unlink()
         self.image.rmdir()
         result = self.check()
         self.assertEqual(result.returncode, 64)

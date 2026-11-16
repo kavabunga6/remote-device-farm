@@ -155,12 +155,15 @@ export class EmulatorProvider extends DeviceProvider {
     profile.gpuBackend = resolveGpuBackend(profile, host);
     return this.slotReservations.run(sessionId, () => [...this.sessions.values()].filter(entry => !entry.startupPending || entry.recoveryPending),
       { ...host, slots: this.policy.slots }, profile, async () => {
+        const preparingAt = performance.now();
         const entry = { name: 'rdf-' + sessionId, serial: `rdf-${sessionId}:5555`,
           cpu: profile.cpu, memoryMb: profile.memoryMb, startupPending: true };
         this.sessions.set(sessionId, entry);
         try {
           const key = await this.adb.publicKey(); signal?.throwIfAborted();
           const created = await this.control.start(sessionId, profile, key, report, { signal, onLog: emit });
+          const bootingAt = performance.now();
+          log('session.startup_timing', JSON.stringify({ phase: 'preparation', durationMs: Math.round(bootingAt - preparingAt) }));
           Object.assign(entry, created, { serial: `${created.name}:5555` });
           signal?.throwIfAborted();
           log('session.container_started', agentMessage('agent.containerStarted', { p0: created.containerId }));
@@ -180,6 +183,7 @@ export class EmulatorProvider extends DeviceProvider {
             isRunning: async (options) => (await this.control.inventory(options))
               .some(container => container.containerId === entry.containerId && container.running === true),
           });
+          log('session.startup_timing', JSON.stringify({ phase: 'android_boot', durationMs: Math.round(performance.now() - bootingAt) }));
           // The farm owns Android initialization. The SDK's separate host adb is
           // disabled, so keep the screen awake through our authorized connection.
           // Recovery preserves the user's settings; these defaults apply only once.

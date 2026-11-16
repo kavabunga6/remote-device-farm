@@ -49,19 +49,22 @@ test('stop racing Docker create removes the new container before releasing its s
 });
 
 test('provider reports ready only after sys.boot_completed and holds the slot during boot', async () => {
-  const entered = deferred(), boot = deferred(), events = [], settings = []; const slots = new SlotReservations();
+  const entered = deferred(), boot = deferred(), events = [], settings = [], timings = []; const slots = new SlotReservations();
   const provider = new EmulatorProvider({ config, slotReservations: slots, metrics: async () => host,
     streams: {}, appTransfers: {}, envTools: {},
     control: { start: async (id, p, key, report) => { report({ stage: 'creating' }); return { containerId: 'created', name: 'rdf-' + id, networkEnabled: true }; }, inventory: async () => [{ containerId: 'created', running: true }], stop: async () => {} },
     adb: { publicKey: async () => 'QUJDRA==', connect: async () => {}, run: async (serial, argv) => { if (argv[1] === 'settings') { settings.push(argv); return {exitCode: 0}; } assert.deepEqual(argv, ['shell', 'getprop', 'sys.boot_completed']); entered.resolve(); return boot.promise; } },
   });
-  const start = provider.start('session-booting', { profile }, { onProgress: event => events.push(event.stage) });
+  const start = provider.start('session-booting', { profile }, { onProgress: event => events.push(event.stage),
+    onLog: event => { if (event.code === 'session.startup_timing') timings.push(JSON.parse(event.message)); } });
   await entered.promise; assert.equal(slots.pending.size, 1); assert.equal(provider.sessions.get('session-booting').startupPending, true);
   assert.deepEqual(events, ['creating', 'booting']); assert.deepEqual(await provider.reconcile(), []);
   assert.equal(provider.activeSessions()[0].preparing, true);
   boot.resolve({ exitCode: 0, stdout: '1\n' }); await start;
   assert.equal(events.at(-1), 'ready'); assert.equal(slots.pending.size, 0); assert.equal(provider.sessions.get('session-booting').startupPending, false);
   assert.equal(provider.activeSessions()[0].preparing, false);
+  assert.deepEqual(timings.map(value => value.phase), ['preparation', 'android_boot']);
+  assert.ok(timings.every(value => Number.isSafeInteger(value.durationMs) && value.durationMs >= 0));
   assert.deepEqual(settings, [
     ['shell', 'settings', '--user', 'current', 'put', 'system', 'screen_off_timeout', '2147483647'],
     ['shell', 'settings', '--user', 'current', 'put', 'system', 'show_touches', '1'],

@@ -20,6 +20,8 @@ fail() {
 }
 adb_bin=/opt/android/platform-tools/adb
 [[ -x "$adb_bin" && -x /usr/local/bin/rdf-emulator ]] || fail 'image does not implement the farm emulator contract'
+[[ -x /opt/android/emulator/emulator && -d /opt/android/system-images ]] || fail 'image must contain an installed emulator and Android system image'
+[[ ! -e /opt/android/emulator.tar.gz && ! -e /opt/android/system-images.tar.gz ]] || fail 'runtime SDK archives are not supported; prepare the image during its build'
 for role in farm stranger; do
   mkdir -p "$work/$role/.android"
   env HOME="$work/$role" ANDROID_USER_HOME="$work/$role/.android" "$adb_bin" keygen "$work/$role/.android/adbkey" >/dev/null

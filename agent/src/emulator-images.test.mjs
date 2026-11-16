@@ -125,7 +125,11 @@ test('builds run one at a time, report progress and failures, and carry the prof
   assert.throws(() => images.enqueue(['system-images;android-34;google_apis_playstore;x86_64']), /target/);
   const { jobs } = images.enqueue(['system-images;android-34;google_apis_playstore;x86_64', 'system-images;android-30;android-tv;x86'], target);
   assert.equal(jobs.length, 2);
-  await new Promise(resolve => setTimeout(resolve, 20));
+  const deadline = Date.now() + 2000;
+  while (images.jobList().some(job => !job.finishedAt)) {
+    assert.ok(Date.now() < deadline, 'Image build jobs did not finish');
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
   const [tv, play] = images.jobList();
   assert.equal(play.state, 'done');
   assert.deepEqual(play.progress, { step: 9, steps: 12, percent: null }, 'a new build step resets the download percent');
