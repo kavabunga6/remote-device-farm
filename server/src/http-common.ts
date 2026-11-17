@@ -47,6 +47,7 @@ export type Session = {
   id: string; ownerId: string; hostId: string; profileId: string; adbKeyId: string | null; state: string;
   containerId: string | null; orientation: string; audioEnabled: boolean; networkEnabled: boolean;
   createdAt: string; startedAt: string | null; endedAt: string | null;
+  deviceType?: string;
   profileName?: string; hostName?: string; ownerName?: string; error?: string | null;
   label: string | null; lastActivityAt: string;
   leaseTtlSeconds?: number | null; leaseExpiresAt?: string | null;
@@ -74,6 +75,7 @@ export function sessionJson(row: Record<string, unknown>): Session {
     createdAt: new Date(String(row.created_at)).toISOString(),
     startedAt: row.started_at ? new Date(String(row.started_at)).toISOString() : null,
     endedAt: row.ended_at ? new Date(String(row.ended_at)).toISOString() : null,
+    ...(row.profile_device_type ? { deviceType: String(row.profile_device_type) } : {}),
     profileName: row.profile_name ? String(row.profile_name) : undefined,
     hostName: row.host_name ? String(row.host_name) : undefined,
     ownerName: row.owner_name ? String(row.owner_name) : undefined,

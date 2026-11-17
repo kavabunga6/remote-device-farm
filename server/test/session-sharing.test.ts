@@ -38,6 +38,7 @@ async function harness() {
   resetSharedAccessAudit();
   const db = new PGlite();
   for (const file of MIGRATIONS) await db.exec(await readFile(new URL(`../migrations/${file}.sql`, import.meta.url), 'utf8'));
+  await db.exec('ALTER TABLE profiles ADD COLUMN device_type text');
   for (const [id, [name, role]] of Object.entries(NAMES)) {
     await db.query('INSERT INTO users(id,provider,subject,username,display_name,role) VALUES($1,$2,$3,$3,$4,$5)', [id, 'local', name, name[0]!.toUpperCase() + name.slice(1), role]);
   }
@@ -578,5 +579,18 @@ test('a view grant permits PNG capture and revocation during capture prevents de
     const denied = await h.send(`/api/sessions/${SID}/screenshot`);
     assert.equal(denied.status, 404);
     assert.ok(denied.headers.get('content-type')?.startsWith('application/json'));
+  } finally { await h.close(); }
+});
+
+test('TV form factor reaches owners and shared controllers without exposing the profile ID', async () => {
+  const h = await harness();
+  try {
+    await h.db.query("UPDATE profiles SET device_type='tv' WHERE id='android-30'");
+    const owner = await (await h.send('/api/sessions/' + SID)).json();
+    assert.equal(owner.session.deviceType, 'tv');
+    const shared = await h.share('control'); h.state.actor = FRIEND;
+    await h.redeem(shared.body.token);
+    const friend = await (await h.send('/api/sessions/' + SID)).json();
+    assert.equal(friend.session.deviceType, 'tv'); assert.equal(friend.session.profileId, '');
   } finally { await h.close(); }
 });

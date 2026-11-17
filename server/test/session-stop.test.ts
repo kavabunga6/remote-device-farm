@@ -57,6 +57,7 @@ async function fixture(t: { after(fn: () => Promise<void>): void }, state = 'run
     const id = req.headers['x-user'] === 'other' ? OTHER : OWNER;
     return { user: { id, username: id, displayName: id, provider: 'local', role: req.headers['x-role'] === 'admin' ? 'admin' : 'user' }, via: 'cookie' };
   } } as unknown as AuthService;
+  await db.exec('ALTER TABLE profiles ADD COLUMN IF NOT EXISTS device_type text');
   const context = createServerContext(pool, { authMode: 'local', idleTimeoutMinutes: 0, maxSessionHours: 0 } as Config, auth, undefined, hub);
   const app = express();
   app.use(express.json());

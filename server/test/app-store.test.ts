@@ -214,6 +214,7 @@ async function harness(apps: Partial<Config['apps']> = {}, hooks: { usage?: () =
     maxSessionsPerUser: 3, idleTimeoutMinutes: 0, maxSessionHours: 0,
     apps: { dir, maxFileBytes: 200 * 1048576, maxUserBytes: 1024 * 1048576, maxApps: 50, allowHttp: false, allowPrivate: false, ...apps },
   } as Config;
+  await db.exec('ALTER TABLE profiles ADD COLUMN IF NOT EXISTS device_type text');
   const context = createServerContext(pool, config, auth, undefined, hub);
   const app = express();
   app.use(express.json());

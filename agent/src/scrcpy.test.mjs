@@ -722,3 +722,11 @@ test('trusted input deadline clamps native geometry waiting below the local queu
   assert.deepEqual(f.sent, []);
   await f.stream.close();
 });
+
+test('scrcpy TV navigation keeps OK separate from Enter and always releases each key', () => {
+  for (const code of [19, 20, 21, 22, 23, 66]) {
+    const packet = encodeKeyPress(code);
+    assert.equal(packet.length, 28); assert.equal(packet[1], 0); assert.equal(packet[15], 1);
+    assert.equal(packet.readUInt32BE(2), code); assert.equal(packet.readUInt32BE(16), code);
+  }
+});

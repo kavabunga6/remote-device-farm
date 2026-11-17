@@ -6,10 +6,13 @@ import { OpusRtpClock, opusPacketSamples } from './rtc-media.mjs';
 import { diagnostic } from './diagnostics.mjs';
 import { isIPv4 } from 'node:net';
 
-const KEYS = new Map([[3, 'GoHome'], [4, 'GoBack'], [19, 'ArrowUp'], [20, 'ArrowDown'], [21, 'ArrowLeft'], [22, 'ArrowRight'],
-  [23, 'Enter'], [24, 'AudioVolumeUp'], [25, 'AudioVolumeDown'], [26, 'Power'], [61, 'Tab'], [66, 'Enter'], [67, 'Backspace'],
-  [82, 'ContextMenu'], [111, 'Escape'], [164, 'AudioVolumeMute'], [187, 'AppSwitch']]);
 const keyEvent = (key, event = 2) => Buffer.concat([Buffer.from([16, event]), protoBytes(4, Buffer.from(key))]);
+const KEYS = new Map([[3, 'GoHome'], [4, 'GoBack'], [19, 'ArrowUp'], [20, 'ArrowDown'], [21, 'ArrowLeft'], [22, 'ArrowRight'],
+  [24, 'AudioVolumeUp'], [25, 'AudioVolumeDown'], [26, 'Power'], [61, 'Tab'], [66, 'Enter'], [67, 'Backspace'],
+  [82, 'ContextMenu'], [111, 'Escape'], [187, 'AppSwitch']].map(([code, key]) => [code, keyEvent(key)]));
+// Volume mute stays on the exact Android-keycode fallback; W3C AudioVolumeMute is not equivalent on Goldfish.
+// KeyboardEvent: Evdev=1, keypress=2, Goldfish qwerty scancode 232 (Android DPAD_CENTER).
+KEYS.set(23, Buffer.from([8, 1, 16, 2, 24, 0xe8, 0x01]));
 const opusHead = Buffer.alloc(19); opusHead.write('OpusHead'); opusHead[8] = 1; opusHead[9] = 2; opusHead.writeUInt32LE(48000, 12);
 
 export class NativeEmulatorStream {
@@ -193,7 +196,7 @@ export class NativeEmulatorStream {
     this.assertOpen(epoch);
     if (params.inputDeadline !== undefined && this.now() >= params.inputDeadline) throw new Error(diagnostic('native.rtc.input'));
     if (params.kind === 'touch') return this.touch(params);
-    if (params.kind === 'key' && KEYS.has(params.keyCode)) await this.touchControl.rpc('sendKey', keyEvent(KEYS.get(params.keyCode)));
+    if (params.kind === 'key' && KEYS.has(params.keyCode)) await this.touchControl.rpc('sendKey', KEYS.get(params.keyCode));
     else if (params.kind === 'text') {
       await this.touchControl.rpc('setClipboard', protoBytes(1, Buffer.from(params.text)));
       this.assertOpen(epoch); this.controlHeld = true;

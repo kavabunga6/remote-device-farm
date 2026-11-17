@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { StreamManager } from './scrcpy.mjs';
 import { NativeEmulatorStream } from './emulator-native-stream.mjs';
-import { protoBytes } from './emulator-rtc-signaling.mjs';
+import { protoBytes, protoFields } from './emulator-rtc-signaling.mjs';
 
 function event() { const handlers = []; return { subscribe: fn => handlers.push(fn), emit: (...args) => handlers.forEach(fn => fn(...args)) }; }
 const key = Buffer.from([0x10, 0, 0, 0x9d, 1, 0x2a, 0x38, 4, 0x60, 9, 42]);
@@ -155,4 +156,36 @@ test('release cannot deliver a queued touch after its previous controller was re
   const down = f.stream.touch({ action: 'down', x: 10, y: 20, pointerId: 0 });
   const rejected = assert.rejects(down, /closed/); await f.stream.releaseInput(); await rejected;
   assert.equal(f.inputs.length, 0); await f.stream.close();
+});
+
+test('native OK is DPAD center rather than Enter, while navigation and normal Enter remain distinct', async () => {
+  const f = fixture(); const starting = f.stream.start(); await f.answered; f.frame(); await starting;
+  try {
+    await f.stream.input({ kind: 'key', keyCode: 23 });
+    let sent = protoFields(f.rpc.at(-1).bytes);
+    assert.equal(f.rpc.at(-1).method, 'sendKey');
+    assert.equal(sent.get(1), 1, 'evdev code type');
+    assert.equal(sent.get(2), 2, 'complete press and release');
+    assert.equal(sent.get(3), 232, 'Goldfish qwerty maps scancode 232 to Android DPAD_CENTER');
+    assert.equal(sent.has(4), false, 'no W3C Enter overriding the hardware code');
+    for (const [keyCode, name] of [[19, 'ArrowUp'], [20, 'ArrowDown'], [21, 'ArrowLeft'], [22, 'ArrowRight'], [66, 'Enter'], [4, 'GoBack'], [3, 'GoHome']]) {
+      await f.stream.input({ kind: 'key', keyCode });
+      sent = protoFields(f.rpc.at(-1).bytes);
+      assert.equal(sent.get(4).toString(), name);
+      assert.equal(sent.get(2), 2);
+    }
+  } finally { await f.stream.close(); }
+});
+
+test('native volume mute uses the exact Android keycode fallback instead of a different W3C key', async () => {
+  const f = fixture(); const starting = f.stream.start(); await f.answered; f.frame(); await starting;
+  try {
+    const calls = []; const manager = new StreamManager({ adb: { input: (...args) => { calls.push(args); return { ok: true }; } }, serverPath: '/unused', emit: () => {} });
+    manager.streams.set('native-test', f.stream);
+    const input = { kind: 'key', keyCode: 164 };
+    assert.equal(f.stream.canInput(input), false);
+    assert.equal(manager.realtimeInput('native-test', f.stream.serial, input), null);
+    await manager.input('native-test', f.stream.serial, input);
+    assert.deepEqual(calls, [[f.stream.serial, input]]);
+  } finally { await f.stream.close(); }
 });

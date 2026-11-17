@@ -305,6 +305,7 @@ export interface ProfileImportResult {
 }
 
 export interface DeviceSession {
+  deviceType?: Profile['deviceType'];
   platform?: DevicePlatform;
   sdkLevel?: number | null; osVersion?: string | null; capabilityReasons?: DeviceDescriptor['capabilityReasons'];
   /** Effective launch settings retained for recreating the same session. */

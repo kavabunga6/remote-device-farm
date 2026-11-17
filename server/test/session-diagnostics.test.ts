@@ -45,6 +45,7 @@ test('logcat and device information are served to the session owner only', async
         return {};
       },
     } as unknown as AgentHub;
+    await database.exec('ALTER TABLE profiles ADD COLUMN IF NOT EXISTS device_type text');
     const context = createServerContext(pool, {} as Config, auth, undefined, hub);
     const app = express();
     app.use(express.json());
@@ -129,6 +130,7 @@ test('an administrator opening another user session is audited once per window a
       ? { id: adminId, username: 'root', displayName: 'Root', role: 'admin', provider: 'local' }
       : { id: ownerId, username: 'owner', displayName: 'Owner', role: 'user', provider: 'local' }, via: 'cookie' }) } as unknown as AuthService;
     const hub = { hasAgent: () => true, command: async () => ({}) } as unknown as AgentHub;
+    await database.exec('ALTER TABLE profiles ADD COLUMN IF NOT EXISTS device_type text');
     const context = createServerContext(pool, {} as Config, auth, undefined, hub);
     const app = express();
     app.use(express.json());

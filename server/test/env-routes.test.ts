@@ -56,6 +56,7 @@ test('env API: owner and admin operate, strangers get 404, audit event is writte
       if (agentError) throw agentError;
       return params.op === 'read' ? { darkMode: 'no' } : { op: params.op, applied: true };
     } } as unknown as AgentHub;
+    await db.exec('ALTER TABLE profiles ADD COLUMN IF NOT EXISTS device_type text');
     const context = createServerContext(pool, { maxSessionsPerUser: 5, idleTimeoutMinutes: 0, maxSessionHours: 0 } as Config, auth, undefined, hub);
     const app = express();
     app.use(express.json());

@@ -7015,6 +7015,10 @@ components:
           nullable: true
         capabilityReasons:
           $ref: "#/components/schemas/DeviceCapabilityReasons"
+        deviceType:
+          type: string
+          enum: [ mobile, tv, wear, automotive, desktop ]
+          description: Form factor declared by the session profile, when available.
         deviceKind:
           $ref: "#/components/schemas/DeviceKind"
         deviceId:
@@ -8600,6 +8604,10 @@ components:
           minimum: 30
           maximum: 3600
           description: Opt-in renewable lease for automation. Omit for the normal interactive lifecycle.
+        deviceType:
+          type: string
+          enum: [ mobile, tv, wear, automotive, desktop ]
+          description: Form factor declared by the session profile, when available.
         deviceKind:
           type: string
           enum: [ usb-android ]

@@ -93,3 +93,10 @@ test('an unavailable USB provider blocks new leases even if stale inventory stil
     assert.equal((await pool.query('SELECT * FROM sessions')).rowCount, 0);
   } finally { await pool.end(); }
 });
+
+test('session metadata exposes the profile device type without inferring it from the name or orientation', () => {
+  const row = { id: 'session', owner_user_id: U1, host_id: 'h1', profile_id: 'custom', state: 'running', created_at: new Date().toISOString(), profile_name: 'QA', orientation: 'landscape', profile_device_type: 'tv' };
+  assert.equal(sessionJson(row).deviceType, 'tv');
+  assert.equal(sessionJson({ ...row, profile_device_type: 'mobile' }).deviceType, 'mobile');
+  assert.equal(sessionJson({ ...row, profile_device_type: null }).deviceType, undefined);
+});

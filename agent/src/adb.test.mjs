@@ -58,3 +58,9 @@ test('USB serials are never passed to adb connect, which only applies to network
   await assert.rejects(Promise.race([adb.connect('rdf-abc:5555'), new Promise((_, reject) => setTimeout(() => reject(new Error('stalled')), 200))]), /stalled|not ready/);
   assert.deepEqual(calls[0], ['connect', 'rdf-abc:5555']);
 });
+
+test('ADB TV navigation preserves Android OK and Enter as distinct keycodes', async () => {
+  const calls = []; const adb = new AdbClient(async (_command, args) => { calls.push(args); return { exitCode: 0, stdout: '', stderr: '' }; });
+  for (const code of [19, 20, 21, 22, 23, 66]) await adb.input('tv-fixture', { kind: 'key', keyCode: code });
+  assert.deepEqual(calls, [19, 20, 21, 22, 23, 66].map(code => ['-s', 'tv-fixture', 'shell', 'input', 'keyevent', String(code)]));
+});

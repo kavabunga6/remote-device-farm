@@ -73,7 +73,7 @@ export function createServerContext(pool: Pool, config: Config, auth: AuthServic
 
   const activity = new ActivityTracker(pool);
   const policy = lifecyclePolicy(config);
-  const sessionQuery = `SELECT s.*,p.name AS profile_name,COALESCE(h.display_name,h.name) AS host_name,u.display_name AS owner_name FROM sessions s
+  const sessionQuery = `SELECT s.*,p.name AS profile_name,p.device_type AS profile_device_type,COALESCE(h.display_name,h.name) AS host_name,u.display_name AS owner_name FROM sessions s
     JOIN profiles p ON p.id=s.profile_id JOIN hosts h ON h.id=s.host_id JOIN users u ON u.id=s.owner_user_id`;
   async function ownedSession(id: string, context: AuthContext, active = false): Promise<Session> {
     if (!isUuid(id)) throw new ApiError(404, 'not_found', uiMessage('ui.0969eab86273', {}, 'en'));
