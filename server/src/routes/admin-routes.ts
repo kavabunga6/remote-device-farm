@@ -461,7 +461,7 @@ export function registerAdminRoutes(app: Express, context: ServerContext, images
   }));
   registerAgentBundleRoutes(app, context);
   app.get('/api/admin/agents', requireAuth, requireAdmin, route(async (_req, res) => {
-    res.json({ agents: await listAgentInventory(pool, config.bootstrapAgentId) });
+    res.json({ agents: await listAgentInventory(pool, config.bootstrapAgentId, id => hub.hasAgent(id)) });
   }));
   app.post('/api/admin/agents', requireAuth, requireAdmin, route(async (req, res) => {
     if (req.body && (typeof req.body !== 'object' || Array.isArray(req.body))) throw new ApiError(400, 'invalid_agent', uiMessage('ui.d9cca14d5ca8', {}, 'en'));

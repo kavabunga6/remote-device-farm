@@ -113,7 +113,7 @@ test('GET /metrics is hidden without a token and needs the bearer token; summary
       : { id: ALICE, username: 'alice', displayName: 'Alice', role: 'user', provider: 'local' }, via: 'cookie' }) } as unknown as AuthService;
     const config = { ...loadConfig({ DATABASE_URL: 'postgres://x', AGENT_TOKEN: 'a'.repeat(32), BOOTSTRAP_AGENT_ID: 'agent-1',
       LOCAL_ADMIN_USERNAME: 'admin', LOCAL_ADMIN_PASSWORD: 'p'.repeat(12), OPS_SAMPLE_SECONDS: '0' }), metricsToken };
-    const context = createServerContext(pool, config, auth, undefined, {} as AgentHub);
+    const context = createServerContext(pool, config, auth, undefined, { hasAgent: () => true } as unknown as AgentHub);
     const app = express();
     registerOpsRoutes(app, context);
     app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -21,6 +21,8 @@ import { cleanStartupProgress, storedStartupProgress, START_CANCEL_TIMEOUT_MS, t
 type Tunnel = { socket: WebSocket; sessionId: string; hostId: string };
 type DeviceTunnel = { socket: Socket; sessionId: string; hostId: string };
 type AgentLink = { ws: WebSocket; hostId: string; lastHeartbeat: number; policyVersion: number; preparingSessions: Set<string> };
+const liveAgent = (link: AgentLink | undefined): link is AgentLink =>
+  !!link && link.ws.readyState === WebSocket.OPEN && Date.now() - link.lastHeartbeat <= 45_000;
 const MAX_RELAY_BUFFER = 4 * 1024 * 1024;
 const MAX_TUNNELS_PER_SESSION = 8;
 const MAX_TUNNELS_PER_HOST = 32;
@@ -515,7 +517,7 @@ export class AgentHub {
   async command(hostId: string, sessionId: string, action: string, params: Record<string, unknown>, timeoutMs = 30_000, input?: InputMetadata, signal?: AbortSignal): Promise<Record<string, unknown>> {
     if (this.stopped) throw new Error(diagnostic('agent.da4390b715'));
     const agent = this.agents.get(hostId);
-    if (!agent || agent.ws.readyState !== WebSocket.OPEN) throw new ApiError(503, 'agent_offline', uiMessage('api.agent_offline'));
+    if (!liveAgent(agent)) throw new ApiError(503, 'agent_offline', uiMessage('api.agent_offline'));
     if (action === 'start') this.locallyStartedSessions.add(sessionId);
     return this.pending.request({ ws: agent.ws, hostId, sessionId, action }, timeoutMs, (id, fail) => {
       agent.ws.send(JSON.stringify({ type: 'command', id, sessionId, action, params, ...(input ? { input } : {}) }),
@@ -546,7 +548,7 @@ export class AgentHub {
 
   async applyHostPolicy(hostId: string): Promise<Record<string, unknown>> {
     const link = this.agents.get(hostId);
-    if (!link || link.ws.readyState !== WebSocket.OPEN) throw new ApiError(503, 'agent_offline', uiMessage('api.agent_offline'));
+    if (!liveAgent(link)) throw new ApiError(503, 'agent_offline', uiMessage('api.agent_offline'));
     if (!link.policyVersion) throw new Error(diagnostic('agent.9739cc8dd5'));
     const result = await this.pool.query('SELECT * FROM hosts WHERE id=$1 AND removed_at IS NULL', [hostId]);
     const host = result.rows[0];
@@ -587,7 +589,7 @@ export class AgentHub {
   }
 
   hasAgent(hostId: string): boolean {
-    return this.agents.get(hostId)?.ws.readyState === WebSocket.OPEN;
+    return liveAgent(this.agents.get(hostId));
   }
 
   disconnectHost(hostId: string): void {
@@ -613,7 +615,7 @@ export class AgentHub {
 
   addDeviceTunnel(sessionId: string, hostId: string, socket: Socket, initial: Buffer): boolean {
     const agent = this.agents.get(hostId);
-    if (!agent || agent.ws.readyState !== WebSocket.OPEN || initial.length > 8192) return false;
+    if (!liveAgent(agent) || initial.length > 8192) return false;
     let sessionTunnels = 0;
     let hostTunnels = 0;
     for (const tunnel of [...this.tunnels.values(), ...this.deviceTunnels.values()]) {
@@ -626,7 +628,7 @@ export class AgentHub {
     this.deviceTunnels.set(tunnelId, { socket, sessionId, hostId });
     const send = (bytes: Buffer) => {
       const current = this.agents.get(hostId);
-      if (!current || current.ws.readyState !== WebSocket.OPEN ||
+      if (!liveAgent(current) ||
           current.ws.bufferedAmount > MAX_RELAY_BUFFER || bytes.length > 1_000_000) {
         socket.destroy();
         return;
@@ -657,7 +659,7 @@ export class AgentHub {
 
   addTunnel(sessionId: string, hostId: string, socket: WebSocket): void {
     const agent = this.agents.get(hostId);
-    if (!agent || agent.ws.readyState !== WebSocket.OPEN) { socket.close(1013, 'agent offline'); return; }
+    if (!liveAgent(agent)) { socket.close(1013, 'agent offline'); return; }
     let sessionTunnels = 0;
     let hostTunnels = 0;
     for (const tunnel of this.tunnels.values()) {
@@ -676,7 +678,7 @@ export class AgentHub {
     socket.on('message', (data, isBinary) => {
       if (!isBinary) { socket.close(1003, 'binary ADB frames required'); return; }
       const current = this.agents.get(hostId);
-      if (!current || current.ws.readyState !== WebSocket.OPEN) { socket.close(1013, 'agent offline'); return; }
+      if (!liveAgent(current)) { socket.close(1013, 'agent offline'); return; }
       if (current.ws.bufferedAmount > MAX_RELAY_BUFFER) {
         socket.close(1013, 'agent relay congested');
         return;

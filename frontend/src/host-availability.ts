@@ -3,8 +3,12 @@ import type { Host } from './api';
 
 /** Capacity that can accept a new session now. */
 export function availableSlots(host: Pick<Host, 'status' | 'disabled' | 'maxSessions' | 'activeSessions' | 'providers' | 'lastSeenAt'>, now = Date.now()): number {
-  if (hostState(host, now) !== 'online' || host.providers?.some(provider => provider.kind === 'emulator' && provider.status === 'unavailable')) return 0;
+  if (!emulatorAvailable(host, now)) return 0;
   return Math.max(0, host.maxSessions - host.activeSessions);
+}
+
+export function emulatorAvailable(host: Pick<Host, 'status' | 'disabled' | 'lastSeenAt' | 'providers'>, now = Date.now()): boolean {
+  return hostState(host, now) === 'online' && !host.providers?.some(provider => provider.kind === 'emulator' && provider.status === 'unavailable');
 }
 
 type HostLiveness = Pick<Host, 'status' | 'disabled' | 'lastSeenAt'>;

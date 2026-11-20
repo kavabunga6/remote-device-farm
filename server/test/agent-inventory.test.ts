@@ -17,7 +17,7 @@ test('agent inventory includes bootstrap, protects config-token collisions, and 
       ('removed','Old',NULL,'offline',NULL)`);
     await db.query(`UPDATE hosts SET removed_at=now() WHERE id='removed'`);
     await db.query(`INSERT INTO agent_credentials(host_id,token_hash) VALUES ('waiting','secret-hash'),('removed','removed-hash')`);
-    let inventory = await listAgentInventory(pool, 'bootstrap');
+    let inventory = await listAgentInventory(pool, 'bootstrap', () => true);
     assert.equal(inventory.length, 2);
     assert.deepEqual(inventory.find(item => item.hostId === 'bootstrap'), {
       hostId: 'bootstrap', name: 'QA node', status: 'online', source: 'environment', canRevoke: false,
@@ -25,16 +25,20 @@ test('agent inventory includes bootstrap, protects config-token collisions, and 
       lastSeenAt: inventory.find(item => item.hostId === 'bootstrap')!.lastSeenAt,
     });
     assert.ok(inventory.find(item => item.hostId === 'bootstrap')!.lastSeenAt);
+    assert.equal((await listAgentInventory(pool, 'bootstrap', () => false)).find(item => item.hostId === 'bootstrap')!.status, 'offline');
+    await db.query("UPDATE hosts SET last_seen_at=now()-interval '1 day' WHERE id='bootstrap'");
+    assert.equal((await listAgentInventory(pool, 'bootstrap', () => true)).find(item => item.hostId === 'bootstrap')!.status, 'offline');
+    await db.query("UPDATE hosts SET last_seen_at=now() WHERE id='bootstrap'");
     assert.equal(inventory.find(item => item.hostId === 'waiting')!.canRevoke, true);
     assert.equal(inventory.find(item => item.hostId === 'waiting')!.source, 'registered');
     assert.equal(JSON.stringify(inventory).includes('hash'), false);
 
     await db.query(`INSERT INTO agent_credentials(host_id,token_hash) VALUES ('bootstrap','collision-hash')`);
-    inventory = await listAgentInventory(pool, 'bootstrap');
+    inventory = await listAgentInventory(pool, 'bootstrap', () => true);
     assert.equal(inventory.filter(item => item.hostId === 'bootstrap').length, 1);
     assert.equal(inventory.find(item => item.hostId === 'bootstrap')!.canRevoke, false);
     assert.equal(inventory.find(item => item.hostId === 'bootstrap')!.source, 'environment');
-    assert.equal((await listAgentInventory(pool, 'never-connected')).some(item => item.hostId === 'never-connected'), false);
-    assert.equal((await listAgentInventory(pool, 'removed')).some(item => item.hostId === 'removed'), false);
+    assert.equal((await listAgentInventory(pool, 'never-connected', () => true)).some(item => item.hostId === 'never-connected'), false);
+    assert.equal((await listAgentInventory(pool, 'removed', () => true)).some(item => item.hostId === 'removed'), false);
   } finally { await db.close(); }
 });

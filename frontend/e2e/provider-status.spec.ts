@@ -38,3 +38,38 @@ for (const [theme, language] of [['light', 'ru'], ['dark', 'en']] as const) {
     await expect(page.getByRole('dialog').locator('.node-provider-row[data-state=unavailable]')).toHaveCount(0);
   });
 }
+
+for (const theme of ['light', 'dark'] as const) test(`emulator outage removes runnable slots and recovery restores them: ${theme}`, async ({ page }) => {
+  let ready = false;
+  await page.emulateMedia({ colorScheme: theme });
+  await page.route('**/api/me/notifications', r => r.fulfill({ json: { notifications: [] } }));
+  await page.route('**/api/hosts', async route => {
+    const host = (await (await route.fetch()).json()).hosts[0];
+    await route.fulfill({ json: { hosts: [{ ...host, status: 'online', disabled: false, lastSeenAt: new Date().toISOString(), slots: 2, usedSlots: 0,
+      providers: [{ kind: 'emulator', platform: 'android', status: ready ? 'ready' : 'unavailable', code: ready ? null : 'maintenance-unavailable' }] }] } });
+  });
+  await page.goto('/#/admin/nodes');
+  await expect(page.locator('.node-pool-summary')).toContainText('0 / 0');
+  await expect(page.locator('.host-slot')).toHaveCount(0);
+  await expect(page.locator('.host-card-footer')).toContainText('Нет доступных слотов');
+  ready = true; await page.reload();
+  await expect(page.locator('.node-pool-summary')).toContainText('2 / 2');
+  await expect(page.locator('.host-slot')).toHaveCount(2);
+});
+
+for (const theme of ['light', 'dark'] as const) test(`stale USB inventory is unavailable without erasing busy or quarantined devices: ${theme}`, async ({ page }) => {
+  let fresh = false; await page.emulateMedia({ colorScheme: theme });
+  await page.route('**/api/me/notifications', r => r.fulfill({ json: { notifications: [] } }));
+  await page.route('**/api/hosts', async route => {
+    const host = (await (await route.fetch()).json()).hosts[0];
+    await route.fulfill({ json: { hosts: [{ ...host, status: 'online', disabled: false, lastSeenAt: new Date(Date.now() - (fresh ? 0 : 960_000)).toISOString(),
+      devices: ['free', 'busy', 'quarantined'].map(state => ({ kind: 'usb-android', id: 'phone-' + state, state, model: state, reason: null })) }] } });
+  });
+  await page.goto('/#/admin/nodes');
+  const inventory = page.locator('.device-inventory');
+  await expect(inventory.locator('.device-state-offline')).toHaveCount(1);
+  await expect(inventory.locator('.device-state-busy')).toHaveCount(1);
+  await expect(inventory.locator('.device-state-quarantined')).toHaveCount(1);
+  fresh = true; await page.reload();
+  await expect(inventory.locator('.device-state-free')).toHaveCount(1);
+});

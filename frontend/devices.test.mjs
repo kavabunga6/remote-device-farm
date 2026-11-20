@@ -17,7 +17,7 @@ test('only explicit device capabilities enable controls', () => {
   assert.equal(m.hasCapability({ capabilities: [] }, 'video'), false);
 });
 
-const host = (id, extra, devices) => ({ id, name: id, status: 'online', disabled: false, devices, ...extra });
+const host = (id, extra, devices) => ({ id, name: id, status: 'online', disabled: false, lastSeenAt: new Date().toISOString(), devices, ...extra });
 const dev = (id, state, kind = 'usb-android') => ({ kind, id, model: id, state, reason: state === 'quarantined' ? 'wipe failed' : null });
 
 test('only free devices on online, enabled hosts are rentable; quarantined ones are listed with the reason', () => {
@@ -46,4 +46,16 @@ test('physical inventory excludes emulator capacity records and keeps unverified
   assert.deepEqual(m.physicalDevices(records).map(d => [d.id, d.state]), [['pending', 'unverified'], ['phone', 'free']]);
   assert.deepEqual(m.physicalDevices(null), []);
   assert.deepEqual(m.rentableDevices([host('node', {}, records)]).map(x => x.device.id), ['phone']);
+});
+
+test('stale nodes and failed USB inventory cannot offer old free devices; quarantine and busy reservations survive', () => {
+  const stale = host('stale', { lastSeenAt: new Date(Date.now() - 46_000).toISOString() }, [dev('phone', 'free')]);
+  assert.deepEqual(m.rentableDevices([stale]), []);
+  assert.equal(m.inventoryDeviceState(stale, dev('phone', 'free')), 'offline');
+  assert.equal(m.inventoryDeviceState(stale, dev('phone', 'quarantined')), 'quarantined');
+  assert.equal(m.inventoryDeviceState(stale, dev('phone', 'busy')), 'busy');
+  const failure = host('usb', { providers: [{ kind: 'usb-android', status: 'unavailable' }] }, [dev('phone', 'free')]);
+  assert.deepEqual(m.rentableDevices([failure]), []);
+  assert.equal(m.inventoryDeviceState(failure, failure.devices[0]), 'offline');
+  failure.providers[0].status = 'ready'; assert.equal(m.rentableDevices([failure]).length, 1);
 });

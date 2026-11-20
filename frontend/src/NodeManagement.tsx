@@ -13,7 +13,7 @@ import { HostCard } from './HostCard';
 import { AgentOnboardingDialog } from './AgentOnboardingDialog';
 import { HeadingSlot } from './HeadingSlot';
 import { hostSupportsGpu } from './launch-readiness';
-import { hostState, slotOccupancyLevel } from './host-availability';
+import { hostState, emulatorAvailable, slotOccupancyLevel } from './host-availability';
 import './slot-occupancy.css';
 
 const errorText = (error: unknown) => error instanceof Error ? error.message : t('ui.8f9c4884b8f9');
@@ -183,10 +183,11 @@ function NodeDialog({ host, profiles, onClose, onRefresh }: { host: Host; profil
 function NodePoolSummary({ hosts }: { hosts: Host[] }) {
   const online = hosts.filter(host => hostState(host) === 'online');
   const disabled = hosts.filter(host => host.disabled).length;
-  const totalSlots = online.reduce((sum, host) => sum + host.maxSessions, 0);
-  const busySlots = online.reduce((sum, host) => sum + Math.min(host.activeSessions, host.maxSessions), 0);
-  const cuda = online.filter(host => hostSupportsGpu(host, 'cuda')).length;
-  const plain = online.filter(host => hostSupportsGpu(host, 'gpu')).length;
+  const runnable = online.filter(host => emulatorAvailable(host));
+  const totalSlots = runnable.reduce((sum, host) => sum + host.maxSessions, 0);
+  const busySlots = runnable.reduce((sum, host) => sum + Math.min(host.activeSessions, host.maxSessions), 0);
+  const cuda = runnable.filter(host => hostSupportsGpu(host, 'cuda')).length;
+  const plain = runnable.filter(host => hostSupportsGpu(host, 'gpu')).length;
   return <div className="node-pool-summary" aria-label={t('ui.5e90eda56e75')}>
     <div className="node-pool-card"><span className="cap">{t('ui.5e90eda56e75')}</span><strong><TranslatedText message="copy.NodeManagement.15ae7f7d" values={{ p0: online.length }} /></strong><small><TranslatedText message="copy.NodeManagement.a673c0c6" values={{ p0: disabled, p1: hosts.length }} /></small></div>
     <div className="node-pool-card slot-occupancy" data-occupancy={slotOccupancyLevel(busySlots, totalSlots)}><span className="cap">{t('ui.43ad61e9ff10')}</span><strong>{totalSlots - busySlots} / {totalSlots}</strong><small>{totalSlots ? Math.round((totalSlots - busySlots) / totalSlots * 100) + t('ui.d041472ab23e') : t('ui.563932f8be14')}</small></div>

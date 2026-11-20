@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { countRequest, escapeLabelValue, histogramFamily, renderMetrics, resetHttpCounters, httpFamilies, statusClass, tokenMatches } from '../src/metrics.js';
+import { collectFamilies, countRequest, escapeLabelValue, histogramFamily, renderMetrics, resetHttpCounters, httpFamilies, statusClass, tokenMatches } from '../src/metrics.js';
 
 test('label values are escaped', () => {
   assert.equal(escapeLabelValue('a"b\\c\nd'), 'a\\"b\\\\c\\nd');
@@ -39,4 +39,17 @@ test('bearer token compare accepts only the exact token', () => {
   assert.equal(tokenMatches('Bearer secret-token-12345', 'secret-token-123456'), false);
   assert.equal(tokenMatches('secret-token-123456', 'secret-token-123456'), false);
   assert.equal(tokenMatches(undefined, 'secret-token-123456'), false);
+});
+
+test('online metric excludes missing heartbeats, stale reports and disconnected agents', async () => {
+  const hosts = [
+    { id: 'live', status: 'online', seen_ago: 1, total: 2, used: 1 },
+    { id: 'stale', status: 'online', seen_ago: 46, total: 2, used: 1 },
+    { id: 'missing', status: 'online', seen_ago: null, total: 2, used: 0 },
+    { id: 'disconnected', status: 'online', seen_ago: 1, total: 2, used: 0 },
+  ];
+  const pool = { query: async (sql: string) => ({ rows: sql.includes('FROM hosts') ? hosts : [] }) };
+  const families = await collectFamilies(pool as never, id => id !== 'disconnected');
+  assert.equal(families.find(f => f.name === 'rdf_hosts_online')!.samples[0]!.value, 1);
+  assert.equal(families.find(f => f.name === 'rdf_slots_used')!.samples.find(s => s.labels?.host === 'stale')!.value, 1, 'lost contact never frees a reserved slot');
 });

@@ -140,7 +140,7 @@ test('hub disposal rejects pending RPCs, closes channels, and clears its timers'
   const hub = new AgentHub({ query: () => assert.fail('disposed hub must not query') } as unknown as Pool);
   const agent = new FakeSocket(), viewer = new FakeSocket(), tunnel = new FakeSocket(), awaitingHello = new FakeSocket();
   const internal = hub as any;
-  internal.agents.set('host', { ws: agent, hostId: 'host', lastHeartbeat: 0 });
+  internal.agents.set('host', { ws: agent, hostId: 'host', lastHeartbeat: Date.now() });
   hub.attachAgent(awaitingHello as unknown as WebSocket, 'other');
   hub.addViewer('session', 'host', viewer as unknown as WebSocket);
   hub.addTunnel('session', 'host', tunnel as unknown as WebSocket);

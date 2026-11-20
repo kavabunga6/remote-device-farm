@@ -1,4 +1,5 @@
 import { normalizePhysicalDevices, type DeviceCapability } from './generated/device-contract';
+import { hostState } from './host-availability';
 import { t } from './i18n';
 import type { DeviceKind, DeviceSession, DeviceState, Host, HostDevice } from './api';
 
@@ -23,8 +24,16 @@ export function physicalDevices(value: unknown): HostDevice[] {
 
 export interface RentableDevice { host: Host; device: HostDevice }
 
+export function usbAvailable(host: Host): boolean {
+  return hostState(host) === 'online' && !host.providers?.some(p => p.kind === 'usb-android' && p.status === 'unavailable');
+}
+
+export function inventoryDeviceState(host: Host, device: HostDevice): DeviceState {
+  return device.state === 'free' && !usbAvailable(host) ? 'offline' : device.state;
+}
+
 // Devices a user can rent right now: on an online, enabled host and reported free.
 export function rentableDevices(hosts: Host[]): RentableDevice[] {
-  return hosts.filter(host => host.status === 'online' && !host.disabled)
+  return hosts.filter(usbAvailable)
     .flatMap(host => physicalDevices(host.devices).filter(device => device.state === 'free').map(device => ({ host, device })));
 }

@@ -11,7 +11,7 @@ export interface AgentInventoryItem {
 }
 
 /** Include the configured bootstrap host without creating or disclosing credentials. */
-export async function listAgentInventory(pool: Pick<Pool, 'query'>, bootstrapHostId: string): Promise<AgentInventoryItem[]> {
+export async function listAgentInventory(pool: Pick<Pool, 'query'>, bootstrapHostId: string, connected: (hostId: string) => boolean): Promise<AgentInventoryItem[]> {
   const { rows } = await pool.query<AgentInventoryItem>(
     `WITH inventory AS (
        SELECT host_id FROM agent_credentials
@@ -29,5 +29,7 @@ export async function listAgentInventory(pool: Pick<Pool, 'query'>, bootstrapHos
      WHERE h.removed_at IS NULL
      ORDER BY COALESCE(c.created_at,h.created_at) DESC, i.host_id`, [bootstrapHostId],
   );
-  return rows;
+  const now = Date.now();
+  return rows.map(row => ({ ...row, status: row.status === 'online' && row.lastSeenAt &&
+    now - new Date(row.lastSeenAt).getTime() <= 45_000 && connected(row.hostId) ? 'online' : 'offline' }));
 }

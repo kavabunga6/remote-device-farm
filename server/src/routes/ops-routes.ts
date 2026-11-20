@@ -17,7 +17,7 @@ export function registerOpsRoutes(app: Express, context: ServerContext): () => P
       res.setHeader('WWW-Authenticate', 'Bearer realm="metrics"');
       next(new ApiError(401, 'unauthorized', uiMessage('ui.cc518196cb09', {}, 'en'))); return;
     }
-    collectFamilies(pool).then(families => {
+    collectFamilies(pool, id => context.hub.hasAgent(id)).then(families => {
       res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
       res.setHeader('Cache-Control', 'no-store');
       res.send(renderMetrics(families));

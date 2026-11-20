@@ -70,3 +70,11 @@ test('stale or missing heartbeats never advertise free capacity, and red escalat
   assert.equal(hostUnresponsive({ ...node, lastSeenAt: new Date(now - 900_000).toISOString() }, now), false);
   assert.equal(hostUnresponsive({ ...node, lastSeenAt: new Date(now - 900_001).toISOString() }, now), true);
 });
+
+test('an emulator provider failure blocks capacity without treating a USB-only outage as an emulator outage', () => {
+  const node = { ...host, maxSessions: 4, activeSessions: 1, lastSeenAt: new Date().toISOString() };
+  assert.equal(availableSlots({ ...node, providers: [{ kind: 'emulator', status: 'unavailable' }] }), 0);
+  assert.equal(availableSlots({ ...node, providers: [{ kind: 'usb-android', status: 'unavailable' }] }), 3);
+  assert.equal(availableSlots({ ...node, providers: [{ kind: 'emulator', status: 'ready' }] }), 3);
+  assert.equal(previewNodeCapacity({ ...node, lastSeenAt: new Date(Date.now() - 60_000).toISOString() }, { slotMode: 'manual', manualSlots: 4 }).free, 0);
+});

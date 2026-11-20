@@ -96,12 +96,12 @@ export function resetHttpCounters(): void { httpCounts.clear(); loginFailures = 
 // ---- Database collection ----
 const STATES = ['starting', 'running', 'stopping', 'stopped', 'failed'];
 
-export async function collectFamilies(pool: Pick<Pool, 'query'>): Promise<Family[]> {
+export async function collectFamilies(pool: Pick<Pool, 'query'>, connected: (hostId: string) => boolean): Promise<Family[]> {
   const [states, hosts, durations] = await Promise.all([
     pool.query('SELECT state, count(*)::int AS n FROM sessions GROUP BY state'),
     pool.query(`SELECT h.id, h.status, extract(epoch FROM (now() - h.last_seen_at))::float8 AS seen_ago,
         count(hs.host_id)::int AS total, count(hs.session_id)::int AS used
-      FROM hosts h LEFT JOIN host_slots hs ON hs.host_id=h.id GROUP BY h.id, h.status, h.last_seen_at ORDER BY h.id`),
+      FROM hosts h LEFT JOIN host_slots hs ON hs.host_id=h.id WHERE h.removed_at IS NULL GROUP BY h.id, h.status, h.last_seen_at ORDER BY h.id`),
     pool.query(`SELECT extract(epoch FROM (ended_at - COALESCE(started_at, created_at)))::float8 AS seconds
       FROM rental_history WHERE ended_at > now() - interval '24 hours'`),
   ]);
@@ -112,7 +112,7 @@ export async function collectFamilies(pool: Pick<Pool, 'query'>): Promise<Family
     { name: 'rdf_sessions', help: 'Sessions by state.', type: 'gauge',
       samples: STATES.map(state => ({ name: 'rdf_sessions', labels: { state }, value: byState.get(state) ?? 0 })) },
     { name: 'rdf_hosts_online', help: 'Hosts with a connected agent.', type: 'gauge',
-      samples: [{ name: 'rdf_hosts_online', value: hostRows.filter(row => row.status === 'online').length }] },
+      samples: [{ name: 'rdf_hosts_online', value: hostRows.filter(row => row.status === 'online' && row.seen_ago != null && Number.isFinite(Number(row.seen_ago)) && Number(row.seen_ago) <= 45 && connected(row.id)).length }] },
     { name: 'rdf_hosts_total', help: 'Known hosts.', type: 'gauge', samples: [{ name: 'rdf_hosts_total', value: hostRows.length }] },
     { name: 'rdf_slots_total', help: 'Device slots per host.', type: 'gauge',
       samples: hostRows.map(row => ({ name: 'rdf_slots_total', labels: { host: row.id }, value: row.total })) },

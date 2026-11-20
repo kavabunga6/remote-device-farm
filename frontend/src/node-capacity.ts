@@ -1,3 +1,4 @@
+import { hostState } from './host-availability';
 import { t } from './i18n';
 import type { Host, NodeSettingsInput, Profile } from './api';
 
@@ -31,7 +32,7 @@ export function previewNodeCapacity(host: Host, settings: Partial<NodeSettingsIn
   const disabled = settings.disabled ?? host.disabled;
   return { slots: disabled ? 0 : slots, capacity: slots, cpuBudget, memoryBudgetMb,
     cpuSlots, memorySlots, limit, dynamic, disabled,
-    free: host.status === 'online' && !disabled ? Math.max(0, slots - host.activeSessions) : 0 };
+    free: hostState({ ...host, disabled }) === 'online' ? Math.max(0, slots - host.activeSessions) : 0 };
 }
 
 export function profilesExceedingSlot(profiles: Profile[], slotCpu: number, slotMemoryMb: number) {
