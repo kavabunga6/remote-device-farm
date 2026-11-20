@@ -78,10 +78,10 @@ for (const [scenario, theme, width, scale] of [['light', 'light', 1280, 1], ['da
       await expect(disk.locator('small')).toHaveText('256 ГБ свободно');
       await expect(disk.locator('b')).toHaveText('50%');
       await expect(disk.locator('b')).toHaveAttribute('aria-label', /Занято.*50%/);
-      await expect(card.locator('.host-capacity strong')).toHaveText('2');
-      await expect(card.locator('.host-capacity')).toContainText('свободно из 3 слотов');
-      await expect(card.locator('.host-slot')).toHaveCount(3);
-      await expect(card.locator('.host-slot[data-busy]')).toHaveCount(1);
+      await expect(card.locator('.host-capacity strong')).toHaveText(state.state === 'online' ? '2' : state.label);
+      if (state.state === 'online') await expect(card.locator('.host-capacity')).toContainText('свободно из 3 слотов');
+      await expect(card.locator('.host-slot')).toHaveCount(state.state === 'online' ? 3 : 0);
+      await expect(card.locator('.host-slot[data-busy]')).toHaveCount(state.state === 'online' ? 1 : 0);
       await expect(card.locator('.host-gpu-status')).toHaveText(state.state === 'online' ? 'Режимы запуска: cuda' : state.state === 'disabled' ? 'Узел отключён' : 'Узел не в сети');
       await expect(card.locator('[data-resource="gpu"] strong')).toHaveText('NVIDIA Example GPU');
       await expect(card).toHaveAttribute('aria-label', state.name + ' · ' + state.label);
@@ -287,3 +287,26 @@ test('compact GPU measurements keep separate devices and preserve zero values', 
     await expect(device.locator('dd').nth(1)).toHaveText(memory);
   }
 });
+
+for (const theme of ['light', 'dark'] as const) for (const width of [1280, 390]) {
+  test(`silent node is red and contributes no online slots: ${theme} ${width}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: theme }); await page.setViewportSize({ width, height: 1000 });
+    await page.route('**/api/hosts', async route => {
+      const response = await route.fetch(); const body = await response.json();
+      await route.fulfill({ json: { hosts: [{ ...body.hosts[0], name: 'Silent worker', status: 'online', disabled: false, slots: 2, usedSlots: 0, lastSeenAt: new Date(Date.now() - 16 * 60_000).toISOString() }] } });
+    });
+    await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: { theme, fontFamily: 'system', fontScale: width === 390 ? 1.25 : 1, defaultAdbKeyId: null } } }));
+    await page.goto('/#/admin/nodes');
+    const card = page.locator('.host-card');
+    await expect(card).toHaveAttribute('data-state', 'offline');
+    await expect(card).toHaveAttribute('data-unresponsive', 'true');
+    await expect(card.locator('.host-capacity')).toHaveText('Не в сети');
+    await expect(card.locator('.host-slot')).toHaveCount(0);
+    await expect(page.locator('.node-pool-summary')).toContainText('0 в сети');
+    await expect(page.locator('.node-pool-summary')).toContainText('0 / 0');
+    const color = await card.evaluate(el => { const s = getComputedStyle(el); return { background: s.backgroundColor, border: s.borderColor, surface: s.getPropertyValue('--ui-surface'), overflow: document.documentElement.scrollWidth > innerWidth }; });
+    const neutral = await page.locator('.node-pool-card').first().evaluate(el => getComputedStyle(el).backgroundColor);
+    expect(color.background).not.toBe(neutral); expect(color.overflow).toBe(false);
+    await page.screenshot({ path: `.tmp-node-${theme}-${width}.png`, fullPage: true });
+  });
+}

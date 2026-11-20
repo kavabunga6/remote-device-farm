@@ -28,7 +28,8 @@ async function fixture() {
   }
   let actor: string | null = OWNER;
   const auth = { authenticate: async () => actor ? { user: { id: actor, role: actor === ADMIN ? 'admin' : 'user' }, via: 'cookie' } : null } as unknown as AuthService;
-  const context = createServerContext(pool, {} as Config, auth, undefined, {} as AgentHub);
+  let connected = true;
+  const context = createServerContext(pool, {} as Config, auth, undefined, { hasAgent: () => connected } as unknown as AgentHub);
   const app = express(); app.use(express.json()); registerAdminRoutes(app, context);
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     if (error instanceof SyntaxError && (error as { type?: string }).type === 'entity.parse.failed') { res.status(400).json({ error: { code: 'invalid_json' } }); return; }
@@ -38,7 +39,7 @@ async function fixture() {
   const address = server.address(); assert.ok(address && typeof address !== 'string');
   const request = () => fetch(`http://127.0.0.1:${address.port}/api/hosts`);
   const close = async () => { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); await db.close(); };
-  return { db, request, close, actor: (id: string | null) => { actor = id; } };
+  return { db, request, close, connected: (value: boolean) => { connected = value; }, actor: (id: string | null) => { actor = id; } };
 }
 
 test('hosts hide addresses, hardware and telemetry from non-administrators', async () => {
@@ -59,5 +60,19 @@ test('hosts hide addresses, hardware and telemetry from non-administrators', asy
     const admin = (await (await f.request()).json() as { hosts: Array<{ id: string; metrics: Record<string, unknown> }> }).hosts.find(host => host.id === 'h1')!;
     assert.equal(admin.metrics.hostIp, '192.0.2.20');
     assert.equal((await (await f.request()).json() as { hosts: unknown[] }).hosts.length, 2);
+  } finally { await f.close(); }
+});
+
+test('persisted online is unavailable without a live connection or a recent heartbeat', async () => {
+  const f = await fixture();
+  try {
+    await f.db.query("INSERT INTO hosts(id,name,status,slots,last_seen_at) VALUES('h1','worker','online',2,now())");
+    f.connected(false); f.actor(ADMIN);
+    assert.equal((await (await f.request()).json()).hosts[0].status, 'offline');
+    f.actor(OWNER); assert.equal((await (await f.request()).json()).hosts.length, 0);
+    f.connected(true); await f.db.query("UPDATE hosts SET last_seen_at=now()-interval '16 minutes'");
+    f.actor(ADMIN); assert.equal((await (await f.request()).json()).hosts[0].status, 'offline');
+    await f.db.query("UPDATE hosts SET last_seen_at=now()");
+    assert.equal((await (await f.request()).json()).hosts[0].status, 'online');
   } finally { await f.close(); }
 });

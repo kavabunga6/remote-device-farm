@@ -60,3 +60,13 @@ test('heartbeat distinguishes absent, fresh and stale data without negative ages
   assert.equal(heartbeatAge(new Date(now - 46000).toISOString(), now).stale, true);
   assert.equal(heartbeatAge(new Date(now + 5000).toISOString(), now).label, 'Ответ только что');
 });
+
+const { availableSlots, hostState, hostUnresponsive } = await loadModule('./src/host-availability.ts');
+test('stale or missing heartbeats never advertise free capacity, and red escalation starts after 15 minutes', () => {
+  const now = Date.now(); const node = { ...host, maxSessions: 4, activeSessions: 1, lastSeenAt: new Date(now).toISOString() };
+  assert.equal(availableSlots(node, now), 3);
+  for (const lastSeenAt of [undefined, 'invalid', new Date(now - 46_000).toISOString()]) assert.equal(availableSlots({ ...node, lastSeenAt }, now), 0);
+  assert.equal(hostState({ ...node, lastSeenAt: new Date(now - 46_000).toISOString() }, now), 'offline');
+  assert.equal(hostUnresponsive({ ...node, lastSeenAt: new Date(now - 900_000).toISOString() }, now), false);
+  assert.equal(hostUnresponsive({ ...node, lastSeenAt: new Date(now - 900_001).toISOString() }, now), true);
+});

@@ -70,7 +70,10 @@ export function registerAdminRoutes(app: Express, context: ServerContext, images
     const taken = new Set(busy.rows.map(row => `${row.host_id}\u0000${row.device_id}`));
     const isAdmin = hasPermission(current(res).user, 'nodes.view');
     // Users only see nodes that can take a session right now; offline and paused ones are an administrator's concern.
-    const visible = isAdmin ? rows : rows.filter(row => row.status === 'online' && row.disabled !== true);
+    const now = Date.now();
+    const liveRows = rows.map(row => ({ ...row, status: row.status === 'online' && hub.hasAgent(String(row.id)) &&
+      row.last_seen_at && now - new Date(String(row.last_seen_at)).getTime() <= 45_000 ? 'online' : 'offline' }));
+    const visible = isAdmin ? liveRows : liveRows.filter(row => row.status === 'online' && row.disabled !== true);
     res.json({ hosts: visible.map(row => {
       const full = hostJson(row);
       // Users only need what decides whether a profile fits; addresses, hardware and telemetry are for administrators.

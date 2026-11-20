@@ -2,7 +2,7 @@ import { TranslatedText } from './TranslatedText';
 import { NodeProviderStatus } from './NodeProviderStatus';
 import { getLocale, t } from './i18n';
 import type { Host } from './api';
-import { hostState, HOST_STATE_LABEL, slotOccupancyLevel } from './host-availability';
+import { hostState, hostUnresponsive, availableSlots, HOST_STATE_LABEL, slotOccupancyLevel } from './host-availability';
 import { NodeFreshness, useNodeGpuState } from './NodeHealth';
 import './HostCard.css';
 import './slot-occupancy.css';
@@ -33,7 +33,7 @@ function hostEnvironment(host: Host): string {
 export function HostCard({ host, canManage = false, className = '', layout = 'card' }: { host: Host; canManage?: boolean; className?: string; layout?: 'card' | 'row' }) {
   const state = hostState(host);
   const stateLabel = HOST_STATE_LABEL[state];
-  const slots = Math.max(0, host.maxSessions - host.activeSessions);
+  const slots = availableSlots(host);
   const coreCount = host.cpuPhysicalCores && host.cpuPhysicalCores > 0 ? host.cpuPhysicalCores : undefined;
   const threadCount = host.cpuThreads && host.cpuThreads > 0 ? host.cpuThreads : host.cpuCores || undefined;
   const cpuTopology = coreCount && threadCount
@@ -52,9 +52,9 @@ export function HostCard({ host, canManage = false, className = '', layout = 'ca
   const title = canManage ? <a className="card-primary-action" href={'#/admin/nodes?host=' + encodeURIComponent(host.id)} aria-label={t('copy.HostCard.a8db0cfd', { p0: host.name })}>{host.name}</a> : host.name;
   const memoryUsed = host.memoryMb > 0 && availableMemory != null ? Math.round(Math.min(100, Math.max(0, (1 - availableMemory / host.memoryMb) * 100))) : null;
   const diskUsed = host.diskTotalGb && host.diskFreeGb != null ? Math.round(Math.min(100, Math.max(0, (1 - host.diskFreeGb / host.diskTotalGb) * 100))) : null;
-  const slotChips = Array.from({ length: Math.min(host.maxSessions, 8) }, (_, index) => <span key={index} className="host-slot" data-busy={index < host.activeSessions || undefined}><TranslatedText message="copy.HostCard.5818f53c" values={{ p0: index + 1, p1: index < host.activeSessions ? t('ui.3d37f280c2e3') : t('ui.4abcbdc9262b') }} /></span>);
-  const footer = <div className="host-card-footer slot-occupancy" data-occupancy={state === 'online' ? slotOccupancyLevel(host.activeSessions, host.maxSessions) : 'unavailable'}><div className="host-capacity"><div><strong>{slots}</strong><span><TranslatedText message="copy.HostCard.76274147" values={{ p0: host.maxSessions }} /></span></div></div>{slotChips.length > 0 && <div className="host-slots" aria-label={t('ui.722dd5788da4')}>{slotChips}</div>}</div>;
-  return <article className={['host-card host-status-card interactive-card', layout === 'card' ? 'host-card-compact' : '', className].filter(Boolean).join(' ')} data-state={state} aria-label={host.name + ' · ' + stateLabel} title={stateLabel}>
+  const slotChips = state !== 'online' ? [] : Array.from({ length: Math.min(host.maxSessions, 8) }, (_, index) => <span key={index} className="host-slot" data-busy={index < host.activeSessions || undefined}><TranslatedText message="copy.HostCard.5818f53c" values={{ p0: index + 1, p1: index < host.activeSessions ? t('ui.3d37f280c2e3') : t('ui.4abcbdc9262b') }} /></span>);
+  const footer = <div className="host-card-footer slot-occupancy" data-occupancy={state === 'online' ? slotOccupancyLevel(host.activeSessions, host.maxSessions) : 'unavailable'}><div className="host-capacity"><div><strong>{state === 'online' ? slots : stateLabel}</strong>{state === 'online' && <span><TranslatedText message="copy.HostCard.76274147" values={{ p0: host.maxSessions }} /></span>}</div></div>{slotChips.length > 0 && <div className="host-slots" aria-label={t('ui.722dd5788da4')}>{slotChips}</div>}</div>;
+  return <article className={['host-card host-status-card interactive-card', layout === 'card' ? 'host-card-compact' : '', className].filter(Boolean).join(' ')} data-state={state} data-unresponsive={hostUnresponsive(host) || undefined} aria-label={host.name + ' · ' + stateLabel} title={stateLabel}>
     <div className="host-card-heading host-status-indicator"><div className="host-card-identity"><div><h3>{title}</h3><span className="host-address">{host.hostIp || t('ui.158e01cb16d7')}</span><NodeFreshness lastSeenAt={host.lastSeenAt} /></div></div></div>
     <div className="host-environment"><span>{hostEnvironment(host)}</span>{host.agentRuntime === 'container' && host.environmentType !== 'kubernetes-pod' && <span>{t('ui.a003e711dbb2')}</span>}</div>
     <div className="host-specs">

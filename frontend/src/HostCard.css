@@ -31,3 +31,7 @@
 .host-card .host-gpu-meter{display:grid;gap:4px;min-width:0}
 .host-card .host-gpu-meter>span{display:flex;justify-content:space-between;gap:8px;color:var(--ui-subtle);font-size:.75rem}
 .host-card .host-gpu-meter b{font-weight:500;font-variant-numeric:tabular-nums;color:var(--ui-text)}
+
+/* A node silent for more than 15 minutes must not resemble live capacity. */
+:root[data-effective-theme] .host-card.host-status-card[data-unresponsive="true"] { border-color:var(--host-state-color); background:color-mix(in srgb,var(--state-offline-bg) 28%,var(--ui-surface)); }
+.host-card[data-unresponsive="true"] .host-meter>span { background:var(--ui-subtle); }

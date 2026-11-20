@@ -13,7 +13,7 @@ import { HostCard } from './HostCard';
 import { AgentOnboardingDialog } from './AgentOnboardingDialog';
 import { HeadingSlot } from './HeadingSlot';
 import { hostSupportsGpu } from './launch-readiness';
-import { slotOccupancyLevel } from './host-availability';
+import { hostState, slotOccupancyLevel } from './host-availability';
 import './slot-occupancy.css';
 
 const errorText = (error: unknown) => error instanceof Error ? error.message : t('ui.8f9c4884b8f9');
@@ -181,7 +181,7 @@ function NodeDialog({ host, profiles, onClose, onRefresh }: { host: Host; profil
 
 
 function NodePoolSummary({ hosts }: { hosts: Host[] }) {
-  const online = hosts.filter(host => host.status === 'online' && !host.disabled);
+  const online = hosts.filter(host => hostState(host) === 'online');
   const disabled = hosts.filter(host => host.disabled).length;
   const totalSlots = online.reduce((sum, host) => sum + host.maxSessions, 0);
   const busySlots = online.reduce((sum, host) => sum + Math.min(host.activeSessions, host.maxSessions), 0);
