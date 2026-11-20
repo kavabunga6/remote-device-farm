@@ -73,3 +73,19 @@ for (const theme of ['light', 'dark'] as const) test(`stale USB inventory is una
   fresh = true; await page.reload();
   await expect(inventory.locator('.device-state-free')).toHaveCount(1);
 });
+
+test('paused nodes permit administrator cleanup while a lost heartbeat disables it', async ({ page }) => {
+  let fresh = true;
+  await page.route('**/api/me/notifications', r => r.fulfill({ json: { notifications: [] } }));
+  await page.route('**/api/hosts', async route => {
+    const host = (await (await route.fetch()).json()).hosts[0];
+    await route.fulfill({ json: { hosts: [{ ...host, status: 'online', disabled: true, lastSeenAt: new Date(Date.now() - (fresh ? 0 : 960_000)).toISOString(),
+      devices: [{ kind: 'usb-android', id: 'quarantined-phone', model: 'Phone', state: 'quarantined', reason: null }] }] } });
+  });
+  await page.goto('/#/admin/nodes');
+  const retry = page.locator('.device-inventory').getByRole('button');
+  await expect(retry).toBeEnabled();
+  fresh = false; await page.reload();
+  await expect(retry).toBeDisabled();
+  await expect(page.locator('.device-state-quarantined')).toHaveCount(1);
+});

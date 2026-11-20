@@ -7,6 +7,7 @@ import { DEVICE_KIND_LABEL, deviceStateLabel, inventoryDeviceState, physicalDevi
 
 // Admin view of physical devices per node. A quarantined device failed its wipe and is out of rotation; the
 // button asks the agent to wipe it again and releases it only if the agent verifies it clean.
+// Pausing rentals does not block administrator cleanup; a lost connection does.
 export function DeviceInventory({ hosts, onRefresh }: { hosts: Host[]; onRefresh: () => void }) {
   const can = useAccess();
   const [busyKey, setBusyKey] = useState('');
@@ -30,7 +31,7 @@ export function DeviceInventory({ hosts, onRefresh }: { hosts: Host[]; onRefresh
       {rows.map(({ host, device }) => { const key = `${host.id}|${device.id}`; const state = inventoryDeviceState(host, device); const stuck = device.state === 'quarantined' || device.state === 'cleaning' || device.state === 'unverified'; return <tr key={key} data-state={state}>
         <td>{device.model || device.id}<small>{device.id}</small></td><td>{DEVICE_KIND_LABEL[device.kind]}</td><td>{host.displayName || host.name}</td>
         <td><span className={'device-state device-state-' + state}>{deviceStateLabel(state)}</span>{device.reason && <small className="device-reason">{device.reason}</small>}</td>
-        <td>{can('nodes.manage') && stuck && <button type="button" className="button" disabled={busyKey === key || hostState(host) !== 'online'} onClick={() => void retry(host, device)}>{busyKey === key ? t('ui.4ad7ee0809e3') : t('ui.79f5e8bee339')}</button>}</td></tr>; })}
+        <td>{can('nodes.manage') && stuck && <button type="button" className="button" disabled={busyKey === key || hostState({ ...host, disabled: false }) !== 'online'} onClick={() => void retry(host, device)}>{busyKey === key ? t('ui.4ad7ee0809e3') : t('ui.79f5e8bee339')}</button>}</td></tr>; })}
     </tbody></table></div>
   </section>;
 }
