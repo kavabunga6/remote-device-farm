@@ -3784,5 +3784,10 @@
   "proxy.pending": "更改将用于后续下载。正在运行的任务继续使用原来的设置。",
   "proxy.reset": "放弃更改",
   "proxy.noProxy": "不使用代理（NO_PROXY）",
-  "proxy.noProxyHelp": "用逗号分隔域名和 IP 地址。域名包含其子域名；* 表示所有地址。不支持端口和 CIDR。"
+  "proxy.noProxyHelp": "用逗号分隔域名和 IP 地址。域名包含其子域名；* 表示所有地址。不支持端口和 CIDR。",
+  "session.workspace.dock": "底部面板",
+  "session.workspace.setDefault": "将此视图设为默认视图",
+  "session.workspace.defaultView": "默认视图",
+  "session.workspace.resizeDevice": "模拟器大小",
+  "session.workspace.resizeDock": "面板高度"
 }

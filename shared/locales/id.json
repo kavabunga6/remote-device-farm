@@ -3784,5 +3784,10 @@
   "proxy.pending": "Perubahan berlaku untuk unduhan berikutnya. Tugas yang sedang berjalan tetap menggunakan pengaturannya saat ini.",
   "proxy.reset": "Batalkan perubahan",
   "proxy.noProxy": "Lewati proxy (NO_PROXY)",
-  "proxy.noProxyHelp": "Pisahkan domain dan alamat IP dengan koma. Setiap domain mencakup subdomainnya; * berlaku untuk semua alamat. Port dan CIDR tidak didukung."
+  "proxy.noProxyHelp": "Pisahkan domain dan alamat IP dengan koma. Setiap domain mencakup subdomainnya; * berlaku untuk semua alamat. Port dan CIDR tidak didukung.",
+  "session.workspace.dock": "Panel bawah",
+  "session.workspace.setDefault": "Jadikan ini tampilan default",
+  "session.workspace.defaultView": "Tampilan default",
+  "session.workspace.resizeDevice": "Ukuran emulator",
+  "session.workspace.resizeDock": "Tinggi panel"
 }

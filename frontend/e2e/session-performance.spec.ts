@@ -29,7 +29,7 @@ async function openSession(page: Page, theme: 'light' | 'dark', language: 'ru' |
   await page.goto('/#/session/' + id);
   await expect(page.locator('html')).toHaveAttribute('lang', language);
   await expect(page.locator('html')).toHaveAttribute('data-effective-theme', theme);
-  await page.locator('.workspace-mode-buttons button').last().click();
+  await page.locator('[data-workspace-choice=tools]').click();
   await expect(page.locator('#tool-tab-performance')).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 }
@@ -115,7 +115,7 @@ test('live process samples follow visibility and pause for manual traces', async
   await expect(monitor.locator('time')).toHaveAttribute('datetime', '2026-01-01T12:00:06.000Z');
   expect(await panel.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
   await monitor.screenshot({ path: testInfo.outputPath('performance-light.png') });
-  await page.locator('.workspace-mode-buttons button').nth(1).click();
+  await page.locator('[data-workspace-choice=screen]').click();
   const paused = samples;
   await page.clock.runFor(10_500);
   expect(samples).toBe(paused);

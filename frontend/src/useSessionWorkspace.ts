@@ -1,9 +1,18 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
 
 const CONSOLE_WIDTH_KEY = 'rdf-console-width';
 const LANDSCAPE_CONSOLE_WIDTH_KEY = 'rdf-console-width-landscape';
 const CONSOLE_HEIGHT_KEY = 'rdf-console-height';
 
+export type WorkspaceMode = 'split' | 'dock' | 'screen' | 'tools';
+
+function readDefaultMode(key: string): WorkspaceMode {
+  try {
+    const value = window.localStorage.getItem(key);
+    if (value === 'dock' || value === 'screen' || value === 'tools') return value;
+  } catch { /* Storage may be unavailable. */ }
+  return 'split';
+}
 
 function readDimension(key: string, fallback: number, min: number, max: number): number {
   try {
@@ -18,23 +27,70 @@ function saveDimension(key: string, value: number): void {
   try { window.localStorage.setItem(key, String(value)); } catch { /* Storage may be unavailable. */ }
 }
 
+type ResizePointer = PointerEvent<HTMLDivElement>;
+export function useWorkspaceDimension(key: string, fallback: number, min: number, max: number) {
+  const [value, setValue] = useState(() => readDimension(key, fallback, min, max));
+  const drag = useRef<{ id: number; start: number; next: number; offset: (event: ResizePointer) => number } | null>(null);
+  const clamp = (next: number) => Math.max(min, Math.min(max, Math.round(next)));
+  const endResize = (event: ResizePointer) => {
+    if (drag.current?.id !== event.pointerId) return;
+    saveDimension(key, drag.current.next);
+    drag.current = null;
+  };
+  const pointerHandlers = (getOffset: (event: ResizePointer) => (move: ResizePointer) => number) => ({
+    onPointerDown(event: ResizePointer) {
+      if (event.button !== 0 || drag.current) return;
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      event.currentTarget.focus({ preventScroll: true });
+      drag.current = { id: event.pointerId, start: value, next: value, offset: getOffset(event) };
+    },
+    onPointerMove(event: ResizePointer) {
+      const active = drag.current;
+      if (!active || active.id !== event.pointerId) return;
+      active.next = clamp(active.start + active.offset(event));
+      setValue(active.next);
+    },
+    onPointerUp: endResize,
+    onPointerCancel: endResize,
+    onLostPointerCapture: endResize,
+  });
+  const resizeWithKeyboard = (event: KeyboardEvent<HTMLDivElement>, step: number, increase: string[], decrease: string[]) => {
+    const { key: pressed } = event;
+    if (!['Home', 'End', ...increase, ...decrease].includes(pressed)) return;
+    event.preventDefault();
+    const next = clamp(pressed === 'Home' ? min : pressed === 'End' ? max : value + (increase.includes(pressed) ? step : -step));
+    setValue(next);
+    saveDimension(key, next);
+  };
+  return { value, min, max, pointerHandlers, resizeWithKeyboard };
+}
+
 /** Measures the session workspace and owns its persisted resize controls. */
-export function useSessionWorkspace({ size, toolTab, isPreparing, terminalOutputRef }: {
+export function useSessionWorkspace({ size, toolTab, isPreparing, shared, userId, terminalOutputRef }: {
   size: { width: number; height: number };
   toolTab: string;
   isPreparing: boolean;
+  shared: boolean;
+  userId: string;
   terminalOutputRef: RefObject<HTMLDivElement | null>;
 }) {
-  const [workspaceMode, setWorkspaceMode] = useState<'split' | 'screen' | 'tools'>('split');
+  const defaultModeKey = 'rdf-session-default-view:' + userId;
+  const [defaultWorkspaceMode, setDefaultWorkspaceMode] = useState(() => readDefaultMode(defaultModeKey));
+  const [workspaceMode, changeWorkspaceMode] = useState<WorkspaceMode>(defaultWorkspaceMode);
   const [compactWorkspace, setCompactWorkspace] = useState(() => window.matchMedia('(max-width: 1200px)').matches);
-  const activeWorkspaceMode = compactWorkspace && workspaceMode === 'split' ? 'screen' : workspaceMode;
+  const requestedMode = shared ? 'split' : workspaceMode;
+  const activeWorkspaceMode = compactWorkspace && requestedMode === 'split' ? 'screen' : requestedMode;
+  const saveDefaultWorkspaceMode = () => {
+    setDefaultWorkspaceMode(activeWorkspaceMode);
+    try { window.localStorage.setItem(defaultModeKey, activeWorkspaceMode); } catch { /* Storage may be unavailable. */ }
+  };
   useEffect(() => {
     const media = window.matchMedia('(max-width: 1200px)');
     const update = () => setCompactWorkspace(media.matches);
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
-  const changeWorkspaceMode = (mode: 'split' | 'screen' | 'tools') => setWorkspaceMode(mode);
   const landscape = size.width > size.height;
   const widthKey = landscape ? LANDSCAPE_CONSOLE_WIDTH_KEY : CONSOLE_WIDTH_KEY;
   const [consoleWidths, setConsoleWidths] = useState<Record<string, number | null>>(() => ({
@@ -238,5 +294,5 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, terminalOutput
   const viewerWidth = Math.max(320, Math.ceil((landscape ? availableStageHeight : stageSize.height) * frameWidth / frameHeight + viewerInsets + 2));
   const displayScale = Math.min(Math.max(0, stageSize.width) / frameWidth, Math.max(0, stageSize.height) / frameHeight);
 
-  return { workspaceMode, activeWorkspaceMode, compactWorkspace, changeWorkspaceMode, consoleWidth, consoleResized, consoleHeight, consoleHeightResized, visibleConsoleSize, workspaceRef, screenRef, viewerWidth, displayScale, minConsoleWidth, maxConsoleWidth, maxConsoleHeight, resetConsoleSize, resizeConsoleWithKeyboard, startWidthResize, moveWidthResize, endWidthResize, startHeightResize, moveHeightResize, endHeightResize };
+  return { activeWorkspaceMode, compactWorkspace, changeWorkspaceMode, defaultWorkspaceMode, saveDefaultWorkspaceMode, consoleWidth, consoleResized, consoleHeight, consoleHeightResized, visibleConsoleSize, workspaceRef, screenRef, viewerWidth, displayScale, minConsoleWidth, maxConsoleWidth, maxConsoleHeight, resetConsoleSize, resizeConsoleWithKeyboard, startWidthResize, moveWidthResize, endWidthResize, startHeightResize, moveHeightResize, endHeightResize };
 }

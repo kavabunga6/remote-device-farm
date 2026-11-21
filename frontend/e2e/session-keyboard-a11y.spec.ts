@@ -92,10 +92,11 @@ for (const { width, height, theme, scale, language, labels } of [
       trigger.addEventListener('focus', () => { trigger.dataset.outsideFocuses = String(Number(trigger.dataset.outsideFocuses) + 1); });
     });
     if (process.env.UI_CAPTURE_DIR) await page.screenshot({ path: path.join(process.env.UI_CAPTURE_DIR, 'share-fixed-' + theme + '.png') });
-    const outside = page.locator('.workspace-mode-bar button').first();
+    const outside = page.locator('[data-workspace-choice=tools]');
     await outside.click();
     await expect(dialog).toHaveCount(0);
     await expect(outside).toBeFocused();
+    await expect(page.locator('.session-layout')).toHaveAttribute('data-workspace-mode', 'tools');
     await expect(trigger).toHaveAttribute('data-outside-focuses', '0');
   });
 }

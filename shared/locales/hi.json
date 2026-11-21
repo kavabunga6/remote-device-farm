@@ -3784,5 +3784,10 @@
   "proxy.pending": "बदली हुई सेटिंग्स अगले डाउनलोड पर लागू होंगी। चल रहे काम अपनी मौजूदा सेटिंग्स इस्तेमाल करते रहेंगे।",
   "proxy.reset": "बदलाव रद्द करें",
   "proxy.noProxy": "प्रॉक्सी बायपास करें (NO_PROXY)",
-  "proxy.noProxyHelp": "डोमेन और IP पते कॉमा से अलग करें। डोमेन में उसके सबडोमेन भी शामिल हैं; * सभी पतों पर लागू होता है। पोर्ट और CIDR समर्थित नहीं हैं।"
+  "proxy.noProxyHelp": "डोमेन और IP पते कॉमा से अलग करें। डोमेन में उसके सबडोमेन भी शामिल हैं; * सभी पतों पर लागू होता है। पोर्ट और CIDR समर्थित नहीं हैं।",
+  "session.workspace.dock": "निचला पैनल",
+  "session.workspace.setDefault": "इस दृश्य को डिफ़ॉल्ट बनाएँ",
+  "session.workspace.defaultView": "डिफ़ॉल्ट दृश्य",
+  "session.workspace.resizeDevice": "एमुलेटर का आकार",
+  "session.workspace.resizeDock": "पैनल की ऊँचाई"
 }

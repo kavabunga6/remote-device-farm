@@ -1,6 +1,6 @@
 import { TranslatedText } from './TranslatedText';
 import { useSessionAdb } from './useSessionAdb';
-import { useSessionWorkspace } from './useSessionWorkspace';
+import { useSessionWorkspace, useWorkspaceDimension } from './useSessionWorkspace';
 import { downloadFile as downloadKeyFile } from './browser-files';
 import { can } from './permissions';
 import { localizeText, getDirection, getLocale, t } from './i18n';
@@ -121,7 +121,17 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const stream = useSessionStream(sessionId, audioEnabled, connectionMode);
   const landscape = stream.size.width > stream.size.height;
   const [toolTab, setToolTab] = useState<ToolTabId>('console');
-  const { activeWorkspaceMode, compactWorkspace, changeWorkspaceMode, consoleWidth, consoleResized, consoleHeight, consoleHeightResized, visibleConsoleSize, workspaceRef, screenRef, viewerWidth, displayScale, minConsoleWidth, maxConsoleWidth, maxConsoleHeight, resetConsoleSize, resizeConsoleWithKeyboard, startWidthResize, moveWidthResize, endWidthResize, startHeightResize, moveHeightResize, endHeightResize } = useSessionWorkspace({ size: stream.size, toolTab, isPreparing, terminalOutputRef });
+  const { activeWorkspaceMode, compactWorkspace, changeWorkspaceMode, defaultWorkspaceMode, saveDefaultWorkspaceMode,
+    consoleWidth, consoleResized, consoleHeight, consoleHeightResized, visibleConsoleSize, workspaceRef, screenRef,
+    viewerWidth, displayScale, minConsoleWidth, maxConsoleWidth, maxConsoleHeight, resetConsoleSize, resizeConsoleWithKeyboard,
+    startWidthResize, moveWidthResize, endWidthResize, startHeightResize, moveHeightResize, endHeightResize,
+  } = useSessionWorkspace({ size: stream.size, toolTab, isPreparing, shared, userId: user.id, terminalOutputRef });
+  const docked = activeWorkspaceMode === 'dock';
+  const defaultView = activeWorkspaceMode === defaultWorkspaceMode;
+  const deviceSize = useWorkspaceDimension('rdf-device-frame-percent', 100, 35, 100);
+  const dockHeight = useWorkspaceDimension('rdf-tool-dock-height', 560, 420, 1200);
+  const frameScale = displayScale * (shared ? 1 : deviceSize.value / 100);
+  const dimensionLabel = new Intl.NumberFormat(getLocale(), { style: 'percent' }).format(deviceSize.value / 100);
   const touchIndicator = useTouchIndicator(sessionId, canReadEnvironment && !stream.nativeTouches);
   useEffect(() => {
     pointerStartRef.current = null; touchIndicator.clear();
@@ -478,8 +488,18 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
         {!shared && !isPreparing && <div className="workspace-mode-bar" role="group" aria-label={t('ui.7920d43e70db')}>
           <div className="workspace-mode-buttons">
             {!compactWorkspace && <button type="button" aria-pressed={activeWorkspaceMode === 'split'} onClick={() => changeWorkspaceMode('split')}><Icon name="grid" size={16} />{t('ui.de5c415b1d45')}</button>}
-            <button type="button" aria-pressed={activeWorkspaceMode === 'screen'} onClick={() => changeWorkspaceMode('screen')}><Icon name="phone" size={16} />{t('ui.c062341615dc')}</button>
-            <button type="button" aria-pressed={activeWorkspaceMode === 'tools'} onClick={() => changeWorkspaceMode('tools')}><Icon name="terminal" size={16} />{t('ui.4e90074f740b')}</button>
+            <button type="button" aria-pressed={docked} onClick={() => changeWorkspaceMode('dock')}><Icon name="dockBottom" size={16} />{t('session.workspace.dock')}</button>
+            <button type="button" className="workspace-standalone-view" data-workspace-choice="screen" aria-pressed={activeWorkspaceMode === 'screen'}
+              aria-label={t('ui.c062341615dc')} title={t('ui.c062341615dc')} onClick={() => changeWorkspaceMode('screen')}>
+              <Icon name="phone" size={16} /><span>{t('ui.c062341615dc')}</span>
+            </button>
+            <button type="button" className="workspace-standalone-view" data-workspace-choice="tools" aria-pressed={activeWorkspaceMode === 'tools'}
+              aria-label={t('ui.4e90074f740b')} title={t('ui.4e90074f740b')} onClick={() => changeWorkspaceMode('tools')}>
+              <Icon name="terminal" size={16} /><span>{t('ui.4e90074f740b')}</span>
+            </button>
+            <button type="button" className="workspace-default-view" aria-label={t('session.workspace.setDefault')} aria-pressed={defaultView}
+              title={t(defaultView ? 'session.workspace.defaultView' : 'session.workspace.setDefault')}
+              onClick={saveDefaultWorkspaceMode}><Icon name="star" size={16} /></button>
           </div>
         </div>}
       </div>
@@ -503,16 +523,43 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
           upload={!shared && can(user, 'sessions.files') ? { pending: uploading.length > 0, disabled: !isRunning || uploading.length > 0, onClick: () => chooseDeviceFiles() } : undefined} />
         <input ref={fileInputRef} type="file" multiple hidden onChange={event => { if (event.target.files) void uploadFiles(event.target.files); event.target.value = ''; }} />
         <div className="viewer-stage" ref={screenRef} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDragEnd={() => { dragDepthRef.current = 0; setDragging(false); }} onDrop={dropFiles}>
-          <div className={'device-screen ' + (landscape ? 'landscape' : 'portrait')} style={{ width: stream.size.width * displayScale + 'px', height: stream.size.height * displayScale + 'px' }}>
+          <div className="session-device-frame" style={{ width: stream.size.width * frameScale, height: stream.size.height * frameScale }}>
+          <div className={'device-screen ' + (landscape ? 'landscape' : 'portrait')}>
             <img ref={stream.imageRef} alt={t('ui.b4a6c9bc414c')} className={stream.format === 'image' ? 'active-frame' : ''} draggable={false} onLoad={() => setImageFrameReady(true)} onError={() => setImageFrameReady(false)} />
             <canvas ref={stream.canvasRef} className={stream.format === 'video' ? 'active-frame' : ''} />
             <div className="touch-layer" role="application" aria-label={t('ui.684de2e969ef')} tabIndex={readOnly ? -1 : 0} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerCancel} onLostPointerCapture={pointerCancel} onKeyDown={event => { if (event.key === 'Escape' || event.key === 'Backspace') { event.preventDefault(); navKey(4); } else if (event.key === 'Enter') { event.preventDefault(); navKey(session.deviceType === 'tv' ? 23 : 66); } else if (event.key.startsWith('Arrow')) { event.preventDefault(); navKey(({ ArrowUp: 19, ArrowDown: 20, ArrowLeft: 21, ArrowRight: 22 } as Record<string, number>)[event.key]); } }}><span ref={touchIndicator.markerRef} className="session-touch-marker" aria-hidden="true" hidden /></div>
             {(session && (session.status === 'error' || (session.error && (session.status === 'stopping' || session.status === 'stopped')))) ? <div className="stream-placeholder"><div className="placeholder-device"><Icon name="alert" size={34}/></div><h3>{t('ui.f70ff6228697')}</h3><p>{session.error || t('ui.2a05b00bc38f')}</p></div> : stream.status !== 'live' && <div className="stream-placeholder"><div className="placeholder-device"><Icon name="phone" size={38} /></div><h3>{stream.status === 'connecting' ? t('ui.bd77b9fa4fd6') : stream.status === 'unsupported' ? t('ui.3a6ec360f375') : t('ui.fb3ce9cae1e8')}</h3><p>{stream.streamError || t('ui.ebcb4d3177c6')}</p>{stream.status !== 'connecting' && <button className="button ghost-light" onClick={stream.reconnect}><Icon name="refresh" size={16} />{t('ui.2de34a1774f6')}</button>}</div>}
             {dragging && <div className="drop-overlay"><Icon name="upload" size={34} /><strong>{t('ui.9c12eed10791')}</strong><span>{t('ui.4b2f4b989bf1')}</span></div>}
           </div>
+          {!shared && ['nw', 'ne', 'sw', 'se'].map(corner => <div key={corner} className="device-resize-handle" data-corner={corner}
+            role="slider" tabIndex={corner === 'se' ? 0 : -1} aria-label={t('session.workspace.resizeDevice')}
+            aria-valuemin={deviceSize.min} aria-valuemax={deviceSize.max} aria-valuenow={deviceSize.value} aria-valuetext={dimensionLabel}
+            title={t('session.workspace.resizeDevice')}
+            {...deviceSize.pointerHandlers(event => {
+              const rect = event.currentTarget.parentElement!.getBoundingClientRect();
+              const x = event.clientX, y = event.clientY;
+              const dx = corner.endsWith('e') ? rect.width : -rect.width;
+              const dy = corner.startsWith('s') ? rect.height : -rect.height;
+              const factor = 2 * deviceSize.value / (dx * dx + dy * dy);
+              return move => ((move.clientX - x) * dx + (move.clientY - y) * dy) * factor;
+            })}
+            onKeyDown={event => deviceSize.resizeWithKeyboard(event, 5, ['ArrowUp', 'ArrowRight'], ['ArrowDown', 'ArrowLeft'])}
+          />)}
+          </div>
         </div>
       </section>
-      {!shared && <section className="tool-panel terminal-panel" aria-label={t('ui.fecfbc6e1053')} data-active-tool={toolTab} data-console-height-resized={consoleHeightResized && toolTab === 'console' && !catalogOpen || undefined}>
+      {!shared && <section className="tool-panel terminal-panel" aria-label={t('ui.fecfbc6e1053')} data-active-tool={toolTab} data-console-height-resized={!docked && consoleHeightResized && toolTab === 'console' && !catalogOpen || undefined}
+        style={docked ? { blockSize: dockHeight.value } : undefined}>
+        {docked && <div className="dock-height-handle" role="separator" aria-orientation="horizontal" tabIndex={0}
+          aria-label={t('session.workspace.resizeDock')} title={t('session.workspace.resizeDock')}
+          aria-valuemin={dockHeight.min} aria-valuemax={dockHeight.max} aria-valuenow={dockHeight.value}
+          {...dockHeight.pointerHandlers(event => {
+            const grip = event.currentTarget;
+            const scale = grip.getBoundingClientRect().height / grip.offsetHeight;
+            const y = event.clientY;
+            return move => (move.clientY - y) / scale;
+          })}
+          onKeyDown={event => dockHeight.resizeWithKeyboard(event, 32, ['ArrowDown'], ['ArrowUp'])}><span /></div>}
         <div className="tool-tabs" role="tablist" aria-label={t('ui.fecfbc6e1053')} onKeyDown={event => {
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !availableToolTabs.length) return;
           event.preventDefault();
@@ -523,11 +570,11 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
           setToolTab(id);
           event.currentTarget.querySelector<HTMLButtonElement>('#tool-tab-' + id)?.focus();
         }}>{availableToolTabs.map(([id, label]) => <button key={id} type="button" role="tab" id={'tool-tab-' + id} aria-controls={'tool-panel-' + id} aria-selected={toolTab === id} tabIndex={toolTab === id ? 0 : -1} className={toolTab === id ? 'active' : ''} onClick={() => setToolTab(id)}>{label}</button>)}</div>
-        <div className="console-width-handle" role="separator" aria-orientation="vertical" aria-label={t('ui.aad9553c58e7')} aria-valuemin={minConsoleWidth()} aria-valuemax={maxConsoleWidth()} aria-valuenow={visibleConsoleSize.width || Math.min(consoleWidth, maxConsoleWidth())} tabIndex={0} onPointerDown={startWidthResize} onPointerMove={moveWidthResize} onPointerUp={endWidthResize} onPointerCancel={endWidthResize} title={t('ui.84def31d6544')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'width')}><span /></div>
+        {!docked && <div className="console-width-handle" role="separator" aria-orientation="vertical" aria-label={t('ui.aad9553c58e7')} aria-valuemin={minConsoleWidth()} aria-valuemax={maxConsoleWidth()} aria-valuenow={visibleConsoleSize.width || Math.min(consoleWidth, maxConsoleWidth())} tabIndex={0} onPointerDown={startWidthResize} onPointerMove={moveWidthResize} onPointerUp={endWidthResize} onPointerCancel={endWidthResize} title={t('ui.84def31d6544')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'width')}><span /></div>}
         <div className="tool-content terminal-tool" id="tool-panel-console" role="tabpanel" aria-labelledby="tool-tab-console" data-catalog-open={catalogOpen || undefined} style={toolAllowed('console') && toolTab === 'console' ? undefined : { display: 'none' }}>
           <div className="terminal-topline"><div className="tool-header"><h2>{t('ui.415b2ea14558')}</h2><p>{t('ui.5a8b4be5b13d')}</p></div><div className="terminal-header-actions"><button type="button" className="console-size-reset icon-button" title={t('ui.acb4297e7d57')} aria-label={t('ui.acb4297e7d57')} onClick={resetConsoleSize} disabled={!consoleResized && !consoleHeightResized}><Icon name="refresh" size={16} /></button><button type="button" className="console-catalog-toggle" aria-expanded={catalogOpen} aria-controls="console-catalog-panel" onClick={() => { setSuggestionsOpen(false); setCatalogOpen(open => !open); }}><TranslatedText message="copy.SessionView.debcf21d" values={{ p0: getConsoleCommands().length }} /></button><button type="button" className="terminal-clear" onClick={() => setShellHistory([])} disabled={!shellHistory.length} title={t('ui.20dd55101aa2')}>{t('ui.8965271d3c97')}</button></div></div>
           <div className="terminal-output" ref={terminalOutputRef} style={{ height: consoleHeight }} aria-live="polite">{shellHistory.length ? shellHistory.map((line, index) => <div className="terminal-entry" key={index}><div className="terminal-command"><span aria-hidden="true">{t('ui.77d57e39b407')}</span> {line.command}</div>{line.result?.stdout && <pre>{line.result.stdout}</pre>}{line.result?.stderr && <pre className="terminal-stderr">{line.result.stderr}</pre>}{line.error && <pre className="terminal-stderr">{line.error}</pre>}{line.result && <small><TranslatedText message="copy.SessionView.0f771496" values={{ p0: line.result.exitCode }} /></small>}</div>) : <div className="terminal-empty"><strong>{t('ui.fadad01443a1')}</strong><p>{t('ui.087d5eca2dbf')}</p></div>}{shellBusy && <div className="terminal-running"><span className="mini-spinner" />{t('ui.176e44dd22ac')}</div>}</div>
-          <div className="console-height-handle" role="separator" aria-orientation="horizontal" aria-label={t('ui.61c0f7efe428')} aria-valuemin={180} aria-valuemax={maxConsoleHeight()} aria-valuenow={visibleConsoleSize.height || Math.min(consoleHeight, maxConsoleHeight())} tabIndex={0} onPointerDown={startHeightResize} onPointerMove={moveHeightResize} onPointerUp={endHeightResize} onPointerCancel={endHeightResize} title={t('ui.828ce3497805')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'height')}><span /></div>
+          {!docked && <div className="console-height-handle" role="separator" aria-orientation="horizontal" aria-label={t('ui.61c0f7efe428')} aria-valuemin={180} aria-valuemax={maxConsoleHeight()} aria-valuenow={visibleConsoleSize.height || Math.min(consoleHeight, maxConsoleHeight())} tabIndex={0} onPointerDown={startHeightResize} onPointerMove={moveHeightResize} onPointerUp={endHeightResize} onPointerCancel={endHeightResize} title={t('ui.828ce3497805')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'height')}><span /></div>}
           <div className="terminal-input-wrap">
             {catalogOpen && <div className="console-catalog" id="console-catalog-panel" aria-label={t('ui.0bf2af623b6f')} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); setCatalogOpen(false); commandInputRef.current?.focus(); } }}>
               <div className="console-catalog-search"><input value={catalogQuery} onChange={event => setCatalogQuery(event.target.value)} placeholder={t('ui.d65f680ec9dc')} aria-label={t('ui.a8ea2fb17773')} /><span><TranslatedText message="copy.SessionView.8ce621ed" values={{ p0: catalogResults.length }} /></span></div>

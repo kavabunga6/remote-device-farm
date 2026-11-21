@@ -3784,5 +3784,10 @@
   "proxy.pending": "Änderungen gelten für künftige Downloads. Laufende Aufgaben verwenden weiterhin ihre bisherigen Einstellungen.",
   "proxy.reset": "Änderungen verwerfen",
   "proxy.noProxy": "Proxy umgehen (NO_PROXY)",
-  "proxy.noProxyHelp": "Domains und IP-Adressen durch Kommas trennen. Jede Domain schließt ihre Subdomains ein; * gilt für alle Adressen. Ports und CIDR werden nicht unterstützt."
+  "proxy.noProxyHelp": "Domains und IP-Adressen durch Kommas trennen. Jede Domain schließt ihre Subdomains ein; * gilt für alle Adressen. Ports und CIDR werden nicht unterstützt.",
+  "session.workspace.dock": "Dock unten",
+  "session.workspace.setDefault": "Diese Ansicht als Standard verwenden",
+  "session.workspace.defaultView": "Standardansicht",
+  "session.workspace.resizeDevice": "Emulatorgröße",
+  "session.workspace.resizeDock": "Dockhöhe"
 }

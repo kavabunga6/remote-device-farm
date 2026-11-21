@@ -24,7 +24,7 @@ for (const variant of [
     } }));
     await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: [] } }));
     await page.goto('/#/session/' + sessionId);
-    if (!variant.split) await page.locator('.workspace-mode-buttons button').last().click();
+    if (!variant.split) await page.locator('[data-workspace-choice=tools]').click();
     await page.locator('#tool-tab-env').click();
     await expect(page.locator('html')).toHaveAttribute('lang', variant.language);
     await expect(page.locator('html')).toHaveAttribute('data-effective-theme', variant.theme);

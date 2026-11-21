@@ -3784,5 +3784,10 @@
   "proxy.pending": "تسري التغييرات على التنزيلات التالية. تواصل المهام الجارية استخدام إعداداتها الحالية.",
   "proxy.reset": "تجاهل التغييرات",
   "proxy.noProxy": "تجاوز الوكيل (NO_PROXY)",
-  "proxy.noProxyHelp": "نطاقات وعناوين IP مفصولة بفواصل. يشمل النطاق نطاقاته الفرعية؛ وتشمل * جميع العناوين. المنافذ وCIDR غير مدعومين."
+  "proxy.noProxyHelp": "نطاقات وعناوين IP مفصولة بفواصل. يشمل النطاق نطاقاته الفرعية؛ وتشمل * جميع العناوين. المنافذ وCIDR غير مدعومين.",
+  "session.workspace.dock": "لوحة سفلية",
+  "session.workspace.setDefault": "استخدام هذا العرض افتراضيًا",
+  "session.workspace.defaultView": "العرض الافتراضي",
+  "session.workspace.resizeDevice": "حجم المحاكي",
+  "session.workspace.resizeDock": "ارتفاع اللوحة"
 }

@@ -15142,5 +15142,25 @@
   "proxy.noProxyHelp": {
     "ru": "Домены и IP-адреса через запятую. Домен включает его поддомены; * — все адреса. Без портов и CIDR.",
     "en": "Comma-separated domains and IP addresses. A domain includes its subdomains; * matches all addresses. Ports and CIDR are not supported."
+  },
+  "session.workspace.dock": {
+    "ru": "Док снизу",
+    "en": "Bottom dock"
+  },
+  "session.workspace.setDefault": {
+    "ru": "Использовать этот вид по умолчанию",
+    "en": "Make this the default view"
+  },
+  "session.workspace.defaultView": {
+    "ru": "Вид по умолчанию",
+    "en": "Default view"
+  },
+  "session.workspace.resizeDevice": {
+    "ru": "Размер эмулятора",
+    "en": "Emulator size"
+  },
+  "session.workspace.resizeDock": {
+    "ru": "Высота дока",
+    "en": "Dock height"
   }
 }

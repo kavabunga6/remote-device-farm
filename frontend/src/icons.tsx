@@ -3,7 +3,7 @@ import type { SVGProps } from 'react';
 export type IconName =
   | 'globe' | 'pencil' | 'eye' | 'eyeOff' | 'grid' | 'phone' | 'server' | 'shield' | 'plus' | 'minus' | 'arrowRight' | 'chevronLeft'
   | 'chevronDown' | 'power' | 'rotate' | 'volume' | 'volumeOff' | 'headphones' | 'headphonesOff' | 'upload' | 'terminal' | 'more'
-  | 'sidebarCollapse' | 'sidebarExpand'
+  | 'sidebarCollapse' | 'sidebarExpand' | 'dockBottom'
   | 'sliders' | 'expand' | 'back' | 'home' | 'recent' | 'play' | 'refresh' | 'close' | 'check' | 'alert' | 'link' | 'monitor' | 'mapPin'
   | 'user' | 'logout' | 'keyboard' | 'copy' | 'download' | 'bolt' | 'search' | 'menu' | 'info' | 'wifi' | 'wifiOff' | 'key' | 'camera' | 'record' | 'recordScreen' | 'stop' | 'trash' | 'arrowDown' | 'arrowUp' | 'pause' | 'list' | 'star' | 'slots' | 'layers';
 
@@ -36,6 +36,7 @@ const paths: Record<IconName, React.ReactNode> = {
   headphonesOff: <><path d="m3 3 18 18M3 14v-3a9 9 0 0 1 1-4m4-4a9 9 0 0 1 13 8v3"/><rect x="3" y="13" width="5" height="7" rx="2"/><path d="M18 13h1a2 2 0 0 1 2 2v2"/></>,
   sidebarCollapse: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m7-11-3 3 3 3"/></>,
   sidebarExpand: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m5-11 3 3-3 3"/></>,
+  dockBottom: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 14h18"/></>,
   upload: <><path d="M12 16V3m-5 5 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></>,
   terminal: <><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m6 9 3 3-3 3m6 0h5"/></>,
   more: <><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></>,

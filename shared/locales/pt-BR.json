@@ -3784,5 +3784,10 @@
   "proxy.pending": "As alterações valem para os próximos downloads. As tarefas em andamento mantêm as configurações atuais.",
   "proxy.reset": "Descartar alterações",
   "proxy.noProxy": "Ignorar proxy (NO_PROXY)",
-  "proxy.noProxyHelp": "Domínios e endereços IP separados por vírgulas. Cada domínio inclui seus subdomínios; * se aplica a todos os endereços. Portas e CIDR não são aceitos."
+  "proxy.noProxyHelp": "Domínios e endereços IP separados por vírgulas. Cada domínio inclui seus subdomínios; * se aplica a todos os endereços. Portas e CIDR não são aceitos.",
+  "session.workspace.dock": "Painel inferior",
+  "session.workspace.setDefault": "Usar esta visualização como padrão",
+  "session.workspace.defaultView": "Visualização padrão",
+  "session.workspace.resizeDevice": "Tamanho do emulador",
+  "session.workspace.resizeDock": "Altura do painel"
 }

@@ -3784,5 +3784,10 @@
   "proxy.pending": "পরের ডাউনলোডগুলোতে নতুন সেটিংস কার্যকর হবে। চলমান কাজগুলো আগের সেটিংস ব্যবহার করতে থাকবে।",
   "proxy.reset": "পরিবর্তন বাতিল করুন",
   "proxy.noProxy": "প্রক্সি এড়িয়ে যান (NO_PROXY)",
-  "proxy.noProxyHelp": "কমা দিয়ে ডোমেন ও IP ঠিকানা আলাদা করুন। প্রতিটি ডোমেনের সাবডোমেনও অন্তর্ভুক্ত হবে; * সব ঠিকানায় প্রযোজ্য। পোর্ট ও CIDR সমর্থিত নয়।"
+  "proxy.noProxyHelp": "কমা দিয়ে ডোমেন ও IP ঠিকানা আলাদা করুন। প্রতিটি ডোমেনের সাবডোমেনও অন্তর্ভুক্ত হবে; * সব ঠিকানায় প্রযোজ্য। পোর্ট ও CIDR সমর্থিত নয়।",
+  "session.workspace.dock": "নিচের প্যানেল",
+  "session.workspace.setDefault": "এই ভিউটি ডিফল্ট করুন",
+  "session.workspace.defaultView": "ডিফল্ট ভিউ",
+  "session.workspace.resizeDevice": "এমুলেটরের আকার",
+  "session.workspace.resizeDock": "প্যানেলের উচ্চতা"
 }
