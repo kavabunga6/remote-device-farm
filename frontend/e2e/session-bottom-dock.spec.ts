@@ -150,3 +150,17 @@ test('the RTL phone-width dock keeps Logcat scrolling inside its own viewport', 
   await expect.poll(() => logViewport.evaluate(element => element.scrollTop)).toBeLessThan(logOffset);
   expect(await page.evaluate(() => window.scrollY)).toBe(pageOffset);
 });
+
+test('the bottom dock keeps page actions within a short horizontal viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await openSession(page);
+  await page.getByRole('button', { name: 'Док снизу', exact: true }).click();
+  await expect(page.locator(layout)).toHaveAttribute('data-workspace-mode', 'dock');
+  const actions = page.locator('.session-actions-toggle');
+  await expect(actions).toBeVisible();
+  await actions.click();
+  await expect(page.locator('.session-top-actions')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(845);
+  const tools = await documentRect(page.locator(panel));
+  expect(tools.width).toBeCloseTo((await documentRect(page.locator('.workspace-grid'))).width, 0);
+});

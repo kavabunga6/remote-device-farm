@@ -40,16 +40,17 @@
 .session-layout .session-actions-toggle{display:none}
 .session-layout .banner-warning,.session-layout .banner-error,.session-layout .shared-banner{margin:0 0 8px;padding:8px 12px;border-radius:8px;font-size:14px}
 .session-layout .banner-warning .button,.session-layout .banner-error button{min-height:32px;flex:none}
-@media(max-width:650px){
+@container session-heading (max-width:720px){
   .session-layout .session-title-top h1{font-size:20px}
   .session-layout .session-status-row{flex-wrap:wrap}
   .session-layout .session-actions-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;padding:0 8px;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-surface);color:var(--ui-text);font-size:13px}
   .session-layout .session-top-actions{display:none;position:absolute;inset-inline-end:0;top:40px;z-index:38;padding:10px;width:min(23rem,100%);box-sizing:border-box;border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface);box-shadow:0 12px 32px rgb(0 0 0 / .2)}
   .session-layout .session-top-actions[data-expanded]{display:flex;flex-wrap:wrap}
+  .session-layout .share-control .share-popover{position:fixed;top:72px;inset-inline:16px;width:auto;max-height:calc(100dvh - 88px)}
   .session-layout .rename-form{flex-wrap:wrap}
   .session-layout .rename-form input{flex-basis:100%}
-  .session-layout .banner-warning{flex-wrap:wrap}
 }
+@media(max-width:650px){.session-layout .banner-warning{flex-wrap:wrap}}
 
 /* ---------- Workspace ---------- */
 .session-layout .workspace-grid{display:grid;gap:1rem;align-items:start}
