@@ -47,6 +47,10 @@ sudo systemctl enable --now rdf-egress-firewall
 sudo rdf-egress-firewall.sh status
 ```
 
+Unit запускается вместе с Docker и повторно применяет политику при его перезапуске. После обновления
+unit повторите `sudo systemctl daemon-reload` и `sudo systemctl enable --now rdf-egress-firewall`,
+чтобы обновить зависимости автозапуска.
+
 Установите firewall и ресурс политики до предоставления доступа недоверенным пользователям. Без включённого
 `bridge-nf-call-iptables` или рабочего Docker hook скрипт откажется применять правила. Используйте файл политики
 из той же версии, что и агент; его копия внутри агента включается в Docker-образ и Linux-архив.
