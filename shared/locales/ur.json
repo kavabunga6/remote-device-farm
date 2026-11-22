@@ -3789,5 +3789,22 @@
   "session.workspace.setDefault": "اس منظر کو ڈیفالٹ بنائیں",
   "session.workspace.defaultView": "ڈیفالٹ منظر",
   "session.workspace.resizeDevice": "ایمولیٹر کا سائز",
-  "session.workspace.resizeDock": "پینل کی اونچائی"
+  "session.workspace.resizeDock": "پینل کی اونچائی",
+  "session.workspace.floating": "آلے کے اوپر",
+  "session.workspace.goDevice": "آلے پر جائیں",
+  "session.workspace.goTools": "ٹولز پر جائیں",
+  "session.workspace.goCommand": "کمانڈ پر جائیں",
+  "session.workspace.pan": "ورک اسپیس کھسکائیں",
+  "session.workspace.resetFloating": "ترتیب ری سیٹ کریں",
+  "session.workspace.windowSize": "سائز",
+  "session.workspace.deviceWindow": "ایمولیٹر",
+  "session.workspace.toolWindow": "ٹولز",
+  "session.workspace.canvas": "اسکرول کرنے کے قابل ورک اسپیس",
+  "session.workspace.moveWindow": "ونڈو کھسکائیں",
+  "session.workspace.resizeWindow": "ونڈو کا سائز بدلیں",
+  "session.workspace.windowDimensions": "ونڈو کا سائز · {name}",
+  "session.workspace.windowWidth": "چوڑائی، px",
+  "session.workspace.windowHeight": "اونچائی، px",
+  "session.workspace.fitWindow": "ورک اسپیس میں فٹ کریں",
+  "session.workspace.biggerWindow": "ورک اسپیس سے بڑا"
 }

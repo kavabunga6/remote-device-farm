@@ -3789,5 +3789,22 @@
   "session.workspace.setDefault": "এই ভিউটি ডিফল্ট করুন",
   "session.workspace.defaultView": "ডিফল্ট ভিউ",
   "session.workspace.resizeDevice": "এমুলেটরের আকার",
-  "session.workspace.resizeDock": "প্যানেলের উচ্চতা"
+  "session.workspace.resizeDock": "প্যানেলের উচ্চতা",
+  "session.workspace.floating": "ডিভাইসের ওপর",
+  "session.workspace.goDevice": "ডিভাইসে যান",
+  "session.workspace.goTools": "টুলে যান",
+  "session.workspace.goCommand": "কমান্ডে যান",
+  "session.workspace.pan": "ওয়ার্কস্পেস সরান",
+  "session.workspace.resetFloating": "বিন্যাস রিসেট করুন",
+  "session.workspace.windowSize": "আকার",
+  "session.workspace.deviceWindow": "এমুলেটর",
+  "session.workspace.toolWindow": "টুল",
+  "session.workspace.canvas": "স্ক্রল করা যায় এমন ওয়ার্কস্পেস",
+  "session.workspace.moveWindow": "উইন্ডো সরান",
+  "session.workspace.resizeWindow": "উইন্ডোর আকার বদলান",
+  "session.workspace.windowDimensions": "উইন্ডোর আকার · {name}",
+  "session.workspace.windowWidth": "প্রস্থ, px",
+  "session.workspace.windowHeight": "উচ্চতা, px",
+  "session.workspace.fitWindow": "ওয়ার্কস্পেসে মানানসই করুন",
+  "session.workspace.biggerWindow": "ওয়ার্কস্পেসের চেয়ে বড়"
 }

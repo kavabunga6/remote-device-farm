@@ -3789,5 +3789,22 @@
   "session.workspace.setDefault": "Usar esta visualização como padrão",
   "session.workspace.defaultView": "Visualização padrão",
   "session.workspace.resizeDevice": "Tamanho do emulador",
-  "session.workspace.resizeDock": "Altura do painel"
+  "session.workspace.resizeDock": "Altura do painel",
+  "session.workspace.floating": "Sobre o dispositivo",
+  "session.workspace.goDevice": "Ir ao dispositivo",
+  "session.workspace.goTools": "Ir às ferramentas",
+  "session.workspace.goCommand": "Ir ao comando",
+  "session.workspace.pan": "Mover área de trabalho",
+  "session.workspace.resetFloating": "Redefinir disposição",
+  "session.workspace.windowSize": "Tamanho",
+  "session.workspace.deviceWindow": "Emulador",
+  "session.workspace.toolWindow": "Ferramentas",
+  "session.workspace.canvas": "Área de trabalho rolável",
+  "session.workspace.moveWindow": "Mover janela",
+  "session.workspace.resizeWindow": "Redimensionar janela",
+  "session.workspace.windowDimensions": "Tamanho da janela · {name}",
+  "session.workspace.windowWidth": "Largura, px",
+  "session.workspace.windowHeight": "Altura, px",
+  "session.workspace.fitWindow": "Ajustar à área de trabalho",
+  "session.workspace.biggerWindow": "Maior que a área de trabalho"
 }

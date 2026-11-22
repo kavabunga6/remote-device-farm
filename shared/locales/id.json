@@ -3789,5 +3789,22 @@
   "session.workspace.setDefault": "Jadikan ini tampilan default",
   "session.workspace.defaultView": "Tampilan default",
   "session.workspace.resizeDevice": "Ukuran emulator",
-  "session.workspace.resizeDock": "Tinggi panel"
+  "session.workspace.resizeDock": "Tinggi panel",
+  "session.workspace.floating": "Di atas perangkat",
+  "session.workspace.goDevice": "Ke perangkat",
+  "session.workspace.goTools": "Ke alat",
+  "session.workspace.goCommand": "Ke perintah",
+  "session.workspace.pan": "Geser ruang kerja",
+  "session.workspace.resetFloating": "Reset tata letak",
+  "session.workspace.windowSize": "Ukuran",
+  "session.workspace.deviceWindow": "Emulator",
+  "session.workspace.toolWindow": "Alat",
+  "session.workspace.canvas": "Ruang kerja yang dapat digulir",
+  "session.workspace.moveWindow": "Pindahkan jendela",
+  "session.workspace.resizeWindow": "Ubah ukuran jendela",
+  "session.workspace.windowDimensions": "Ukuran jendela · {name}",
+  "session.workspace.windowWidth": "Lebar, px",
+  "session.workspace.windowHeight": "Tinggi, px",
+  "session.workspace.fitWindow": "Sesuaikan dengan ruang kerja",
+  "session.workspace.biggerWindow": "Lebih besar dari ruang kerja"
 }

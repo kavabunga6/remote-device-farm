@@ -3789,5 +3789,22 @@
   "session.workspace.setDefault": "इस दृश्य को डिफ़ॉल्ट बनाएँ",
   "session.workspace.defaultView": "डिफ़ॉल्ट दृश्य",
   "session.workspace.resizeDevice": "एमुलेटर का आकार",
-  "session.workspace.resizeDock": "पैनल की ऊँचाई"
+  "session.workspace.resizeDock": "पैनल की ऊँचाई",
+  "session.workspace.floating": "डिवाइस के ऊपर",
+  "session.workspace.goDevice": "डिवाइस पर जाएँ",
+  "session.workspace.goTools": "टूल पर जाएँ",
+  "session.workspace.goCommand": "कमांड पर जाएँ",
+  "session.workspace.pan": "कार्यस्थान खिसकाएँ",
+  "session.workspace.resetFloating": "लेआउट रीसेट करें",
+  "session.workspace.windowSize": "आकार",
+  "session.workspace.deviceWindow": "एमुलेटर",
+  "session.workspace.toolWindow": "टूल",
+  "session.workspace.canvas": "स्क्रॉल करने योग्य कार्यस्थान",
+  "session.workspace.moveWindow": "विंडो खिसकाएँ",
+  "session.workspace.resizeWindow": "विंडो का आकार बदलें",
+  "session.workspace.windowDimensions": "विंडो का आकार · {name}",
+  "session.workspace.windowWidth": "चौड़ाई, px",
+  "session.workspace.windowHeight": "ऊँचाई, px",
+  "session.workspace.fitWindow": "कार्यस्थान में फ़िट करें",
+  "session.workspace.biggerWindow": "कार्यस्थान से बड़ा"
 }

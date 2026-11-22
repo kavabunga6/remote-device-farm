@@ -3789,5 +3789,22 @@
   "session.workspace.setDefault": "将此视图设为默认视图",
   "session.workspace.defaultView": "默认视图",
   "session.workspace.resizeDevice": "模拟器大小",
-  "session.workspace.resizeDock": "面板高度"
+  "session.workspace.resizeDock": "面板高度",
+  "session.workspace.floating": "悬浮于设备上方",
+  "session.workspace.goDevice": "转到设备",
+  "session.workspace.goTools": "转到工具",
+  "session.workspace.goCommand": "转到命令",
+  "session.workspace.pan": "平移工作区",
+  "session.workspace.resetFloating": "重置布局",
+  "session.workspace.windowSize": "大小",
+  "session.workspace.deviceWindow": "模拟器",
+  "session.workspace.toolWindow": "工具",
+  "session.workspace.canvas": "可滚动工作区",
+  "session.workspace.moveWindow": "移动窗口",
+  "session.workspace.resizeWindow": "调整窗口大小",
+  "session.workspace.windowDimensions": "窗口大小 · {name}",
+  "session.workspace.windowWidth": "宽度，px",
+  "session.workspace.windowHeight": "高度，px",
+  "session.workspace.fitWindow": "适应工作区",
+  "session.workspace.biggerWindow": "大于工作区"
 }

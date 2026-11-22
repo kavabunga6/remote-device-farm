@@ -15162,5 +15162,73 @@
   "session.workspace.resizeDock": {
     "ru": "Высота дока",
     "en": "Dock height"
+  },
+  "session.workspace.floating": {
+    "ru": "Поверх кадра",
+    "en": "Over the device"
+  },
+  "session.workspace.goDevice": {
+    "ru": "К эмулятору",
+    "en": "Go to device"
+  },
+  "session.workspace.goTools": {
+    "ru": "К инструментам",
+    "en": "Go to tools"
+  },
+  "session.workspace.goCommand": {
+    "ru": "К команде",
+    "en": "Go to command"
+  },
+  "session.workspace.pan": {
+    "ru": "Панорама",
+    "en": "Pan workspace"
+  },
+  "session.workspace.resetFloating": {
+    "ru": "Сбросить раскладку",
+    "en": "Reset layout"
+  },
+  "session.workspace.windowSize": {
+    "ru": "Размер",
+    "en": "Size"
+  },
+  "session.workspace.deviceWindow": {
+    "ru": "Эмулятор",
+    "en": "Emulator"
+  },
+  "session.workspace.toolWindow": {
+    "ru": "Инструменты",
+    "en": "Tools"
+  },
+  "session.workspace.canvas": {
+    "ru": "Прокручиваемая рабочая область",
+    "en": "Scrollable workspace"
+  },
+  "session.workspace.moveWindow": {
+    "ru": "Переместить окно",
+    "en": "Move window"
+  },
+  "session.workspace.resizeWindow": {
+    "ru": "Изменить размер окна",
+    "en": "Resize window"
+  },
+  "session.workspace.windowDimensions": {
+    "ru": "Размер окна · {name}",
+    "en": "Window size · {name}"
+  },
+  "session.workspace.windowWidth": {
+    "ru": "Ширина, px",
+    "en": "Width, px"
+  },
+  "session.workspace.windowHeight": {
+    "ru": "Высота, px",
+    "en": "Height, px"
+  },
+  "session.workspace.fitWindow": {
+    "ru": "Вписать в область",
+    "en": "Fit to workspace"
+  },
+  "session.workspace.biggerWindow": {
+    "ru": "Больше области",
+    "en": "Larger than workspace"
   }
 }

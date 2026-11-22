@@ -3789,5 +3789,22 @@
   "session.workspace.setDefault": "Usar esta vista de forma predeterminada",
   "session.workspace.defaultView": "Vista predeterminada",
   "session.workspace.resizeDevice": "Tamaño del emulador",
-  "session.workspace.resizeDock": "Altura del panel"
+  "session.workspace.resizeDock": "Altura del panel",
+  "session.workspace.floating": "Sobre el dispositivo",
+  "session.workspace.goDevice": "Ir al dispositivo",
+  "session.workspace.goTools": "Ir a las herramientas",
+  "session.workspace.goCommand": "Ir al comando",
+  "session.workspace.pan": "Desplazar el área de trabajo",
+  "session.workspace.resetFloating": "Restablecer la disposición",
+  "session.workspace.windowSize": "Tamaño",
+  "session.workspace.deviceWindow": "Emulador",
+  "session.workspace.toolWindow": "Herramientas",
+  "session.workspace.canvas": "Área de trabajo desplazable",
+  "session.workspace.moveWindow": "Mover ventana",
+  "session.workspace.resizeWindow": "Cambiar tamaño de ventana",
+  "session.workspace.windowDimensions": "Tamaño de ventana · {name}",
+  "session.workspace.windowWidth": "Ancho, px",
+  "session.workspace.windowHeight": "Alto, px",
+  "session.workspace.fitWindow": "Ajustar al área de trabajo",
+  "session.workspace.biggerWindow": "Más grande que el área de trabajo"
 }

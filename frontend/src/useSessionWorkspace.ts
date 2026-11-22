@@ -4,12 +4,12 @@ const CONSOLE_WIDTH_KEY = 'rdf-console-width';
 const LANDSCAPE_CONSOLE_WIDTH_KEY = 'rdf-console-width-landscape';
 const CONSOLE_HEIGHT_KEY = 'rdf-console-height';
 
-export type WorkspaceMode = 'split' | 'dock' | 'screen' | 'tools';
+export type WorkspaceMode = 'split' | 'dock' | 'float' | 'screen' | 'tools';
 
 function readDefaultMode(key: string): WorkspaceMode {
   try {
     const value = window.localStorage.getItem(key);
-    if (value === 'dock' || value === 'screen' || value === 'tools') return value;
+    if (value === 'dock' || value === 'float' || value === 'screen' || value === 'tools') return value;
   } catch { /* Storage may be unavailable. */ }
   return 'split';
 }

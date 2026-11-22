@@ -3789,5 +3789,22 @@
   "session.workspace.setDefault": "استخدام هذا العرض افتراضيًا",
   "session.workspace.defaultView": "العرض الافتراضي",
   "session.workspace.resizeDevice": "حجم المحاكي",
-  "session.workspace.resizeDock": "ارتفاع اللوحة"
+  "session.workspace.resizeDock": "ارتفاع اللوحة",
+  "session.workspace.floating": "فوق الجهاز",
+  "session.workspace.goDevice": "الانتقال إلى الجهاز",
+  "session.workspace.goTools": "الانتقال إلى الأدوات",
+  "session.workspace.goCommand": "الانتقال إلى الأمر",
+  "session.workspace.pan": "تحريك مساحة العمل",
+  "session.workspace.resetFloating": "إعادة ضبط التخطيط",
+  "session.workspace.windowSize": "الحجم",
+  "session.workspace.deviceWindow": "المحاكي",
+  "session.workspace.toolWindow": "الأدوات",
+  "session.workspace.canvas": "مساحة عمل قابلة للتمرير",
+  "session.workspace.moveWindow": "تحريك النافذة",
+  "session.workspace.resizeWindow": "تغيير حجم النافذة",
+  "session.workspace.windowDimensions": "حجم النافذة · {name}",
+  "session.workspace.windowWidth": "العرض، px",
+  "session.workspace.windowHeight": "الارتفاع، px",
+  "session.workspace.fitWindow": "ملاءمة لحجم مساحة العمل",
+  "session.workspace.biggerWindow": "أكبر من مساحة العمل"
 }
