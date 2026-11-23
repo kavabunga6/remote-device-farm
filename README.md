@@ -10,6 +10,7 @@ Run Android emulators on your own Linux/KVM servers and use them from a browser,
 | --- | --- |
 | **MCP for AI assistants** | Request a device, install and open an APK, inspect screenshots, UI trees and Logcat, find or tap elements, wait for UI changes and release it through a [local stdio MCP package](docs/ci/mcp.md). |
 | **Browser device control** | Android screen, tap/swipe/text input, APK installation, screenshots, recording and device settings. [Sessions](docs/guides/sessions.md) |
+| **Session workspace** | Side-by-side and floating layouts, resizable windows with alignment guides, and a full-page Desk mode with detachable tool tabs and a window overview. [Workspace guide](docs/guides/sessions.md#рабочая-область) |
 | **ADB and session sharing** | Connect local development tools using personal ADB keys; share a session for viewing or control with expiration and revocation. [Access guide](docs/guides/sessions.md) |
 | **CI integrations and Gradle** | Reusable packages for seven CI platforms, a Gradle plugin, and Maestro/Appium examples. [Setup and validation](docs/ci/README.md) |
 | **Managed Appium (experimental)** | A session-scoped WebDriver API with a pinned Linux worker image; live automation remains under validation. [Status and limits](docs/ci/managed-appium.md) |

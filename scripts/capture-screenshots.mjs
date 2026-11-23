@@ -64,10 +64,21 @@ const images = versions.flatMap(({ api }, index) => [0, 1].map(older => ({
 
 const permissionCatalog = JSON.parse(readFileSync(resolve(root, 'shared/permissions.json'), 'utf8'));
 const qaPermissions = [...new Set([...permissionCatalog.user, 'profiles.view', 'images.view', 'logs.view'])];
+const floatingWindows = {
+  device: { left: 12, top: 12, width: 486, height: 842 },
+  tools: { left: 510, top: 12, width: 756, height: 842 },
+};
+const deskWindows = {
+  device: { left: 76, top: 84, width: 392, height: 832 },
+  tools: { left: 520, top: 64, width: 996, height: 392 },
+};
+const deskLogcat = { left: 623, top: 515, width: 850, height: 417 };
 const screens = [
   { id: 'sessions-dark', route: 'overview', theme: 'dark', selector: '.session-card' },
-  { id: 'device-dark', route: 'session/' + sid, theme: 'dark', selector: '.device-screen' },
-  { id: 'logcat-light', route: 'session/' + sid, theme: 'light', selector: '[role=tablist]', tab: 'Logcat' },
+  { id: 'device-dark', route: 'session/' + sid, theme: 'dark', selector: '.device-screen', layout: 'float' },
+  { id: 'logcat-light', route: 'session/' + sid, theme: 'light', selector: '[role=tablist]', tab: 'Logcat', layout: 'split' },
+  { id: 'desk-alignment-dark', route: 'session/' + sid, theme: 'dark', selector: '.device-screen', layout: 'desk', desk: 'alignment' },
+  { id: 'desk-overview-light', route: 'session/' + sid, theme: 'light', selector: '.device-screen', layout: 'desk', desk: 'overview' },
   { id: 'nodes-light', route: 'admin/nodes', theme: 'light', selector: '.host-card', fullPage: true },
   { id: 'agent-onboarding-dark', route: 'admin/nodes', theme: 'dark', selector: '.host-card', publicOrigin: true },
   { id: 'profiles-light', route: 'admin/profiles', theme: 'light', selector: '.admin-profile-row', fullPage: true },
@@ -83,7 +94,17 @@ try {
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.addInitScript(theme => { localStorage.setItem('rdf.language', 'en'); localStorage.setItem('rdf.theme', theme); }, screen.theme);
+    await page.addInitScript(({ theme, layout, desk, profileId, windows, logcat }) => {
+      localStorage.setItem('rdf.language', 'en');
+      localStorage.setItem('rdf.theme', theme);
+      if (layout) localStorage.setItem('rdf-session-default-view:u1', layout);
+      const scope = 'u1:' + encodeURIComponent('profile:' + profileId);
+      if (windows) localStorage.setItem(`rdf-session-floating-v3:${scope}:initial:base`, JSON.stringify({ front: 'tools', windows }));
+      if (desk) localStorage.setItem(`rdf-session-desk-widget-v1:${scope}:logs`, JSON.stringify(logcat));
+    }, {
+      theme: screen.theme, layout: screen.layout, desk: screen.desk, profileId: sessions[0].profileId,
+      windows: screen.desk ? deskWindows : screen.layout === 'float' ? floatingWindows : undefined, logcat: deskLogcat,
+    });
     if (screen.publicOrigin) await page.route('https://farm.example.test/**', async route => {
       const url = new URL(route.request().url());
       await route.fulfill({ response: await route.fetch({ url: base + url.pathname + url.search }) });
@@ -117,7 +138,7 @@ try {
       if (path === '/api/sessions') return route.fulfill({ json: { sessions } });
       if (path === '/api/sessions/' + sid) return route.fulfill({ json: { session: sessions[0] } });
       if (path === '/api/admin/image-management/registry') return route.fulfill({ json: { supported: true, repository: repo, items: images, maintenance: false } });
-      if (path === '/api/navigation-counts') return route.fulfill({ json: { counts: { sessions: 2, allSessions: 2, nodes: 1, profiles: profiles.length, users: 2, tokens: 2 } } });
+      if (path === '/api/navigation-counts') return route.fulfill({ json: { counts: { sessions: 2, allSessions: 2, nodes: 1, profiles: profiles.length, images: images.length, users: 2, tokens: 2 } } });
       if (screen.publicOrigin) return route.fallback();
       return route.continue();
     });
@@ -129,12 +150,36 @@ try {
     }
     if (screen.id === 'roles-light') await page.getByRole('button', { name: /^QA Engineer/ }).click();
     if (screen.tab) { await page.getByRole('tab', { name: screen.tab, exact: true }).click(); await page.locator('.log-panel').waitFor(); }
+    if (screen.layout) await page.waitForFunction(() => {
+      const frame = document.querySelector('.device-screen img.active-frame');
+      return frame?.complete && frame.naturalWidth > 0;
+    });
+    if (screen.tab || screen.desk) await page.locator('.log-panel .log-row').first().waitFor();
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(600);
+    if (screen.desk === 'alignment') {
+      const tools = await page.locator('[data-window="tools"]').boundingBox();
+      const widget = await page.locator('[data-window="widget:logs"]').boundingBox();
+      const grip = await page.locator('button[data-window-move="widget:logs"]').boundingBox();
+      if (!tools || !widget || !grip) throw new Error('Desk windows must be visible for the alignment capture');
+      const x = grip.x + grip.width / 2;
+      const y = grip.y + grip.height / 2;
+      const centerOffset = tools.x + tools.width / 2 - (widget.x + widget.width / 2);
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + centerOffset + 4, y, { steps: 8 });
+      await page.locator('[data-window-alignment-guide=x]').waitFor();
+    }
+    if (screen.desk === 'overview') {
+      await page.getByRole('button', { name: 'Window overview', exact: true }).click();
+      await page.getByRole('dialog', { name: 'Window overview', exact: true }).waitFor();
+      await page.waitForFunction(() => document.querySelectorAll('[data-window-preview]').length === 3);
+    }
     const geometry = await page.evaluate(() => ({ theme: document.documentElement.dataset.effectiveTheme, overflow: Math.max(0, document.documentElement.scrollWidth - innerWidth) }));
     if (errors.length || geometry.overflow > 1 || geometry.theme !== screen.theme) throw new Error(JSON.stringify({ screen: screen.id, errors, ...geometry }));
     const file = screen.id + '.png';
     saveCapture(file, await page.screenshot({ animations: 'disabled', fullPage: screen.fullPage === true }));
+    if (screen.desk === 'alignment') await page.mouse.up();
     manifest.screens.push({ file, route: screen.route, theme: screen.theme, horizontalOverflow: geometry.overflow, browserErrors: errors });
     console.log(file);
     await context.close();
