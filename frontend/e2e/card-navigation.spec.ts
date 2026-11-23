@@ -151,13 +151,12 @@ test('node token revoke, node occupants and journal rows expose their existing p
 
 for (const occupied of [false, true]) {
   test(`empty session card ${occupied ? 'opens queue options without free slots' : 'opens launch by pointer and keyboard'}`, async ({ page }) => {
+    const response = await page.request.get('/api/hosts');
+    await expect(response).toBeOK();
+    const inventory = await response.json();
+    for (const host of inventory.hosts) host.usedSlots = occupied ? host.slots : 0;
     await page.route('**/api/sessions', route => route.fulfill({ json: { sessions: [] } }));
-    await page.route('**/api/hosts', async route => {
-      const response = await route.fetch();
-      const data = await response.json();
-      for (const host of data.hosts) host.usedSlots = occupied ? host.slots : 0;
-      await route.fulfill({ json: data });
-    });
+    await page.route('**/api/hosts', route => route.fulfill({ json: inventory }));
     await page.goto('/');
     const card = page.locator('.session-create-card');
     const launch = card.getByRole('button', { name: 'Создать новую сессию', exact: true });

@@ -4,9 +4,19 @@ Desktop interface, 1600 × 1000 viewport, English. The mock API supplies demo pr
 
 ## Device session
 
-Screen controls, ADB access and device console.
+The **Over the device** layout with movable emulator and console windows, device controls and ADB access.
 
 ![Device session, dark theme](device-dark.png)
+
+## Desk
+
+The full-page workspace with a detached Logcat tab. A dashed guide shows the shared center line while the widget is being moved.
+
+![Desk with a vertical alignment guide, dark theme](desk-alignment-dark.png)
+
+**Window overview** brings any window to the front and lets detached tools return to the tab bar.
+
+![Desk window overview, light theme](desk-overview-light.png)
 
 ## Sessions
 
@@ -16,7 +26,7 @@ Running and starting devices.
 
 ## Logcat
 
-Log filters, follow/pause control and font size adjustment.
+The **Side by side** layout with application and severity filters, search, pause and font controls.
 
 ![Logcat, light theme](logcat-light.png)
 

@@ -21,9 +21,10 @@ export type NotificationInput = {
 };
 export type AppNotification = NotificationInput & { id: string; revision: number; count: number };
 type NotificationContext = {
-  notify: (notification: NotificationInput) => void;
+  notify: (notification: NotificationInput) => boolean;
   notifyError: (title: string, error: unknown, dialog?: HTMLElement | null) => void;
   dismiss: (id: string) => void;
+  clear: () => void;
 };
 const NotificationsContext = createContext<NotificationContext | null>(null);
 const MAX_NOTIFICATIONS = 5;
@@ -80,11 +81,21 @@ function limitNotifications(items: AppNotification[]): AppNotification[] {
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   useInterfaceLanguage();
   const [items, setItems] = useState<AppNotification[]>([]);
+  const [epoch, setEpoch] = useState(0);
+  const currentEpoch = useRef(0);
   const [modalTarget, setModalTarget] = useState<Element | null>(null);
   const [blocked, setBlocked] = useState(false);
   const nextId = useRef(0);
   const returnFocus = useRef<HTMLElement | null>(null);
   const restoreAfterDismiss = useRef(false);
+  const clear = useCallback(() => {
+    // Pending work can still call the callback it captured before logout.
+    currentEpoch.current += 1;
+    setEpoch(currentEpoch.current);
+    setItems([]);
+    returnFocus.current = null;
+    restoreAfterDismiss.current = false;
+  }, []);
   const dismiss = useCallback((id: string) => {
     const focusedToast = document.activeElement?.closest('[data-notification-id]');
     const restoreFocus = focusedToast?.getAttribute('data-notification-id') === id;
@@ -105,7 +116,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       .find(element => element.getClientRects().length > 0)?.focus();
   }, [items]);
   const notify = useCallback((input: NotificationInput) => {
-    if (!input.title.trim()) return;
+    if (epoch !== currentEpoch.current || !input.title.trim()) return false;
     if (document.activeElement instanceof HTMLElement && !document.activeElement.closest('.notification-stack')) returnFocus.current = document.activeElement;
     const key = input.key || [input.kind, input.title, input.messagePrefix ?? '', input.message ?? '', clip(input.details ?? '', 2000)].join('|');
     const normalized = { ...input, dialog: input.dialog?.isConnected ? input.dialog : null, title: clip(input.title.trim(), 160), message: input.message && clip(input.message, 500), messagePrefix: input.messagePrefix && clip(input.messagePrefix, 160), details: input.details && clip(input.details, MAX_DETAILS), key };
@@ -117,9 +128,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       // Errors remain visible ahead of background completion notices.
       return limitNotifications([...next.filter(value => value.kind === 'error'), ...next.filter(value => value.kind !== 'error')]);
     });
-  }, []);
-  const notifyError = useCallback((title: string, error: unknown, dialog?: HTMLElement | null) =>
-    notify({ kind: 'error', title, ...describeNotificationError(error), dialog }), [notify]);
+    return true;
+  }, [epoch]);
+  const notifyError = useCallback((title: string, error: unknown, dialog?: HTMLElement | null) => {
+    notify({ kind: 'error', title, ...describeNotificationError(error), dialog });
+  }, [notify]);
 
   useLayoutEffect(() => {
     const sync = () => {
@@ -140,7 +153,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-modal', 'open'] });
     return () => observer.disconnect();
   }, []);
-  const context = useMemo(() => ({ notify, notifyError, dismiss }), [notify, notifyError, dismiss, getLanguage()]);
+  const context = useMemo(() => ({ notify, notifyError, dismiss, clear }), [notify, notifyError, dismiss, clear, getLanguage()]);
   const pageItems = items.filter(item => !item.dialog?.isConnected);
   const dialogItems = modalTarget ? items.filter(item => item.dialog === modalTarget) : [];
   const renderToast = (item: AppNotification) => <AppToast key={item.id} notification={item} onClose={() => dismiss(item.id)} />;

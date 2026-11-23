@@ -18,7 +18,7 @@ const sharedAccessSeen = new Map<string, number>();
 
 // Grant holders must never learn owner-only details.
 export function hideOwnerData(session: Session): Session {
-  return { ...session, adbKeyId: null, containerId: null, error: null, hostId: '', profileId: '' };
+  return { ...session, adbKeyId: null, containerId: null, deviceId: null, error: null, hostId: '', profileId: '' };
 }
 
 export function modeAllows(access: Access, need: AccessNeed): boolean {

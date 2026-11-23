@@ -15142,5 +15142,77 @@
   "proxy.noProxyHelp": {
     "ru": "Домены и IP-адреса через запятую. Домен включает его поддомены; * — все адреса. Без портов и CIDR.",
     "en": "Comma-separated domains and IP addresses. A domain includes its subdomains; * matches all addresses. Ports and CIDR are not supported."
+  },
+  "session.workspace.setDefault": {
+    "ru": "Использовать этот вид по умолчанию",
+    "en": "Make this the default view"
+  },
+  "session.workspace.defaultView": {
+    "ru": "Вид по умолчанию",
+    "en": "Default view"
+  },
+  "session.workspace.resizeDevice": {
+    "ru": "Размер эмулятора",
+    "en": "Emulator size"
+  },
+  "session.workspace.floating": {
+    "ru": "Поверх кадра",
+    "en": "Over the device"
+  },
+  "session.workspace.resetFloating": {
+    "ru": "Сбросить раскладку",
+    "en": "Reset layout"
+  },
+  "session.workspace.canvas": {
+    "ru": "Прокручиваемая рабочая область",
+    "en": "Scrollable workspace"
+  },
+  "session.workspace.moveWindow": {
+    "ru": "Переместить окно",
+    "en": "Move window"
+  },
+  "session.workspace.resizeWindow": {
+    "ru": "Изменить размер окна",
+    "en": "Resize window"
+  },
+  "session.workspace.desk": {
+    "ru": "Стол",
+    "en": "Desk"
+  },
+  "session.workspace.leaveDesk": {
+    "ru": "Выйти из режима «Стол»",
+    "en": "Exit Desk"
+  },
+  "session.workspace.detachTool": {
+    "ru": "Отстыковать вкладку",
+    "en": "Detach tab"
+  },
+  "session.workspace.dockTool": {
+    "ru": "Вернуть во вкладки",
+    "en": "Return to tabs"
+  },
+  "session.workspace.dockHere": {
+    "ru": "Перетащите виджет сюда",
+    "en": "Drop a widget here"
+  },
+  "session.workspace.deskExitHint": {
+    "ru": "Нажмите Esc, чтобы выйти из режима «Стол».",
+    "en": "Press Esc to exit Desk."
+  },
+  "session.workspace.clearDefault": {
+    "ru": "Сбросить вид по умолчанию",
+    "en": "Clear default view"
+  },
+  "session.workspace.overview": {
+    "ru": "Обзор окон",
+    "en": "Window overview"
+  },
+  "session.workspace.overviewDock": {
+    "ru": "Вернуть «{name}» во вкладки",
+    "en": "Return {name} to tabs"
+  },
+  "session.workspace.exitDeskShort": {
+    "ru": "Выйти",
+    "en": "Exit"
   }
 }

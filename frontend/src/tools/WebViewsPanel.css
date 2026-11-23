@@ -1,4 +1,4 @@
-.session-layout .tool-panel > .webviews-panel {
+.session-layout :is(.tool-panel, .desk-tool-host) > .webviews-panel {
   flex: 1 1 auto;
   min-block-size: 0;
   overflow: auto;

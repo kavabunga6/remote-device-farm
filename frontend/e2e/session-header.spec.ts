@@ -33,6 +33,14 @@ for (const [width, height, theme, scale] of [[1366, 768, 'light', 1], [1920, 108
     writeFileSync(`../.tmp-ui/media-status/${width}-${theme}-${scale}-geometry.json`, JSON.stringify(geometry,null,2));
     const header = page.locator('.session-heading');
     const modes = page.getByRole('group', { name: 'Компоновка сессии' });
+    const layouts = modes.locator('.workspace-positioned-view');
+    await expect(layouts).toHaveCount(width > 1200 ? 2 : 1);
+    await expect(modes.getByRole('button', { name: 'Поверх кадра', exact: true })).toBeVisible();
+    await expect(modes.getByRole('button', { name: 'Док снизу', exact: true })).toHaveCount(0);
+    await expect.poll(() => modes.getByRole('button').evaluateAll(buttons => {
+      const heights = buttons.map(button => button.getBoundingClientRect().height);
+      return Math.max(...heights) - Math.min(...heights);
+    })).toBeLessThanOrEqual(1);
     if (width > 650) await expect.poll(() => header.evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(74 * scale);
     if (width > 650) await expect.poll(() => page.evaluate(() => {
       const status = document.querySelector('.session-heading .status-badge')!.getBoundingClientRect();
@@ -80,6 +88,30 @@ for (const [width, height, theme, scale] of [[1366, 768, 'light', 1], [1920, 108
     await page.getByRole('textbox', { name: 'Название сессии', exact: true }).press('Escape');
   });
 }
+
+test('a saved bottom dock opens side by side and only layouts can become default', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  const storageKey = 'rdf-session-default-view:u1';
+  await page.addInitScript(key => {
+    if (!localStorage.getItem(key)) localStorage.setItem(key, 'dock');
+  }, storageKey);
+  await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: [] } }));
+  await page.goto('/#/session/' + sessionId);
+  const layout = page.locator('.session-layout');
+  const defaultButton = layout.locator('.workspace-default-view');
+  await expect(layout).toHaveAttribute('data-workspace-mode', 'split');
+  await expect(defaultButton).toHaveAttribute('aria-pressed', 'true');
+  await layout.getByRole('button', { name: 'Инструменты', exact: true }).click();
+  await expect(layout).toHaveAttribute('data-workspace-mode', 'tools');
+  await expect(defaultButton).toBeDisabled();
+
+  await layout.getByRole('button', { name: 'Поверх кадра', exact: true }).click();
+  await expect(defaultButton).toBeEnabled();
+  await defaultButton.click();
+  expect(await page.evaluate(key => localStorage.getItem(key), storageKey)).toBe('float');
+  await page.reload();
+  await expect(layout).toHaveAttribute('data-workspace-mode', 'float');
+});
 
 test('ADB settings keep connection commands accessible from the compact header', async ({ page, context }) => {
   await page.setViewportSize({ width: 1366, height: 768 });

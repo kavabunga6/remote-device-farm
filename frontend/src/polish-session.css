@@ -40,16 +40,17 @@
 .session-layout .session-actions-toggle{display:none}
 .session-layout .banner-warning,.session-layout .banner-error,.session-layout .shared-banner{margin:0 0 8px;padding:8px 12px;border-radius:8px;font-size:14px}
 .session-layout .banner-warning .button,.session-layout .banner-error button{min-height:32px;flex:none}
-@media(max-width:650px){
+@container session-heading (max-width:720px){
   .session-layout .session-title-top h1{font-size:20px}
   .session-layout .session-status-row{flex-wrap:wrap}
   .session-layout .session-actions-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;padding:0 8px;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-surface);color:var(--ui-text);font-size:13px}
   .session-layout .session-top-actions{display:none;position:absolute;inset-inline-end:0;top:40px;z-index:38;padding:10px;width:min(23rem,100%);box-sizing:border-box;border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface);box-shadow:0 12px 32px rgb(0 0 0 / .2)}
   .session-layout .session-top-actions[data-expanded]{display:flex;flex-wrap:wrap}
+  .session-layout .share-control .share-popover{position:fixed;top:72px;inset-inline:16px;width:auto;max-height:calc(100dvh - 88px)}
   .session-layout .rename-form{flex-wrap:wrap}
   .session-layout .rename-form input{flex-basis:100%}
-  .session-layout .banner-warning{flex-wrap:wrap}
 }
+@media(max-width:650px){.session-layout .banner-warning{flex-wrap:wrap}}
 
 /* ---------- Workspace ---------- */
 .session-layout .workspace-grid{display:grid;gap:1rem;align-items:start}
@@ -125,7 +126,7 @@
   .session-layout .workspace-grid .viewer-stage:not(:fullscreen){height:var(--stage-fit)}
   .session-layout .console-width-handle{display:none}
   .session-layout .tool-panel{display:flex;flex-direction:column;height:calc(var(--stage-fit) + var(--session-viewer-chrome,108px));overflow:hidden}
-  .session-layout .tool-panel>:is(.tool-content,.info-panel,.env-panel,.apps-panel){flex:1 1 auto;min-height:0;overflow:auto}
+  .session-layout :is(.tool-panel,.desk-tool-host)>:is(.tool-content,.info-panel,.env-panel,.apps-panel){flex:1 1 auto;min-height:0;overflow:auto}
 }
 
 /* ---------- Tool card ---------- */
@@ -289,18 +290,25 @@
 
 
 /* Layout choices occupy the right end of the status row, without a separate toolbar. */
-.session-layout .workspace-mode-bar{display:flex;align-items:center;flex:none;margin:0 0 0 auto;padding:0;position:static}
+.session-layout .workspace-mode-bar{display:flex;align-items:center;flex:none;margin-inline-start:auto;padding:0;position:static}
 .session-layout .workspace-mode-buttons{display:flex;width:auto;gap:2px;padding:2px;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-surface)}
 .session-layout .workspace-mode-buttons button{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:26px;min-height:26px;padding:0 10px;border:0;border-radius:5px;font-size:14px;font-weight:600;color:var(--ui-subtle);background:transparent;white-space:nowrap}
 .session-layout .workspace-mode-buttons button>svg{display:block;flex:none;width:16px;height:16px}
+.session-layout :is(.workspace-quick-views,.workspace-layout-actions){display:flex;gap:2px;padding-inline-start:4px;border-inline-start:1px solid var(--ui-border)}
+.session-layout .workspace-standalone-view>span{display:none}
+.session-layout .workspace-mode-buttons button:hover{color:var(--ui-text)}
 .session-layout .workspace-mode-buttons button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}
 .session-layout .workspace-mode-buttons button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.session-layout .workspace-mode-buttons .workspace-default-view{padding-inline:.375rem;margin-inline-start:.125rem}
+.session-layout .workspace-default-view:disabled{opacity:.5}
+.session-layout .workspace-default-view[aria-pressed=true]{background:transparent}
+.session-layout .workspace-default-view[aria-pressed=true]>svg{fill:currentColor}
 .session-layout:not([data-shared])[data-workspace-mode=screen] .terminal-panel,.session-layout:not([data-shared])[data-workspace-mode=tools] .viewer-panel{display:none}
 .session-layout:not([data-shared])[data-workspace-mode=screen] .workspace-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"viewer";justify-content:center}
 .session-layout:not([data-shared])[data-workspace-mode=tools] .workspace-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"terminal"}
 .session-layout:not([data-shared])[data-workspace-mode=screen] .viewer-panel{width:min(100%,var(--viewer-width));justify-self:center}
 .session-layout:not([data-shared])[data-workspace-mode=tools] .tool-panel{height:var(--session-fit-height,600px);min-height:300px;display:flex;flex-direction:column;overflow:hidden}
-.session-layout:not([data-shared])[data-workspace-mode=tools] .tool-panel>:is(.tool-content,.info-panel,.env-panel,.apps-panel){flex:1 1 auto;min-height:0;overflow:auto}
+.session-layout:not([data-shared])[data-workspace-mode=tools] :is(.tool-panel,.desk-tool-host)>:is(.tool-content,.info-panel,.env-panel,.apps-panel){flex:1 1 auto;min-height:0;overflow:auto}
 .session-layout:not([data-shared])[data-workspace-mode=tools] .tool-panel .terminal-tool{overflow:hidden}
 .session-layout:not([data-shared])[data-workspace-mode=tools] .terminal-output{flex:1 1 0;min-height:5rem;max-height:none}
 .session-layout:not([data-shared])[data-workspace-mode=tools] .terminal-tool>:not(.terminal-output){flex:none}
@@ -391,7 +399,10 @@
 @media(min-width:1201px){.session-layout .workspace-grid{--stage-fit:max(260px,calc(var(--session-fit-height,700px) - var(--session-viewer-chrome,108px)))}}
 
 /* Use the actual available header width, including the user's interface scale. */
-@container session-heading (max-width:900px){
+@container session-heading (max-width:1200px){
+  .session-layout .workspace-reset-layout>span{display:none}
+}
+@container session-heading (max-width:1100px){
   .session-layout .session-status-row{column-gap:8px}
   .session-layout .session-status-items{gap:6px}
   .session-layout .adb-title-badge{padding-inline:8px;gap:6px}
@@ -409,3 +420,35 @@
 .session-layout[data-workspace-mode] .workspace-grid[data-landscape] .viewer-panel{align-self:start}
 .session-layout[data-workspace-mode] .workspace-grid[data-landscape] .viewer-stage:not(:fullscreen){box-sizing:content-box;height:auto;aspect-ratio:var(--device-aspect);max-height:max(200px,calc(var(--session-fit-height,600px) - var(--session-viewer-chrome,2px) - 24px));align-self:start}
 @media(min-width:1201px){.session-layout[data-shared] .workspace-grid[data-landscape]{grid-template-columns:minmax(0,min(100%,var(--viewer-width)))}}
+
+.session-device-frame{position:relative;flex:none}
+.session-device-frame>.device-screen{width:100%;height:100%}
+.device-resize-handle{
+  position:absolute;z-index:5;width:24px;height:24px;display:grid;place-items:center;
+  touch-action:none;user-select:none;color:var(--stage-ink);border-radius:4px;
+}
+.device-resize-handle::before{
+  content:"";width:10px;height:10px;box-sizing:border-box;border:solid currentColor;border-width:2px 0 0 2px;
+  filter:drop-shadow(0 1px 1px #000);opacity:.68;
+}
+.device-resize-handle:is(:hover,:focus-visible,:active)::before{opacity:1}
+.device-resize-handle:focus-visible{outline:2px solid var(--stage-ink);outline-offset:-3px}
+.device-resize-handle[data-corner=nw]{top:-10px;left:-10px;cursor:nwse-resize}
+.device-resize-handle[data-corner=ne]{top:-10px;right:-10px;cursor:nesw-resize}
+.device-resize-handle[data-corner=sw]{bottom:-10px;left:-10px;cursor:nesw-resize}
+.device-resize-handle[data-corner=se]{bottom:-10px;right:-10px;cursor:nwse-resize}
+.device-resize-handle[data-corner=ne]::before{rotate:90deg}
+.device-resize-handle[data-corner=sw]::before{rotate:-90deg}
+.device-resize-handle[data-corner=se]::before{rotate:180deg}
+
+@container session-heading (421px <= width <= 650px){
+  .session-layout .workspace-standalone-view>span{display:inline}
+}
+@container session-heading (max-width:540px){
+  .session-layout .workspace-mode-bar{max-width:100%;min-width:0}
+  .session-layout .workspace-mode-buttons{flex-wrap:wrap;min-width:0}
+}
+@container session-heading (max-width:420px){
+  .session-layout .workspace-mode-buttons button{padding-inline:.375rem}
+  .session-layout .workspace-enter-desk>span{display:none}
+}

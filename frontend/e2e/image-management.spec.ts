@@ -47,7 +47,9 @@ test('node cache cleanup submits only local image IDs for the selected node', as
     return route.fulfill({ json: { items: [item] } });
   });
   await page.goto('/#/admin/images'); await page.getByRole('button', { name: 'Кэш узлов', exact: true }).click();
-  const host = await page.locator('.image-node-field select').inputValue(); expect(host).not.toBe('');
+  const nodeSelect = page.locator('.image-node-field select');
+  await expect(nodeSelect).not.toHaveValue('');
+  const host = await nodeSelect.inputValue();
   await page.getByRole('button', { name: 'Удалить образ ' + item.package, exact: true }).click();
   const dialog = page.getByRole('alertdialog'); await expect(dialog.getByRole('checkbox')).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Выполнить очистку', exact: true }).click();
