@@ -85,8 +85,13 @@ async function fixture(page: Page, options: FixtureOptions = {}) {
   await page.goto('/#/session/' + sessionId);
   await expect(page.locator('[data-media=video]')).toHaveAttribute('data-state', 'live');
   await expect.poll(() => reads).toBeGreaterThan(0);
-  await expect(page.getByRole('button', { name: 'Начать запись экрана без звука', exact: true })).toBeEnabled();
   return { reads: () => reads };
+}
+
+async function startRecording(page: Page) {
+  const button = page.getByRole('button', { name: 'Начать запись экрана без звука', exact: true });
+  await expect(button).toBeEnabled();
+  await button.click();
 }
 async function send(page: Page, message: object) { await page.evaluate(value => (window as any).__sendTouchMessage(value), message); }
 
@@ -101,7 +106,7 @@ for (const landscape of [false, true]) {
       const box = (await touch.boundingBox())!;
       return { x: box.x + box.width * x, y: box.y + box.height * y };
     };
-    await page.getByRole('button', { name: 'Начать запись экрана без звука', exact: true }).click();
+    await startRecording(page);
     const recording = page.getByRole('button', { name: 'Остановить запись экрана', exact: true });
     await expect(recording).toHaveAttribute('aria-pressed', 'true');
     await expect(recording).toHaveCSS('color', 'rgb(255, 172, 167)');
@@ -186,7 +191,7 @@ test('native capability changes on identical video config suppress doubled overl
   await expect(marker).toBeHidden();
   await send(page, { type: 'video-frame', keyframe: true, data: 'AA==' });
   await page.mouse.up();
-  await page.getByRole('button', { name: 'Начать запись экрана без звука', exact: true }).click();
+  await startRecording(page);
   await page.mouse.move(box.x + box.width * .75, box.y + box.height * .6); await page.mouse.down();
   await expect(marker).toBeHidden(); await page.waitForTimeout(400); await page.mouse.up();
   const download = page.waitForEvent('download');
