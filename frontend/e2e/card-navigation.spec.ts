@@ -181,5 +181,6 @@ for (const occupied of [false, true]) {
       await expect(page).toHaveURL(/#\/admin\/nodes$/);
       await expect(page.getByRole('heading', { name: 'Узлы', level: 1, exact: true })).toBeVisible();
     }
+    await page.unrouteAll({ behavior: 'wait' });
   });
 }

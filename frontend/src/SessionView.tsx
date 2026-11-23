@@ -737,7 +737,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
       <div className="session-floating-canvas" ref={floatingCanvasRef}>
       {deskActive && <div className="desk-drag-surface" ref={dragSurfaceRef} hidden inert aria-hidden="true" />}
       <section className="viewer-panel" aria-label={t('ui.4547b46d3c0c')} ref={floatingDeviceRef}
-        data-window={floating ? 'device' : undefined} dir={floating ? getDirection() : undefined}>
+        data-window={floating ? 'device' : undefined}>
         {floating && <FloatingWindowResizeHandles name="device" />}
         <DeviceControls onKey={navKey} canControl={canControl} capture={capture} captureReady={captureReady}
           workspaceMove={floating && <FloatingWindowMove name="device" className="device-control" />}
