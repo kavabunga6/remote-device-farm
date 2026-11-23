@@ -163,7 +163,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     aspect: stream.status === 'live' ? stream.size.width / Math.max(1, stream.size.height) : undefined,
     viewportRef: workspaceRef, canvasRef: floatingCanvasRef, deviceRef: floatingDeviceRef, toolsRef: floatingToolsRef,
   });
-  const { jump: jumpFloating, snapWidgetPlacement } = floatingWorkspace;
+  const { jump: jumpFloating, snapWidgetPlacement, clearAlignmentGuides } = floatingWorkspace;
   useEffect(() => {
     if (!deskActive) { setWindowOverviewOpen(false); return; }
     const handleOverviewShortcut = (event: KeyboardEvent) => {
@@ -501,7 +501,8 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const hideToolPreview = useCallback(() => {
     setPreviewTool(null);
     if (dragSurfaceRef.current) dragSurfaceRef.current.hidden = true;
-  }, []);
+    clearAlignmentGuides();
+  }, [clearAlignmentGuides]);
 
   const endToolDrag = useCallback(() => {
     draggedTool.current = null;
@@ -517,7 +518,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   function showToolPreview(viewport: HTMLElement, x: number, y: number) {
     const surface = dragSurfaceRef.current;
     if (!surface) return;
-    const { left, top, width, height } = snapWidgetPlacement(deskWidgetPlacement(viewport, x, y));
+    const { left, top, width, height } = snapWidgetPlacement(deskWidgetPlacement(viewport, x, y), true);
     surface.style.transform = `translate(${left}px, ${top}px)`;
     surface.style.width = `${width}px`;
     surface.style.height = `${height}px`;

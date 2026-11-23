@@ -78,14 +78,18 @@ async function margins(canvas: Locator) {
   });
 }
 
-async function drag(page: Page, handle: Locator, dx: number, dy: number) {
+async function startDrag(page: Page, handle: Locator) {
   await handle.scrollIntoViewIfNeeded();
   const { x, y, width, height } = (await handle.boundingBox())!;
-  const startX = x + width / 2;
-  const startY = y + height / 2;
-  await page.mouse.move(startX, startY);
+  const origin = { x: x + width / 2, y: y + height / 2 };
+  await page.mouse.move(origin.x, origin.y);
   await page.mouse.down();
-  await page.mouse.move(startX + dx, startY + dy, { steps: 8 });
+  return origin;
+}
+
+async function drag(page: Page, handle: Locator, dx: number, dy: number) {
+  const origin = await startDrag(page, handle);
+  await page.mouse.move(origin.x + dx, origin.y + dy, { steps: 8 });
   await page.mouse.up();
 }
 
@@ -230,6 +234,60 @@ test('floating device and tools snap together outside Desk and restore their pos
   await expect(view.viewport).not.toHaveAttribute('data-desk');
   await expect.poll(() => bounds(device)).toEqual(snappedDevice);
   await expect.poll(() => bounds(tools)).toEqual(snappedTools);
+});
+
+test('floating stacked windows align at the left, center, and right with a temporary guide', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.addInitScript(() => {
+    localStorage.setItem('rdf-session-floating-v3:u1:profile%3Aa11-gpu:initial:base', JSON.stringify({ front: 'tools', windows: {
+      device: { left: 590, top: 85, width: 390, height: 360 },
+      tools: { left: 1030, top: 480, width: 490, height: 370 },
+    } }));
+  });
+  const view = await openSession(page);
+  await view.button('Поверх кадра').click();
+  await expect(view.viewport).not.toHaveAttribute('data-desk');
+  const device = view.window('device');
+  const tools = view.window('tools');
+  const guides = view.canvas.locator('[data-window-alignment-guide]');
+  const guide = view.canvas.locator('[data-window-alignment-guide=x]');
+  const neighbor = await bounds(device);
+  const initial = await bounds(tools);
+  const origin = await startDrag(page, view.move('tools'));
+  const moveTo = (x: number, y = initial.y) => page.mouse.move(origin.x + x - initial.x, origin.y + y - initial.y, { steps: 6 });
+
+  for (const anchor of [0, 0.5, 1]) {
+    const alignedX = neighbor.x + (neighbor.width - initial.width) * anchor;
+    await moveTo(alignedX + 6);
+    await expect.poll(() => bounds(tools)).toEqual({ ...initial, x: alignedX });
+    await expect(guides).toHaveCount(1);
+    await expect(guide).toHaveCSS('pointer-events', 'none');
+    await expect(guide).toHaveCSS('border-left-style', 'dashed');
+    const line = await bounds(guide);
+    expect(Math.abs(line.x - (neighbor.x + neighbor.width * anchor))).toBeLessThanOrEqual(1);
+    expect(line).toMatchObject({ y: neighbor.y, width: 1, height: initial.y + initial.height - neighbor.y });
+
+    if (anchor === 0) {
+      const freeX = neighbor.x + 110;
+      await moveTo(freeX);
+      await expect.poll(() => bounds(tools)).toEqual({ ...initial, x: freeX });
+      await expect(guides).toHaveCount(0);
+    }
+    if (anchor === 0.5) await page.screenshot({ path: testInfo.outputPath('vertical-alignment.png') });
+  }
+
+  const saved = { ...initial, x: neighbor.x + neighbor.width - initial.width, y: neighbor.y + neighbor.height };
+  await moveTo(saved.x + 6, saved.y + 12);
+  await expect.poll(() => bounds(tools)).toEqual(saved);
+  await expect(guides).toHaveCount(1);
+  await expect(guide).toBeVisible();
+  await page.mouse.up();
+  await expect(guides).toHaveCount(0);
+  expect(await bounds(tools)).toEqual(saved);
+  expect(await bounds(device)).toEqual(neighbor);
+  await page.reload();
+  await expect.poll(() => bounds(tools)).toEqual(saved);
 });
 
 test('Desk draws keyboard resize focus on the rounded window and keeps pointer resize targets invisible', async ({ page }) => {
@@ -831,6 +889,63 @@ test('Desk snaps moving widgets to nearby edges without blocking deliberate over
   await page.reload();
   await expect(grip).toBeVisible();
   await expect.poll(() => bounds(widget)).toEqual(attached);
+});
+
+test('Desk widgets align at the top, center, and bottom with a temporary guide', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1536, height: 900 });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.addInitScript(() => {
+    const profile = encodeURIComponent('profile:a11-gpu');
+    localStorage.setItem('rdf-session-default-view:u1', 'desk');
+    localStorage.setItem(`rdf-session-floating-v3:u1:${profile}:initial:base`, JSON.stringify({ front: 'tools', windows: {
+      device: { left: 90, top: 180, width: 390, height: 410 },
+      tools: { left: 1060, top: 600, width: 440, height: 360 },
+    } }));
+    const widgetKey = `rdf-session-desk-widget-v1:u1:${profile}:logs`;
+    if (localStorage.getItem(widgetKey) === null) {
+      localStorage.setItem(widgetKey, JSON.stringify({ left: 560, top: 390, width: 420, height: 360 }));
+    }
+  });
+  const view = await openSession(page);
+  await expect(view.viewport).toHaveAttribute('data-desk', 'true');
+  const device = view.window('device');
+  const widget = view.canvas.locator('[data-window="widget:logs"]');
+  const grip = widget.locator('button[data-window-move="widget:logs"]');
+  const guides = view.canvas.locator('[data-window-alignment-guide]');
+  const guide = view.canvas.locator('[data-window-alignment-guide=y]');
+  const neighbor = await bounds(device);
+  const initial = await bounds(widget);
+  const origin = await startDrag(page, grip);
+  const moveTo = (y: number) => page.mouse.move(origin.x, origin.y + y - initial.y, { steps: 6 });
+
+  for (const anchor of [0, 0.5, 1]) {
+    const alignedY = neighbor.y + (neighbor.height - initial.height) * anchor;
+    await moveTo(alignedY + 6);
+    await expect.poll(() => bounds(widget)).toEqual({ ...initial, y: alignedY });
+    await expect(guides).toHaveCount(1);
+    await expect(guide).toHaveCSS('pointer-events', 'none');
+    await expect(guide).toHaveCSS('border-top-style', 'dashed');
+    const line = await bounds(guide);
+    expect(Math.abs(line.y - (neighbor.y + neighbor.height * anchor))).toBeLessThanOrEqual(1);
+    expect(line).toMatchObject({ x: neighbor.x, width: initial.x + initial.width - neighbor.x, height: 1 });
+
+    if (anchor === 0) {
+      const freeY = neighbor.y + 145;
+      await moveTo(freeY);
+      await expect.poll(() => bounds(widget)).toEqual({ ...initial, y: freeY });
+      await expect(guides).toHaveCount(0);
+    }
+    if (anchor === 0.5) await page.screenshot({ path: testInfo.outputPath('horizontal-alignment.png') });
+  }
+
+  await page.mouse.up();
+  await expect(guides).toHaveCount(0);
+  const saved = { ...initial, y: neighbor.y + neighbor.height - initial.height };
+  expect(await bounds(widget)).toEqual(saved);
+  expect(await bounds(device)).toEqual(neighbor);
+  await page.reload();
+  await expect(view.viewport).toHaveAttribute('data-desk', 'true');
+  await expect.poll(() => bounds(widget)).toEqual(saved);
 });
 
 test('Desk snaps a resized edge and commits the release position', async ({ page }) => {

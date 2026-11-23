@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
-import { snapFloatingWindow } from './floatingWindowSnap';
+import { snapFloatingWindow, type AlignmentGuide } from './floatingWindowSnap';
 
 export type FloatingWindowName = 'device' | 'tools';
 type WidgetName = `widget:${string}`;
@@ -273,6 +273,7 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
   let layerOrder: WorkspaceWindowName[] = [...widgets.keys()];
   let previewTargets: ReadonlyMap<WorkspaceWindowName, DOMRectReadOnly> | null = null;
   let previewedPanels = new Set<HTMLElement>();
+  const guideLines = new Map<AlignmentGuide['axis'], HTMLDivElement>();
   resetBaseLayerOrder();
 
   function getPanel(name: WorkspaceWindowName) {
@@ -302,8 +303,8 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     return workspaceWindowName(name) && getPanel(name) === owner ? name : undefined;
   }
 
-  function snapBounds(bounds: Bounds, scale: Size, handle?: Handle): Bounds {
-    if (previewTargets) return bounds;
+  function snapBounds(bounds: Bounds, scale: Size, handle?: Handle) {
+    if (previewTargets) return { bounds, guides: [] };
     const neighbors: Bounds[] = [];
     for (const name of layerOrder) {
       if (name === handle?.name || !visible(name)) continue;
@@ -317,6 +318,28 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
       x: WINDOW_SNAP_DISTANCE / scale.width,
       y: WINDOW_SNAP_DISTANCE / scale.height,
     }, { min: MARGIN, max: MAX_WINDOW_SIZE }, resize);
+  }
+
+  function showAlignmentGuides(guides: readonly AlignmentGuide[] = []) {
+    for (const [axis, line] of guideLines) {
+      if (guides.some(guide => guide.axis === axis)) continue;
+      line.remove();
+      guideLines.delete(axis);
+    }
+    for (const { axis, position, start, end } of guides) {
+      let line = guideLines.get(axis);
+      if (!line) {
+        line = document.createElement('div');
+        line.dataset.windowAlignmentGuide = axis;
+        line.setAttribute('aria-hidden', 'true');
+        guideLines.set(axis, line);
+        canvas.append(line);
+      }
+      const vertical = axis === 'x';
+      line.style.left = `${vertical ? position : start}px`;
+      line.style.top = `${vertical ? start : position}px`;
+      line.style[vertical ? 'height' : 'width'] = `${end - start}px`;
+    }
   }
 
   function paintPreviews() {
@@ -475,7 +498,8 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     if (!previous) return false;
     const proposed = adjust(active, active.startBounds, delta);
     const returningToTabs = active.kind === 'move' && !windowName(active.name) && active.moved && findDockTarget(active.name, active.client);
-    const next = active.moved && !returningToTabs ? snapBounds(proposed, active.scale, active) : proposed;
+    const { bounds: next, guides } = active.moved && !returningToTabs ? snapBounds(proposed, active.scale, active) : { bounds: proposed, guides: [] };
+    showAlignmentGuides(guides);
     if (previous.left === next.left && previous.top === next.top && previous.width === next.width && previous.height === next.height) return false;
     setBounds(active.name, next);
     paint();
@@ -525,6 +549,7 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     viewport.removeAttribute('data-panning');
     viewport.removeAttribute('data-window-drag');
     showDockTarget(null);
+    showAlignmentGuides();
     if (viewport.hasPointerCapture(active.id)) viewport.releasePointerCapture(active.id);
     if (event && !customized) restartSizing();
     if (event?.type === 'pointerup' && active.kind === 'move' && active.moved && !windowName(active.name)
@@ -533,6 +558,7 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
 
   function applyReset(saved?: Arrangement | null) {
     finishGesture();
+    showAlignmentGuides();
     customized = Boolean(saved);
     canMigrate = false;
     arrangement = saved ?? initialArrangement(viewport, panels.device, aspect ?? DEFAULT_ASPECT);
@@ -644,14 +670,18 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     },
     previewWindows(targets: ReadonlyMap<WorkspaceWindowName, DOMRectReadOnly>) {
       finishGesture();
+      showAlignmentGuides();
       previewTargets = targets;
       paintPreviews();
     },
     clearWindowPreviews,
-    snapWidgetPlacement(bounds: Bounds) {
+    snapWidgetPlacement(bounds: Bounds, showGuides: boolean) {
       const scale = scaleFor(viewport, viewport.getBoundingClientRect());
-      return snapBounds(bounds, scale);
+      const snapped = snapBounds(bounds, scale);
+      if (showGuides) showAlignmentGuides(snapped.guides);
+      return snapped.bounds;
     },
+    clearAlignmentGuides: showAlignmentGuides,
     reset() {
       generation = storage.reset();
       applyReset();
@@ -675,6 +705,7 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
       listeners.abort();
       observer.disconnect();
       finishGesture();
+      showAlignmentGuides();
       clearWindowPreviews();
       viewport.querySelector('[data-pointer-resize-focus]')?.removeAttribute('data-pointer-resize-focus');
       for (const panel of Object.values(panels)) clearWindowStyles(panel);
@@ -718,7 +749,8 @@ export function useFloatingSessionWorkspace({ active, userId, layoutId, legacyDe
     jump: (name: WorkspaceWindowName) => workspace.current?.jump(name),
     previewWindows: (targets: ReadonlyMap<WorkspaceWindowName, DOMRectReadOnly>) => workspace.current?.previewWindows(targets),
     clearWindowPreviews: () => workspace.current?.clearWindowPreviews(),
-    snapWidgetPlacement: (bounds: Bounds) => workspace.current?.snapWidgetPlacement(bounds) ?? bounds,
+    snapWidgetPlacement: (bounds: Bounds, showGuides = false) => workspace.current?.snapWidgetPlacement(bounds, showGuides) ?? bounds,
+    clearAlignmentGuides: () => workspace.current?.clearAlignmentGuides(),
     registerWidget(name: WidgetName, element: HTMLElement, bounds: WidgetBounds, options?: WidgetOptions) {
       const previous = widgets.current.get(name);
       if (previous) workspace.current?.removeWidget(name, previous.element);

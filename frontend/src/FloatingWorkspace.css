@@ -68,6 +68,11 @@ body:has(.session-layout[data-desk])>.notification-stack:not(.notification-stack
 .tool-tabs [role=tab][draggable=true]{cursor:grab}
 .workspace-grid[data-tab-drag] .tool-tabs [role=tab][draggable=true]{cursor:grabbing}
 .desk-drag-surface{position:absolute;top:0;left:0;z-index:20;pointer-events:none}
+.session-floating-canvas>[data-window-alignment-guide]{
+  position:absolute;z-index:21;box-sizing:border-box;pointer-events:none;border:0;
+}
+.session-floating-canvas>[data-window-alignment-guide=x]{width:1px;border-left:1px dashed var(--accent)}
+.session-floating-canvas>[data-window-alignment-guide=y]{height:1px;border-top:1px dashed var(--accent)}
 .session-layout[data-desk] .desk-drag-surface>.desk-widget{
   display:flex;flex-direction:column;box-sizing:border-box;width:100%;height:100%;
   min-width:0;min-height:0;margin:0;overflow:hidden;
