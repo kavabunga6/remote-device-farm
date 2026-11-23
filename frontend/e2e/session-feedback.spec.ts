@@ -33,14 +33,20 @@ for (const [width, theme, scale] of [[1440, 'light', 1], [1440, 'dark', 1.25], [
 }
 
 test('ready feedback commits with the session card and does not replay a late server notification', async ({ page }) => {
+  const response = await page.request.get('/api/sessions');
+  await expect(response).toBeOK();
+  const inventory = await response.json();
   await page.clock.install();
   let running = false, lateNotice = false;
-  await page.route('**/api/sessions', async route => {
-    const data = await (await route.fetch()).json();
-    data.sessions = data.sessions.map((session: any) => ({ ...session, state: running ? 'running' : 'starting' }));
-    await route.fulfill({ json: data });
+  let lateNoticeDelivered = false;
+  await page.route('**/api/sessions', route => route.fulfill({ json: {
+    ...inventory, sessions: inventory.sessions.map((session: any) => ({ ...session, state: running ? 'running' : 'starting' })),
+  } }));
+  await page.route('**/api/me/notifications', async route => {
+    const notifications = lateNotice ? [{ id: sessionId, sessionId, kind: 'session.ready', title: 'Устройство готово', body: 'Android 11', createdAt: new Date().toISOString() }] : [];
+    await route.fulfill({ json: { notifications } });
+    if (notifications.length) lateNoticeDelivered = true;
   });
-  await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: lateNotice ? [{ id: sessionId, sessionId, kind: 'session.ready', title: 'Устройство готово', body: 'Android 11', createdAt: new Date().toISOString() }] : [] } }));
   await page.goto('/#/overview');
   await expect(page.locator('.session-card').first()).toContainText('Запускается');
   await page.evaluate(() => {
@@ -56,6 +62,7 @@ test('ready feedback commits with the session card and does not replay a late se
   expect(await page.evaluate(() => (window as any).__readyTrace)).not.toContain(false);
   await page.locator('.notification-close').click();
   lateNotice = true; await page.clock.fastForward(10_000);
+  await expect.poll(() => lateNoticeDelivered).toBe(true);
   await expect(page.locator('.notification-toast')).toHaveCount(0);
 });
 
