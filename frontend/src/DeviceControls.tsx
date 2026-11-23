@@ -34,6 +34,7 @@ type Props = {
   canControl: boolean;
   textInput: ReactNode;
   audio: ReactNode;
+  workspaceMove?: ReactNode;
   rotate?: { landscape: boolean; busy: boolean; onClick: () => void };
   network?: { enabled: boolean; busy: boolean; onClick: () => void };
   upload?: { pending: boolean; disabled: boolean; onClick: () => void };
@@ -41,13 +42,14 @@ type Props = {
   captureReady: boolean;
 };
 
-export function DeviceControls({ onKey, canControl, textInput, audio, rotate, network, upload, capture, captureReady }: Props) {
+export function DeviceControls({ onKey, canControl, textInput, audio, workspaceMove, rotate, network, upload, capture, captureReady }: Props) {
   const seconds = capture.elapsedSeconds;
   const recordingTime = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
   const androidButton = ([icon, message, code]: (typeof androidNavigation | typeof androidHardware)[number]) =>
     <Control key={code} icon={icon} label={t(message)} onClick={() => onKey(code)} disabled={!canControl} />;
 
   return <div className="device-controls" role="group" aria-label={t('device.controls')}>
+    {workspaceMove}
     <div className="control-group">
       {androidNavigation.map(androidButton)}
       {rotate && <Control icon="rotate" label={t('ui.4bfe24c8f020')} aria-pressed={rotate.landscape} data-state={rotate.landscape ? 'enabled' : undefined}

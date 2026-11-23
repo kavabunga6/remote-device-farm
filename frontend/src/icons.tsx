@@ -3,14 +3,15 @@ import type { SVGProps } from 'react';
 export type IconName =
   | 'globe' | 'pencil' | 'eye' | 'eyeOff' | 'grid' | 'phone' | 'server' | 'shield' | 'plus' | 'minus' | 'arrowRight' | 'chevronLeft'
   | 'chevronDown' | 'power' | 'rotate' | 'volume' | 'volumeOff' | 'headphones' | 'headphonesOff' | 'upload' | 'terminal' | 'more'
-  | 'sidebarCollapse' | 'sidebarExpand' | 'dockBottom'
-  | 'sliders' | 'expand' | 'back' | 'home' | 'recent' | 'play' | 'refresh' | 'close' | 'check' | 'alert' | 'link' | 'monitor' | 'mapPin'
-  | 'user' | 'logout' | 'keyboard' | 'copy' | 'download' | 'bolt' | 'search' | 'menu' | 'info' | 'wifi' | 'wifiOff' | 'key' | 'camera' | 'record' | 'recordScreen' | 'stop' | 'trash' | 'arrowDown' | 'arrowUp' | 'pause' | 'list' | 'star' | 'slots' | 'layers';
+  | 'sidebarCollapse' | 'sidebarExpand' | 'grip'
+  | 'sliders' | 'expand' | 'collapse' | 'back' | 'home' | 'recent' | 'play' | 'refresh' | 'close' | 'check' | 'alert' | 'link' | 'monitor' | 'mapPin'
+  | 'user' | 'logout' | 'keyboard' | 'copy' | 'download' | 'bolt' | 'search' | 'menu' | 'info' | 'wifi' | 'wifiOff' | 'key' | 'camera' | 'record' | 'recordScreen' | 'stop' | 'trash' | 'arrowDown' | 'arrowUp' | 'pause' | 'wrap' | 'list' | 'star' | 'slots' | 'layers';
 
 const paths: Record<IconName, React.ReactNode> = {
   globe: <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z"/></>,
   sliders: <><path d="M3 6h6m4 0h8M3 12h11m4 0h3M3 18h3m4 0h11"/><circle cx="11" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></>,
   expand: <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>,
+  collapse: <path d="M3 8h5V3m13 5h-5V3M3 16h5v5m13-5h-5v5"/>,
   layers: <><path d="m12 3 10 5-10 5L2 8l10-5Z"/><path d="m2 12 10 5 10-5M2 16l10 5 10-5"/></>,
   pencil: <path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4"/>,
   eye: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>,
@@ -36,7 +37,7 @@ const paths: Record<IconName, React.ReactNode> = {
   headphonesOff: <><path d="m3 3 18 18M3 14v-3a9 9 0 0 1 1-4m4-4a9 9 0 0 1 13 8v3"/><rect x="3" y="13" width="5" height="7" rx="2"/><path d="M18 13h1a2 2 0 0 1 2 2v2"/></>,
   sidebarCollapse: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m7-11-3 3 3 3"/></>,
   sidebarExpand: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16m5-11 3 3-3 3"/></>,
-  dockBottom: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 14h18"/></>,
+  grip: <><circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/></>,
   upload: <><path d="M12 16V3m-5 5 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></>,
   terminal: <><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m6 9 3 3-3 3m6 0h5"/></>,
   more: <><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></>,
@@ -68,6 +69,7 @@ const paths: Record<IconName, React.ReactNode> = {
   arrowDown: <path d="M12 5v14m-6-6 6 6 6-6"/>,
   arrowUp: <path d="M12 19V5m-6 6 6-6 6 6"/>,
   pause: <><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" stroke="none"/></>,
+  wrap: <path d="M4 5h16M4 10h12a4 4 0 0 1 0 8h-5m3-3-3 3 3 3M4 15h3M4 20h3"/>,
   list: <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>,
   stop: <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/>,
 };

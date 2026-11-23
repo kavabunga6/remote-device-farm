@@ -15143,10 +15143,6 @@
     "ru": "Домены и IP-адреса через запятую. Домен включает его поддомены; * — все адреса. Без портов и CIDR.",
     "en": "Comma-separated domains and IP addresses. A domain includes its subdomains; * matches all addresses. Ports and CIDR are not supported."
   },
-  "session.workspace.dock": {
-    "ru": "Док снизу",
-    "en": "Bottom dock"
-  },
   "session.workspace.setDefault": {
     "ru": "Использовать этот вид по умолчанию",
     "en": "Make this the default view"
@@ -15159,45 +15155,13 @@
     "ru": "Размер эмулятора",
     "en": "Emulator size"
   },
-  "session.workspace.resizeDock": {
-    "ru": "Высота дока",
-    "en": "Dock height"
-  },
   "session.workspace.floating": {
     "ru": "Поверх кадра",
     "en": "Over the device"
   },
-  "session.workspace.goDevice": {
-    "ru": "К эмулятору",
-    "en": "Go to device"
-  },
-  "session.workspace.goTools": {
-    "ru": "К инструментам",
-    "en": "Go to tools"
-  },
-  "session.workspace.goCommand": {
-    "ru": "К команде",
-    "en": "Go to command"
-  },
-  "session.workspace.pan": {
-    "ru": "Панорама",
-    "en": "Pan workspace"
-  },
   "session.workspace.resetFloating": {
     "ru": "Сбросить раскладку",
     "en": "Reset layout"
-  },
-  "session.workspace.windowSize": {
-    "ru": "Размер",
-    "en": "Size"
-  },
-  "session.workspace.deviceWindow": {
-    "ru": "Эмулятор",
-    "en": "Emulator"
-  },
-  "session.workspace.toolWindow": {
-    "ru": "Инструменты",
-    "en": "Tools"
   },
   "session.workspace.canvas": {
     "ru": "Прокручиваемая рабочая область",
@@ -15211,24 +15175,44 @@
     "ru": "Изменить размер окна",
     "en": "Resize window"
   },
-  "session.workspace.windowDimensions": {
-    "ru": "Размер окна · {name}",
-    "en": "Window size · {name}"
+  "session.workspace.desk": {
+    "ru": "Стол",
+    "en": "Desk"
   },
-  "session.workspace.windowWidth": {
-    "ru": "Ширина, px",
-    "en": "Width, px"
+  "session.workspace.leaveDesk": {
+    "ru": "Выйти из режима «Стол»",
+    "en": "Exit Desk"
   },
-  "session.workspace.windowHeight": {
-    "ru": "Высота, px",
-    "en": "Height, px"
+  "session.workspace.detachTool": {
+    "ru": "Отстыковать вкладку",
+    "en": "Detach tab"
   },
-  "session.workspace.fitWindow": {
-    "ru": "Вписать в область",
-    "en": "Fit to workspace"
+  "session.workspace.dockTool": {
+    "ru": "Вернуть во вкладки",
+    "en": "Return to tabs"
   },
-  "session.workspace.biggerWindow": {
-    "ru": "Больше области",
-    "en": "Larger than workspace"
+  "session.workspace.dockHere": {
+    "ru": "Перетащите виджет сюда",
+    "en": "Drop a widget here"
+  },
+  "session.workspace.deskExitHint": {
+    "ru": "Нажмите Esc, чтобы выйти из режима «Стол».",
+    "en": "Press Esc to exit Desk."
+  },
+  "session.workspace.clearDefault": {
+    "ru": "Сбросить вид по умолчанию",
+    "en": "Clear default view"
+  },
+  "session.workspace.overview": {
+    "ru": "Обзор окон",
+    "en": "Window overview"
+  },
+  "session.workspace.overviewDock": {
+    "ru": "Вернуть «{name}» во вкладки",
+    "en": "Return {name} to tabs"
+  },
+  "session.workspace.exitDeskShort": {
+    "ru": "Выйти",
+    "en": "Exit"
   }
 }

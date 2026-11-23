@@ -2,6 +2,10 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const sessionId = 'cbd55091-aaaa-bbbb-cccc-000000000001';
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('rdf-session-default-view:u1', 'split'));
+});
+
 async function size(locator: Locator, dimension: 'width' | 'height') {
   return locator.evaluate((element, key) => element.getBoundingClientRect()[key], dimension);
 }
@@ -40,6 +44,9 @@ for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 108
 
     const minimumWidth = Number(await widthHandle.getAttribute('aria-valuemin'));
     const maximumWidth = Number(await widthHandle.getAttribute('aria-valuemax'));
+    await widthHandle.click();
+    await expect(page.locator('.workspace-grid')).not.toHaveAttribute('data-console-resized');
+    expect(await page.evaluate(() => localStorage.getItem('rdf-console-width'))).toBeNull();
     const draggedWidth = Math.min(maximumWidth, initialWidth + 64);
     const savedWidth = Math.max(minimumWidth, draggedWidth - 24);
     await drag(page, widthHandle, -64, 0);
@@ -89,6 +96,39 @@ for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 108
     await expect(output).toContainText('Код выхода: 0');
   });
 }
+
+test('a frame resize is committed and released when its handle is removed', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: [] } }));
+  await page.goto('/#/session/' + sessionId);
+  await expect(page.locator('.session-media-badge[data-media=video]')).toHaveAttribute('data-state', 'live');
+  await page.evaluate(() => document.fonts.ready);
+  const frameHandle = page.locator('.device-resize-handle[data-corner=se]');
+  await expect(frameHandle).toBeInViewport();
+  const box = await frameHandle.boundingBox();
+  expect(box).not.toBeNull();
+  const x = box!.x + box!.width / 2;
+  const y = box!.y + box!.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x - 65, y - 90, { steps: 6 });
+  const adjusted = Number(await frameHandle.getAttribute('aria-valuenow'));
+  expect(adjusted).toBeLessThan(90);
+  await page.keyboard.press('ArrowRight');
+  await expect(frameHandle).toHaveAttribute('aria-valuenow', String(adjusted));
+
+  // A layout change can remove the handle while the pointer remains down.
+  await page.locator('[data-workspace-choice=float]').evaluate(button => (button as HTMLButtonElement).click());
+  await expect(frameHandle).toHaveCount(0);
+  await page.mouse.up();
+  await page.locator('[data-workspace-choice=split]').click();
+  await expect(frameHandle).toHaveAttribute('aria-valuenow', String(adjusted));
+  await drag(page, frameHandle, 45, 70);
+  const resizedAgain = Number(await frameHandle.getAttribute('aria-valuenow'));
+  expect(resizedAgain).toBeGreaterThan(adjusted);
+  await page.reload();
+  await expect(frameHandle).toHaveAttribute('aria-valuenow', String(resizedAgain));
+});
 
 
 async function fittedWorkspace(page: Page) {

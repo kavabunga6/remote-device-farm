@@ -217,7 +217,7 @@ export default function App() {
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [confirmError, setConfirmError] = useState('');
   useEffect(() => setConfirmError(''), [confirm?.id, confirm?.kind]);
-  const { notify } = useNotifications();
+  const { notify, clear: clearNotifications } = useNotifications();
   const setToast = useCallback((message: string) => notify({ kind: 'info', title: message }), [notify]);
   const [mobileNav, setMobileNav] = useState(false);
   const [compactSidebar, setCompactSidebar] = useState(() => {
@@ -231,18 +231,24 @@ export default function App() {
     catch { /* Storage is optional. */ }
   };
   const inventoryRequest = useRef(0);
+  const activeAccount = useRef<string | null>(null);
   const releaseAllPending = useRef(false);
+  const failedStarts = useRef(new Map<string, BackgroundNotification>());
+  const selectAccount = useCallback((next: User | null) => {
+    activeAccount.current = next?.id ?? null;
+    setUser(next);
+  }, []);
 
   const boot = useCallback(async () => {
     setBooting(true); setBootError('');
     try {
       const nextConfig = await api.config();
       setConfig(nextConfig);
-      try { setUser(await api.me()); }
-      catch (cause) { if (!(cause instanceof ApiError) || cause.status !== 401) throw cause; setUser(null); }
+      try { selectAccount(await api.me()); }
+      catch (cause) { if (!(cause instanceof ApiError) || cause.status !== 401) throw cause; selectAccount(null); }
     } catch (cause) { setBootError(displayError(cause)); }
     finally { setBooting(false); }
-  }, []);
+  }, [selectAccount]);
 
   useEffect(() => { void boot(); }, [boot]);
   useEffect(() => {
@@ -264,13 +270,14 @@ export default function App() {
   useEffect(() => {
     const expireSession = () => {
       inventoryRequest.current += 1;
-      setUser(null); setHosts([]); setProfiles([]); setAdminProfiles([]); setSessions([]); setNavigationCounts(null);
+      clearNotifications(); failedStarts.current.clear(); setMissingSession(null);
+      selectAccount(null); setHosts([]); setProfiles([]); setAdminProfiles([]); setSessions([]); setNavigationCounts(null);
       setInventoryLoading(true); setInventoryError('');
-      setModal(null); setConfirm(null); navigate({ page: 'overview' });
+      setModal(null); setConfirm(null); setLogoutOpen(false); navigate({ page: 'overview' });
     };
     window.addEventListener('rdf:unauthorized', expireSession);
     return () => window.removeEventListener('rdf:unauthorized', expireSession);
-  }, []);
+  }, [clearNotifications, selectAccount]);
   useEffect(() => { const listener = () => { setRoute(routeFromHash()); window.scrollTo(0, 0); }; window.addEventListener('hashchange', listener); return () => window.removeEventListener('hashchange', listener); }, []);
 
   const observedSessions = useRef(new Map<string, DeviceSession['status']>());
@@ -284,43 +291,59 @@ export default function App() {
   }, [notify, user?.id]);
   useEffect(() => { observedSessions.current.clear(); readyNotified.current.clear(); }, [user?.id]);
 
+  const anonymousAuth = config?.authMethods.includes('none') ?? false;
   const loadInventory = useCallback(async () => {
-    if (!user) return;
+    if (!user || activeAccount.current !== user.id) return;
     const requestId = ++inventoryRequest.current;
-    void api.me().then(next => { if (requestId !== inventoryRequest.current) return; if (!next) { setUser(null); return; } setUser(previous => previous?.id === next.id && JSON.stringify([previous.roleId,previous.roleName,previous.permissions]) !== JSON.stringify([next.roleId,next.roleName,next.permissions]) ? next : previous); }).catch(() => {});
     setInventoryError('');
-    // Counter failure must not prevent the session list from opening. Keep the last confirmed totals.
-    void api.navigationCounts().then(counts => {
-      if (requestId === inventoryRequest.current) setNavigationCounts(counts);
-    }).catch(() => {});
     try {
+      const confirmed = await api.me();
+      if (requestId !== inventoryRequest.current) return;
+      // Cookies can change in another tab. Discard this view before fetching data for a different account.
+      if (confirmed?.id !== user.id) {
+        window.dispatchEvent(new Event('rdf:unauthorized'));
+        if (anonymousAuth && confirmed) void boot();
+        return;
+      }
+      if (JSON.stringify([confirmed.role, confirmed.roleId, confirmed.roleName, confirmed.roleBuiltin, confirmed.permissions])
+        !== JSON.stringify([user.role, user.roleId, user.roleName, user.roleBuiltin, user.permissions])) {
+        setUser(confirmed);
+        return;
+      }
+      // Counter failure must not prevent the session list from opening. Keep the last confirmed totals.
+      void api.navigationCounts().then(counts => {
+        if (requestId === inventoryRequest.current) setNavigationCounts(counts);
+      }).catch(() => {});
       const [nextHosts, nextProfiles, nextSessions, nextAdminProfiles] = await Promise.all([api.hosts(), api.profiles(), can(user, 'sessions.view') ? api.sessions() : Promise.resolve([]), can(user, 'profiles.view') ? api.adminProfiles() : Promise.resolve([])]);
       if (requestId !== inventoryRequest.current) return;
       nextSessions.forEach(observeSession);
       setHosts(nextHosts); setProfiles(nextProfiles); setSessions(nextSessions); setAdminProfiles(nextAdminProfiles);
-    } catch (cause) { if (requestId === inventoryRequest.current) setInventoryError(displayError(cause)); }
+    } catch (cause) {
+      if (requestId !== inventoryRequest.current) return;
+      if (cause instanceof ApiError && cause.status === 401) window.dispatchEvent(new Event('rdf:unauthorized'));
+      else setInventoryError(displayError(cause));
+    }
     finally { if (requestId === inventoryRequest.current) setInventoryLoading(false); }
-  }, [user, observeSession]);
-  const failedStarts = useRef(new Map<string, BackgroundNotification>());
+  }, [user, observeSession, anonymousAuth, boot]);
+  const canOpenSessionLog = can(user, 'logs.view');
   const notifyBackground = useCallback((item: BackgroundNotification) => {
-    if (item.kind === 'session.ready' && item.sessionId) {
-      if (readyNotified.current.has(item.sessionId)) return;
-      readyNotified.current.add(item.sessionId);
-    }
-    if (item.kind === 'session.failed' && item.sessionId) {
-      failedStarts.current.set(item.sessionId, item);
-      if (failedStarts.current.size > 100) failedStarts.current.delete(failedStarts.current.keys().next().value!);
-    }
-    notify({
+    if (item.kind === 'session.ready' && item.sessionId && readyNotified.current.has(item.sessionId)) return;
+    const published = notify({
       kind: item.kind === 'session.failed' || item.kind === 'device.quarantined' ? 'error'
         : item.kind === 'session.ready' || item.kind === 'queue.assigned' ? 'success' : 'info',
       title: item.title,
-      ...(item.kind === 'session.failed' && item.sessionId && can(user, 'logs.view') ? { action: { href: '#/admin/journal?tab=logs&session=' + encodeURIComponent(item.sessionId), label: t('ui.7c3975084b6a') } } : {}),
+      ...(item.kind === 'session.failed' && item.sessionId && canOpenSessionLog ? { action: { href: '#/admin/journal?tab=logs&session=' + encodeURIComponent(item.sessionId), label: t('ui.7c3975084b6a') } } : {}),
       messagePrefix: item.sessionId ? t('ui.71565c75af24', { p0: item.sessionId.slice(0, 8) }) : undefined,
       message: item.body,
       key: item.kind === 'session.failed' && item.sessionId ? `session-outcome:${item.sessionId}` : item.kind === 'session.ready' && item.sessionId ? `session-ready:${item.sessionId}` : `background:${item.id}`,
     });
-  }, [notify, user?.role]);
+    if (!published || !item.sessionId) return;
+    if (item.kind === 'session.ready') readyNotified.current.add(item.sessionId);
+    if (item.kind === 'session.failed') {
+      failedStarts.current.set(item.sessionId, item);
+      if (failedStarts.current.size > 100) failedStarts.current.delete(failedStarts.current.keys().next().value!);
+    }
+  }, [notify, canOpenSessionLog]);
   useNotificationPoller(user?.id, notifyBackground);
   const sessionNotFound = useCallback((id: string) => {
     const current = routeFromHash();
@@ -452,15 +475,12 @@ export default function App() {
         throw cause;
       }
     }
-    setLogoutOpen(false);
-    inventoryRequest.current += 1;
-    setUser(null); setHosts([]); setProfiles([]); setAdminProfiles([]); setSessions([]); setNavigationCounts(null);
-    setInventoryLoading(true); setInventoryError(''); navigate({ page: 'overview' });
+    window.dispatchEvent(new Event('rdf:unauthorized'));
   };
 
   if (booting) return <div className="boot-screen"><Brand /><div className="loading-ring" /><span>{t('ui.808f3aae25c0')}</span></div>;
   if (bootError || !config) return <div className="boot-screen"><Brand /><div className="boot-error"><Icon name="alert" size={25} /><h1>{t('ui.b323a1b637de')}</h1><p>{bootError || t('ui.7f8942516a7e')}</p><button className="button primary" onClick={() => void boot()}>{t('ui.5189135a6110')}</button></div></div>;
-  if (!user) return <Login config={config} onLogin={next => { inventoryRequest.current += 1; setInventoryLoading(true); setUser(next); }} />;
+  if (!user) return <Login config={config} onLogin={next => { inventoryRequest.current += 1; setInventoryLoading(true); selectAccount(next); }} />;
 
   const allowedRoute: Route = (route.page === 'admin' && !can(user, sectionPermission[route.section])) || (route.page === 'hosts' && !can(user, 'nodes.view')) || (route.page === 'tokens' && !can(user, 'tokens.personal')) || (route.page === 'session' && !can(user, 'sessions.view')) ? (can(user, 'sessions.view') ? { page: 'overview' } : { page: 'account' }) : (route.page === 'overview' && !can(user, 'sessions.view') ? { page: 'account' } : route);
   const confirmedSession = confirm ? confirm.session ?? sessions.find(session => session.id === confirm.id) : undefined;

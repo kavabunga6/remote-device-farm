@@ -126,7 +126,7 @@
   .session-layout .workspace-grid .viewer-stage:not(:fullscreen){height:var(--stage-fit)}
   .session-layout .console-width-handle{display:none}
   .session-layout .tool-panel{display:flex;flex-direction:column;height:calc(var(--stage-fit) + var(--session-viewer-chrome,108px));overflow:hidden}
-  .session-layout .tool-panel>:is(.tool-content,.info-panel,.env-panel,.apps-panel){flex:1 1 auto;min-height:0;overflow:auto}
+  .session-layout :is(.tool-panel,.desk-tool-host)>:is(.tool-content,.info-panel,.env-panel,.apps-panel){flex:1 1 auto;min-height:0;overflow:auto}
 }
 
 /* ---------- Tool card ---------- */
@@ -290,15 +290,17 @@
 
 
 /* Layout choices occupy the right end of the status row, without a separate toolbar. */
-.session-layout .workspace-mode-bar{display:flex;align-items:center;flex:none;margin:0 0 0 auto;padding:0;position:static}
+.session-layout .workspace-mode-bar{display:flex;align-items:center;flex:none;margin-inline-start:auto;padding:0;position:static}
 .session-layout .workspace-mode-buttons{display:flex;width:auto;gap:2px;padding:2px;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-surface)}
 .session-layout .workspace-mode-buttons button{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:26px;min-height:26px;padding:0 10px;border:0;border-radius:5px;font-size:14px;font-weight:600;color:var(--ui-subtle);background:transparent;white-space:nowrap}
 .session-layout .workspace-mode-buttons button>svg{display:block;flex:none;width:16px;height:16px}
+.session-layout :is(.workspace-quick-views,.workspace-layout-actions){display:flex;gap:2px;padding-inline-start:4px;border-inline-start:1px solid var(--ui-border)}
 .session-layout .workspace-standalone-view>span{display:none}
 .session-layout .workspace-mode-buttons button:hover{color:var(--ui-text)}
 .session-layout .workspace-mode-buttons button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}
 .session-layout .workspace-mode-buttons button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .session-layout .workspace-mode-buttons .workspace-default-view{padding-inline:.375rem;margin-inline-start:.125rem}
+.session-layout .workspace-default-view:disabled{opacity:.5}
 .session-layout .workspace-default-view[aria-pressed=true]{background:transparent}
 .session-layout .workspace-default-view[aria-pressed=true]>svg{fill:currentColor}
 .session-layout:not([data-shared])[data-workspace-mode=screen] .terminal-panel,.session-layout:not([data-shared])[data-workspace-mode=tools] .viewer-panel{display:none}
@@ -306,7 +308,7 @@
 .session-layout:not([data-shared])[data-workspace-mode=tools] .workspace-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"terminal"}
 .session-layout:not([data-shared])[data-workspace-mode=screen] .viewer-panel{width:min(100%,var(--viewer-width));justify-self:center}
 .session-layout:not([data-shared])[data-workspace-mode=tools] .tool-panel{height:var(--session-fit-height,600px);min-height:300px;display:flex;flex-direction:column;overflow:hidden}
-.session-layout:not([data-shared])[data-workspace-mode=tools] .tool-panel>:is(.tool-content,.info-panel,.env-panel,.apps-panel){flex:1 1 auto;min-height:0;overflow:auto}
+.session-layout:not([data-shared])[data-workspace-mode=tools] :is(.tool-panel,.desk-tool-host)>:is(.tool-content,.info-panel,.env-panel,.apps-panel){flex:1 1 auto;min-height:0;overflow:auto}
 .session-layout:not([data-shared])[data-workspace-mode=tools] .tool-panel .terminal-tool{overflow:hidden}
 .session-layout:not([data-shared])[data-workspace-mode=tools] .terminal-output{flex:1 1 0;min-height:5rem;max-height:none}
 .session-layout:not([data-shared])[data-workspace-mode=tools] .terminal-tool>:not(.terminal-output){flex:none}
@@ -397,7 +399,10 @@
 @media(min-width:1201px){.session-layout .workspace-grid{--stage-fit:max(260px,calc(var(--session-fit-height,700px) - var(--session-viewer-chrome,108px)))}}
 
 /* Use the actual available header width, including the user's interface scale. */
-@container session-heading (max-width:900px){
+@container session-heading (max-width:1200px){
+  .session-layout .workspace-reset-layout>span{display:none}
+}
+@container session-heading (max-width:1100px){
   .session-layout .session-status-row{column-gap:8px}
   .session-layout .session-status-items{gap:6px}
   .session-layout .adb-title-badge{padding-inline:8px;gap:6px}
@@ -436,50 +441,14 @@
 .device-resize-handle[data-corner=sw]::before{rotate:-90deg}
 .device-resize-handle[data-corner=se]::before{rotate:180deg}
 
-/* The frame fits inside its own row. Only changing the dock's height can resize the lower row. */
-.session-layout:not([data-shared])[data-workspace-mode=dock] .workspace-grid{
-  grid-template-columns:minmax(0,1fr);grid-template-areas:"viewer" "terminal";overflow-anchor:none;
-}
-.session-layout:not([data-shared])[data-workspace-mode=dock] .viewer-panel{width:100%;justify-self:stretch}
-.session-layout:not([data-shared])[data-workspace-mode=dock] .workspace-grid .viewer-stage:not(:fullscreen){
-  box-sizing:border-box;aspect-ratio:auto;max-height:none;
-  height:max(220px,calc(var(--session-fit-height,600px) - var(--session-viewer-chrome,2px) - 3.5rem));
-}
-.session-layout[data-workspace-mode=dock] .terminal-panel{display:flex;flex-direction:column;min-block-size:0;overflow:hidden}
-.session-layout[data-workspace-mode=dock] .terminal-panel>:is(.tool-content,.info-panel,.env-panel,.apps-panel){
-  flex:1 1 0;min-height:0;overflow:auto;overscroll-behavior-y:contain;
-}
-.session-layout[data-workspace-mode=dock] .terminal-panel>:is(.terminal-tool,.log-panel){overflow:hidden}
-.session-layout[data-workspace-mode=dock] .terminal-panel .terminal-output{flex:1 1 0;min-height:0;max-height:none;overscroll-behavior-y:contain}
-.session-layout[data-workspace-mode=dock] .terminal-tool>:not(.terminal-output){flex:none}
-.session-layout[data-workspace-mode=dock] .tool-tabs{border-radius:0}
-.dock-height-handle{
-  display:grid;place-items:center;align-self:center;flex:none;width:5rem;height:1.5rem;
-  color:var(--ui-subtle);cursor:ns-resize;touch-action:none;user-select:none;
-}
-.dock-height-handle span{width:2.5rem;height:4px;border-radius:4px;background:currentColor}
-.dock-height-handle:is(:hover,:focus-visible,:active){color:var(--accent)}
-.dock-height-handle:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:6px}
-@media(pointer:coarse){.dock-height-handle{height:2rem}}
-@container session-heading (max-width:650px){
+@container session-heading (421px <= width <= 650px){
   .session-layout .workspace-standalone-view>span{display:inline}
 }
-@container session-heading (max-width:420px){
+@container session-heading (max-width:540px){
   .session-layout .workspace-mode-bar{max-width:100%;min-width:0}
   .session-layout .workspace-mode-buttons{flex-wrap:wrap;min-width:0}
-  .session-layout .workspace-mode-buttons button{padding-inline:.375rem}
 }
-@container tools (max-width:480px){
-  .session-layout[data-workspace-mode=dock] .tool-tabs{
-    flex-wrap:nowrap;overflow:auto hidden;scrollbar-width:thin;overscroll-behavior-x:contain;
-  }
-  .session-layout[data-workspace-mode=dock] .tool-tabs [role=tab]{
-    flex:none;min-height:2.75rem;padding-inline:.625rem;white-space:nowrap;
-  }
-  .session-layout[data-workspace-mode=dock] .terminal-header-actions{
-    flex-wrap:wrap;justify-content:flex-end;
-  }
-  .session-layout[data-workspace-mode=dock] .terminal-header-actions>button{
-    flex:1 1 auto;min-width:0;white-space:normal;overflow-wrap:anywhere;
-  }
+@container session-heading (max-width:420px){
+  .session-layout .workspace-mode-buttons button{padding-inline:.375rem}
+  .session-layout .workspace-enter-desk>span{display:none}
 }

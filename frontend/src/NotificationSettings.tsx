@@ -35,7 +35,9 @@ export function useNotificationPoller(ownerId: string | undefined, onToast: (not
     });
     void task.run();
     const timer = window.setInterval(() => void task.run(), 10_000);
-    return () => { task.dispose(); window.clearInterval(timer); seen.clear(); };
+    const stop = () => { task.dispose(); window.clearInterval(timer); seen.clear(); };
+    window.addEventListener('rdf:unauthorized', stop);
+    return () => { window.removeEventListener('rdf:unauthorized', stop); stop(); };
   }, [ownerId]);
 }
 

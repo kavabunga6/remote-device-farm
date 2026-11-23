@@ -21,7 +21,7 @@ import { classifyStreamMessage, resetSharedAccessAudit } from '../src/session-ac
 
 const MIGRATIONS = ['001_init', '002_gpu_mode', '003_default_profile_resources', '004_guest_resources', '005_host_settings',
   '006_adb_port_access', '008_user_adb_keys', '009_uploaded_adb_public_keys', '010_user_settings_audit', '011_node_management',
-  '012_session_lifecycle', '014_session_sharing', '048_user_removal', '049_access_roles'];
+  '012_session_lifecycle', '014_session_sharing', '025_physical_devices', '048_user_removal', '049_access_roles'];
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const FRIEND = '22222222-2222-4222-8222-222222222222';
@@ -286,14 +286,17 @@ test('every session route answers a grant holder 404 except the stream, read, sc
 test('the session JSON hides owner data from grant holders and lists keep the session private', async () => {
   const h = await harness();
   try {
-    await h.db.query("UPDATE sessions SET container_id='abc123'");
+    await h.db.query("UPDATE sessions SET container_id=$1,device_kind='usb-android',device_id=$2 WHERE id=$3", ['abc123', 'test-usb-serial', SID]);
     const { body } = await h.share('view');
     h.state.actor = OWNER;
     const own = await (await h.send(`/api/sessions/${SID}`)).json() as { session: Record<string, unknown> };
     assert.equal(own.session.access, 'owner');
     assert.equal(own.session.containerId, 'abc123');
+    assert.equal(own.session.deviceId, 'test-usb-serial');
     h.state.actor = ADMIN;
-    assert.equal(((await (await h.send(`/api/sessions/${SID}`)).json()) as { session: { access: string } }).session.access, 'admin');
+    const admin = await (await h.send(`/api/sessions/${SID}`)).json() as { session: Record<string, unknown> };
+    assert.equal(admin.session.access, 'admin');
+    assert.equal(admin.session.deviceId, 'test-usb-serial');
     h.state.actor = FRIEND;
     await h.redeem(body.token);
     const seen = await (await h.send(`/api/sessions/${SID}`)).json() as { session: Record<string, unknown> };
@@ -301,6 +304,8 @@ test('the session JSON hides owner data from grant holders and lists keep the se
     assert.equal(seen.session.adminAccess, null);
     assert.equal(seen.session.adbKeyId, null);
     assert.equal(seen.session.containerId, null);
+    assert.equal(seen.session.deviceKind, 'usb-android');
+    assert.equal(seen.session.deviceId, null);
     assert.ok(!JSON.stringify(seen).includes('abc123'));
     const list = await (await h.send('/api/sessions')).json() as { sessions: unknown[] };
     assert.equal(list.sessions.length, 0, 'the overview never lists shared sessions');

@@ -271,7 +271,10 @@ test.describe('responsive workspace', () => {
 
 test('HD session keeps its workspace bounded and screenshot reachable with a saved tall console', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
-  await page.addInitScript(() => localStorage.setItem('rdf-console-height', '1000'));
+  await page.addInitScript(() => {
+    localStorage.setItem('rdf-session-default-view:u1', 'split');
+    localStorage.setItem('rdf-console-height', '1000');
+  });
   await openSession(page);
   await expect(page.locator('.banner-warning')).toBeVisible();
   await expect.poll(() => page.evaluate(() => {

@@ -5,6 +5,11 @@ const pcmConfig = { type: 'audio-config', codec: 'pcm-s16le', sampleRate: 48000,
 const silentFrame = { type: 'audio-frame', data: 'AAAAAA==' };
 const pcmFrame = { type: 'audio-frame', data: 'AEAAwA==' };
 
+test.afterEach(async ({ page }) => {
+  // A session refresh can still be awaiting the mock API when the test ends.
+  await page.unrouteAll({ behavior: 'wait' });
+});
+
 async function mediaFixture(page: Page, options: { audioEnabled?: boolean; suspended?: boolean; access?: 'view' | 'control' } = {}) {
   let audioEnabled = options.audioEnabled ?? true;
   let session: Record<string, unknown> | undefined;
@@ -363,7 +368,10 @@ for (const gesture of ['pointer', 'keyboard'] as const) {
 
 test('TV frames ignore a portrait console width and fit the card to the wide screen', async ({ page }) => {
   await page.setViewportSize({ width: 2188, height: 1300 });
-  await page.addInitScript(() => localStorage.setItem('rdf-console-width', '1500'));
+  await page.addInitScript(() => {
+    localStorage.setItem('rdf-session-default-view:u1', 'split');
+    localStorage.setItem('rdf-console-width', '1500');
+  });
   await mediaFixture(page, { audioEnabled: false }); await openMedia(page);
   await page.getByRole('button', { name: 'Свернуть боковое меню' }).click();
   await sendImage(page, 'image/png', 1920, 1080);
@@ -385,7 +393,10 @@ test('TV frames ignore a portrait console width and fit the card to the wide scr
 
 test('landscape console resizing persists separately and survives orientation changes', async ({ page }) => {
   await page.setViewportSize({ width: 2188, height: 1300 });
-  await page.addInitScript(() => localStorage.setItem('rdf-console-width', '1500'));
+  await page.addInitScript(() => {
+    localStorage.setItem('rdf-session-default-view:u1', 'split');
+    localStorage.setItem('rdf-console-width', '1500');
+  });
   await mediaFixture(page, { audioEnabled: false }); await openMedia(page);
   const width = page.getByRole('separator', { name: 'Изменить ширину консоли' });
   const reset = page.getByRole('button', { name: 'Сбросить размер консоли' });
@@ -418,6 +429,7 @@ test('landscape console resizing persists separately and survives orientation ch
 for (const theme of ['light', 'dark'] as const) {
   test(`wide frames fit desktop, compact and enlarged ${theme} workspaces`, async ({ page }) => {
     await page.setViewportSize({ width: 2188, height: 1300 });
+    await page.addInitScript(() => localStorage.setItem('rdf-session-default-view:u1', 'split'));
     await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: {
       theme, fontFamily: 'system', fontScale: 1.25, defaultAdbKeyId: null,
     } } }));

@@ -126,7 +126,7 @@ for (const variant of [
   await formatted.click();
   const geometry = await web.evaluate(panel => ({
     panelBottom: panel.getBoundingClientRect().bottom,
-    toolsBottom: panel.parentElement!.getBoundingClientRect().bottom,
+    toolsBottom: panel.closest('.terminal-panel')!.getBoundingClientRect().bottom,
     codeScrollable: panel.querySelector('pre')!.scrollHeight > panel.querySelector('pre')!.clientHeight,
     buttonHeights: [...panel.querySelectorAll('.webview-result-modes button')].map(button => button.getBoundingClientRect().height),
   }));
@@ -355,7 +355,7 @@ for (const variant of [
     expect(Math.abs(bounds[n]!.bottom - bounds[k]!.bottom)).toBeLessThanOrEqual(1);
   }
   const box = await traffic.boundingBox();
-  const tool = await traffic.locator('..').boundingBox();
+  const tool = await page.locator('.terminal-panel').filter({ has: traffic }).boundingBox();
   expect(box!.y + box!.height).toBeLessThanOrEqual(tool!.y + tool!.height + 1);
   expect(await traffic.locator('.traffic-detail').evaluate(el => el.clientHeight)).toBeGreaterThan(100);
   const selectMetrics = await traffic.locator('select').evaluate(el => { const s = getComputedStyle(el); return { top: s.paddingTop, bottom: s.paddingBottom }; });

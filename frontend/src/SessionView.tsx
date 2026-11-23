@@ -1,12 +1,14 @@
 import { TranslatedText } from './TranslatedText';
 import { useSessionAdb } from './useSessionAdb';
 import { useSessionWorkspace, useWorkspaceDimension } from './useSessionWorkspace';
-import { useFloatingSessionWorkspace, type FloatingWindowName } from './useFloatingSessionWorkspace';
-import { FloatingWindowControls, FloatingWorkspaceToolbar } from './FloatingWorkspaceControls';
+import { useFloatingSessionWorkspace, type WorkspaceWindowName } from './useFloatingSessionWorkspace';
+import { FloatingWindowMove, FloatingWindowResizeHandles, WorkspaceDefaultButton } from './FloatingWorkspaceControls';
+import { DESK_TOOL_DRAG_TYPE, DeskToolWidget, deskWidgetPlacement, useDeskWidgetLayout } from './DeskToolWidget';
+import { DeskWindowOverview, type DeskOverviewWindow } from './DeskWindowOverview';
 import { downloadFile as downloadKeyFile } from './browser-files';
 import { can } from './permissions';
 import { localizeText, getDirection, getLocale, t } from './i18n';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent, type ReactNode } from 'react';
 import { api, ApiError, KNOWN_ERRORS, type DeviceSession, type User } from './api';
 import { Icon } from './icons';
 import { useNotifications } from './notifications';
@@ -26,6 +28,7 @@ import { useSessionAudience } from './useSessionAudience';
 import { audienceDescription } from './session-audience';
 import { CONSOLE_CATEGORIES, getConsoleCommands } from './console-commands';
 import { useSessionConsole } from './useSessionConsole';
+import { useSessionCapture } from './useSessionCapture';
 import { useSessionStream, type ConnectionMode } from './useSessionStream';
 import { SessionAudioControl, SessionMediaStatus } from './SessionMediaStatus';
 import { DeviceControls } from './DeviceControls';
@@ -36,16 +39,13 @@ import './FloatingWorkspace.css';
 import { useTouchIndicator } from './useTouchIndicator';
 import './TouchIndicator.css';
 
-type ToolTabId = 'console' | 'logs' | 'info' | 'env' | 'apps' | 'traffic' | 'webviews' | 'performance';
+const TOOL_TAB_IDS = ['console', 'logs', 'info', 'env', 'apps', 'traffic', 'webviews', 'performance'] as const;
+type ToolTabId = typeof TOOL_TAB_IDS[number];
 // Each tool needs a device capability; physical phones may offer fewer than emulators.
 function toolTabs(): ReadonlyArray<readonly [ToolTabId, string, Capability]> { return [
   ['console', t('ui.a58f47dbc474'), 'shell'], ['logs', t('ui.1ebab145dea4'), 'logs'], ['info', t('ui.bd38d43cf415'), 'device-info'], ['env', t('ui.d606a9df2b84'), 'env'], ['apps', t('ui.39c4b42c8d11'), 'install'], ['traffic', t('networkInspector.title'), 'network'], ['webviews', t('webviews.title'), 'shell'],
   ['performance', t('performance.title'), 'shell'],
 ]; }
-import { useSessionCapture } from './useSessionCapture';
-
-
-
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : t('ui.b9f61453dd3f');
 }
@@ -54,6 +54,11 @@ function timeLabel(value: string | undefined): string {
   if (!value) return '—';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+}
+
+function hasVisibleOverlay() {
+  return Array.from(document.querySelectorAll('dialog[open], [popover]:popover-open, [aria-modal=true]'))
+    .some(element => element.getClientRects().length > 0);
 }
 
 export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, onKill, onObserved, onUpdated }: {
@@ -122,53 +127,92 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const [imageFrameReady, setImageFrameReady] = useState(false);
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>('websocket');
   const stream = useSessionStream(sessionId, audioEnabled, connectionMode);
+  const isRunning = session?.status === 'running';
+  const canControl = isRunning && !readOnly && stream.inputReady;
   const landscape = stream.size.width > stream.size.height;
   const [toolTab, setToolTab] = useState<ToolTabId>('console');
-  const { activeWorkspaceMode, compactWorkspace, changeWorkspaceMode, defaultWorkspaceMode, saveDefaultWorkspaceMode,
+  const { activeWorkspaceMode, deskActive, compactWorkspace, changeWorkspaceMode, defaultView, canSaveDefaultLayout, saveDefaultWorkspaceMode,
     consoleWidth, consoleResized, consoleHeight, consoleHeightResized, visibleConsoleSize, workspaceRef, screenRef,
     viewerWidth, displayScale, minConsoleWidth, maxConsoleWidth, maxConsoleHeight, resetConsoleSize, resizeConsoleWithKeyboard,
     startWidthResize, moveWidthResize, endWidthResize, startHeightResize, moveHeightResize, endHeightResize,
   } = useSessionWorkspace({ size: stream.size, toolTab, isPreparing, shared, userId: user.id, terminalOutputRef });
-  const docked = activeWorkspaceMode === 'dock';
   const floating = activeWorkspaceMode === 'float';
+  const deskTrigger = useRef<HTMLButtonElement>(null);
+  const wasDeskActive = useRef(false);
+  const leaveDesk = useCallback(() => changeWorkspaceMode('float'), [changeWorkspaceMode]);
+  const [windowOverviewOpen, setWindowOverviewOpen] = useState(false);
   const floatingCanvasRef = useRef<HTMLDivElement>(null);
   const floatingDeviceRef = useRef<HTMLElement>(null);
   const floatingToolsRef = useRef<HTMLElement>(null);
+  const widgetDockRef = useRef<HTMLDivElement>(null);
+  const draggedTool = useRef<ToolTabId | null>(null);
+  const [deskDragImage] = useState(() => {
+    const image = new Image(1, 1);
+    image.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    return image;
+  });
+  const dragSurfaceRef = useRef<HTMLDivElement>(null);
+  const [previewTool, setPreviewTool] = useState<ToolTabId | null>(null);
+  const focusTool = useRef<ToolTabId | null>(null);
+  const workspaceLayoutId = session ? (session.deviceId == null ? `profile:${session.profileId}` : `physical:${session.deviceType ?? 'mobile'}`) : undefined;
+  const widgetLayout = useDeskWidgetLayout(user.id, workspaceLayoutId, TOOL_TAB_IDS);
   const floatingWorkspace = useFloatingSessionWorkspace({
-    active: floating && !isPreparing, userId: user.id, aspect: stream.size.width / Math.max(1, stream.size.height),
+    active: floating && !isPreparing, userId: user.id,
+    layoutId: workspaceLayoutId,
+    legacyDeviceId: session?.deviceId ?? undefined,
+    aspect: stream.status === 'live' ? stream.size.width / Math.max(1, stream.size.height) : undefined,
     viewportRef: workspaceRef, canvasRef: floatingCanvasRef, deviceRef: floatingDeviceRef, toolsRef: floatingToolsRef,
   });
-  const { jump: jumpFloating } = floatingWorkspace;
-  const [focusFloatingCommand, setFocusFloatingCommand] = useState(false);
+  const { jump: jumpFloating, snapWidgetPlacement } = floatingWorkspace;
+  useEffect(() => {
+    if (!deskActive) { setWindowOverviewOpen(false); return; }
+    const handleOverviewShortcut = (event: KeyboardEvent) => {
+      if (event.code !== 'KeyW' || !event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey ||
+        event.defaultPrevented || event.isComposing || event.repeat || document.fullscreenElement || draggedTool.current ||
+        workspaceRef.current?.matches('[data-window-drag],[data-panning]')) return;
+      if (!windowOverviewOpen && (hasVisibleOverlay() || (event.target instanceof Element &&
+        event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable=false])')))) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setWindowOverviewOpen(!windowOverviewOpen);
+    };
+    document.addEventListener('keydown', handleOverviewShortcut, true);
+    return () => document.removeEventListener('keydown', handleOverviewShortcut, true);
+  }, [deskActive, windowOverviewOpen, workspaceRef]);
   useLayoutEffect(() => {
-    if (!focusFloatingCommand || toolTab !== 'console') return;
-    setFocusFloatingCommand(false);
-    const viewport = workspaceRef.current;
-    const commandInput = commandInputRef.current;
-    if (!floating || !viewport || !commandInput) return;
-    jumpFloating('tools');
-    const area = viewport.getBoundingClientRect();
-    const field = commandInput.getBoundingClientRect();
-    const zoom = area.width / Math.max(1, viewport.offsetWidth);
-    const margin = 12 * zoom;
-    viewport.scrollTop += (Math.max(0, field.bottom - area.bottom + margin) + Math.min(0, field.top - area.top - margin)) / zoom;
-    viewport.scrollLeft += (Math.max(0, field.right - area.right + margin) + Math.min(0, field.left - area.left - margin)) / zoom;
-    commandInput.focus({ preventScroll: true });
-  }, [commandInputRef, floating, focusFloatingCommand, jumpFloating, toolTab, workspaceRef]);
-  const showFloatingWindow = (name: FloatingWindowName) => {
+    if (deskActive) workspaceRef.current?.focus({ preventScroll: true });
+    else if (wasDeskActive.current) deskTrigger.current?.focus({ preventScroll: true });
+    wasDeskActive.current = deskActive;
+  }, [deskActive, workspaceRef]);
+  useEffect(() => {
+    if (!deskActive) return;
+    const leaveOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || event.repeat || event.isComposing || document.fullscreenElement) return;
+      if (hasVisibleOverlay()) return;
+      event.preventDefault();
+      leaveDesk();
+    };
+    document.addEventListener('keydown', leaveOnEscape);
+    return () => document.removeEventListener('keydown', leaveOnEscape);
+  }, [deskActive, leaveDesk]);
+  const openDesk = () => {
+    if (sessionMetadataRef.current) sessionMetadataRef.current.open = false;
+    setAdbMenuOpen(false);
+    changeWorkspaceMode('desk');
+  };
+  const showFloatingWindow = (name: WorkspaceWindowName) => {
     jumpFloating(name);
-    const panel = name === 'device' ? floatingDeviceRef.current : floatingToolsRef.current;
+    const panel = floatingCanvasRef.current?.querySelector<HTMLElement>(`[data-window="${name}"]`);
     panel?.querySelector<HTMLButtonElement>('button[data-window-move]')?.focus({ preventScroll: true });
   };
-  const defaultView = activeWorkspaceMode === defaultWorkspaceMode;
-  const deviceSize = useWorkspaceDimension('rdf-device-frame-percent', 100, 35, 100);
-  const dockHeight = useWorkspaceDimension('rdf-tool-dock-height', 560, 420, 1200);
+  const canResizeDevice = !shared && !floating && !isPreparing && activeWorkspaceMode !== 'tools';
+  const deviceSize = useWorkspaceDimension(`rdf-device-frame-percent:${encodeURIComponent(user.id)}`, 100, 35, 100, canResizeDevice);
   const frameScale = displayScale * (shared || floating ? 1 : deviceSize.value / 100);
   const dimensionLabel = new Intl.NumberFormat(getLocale(), { style: 'percent' }).format(deviceSize.value / 100);
   const touchIndicator = useTouchIndicator(sessionId, canReadEnvironment && !stream.nativeTouches);
   useEffect(() => {
     pointerStartRef.current = null; touchIndicator.clear();
-  }, [stream.inputReady, stream.connectionGeneration, sessionId, touchIndicator.clear]);
+  }, [canControl, stream.connectionGeneration, sessionId, touchIndicator.clear]);
   const capture = useSessionCapture({ sessionId, status: stream.status, format: stream.format, imageRef: stream.imageRef, canvasRef: stream.canvasRef, getTouchIndicator: touchIndicator.getSnapshot });
   const captureReady = stream.status === 'live' && (stream.format === 'video'
     ? Boolean(stream.canvasRef.current?.width && stream.canvasRef.current.height)
@@ -229,14 +273,27 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   }, [stream.audioUnavailableCount, refresh, notifyError]);
 
   const sendInput = useCallback((payload: Record<string, unknown>) => {
-    if (readOnly || !stream.inputReady || session?.status !== 'running') return false;
+    if (!canControl) return false;
     // Interactive commands must never escape a disconnected stream through HTTP.
     return stream.send(payload);
-  }, [stream, readOnly, session?.status]);
+  }, [stream, canControl]);
 
   const navKey = (keyCode: number) => sendInput({ kind: 'key', keyCode });
+
+  const deviceKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!canControl || (deskActive && event.key === 'Escape')) return;
+    const navigationKeys: Partial<Record<string, number>> = {
+      Escape: 4, Backspace: 4, ArrowUp: 19, ArrowDown: 20, ArrowLeft: 21, ArrowRight: 22,
+    };
+    const keyCode = event.key === 'Enter' ? (session?.deviceType === 'tv' ? 23 : 66) : navigationKeys[event.key];
+    if (typeof keyCode !== 'number') return;
+    event.preventDefault();
+    navKey(keyCode);
+  };
+
   const point = (event: React.PointerEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
     return {
       x: Math.max(0, Math.min(stream.size.width - 1, Math.round((event.clientX - rect.left) / rect.width * stream.size.width))),
       y: Math.max(0, Math.min(stream.size.height - 1, Math.round((event.clientY - rect.top) / rect.height * stream.size.height))),
@@ -244,25 +301,26 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   };
 
   const pointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!isRunning || readOnly || !stream.inputReady || !event.isPrimary || event.button !== 0) return;
+    if (!canControl || !event.isPrimary || event.button !== 0 || pointerStartRef.current) return;
+    const position = point(event);
+    if (!position) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     touchIndicator.down(event);
-    const position = point(event);
-    const live = stream.inputReady && (stream.format === 'video' || stream.nativeTouches) && stream.send({ kind: 'touch', action: 'down', pointerId: 0, ...position });
+    const live = (stream.format === 'video' || stream.nativeTouches) && sendInput({ kind: 'touch', action: 'down', pointerId: 0, ...position });
     pointerStartRef.current = { ...position, time: Date.now(), pointerId: event.pointerId, live, lastMoveAt: 0, lastX: position.x, lastY: position.y };
-    event.currentTarget.focus();
+    event.currentTarget.focus({ preventScroll: true });
   };
 
   const pointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const start = pointerStartRef.current;
-    if (!start || start.pointerId !== event.pointerId || !isRunning || !stream.inputReady) return;
+    if (!start || start.pointerId !== event.pointerId || !canControl) return;
     touchIndicator.move(event);
     if (!start.live) return;
     const now = performance.now();
     if (now - start.lastMoveAt < 20) return;
     const position = point(event);
-    if (position.x === start.lastX && position.y === start.lastY) return;
-    if (stream.send({ kind: 'touch', action: 'move', pointerId: 0, ...position })) {
+    if (!position || (position.x === start.lastX && position.y === start.lastY)) return;
+    if (sendInput({ kind: 'touch', action: 'move', pointerId: 0, ...position })) {
       start.lastMoveAt = now; start.lastX = position.x; start.lastY = position.y;
     }
   };
@@ -270,25 +328,26 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const pointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
     touchIndicator.end(event);
     const start = pointerStartRef.current;
-    if (!start || start.pointerId !== event.pointerId || !isRunning || !stream.inputReady) return;
+    if (!start || start.pointerId !== event.pointerId) return;
+    pointerStartRef.current = null;
+    if (!canControl) return;
     const end = point(event);
     if (start.live) {
-      if (end.x !== start.lastX || end.y !== start.lastY) stream.send({ kind: 'touch', action: 'move', pointerId: 0, ...end });
-      stream.send({ kind: 'touch', action: 'up', pointerId: 0, ...end });
-    } else {
+      if (end && (end.x !== start.lastX || end.y !== start.lastY)) sendInput({ kind: 'touch', action: 'move', pointerId: 0, ...end });
+      sendInput({ kind: 'touch', action: 'up', pointerId: 0, x: end?.x ?? start.lastX, y: end?.y ?? start.lastY });
+    } else if (end) {
       const distance = Math.hypot(end.x - start.x, end.y - start.y);
-    if (distance < Math.max(12, stream.size.width * 0.012)) sendInput({ kind: 'tap', x: end.x, y: end.y });
-    else sendInput({ kind: 'swipe', x1: start.x, y1: start.y, x2: end.x, y2: end.y, durationMs: Math.max(80, Math.min(3000, Date.now() - start.time)) });
+      if (distance < Math.max(12, stream.size.width * 0.012)) sendInput({ kind: 'tap', x: end.x, y: end.y });
+      else sendInput({ kind: 'swipe', x1: start.x, y1: start.y, x2: end.x, y2: end.y, durationMs: Math.max(80, Math.min(3000, Date.now() - start.time)) });
     }
-    pointerStartRef.current = null;
   };
 
   const pointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
     touchIndicator.cancel(event);
     const start = pointerStartRef.current;
     if (start?.pointerId === event.pointerId) {
-      if (start.live) stream.send({ kind: 'touch', action: 'up', pointerId: 0, x: start.lastX, y: start.lastY });
       pointerStartRef.current = null;
+      if (start.live) sendInput({ kind: 'touch', action: 'up', pointerId: 0, x: start.lastX, y: start.lastY });
     }
   };
 
@@ -399,10 +458,116 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   };
 
   const availableToolTabs = toolTabs().filter(([id, , capability]) => hasCapability(session, capability) && toolAllowed(id));
+  const dockedToolTabs = availableToolTabs.filter(([id]) => !deskActive || !widgetLayout.placements[id]);
+  const dockedTool = dockedToolTabs.some(([id]) => id === toolTab) ? toolTab : dockedToolTabs[0]?.[0];
   useEffect(() => {
-    const allowed = toolTabs().filter(([id, , capability]) => hasCapability(session, capability) && toolAllowed(id)).map(([id]) => id);
-    if (allowed.length && !allowed.includes(toolTab)) setToolTab(allowed[0]!);
-  }, [session, toolTab, user.permissions]);
+    if (!deskActive && dockedTool && dockedTool !== toolTab) setToolTab(dockedTool);
+  }, [deskActive, dockedTool, toolTab]);
+  const toolPlacement = (id: ToolTabId) => deskActive && availableToolTabs.some(([availableId]) => availableId === id)
+    ? widgetLayout.placements[id] : undefined;
+  const previewedTool = deskActive && dockedToolTabs.some(([id]) => id === previewTool) ? previewTool : null;
+  const toolActive = (id: ToolTabId) => activeWorkspaceMode !== 'screen' && (dockedTool === id || Boolean(toolPlacement(id)) || previewedTool === id);
+
+  useLayoutEffect(() => {
+    const id = focusTool.current;
+    if (!id) return;
+    focusTool.current = null;
+    const control = widgetLayout.placements[id]
+      ? floatingCanvasRef.current?.querySelector<HTMLButtonElement>(`.desk-widget [data-window-move="widget:${id}"].floating-window-move`)
+      : widgetDockRef.current?.querySelector<HTMLButtonElement>(`#tool-tab-${id}`);
+    control?.focus({ preventScroll: true });
+  }, [widgetLayout.placements]);
+
+  function detachTool(id: ToolTabId, x?: number, y?: number) {
+    if (!deskActive || !workspaceRef.current || !dockedToolTabs.some(([candidate]) => candidate === id)) return;
+    focusTool.current = id;
+    const bounds = deskWidgetPlacement(workspaceRef.current, x, y);
+    widgetLayout.setPlacement(id, x !== undefined && y !== undefined ? snapWidgetPlacement(bounds) : bounds);
+  }
+
+  function dockTool(id: ToolTabId, focus = true) {
+    if (focus) focusTool.current = id;
+    setToolTab(id);
+    widgetLayout.setPlacement(id);
+  }
+
+  const deskOverviewWindows: DeskOverviewWindow[] = [
+    { name: 'device', label: t('ui.e6033cd72f50') },
+    { name: 'tools', label: t('ui.fecfbc6e1053') },
+    ...availableToolTabs.flatMap(([id, label]): DeskOverviewWindow[] => toolPlacement(id)
+      ? [{ name: `widget:${id}`, label, returnToTabs: () => dockTool(id, false) }] : []),
+  ];
+
+  const hideToolPreview = useCallback(() => {
+    setPreviewTool(null);
+    if (dragSurfaceRef.current) dragSurfaceRef.current.hidden = true;
+  }, []);
+
+  const endToolDrag = useCallback(() => {
+    draggedTool.current = null;
+    hideToolPreview();
+    if (workspaceRef.current) delete workspaceRef.current.dataset.tabDrag;
+  }, [hideToolPreview, workspaceRef]);
+
+  useEffect(() => {
+    const id = draggedTool.current;
+    if (id && (!deskActive || !dockedToolTabs.some(([candidate]) => candidate === id))) endToolDrag();
+  }, [deskActive, dockedToolTabs, endToolDrag]);
+
+  function showToolPreview(viewport: HTMLElement, x: number, y: number) {
+    const surface = dragSurfaceRef.current;
+    if (!surface) return;
+    const { left, top, width, height } = snapWidgetPlacement(deskWidgetPlacement(viewport, x, y));
+    surface.style.transform = `translate(${left}px, ${top}px)`;
+    surface.style.width = `${width}px`;
+    surface.style.height = `${height}px`;
+    if (surface.hidden) {
+      surface.hidden = false;
+      setPreviewTool(draggedTool.current);
+    }
+  }
+
+  function beginToolDrag(event: DragEvent<HTMLButtonElement>, id: ToolTabId) {
+    const viewport = workspaceRef.current;
+    if (!deskActive || !viewport) { event.preventDefault(); return; }
+    draggedTool.current = id;
+    event.dataTransfer.setData(DESK_TOOL_DRAG_TYPE, id);
+    event.dataTransfer.effectAllowed = 'move';
+    // A loaded image replaces the browser's tab thumbnail even when it is outside the DOM.
+    event.dataTransfer.setDragImage(deskDragImage, 0, 0);
+    viewport.dataset.tabDrag = '';
+    showToolPreview(viewport, event.clientX, event.clientY);
+  }
+
+  function overWorkspace(event: DragEvent<HTMLDivElement>) {
+    if (!deskActive || !draggedTool.current || !event.dataTransfer.types.includes(DESK_TOOL_DRAG_TYPE)) return;
+    event.preventDefault();
+    const overDock = widgetDockRef.current?.contains(event.target as Node);
+    event.dataTransfer.dropEffect = overDock ? 'none' : 'move';
+    if (overDock) hideToolPreview();
+    else showToolPreview(event.currentTarget, event.clientX, event.clientY);
+  }
+
+  function leaveWorkspaceDrag(event: DragEvent<HTMLDivElement>) {
+    const next = event.relatedTarget;
+    if (draggedTool.current && !(next instanceof Node && event.currentTarget.contains(next))) hideToolPreview();
+  }
+
+  function dropTool(event: DragEvent<HTMLDivElement>) {
+    const id = draggedTool.current;
+    if (!id || event.dataTransfer.getData(DESK_TOOL_DRAG_TYPE) !== id) return;
+    event.preventDefault();
+    endToolDrag();
+    if (!widgetDockRef.current?.contains(event.target as Node)) detachTool(id, event.clientX, event.clientY);
+  }
+
+  function renderTool(id: ToolTabId, body: ReactNode) {
+    const label = availableToolTabs.find(([candidate]) => candidate === id)?.[1] ?? '';
+    return <DeskToolWidget key={id} id={id} label={label} active={toolActive(id)} placement={toolPlacement(id)}
+      preview={previewedTool === id ? dragSurfaceRef : undefined}
+      dock={floatingToolsRef} canvas={floatingCanvasRef} registerWidget={floatingWorkspace.registerWidget}
+      onDock={() => dockTool(id)} onBoundsChange={bounds => widgetLayout.saveBounds(id, bounds)}>{body}</DeskToolWidget>;
+  }
   const [renaming, setRenaming] = useState(false);
   const [labelDraft, setLabelDraft] = useState('');
   const [clock, setClock] = useState(() => Date.now());
@@ -418,8 +583,6 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const idleLeftMs = session?.idleExpiresAt ? new Date(session.idleExpiresAt).getTime() - clock : null;
   const hardLeftMs = session?.expiresAt ? new Date(session.expiresAt).getTime() - clock : null;
   const profileName = session?.profileName || t('ui.85e2179937ff');
-  const isRunning = session?.status === 'running';
-  const canControl = isRunning && !readOnly && stream.inputReady;
   const audioControl = {
     mode: connectionMode, audioTransport: stream.audioTransport, audioEnabled, audioState: stream.audioState,
     audioNotice: stream.audioNotice, audioBusy: !isRunning || busy === 'audio', audioPending: busy === 'audio',
@@ -431,7 +594,8 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
       <Icon name="alert" size={17} /><span title={t('ui.e1a23d943344')}><TranslatedText message="copy.SessionView.34b0e063" values={{ p0: Math.max(1, Math.ceil(idleLeftMs / 60_000)) }} /></span>
       <button type="button" className="button primary small" onClick={() => void extendSession()}>{t('ui.659ad690ef24')}</button>
     </div>;
-  return <div className="session-layout" data-shared={shared ? access : undefined} data-workspace-mode={activeWorkspaceMode}>
+  return <div className="session-layout" data-shared={shared ? access : undefined} data-workspace-mode={activeWorkspaceMode} data-desk={deskActive || undefined}
+    data-overview={deskActive && windowOverviewOpen || undefined}>
     <div className="session-heading">
       <div className="session-title-row">
         <div className="session-title-top">
@@ -520,23 +684,31 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
         </div>
         {!shared && !isPreparing && <div className="workspace-mode-bar" role="group" aria-label={t('ui.7920d43e70db')}>
           <div className="workspace-mode-buttons">
-            {!compactWorkspace && <button type="button" className="workspace-positioned-view" aria-pressed={activeWorkspaceMode === 'split'}
+            {!compactWorkspace && <button type="button" className="workspace-positioned-view" data-workspace-choice="split" aria-pressed={activeWorkspaceMode === 'split'}
               aria-label={t('ui.de5c415b1d45')} title={t('ui.de5c415b1d45')} onClick={() => changeWorkspaceMode('split')}><Icon name="grid" size={16} /><span>{t('ui.de5c415b1d45')}</span></button>}
-            <button type="button" className="workspace-positioned-view" aria-pressed={docked} aria-label={t('session.workspace.dock')} title={t('session.workspace.dock')}
-              onClick={() => changeWorkspaceMode('dock')}><Icon name="dockBottom" size={16} /><span>{t('session.workspace.dock')}</span></button>
             <button type="button" className="workspace-positioned-view" data-workspace-choice="float" aria-pressed={floating} aria-label={t('session.workspace.floating')} title={t('session.workspace.floating')}
               onClick={() => changeWorkspaceMode('float')}><Icon name="layers" size={16} /><span>{t('session.workspace.floating')}</span></button>
-            <button type="button" className="workspace-standalone-view" data-workspace-choice="screen" aria-pressed={activeWorkspaceMode === 'screen'}
-              aria-label={t('ui.c062341615dc')} title={t('ui.c062341615dc')} onClick={() => changeWorkspaceMode('screen')}>
-              <Icon name="phone" size={16} /><span>{t('ui.c062341615dc')}</span>
-            </button>
-            <button type="button" className="workspace-standalone-view" data-workspace-choice="tools" aria-pressed={activeWorkspaceMode === 'tools'}
-              aria-label={t('ui.4e90074f740b')} title={t('ui.4e90074f740b')} onClick={() => changeWorkspaceMode('tools')}>
-              <Icon name="terminal" size={16} /><span>{t('ui.4e90074f740b')}</span>
-            </button>
-            <button type="button" className="workspace-default-view" aria-label={t('session.workspace.setDefault')} aria-pressed={defaultView}
-              title={t(defaultView ? 'session.workspace.defaultView' : 'session.workspace.setDefault')}
-              onClick={saveDefaultWorkspaceMode}><Icon name="star" size={16} /></button>
+            <WorkspaceDefaultButton className="workspace-default-view" selected={defaultView} disabled={!canSaveDefaultLayout} onSelect={saveDefaultWorkspaceMode} />
+            <div className="workspace-quick-views">
+              <button type="button" className="workspace-standalone-view" data-workspace-choice="screen" aria-pressed={activeWorkspaceMode === 'screen'}
+                aria-label={t('ui.c062341615dc')} title={t('ui.c062341615dc')} onClick={() => changeWorkspaceMode('screen')}>
+                <Icon name="phone" size={16} /><span>{t('ui.c062341615dc')}</span>
+              </button>
+              <button type="button" className="workspace-standalone-view" data-workspace-choice="tools" aria-pressed={activeWorkspaceMode === 'tools'}
+                aria-label={t('ui.4e90074f740b')} title={t('ui.4e90074f740b')} onClick={() => changeWorkspaceMode('tools')}>
+                <Icon name="terminal" size={16} /><span>{t('ui.4e90074f740b')}</span>
+              </button>
+            </div>
+            {floating && <div className="workspace-layout-actions">
+              <button type="button" className="workspace-reset-layout" aria-label={t('session.workspace.resetFloating')}
+                title={t('session.workspace.resetFloating')} onClick={floatingWorkspace.reset}>
+                <Icon name="rotate" size={16} /><span>{t('session.workspace.resetFloating')}</span>
+              </button>
+              <button ref={deskTrigger} type="button" className="workspace-enter-desk" aria-label={t('session.workspace.desk')}
+                title={t('session.workspace.desk')} onClick={openDesk}>
+                <Icon name="expand" size={16} /><span>{t('session.workspace.desk')}</span>
+              </button>
+            </div>}
           </div>
         </div>}
       </div>
@@ -549,20 +721,26 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     {shared && <SharedBanner ownerName={session?.ownerName} mode={access === 'view' ? 'view' : 'control'} />}
     {sessionError && <div className="banner-error" role="alert"><Icon name="alert" size={17} />{localizeText(sessionError)}<button onClick={() => void refresh()}>{t('ui.5189135a6110')}</button></div>}
     {isPreparing ? <SessionStartupProgress progress={session?.startupProgress}/> : <>
-    {floating && <FloatingWorkspaceToolbar workspace={floatingWorkspace} onDevice={() => showFloatingWindow('device')}
-      onTools={() => showFloatingWindow('tools')} onCommand={isRunning && availableToolTabs.some(([id]) => id === 'console') ? () => {
-        setToolTab('console');
-        setFocusFloatingCommand(true);
-      } : undefined} />}
-    <div className="workspace-grid" data-console-resized={consoleResized || undefined} data-landscape={landscape || undefined} ref={workspaceRef}
+    {deskActive && <DeskWindowOverview open={windowOverviewOpen} windows={deskOverviewWindows} workspace={floatingWorkspace}
+      onOpenChange={setWindowOverviewOpen} onSelect={showFloatingWindow} onExitDesk={leaveDesk} />}
+    <div className="workspace-grid" data-console-resized={consoleResized || undefined} data-landscape={landscape || undefined} data-desk={deskActive || undefined} ref={workspaceRef}
       dir={floating ? 'ltr' : undefined} role={floating ? 'region' : undefined} tabIndex={floating ? 0 : undefined}
-      aria-label={floating ? t('session.workspace.canvas') : undefined}
+      aria-label={floating ? t(deskActive ? 'session.workspace.desk' : 'session.workspace.canvas') : undefined}
+      aria-describedby={deskActive ? 'desk-exit-hint' : undefined}
+      onDragOver={overWorkspace} onDragLeave={leaveWorkspaceDrag} onDrop={dropTool}
+      onDoubleClick={event => {
+        if (deskActive && !draggedTool.current && (event.target === floatingCanvasRef.current || event.target === event.currentTarget)) {
+          setWindowOverviewOpen(true);
+        }
+      }}
       style={{ '--console-width': consoleWidth + 'px', '--viewer-width': viewerWidth + 'px', '--device-aspect': stream.size.width / Math.max(1, stream.size.height) } as CSSProperties}>
       <div className="session-floating-canvas" ref={floatingCanvasRef}>
+      {deskActive && <div className="desk-drag-surface" ref={dragSurfaceRef} hidden inert aria-hidden="true" />}
       <section className="viewer-panel" aria-label={t('ui.4547b46d3c0c')} ref={floatingDeviceRef}
         data-window={floating ? 'device' : undefined} dir={floating ? getDirection() : undefined}>
-        {floating && <FloatingWindowControls name="device" workspace={floatingWorkspace} viewportRef={workspaceRef} />}
+        {floating && <FloatingWindowResizeHandles name="device" />}
         <DeviceControls onKey={navKey} canControl={canControl} capture={capture} captureReady={captureReady}
+          workspaceMove={floating && <FloatingWindowMove name="device" className="device-control" />}
           textInput={!readOnly && <DeviceTextInput key={sessionId} active={shared || activeWorkspaceMode !== 'tools'} canSend={canControl}
             onSend={text => sendInput({ kind: 'text', text })} />}
           audio={(audioEnabled || audioControl.onToggleAudio) && <SessionAudioControl rail {...audioControl} />}
@@ -575,11 +753,11 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
           <div className={'device-screen ' + (landscape ? 'landscape' : 'portrait')}>
             <img ref={stream.imageRef} alt={t('ui.b4a6c9bc414c')} className={stream.format === 'image' ? 'active-frame' : ''} draggable={false} onLoad={() => setImageFrameReady(true)} onError={() => setImageFrameReady(false)} />
             <canvas ref={stream.canvasRef} className={stream.format === 'video' ? 'active-frame' : ''} />
-            <div className="touch-layer" role="application" aria-label={t('ui.684de2e969ef')} tabIndex={readOnly ? -1 : 0} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerCancel} onLostPointerCapture={pointerCancel} onKeyDown={event => { if (event.key === 'Escape' || event.key === 'Backspace') { event.preventDefault(); navKey(4); } else if (event.key === 'Enter') { event.preventDefault(); navKey(session.deviceType === 'tv' ? 23 : 66); } else if (event.key.startsWith('Arrow')) { event.preventDefault(); navKey(({ ArrowUp: 19, ArrowDown: 20, ArrowLeft: 21, ArrowRight: 22 } as Record<string, number>)[event.key]); } }}><span ref={touchIndicator.markerRef} className="session-touch-marker" aria-hidden="true" hidden /></div>
+            <div className="touch-layer" role="application" aria-label={t('ui.684de2e969ef')} tabIndex={readOnly ? -1 : 0} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerCancel} onLostPointerCapture={pointerCancel} onKeyDown={deviceKeyDown}><span ref={touchIndicator.markerRef} className="session-touch-marker" aria-hidden="true" hidden /></div>
             {(session && (session.status === 'error' || (session.error && (session.status === 'stopping' || session.status === 'stopped')))) ? <div className="stream-placeholder"><div className="placeholder-device"><Icon name="alert" size={34}/></div><h3>{t('ui.f70ff6228697')}</h3><p>{session.error || t('ui.2a05b00bc38f')}</p></div> : stream.status !== 'live' && <div className="stream-placeholder"><div className="placeholder-device"><Icon name="phone" size={38} /></div><h3>{stream.status === 'connecting' ? t('ui.bd77b9fa4fd6') : stream.status === 'unsupported' ? t('ui.3a6ec360f375') : t('ui.fb3ce9cae1e8')}</h3><p>{stream.streamError || t('ui.ebcb4d3177c6')}</p>{stream.status !== 'connecting' && <button className="button ghost-light" onClick={stream.reconnect}><Icon name="refresh" size={16} />{t('ui.2de34a1774f6')}</button>}</div>}
             {dragging && <div className="drop-overlay"><Icon name="upload" size={34} /><strong>{t('ui.9c12eed10791')}</strong><span>{t('ui.4b2f4b989bf1')}</span></div>}
           </div>
-          {!shared && !floating && ['nw', 'ne', 'sw', 'se'].map(corner => <div key={corner} className="device-resize-handle" data-corner={corner}
+          {canResizeDevice && ['nw', 'ne', 'sw', 'se'].map(corner => <div key={corner} className="device-resize-handle" data-corner={corner}
             role="slider" tabIndex={corner === 'se' ? 0 : -1} aria-label={t('session.workspace.resizeDevice')}
             aria-valuemin={deviceSize.min} aria-valuemax={deviceSize.max} aria-valuenow={deviceSize.value} aria-valuetext={dimensionLabel}
             title={t('session.workspace.resizeDevice')}
@@ -596,35 +774,43 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
           </div>
         </div>
       </section>
-      {!shared && <section className="tool-panel terminal-panel" aria-label={t('ui.fecfbc6e1053')} data-active-tool={toolTab} data-console-height-resized={!docked && !floating && consoleHeightResized && toolTab === 'console' && !catalogOpen || undefined}
-        ref={floatingToolsRef} data-window={floating ? 'tools' : undefined} dir={floating ? getDirection() : undefined}
-        style={docked ? { blockSize: dockHeight.value } : undefined}>
-        {floating && <FloatingWindowControls name="tools" workspace={floatingWorkspace} viewportRef={workspaceRef} />}
-        {docked && <div className="dock-height-handle" role="separator" aria-orientation="horizontal" tabIndex={0}
-          aria-label={t('session.workspace.resizeDock')} title={t('session.workspace.resizeDock')}
-          aria-valuemin={dockHeight.min} aria-valuemax={dockHeight.max} aria-valuenow={dockHeight.value}
-          {...dockHeight.pointerHandlers(event => {
-            const grip = event.currentTarget;
-            const scale = grip.getBoundingClientRect().height / grip.offsetHeight;
-            const y = event.clientY;
-            return move => (move.clientY - y) / scale;
-          })}
-          onKeyDown={event => dockHeight.resizeWithKeyboard(event, 32, ['ArrowDown'], ['ArrowUp'])}><span /></div>}
-        <div className="tool-tabs" role="tablist" aria-label={t('ui.fecfbc6e1053')} onKeyDown={event => {
-          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !availableToolTabs.length) return;
-          event.preventDefault();
-          const current = availableToolTabs.findIndex(([id]) => id === toolTab);
-          const next = event.key === 'Home' ? 0 : event.key === 'End' ? availableToolTabs.length - 1
-            : (current + (event.key === (getDirection() === 'rtl' ? 'ArrowRight' : 'ArrowLeft') ? -1 : 1) + availableToolTabs.length) % availableToolTabs.length;
-          const id = availableToolTabs[next][0];
-          setToolTab(id);
-          event.currentTarget.querySelector<HTMLButtonElement>('#tool-tab-' + id)?.focus();
-        }}>{availableToolTabs.map(([id, label]) => <button key={id} type="button" role="tab" id={'tool-tab-' + id} aria-controls={'tool-panel-' + id} aria-selected={toolTab === id} tabIndex={toolTab === id ? 0 : -1} className={toolTab === id ? 'active' : ''} onClick={() => setToolTab(id)}>{label}</button>)}</div>
-        {!docked && !floating && <div className="console-width-handle" role="separator" aria-orientation="vertical" aria-label={t('ui.aad9553c58e7')} aria-valuemin={minConsoleWidth()} aria-valuemax={maxConsoleWidth()} aria-valuenow={visibleConsoleSize.width || Math.min(consoleWidth, maxConsoleWidth())} tabIndex={0} onPointerDown={startWidthResize} onPointerMove={moveWidthResize} onPointerUp={endWidthResize} onPointerCancel={endWidthResize} title={t('ui.84def31d6544')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'width')}><span /></div>}
-        <div className="tool-content terminal-tool" id="tool-panel-console" role="tabpanel" aria-labelledby="tool-tab-console" data-catalog-open={catalogOpen || undefined} style={toolAllowed('console') && toolTab === 'console' ? undefined : { display: 'none' }}>
+      {!shared && <section className="tool-panel terminal-panel" aria-label={t('ui.fecfbc6e1053')} data-active-tool={dockedTool} data-console-height-resized={!floating && consoleHeightResized && dockedTool === 'console' && !catalogOpen || undefined}
+        ref={floatingToolsRef} data-window={floating ? 'tools' : undefined} dir={floating ? getDirection() : undefined}>
+        {floating && <FloatingWindowResizeHandles name="tools" />}
+        <div className="session-tool-tabs-strip" ref={widgetDockRef} data-window-move={floating ? 'tools' : undefined} data-widget-dock={deskActive || undefined}>
+          {floating && <FloatingWindowMove name="tools" />}
+          {deskActive && availableToolTabs.length > 0 && !dockedToolTabs.length ? <span className="desk-empty-tabs">{t('session.workspace.dockHere')}</span>
+          : <div className="tool-tabs" role="tablist" aria-label={t('ui.fecfbc6e1053')} onKeyDown={event => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !dockedToolTabs.length) return;
+            event.preventDefault();
+            const current = dockedToolTabs.findIndex(([id]) => id === dockedTool);
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? dockedToolTabs.length - 1
+              : (current + (event.key === (getDirection() === 'rtl' ? 'ArrowRight' : 'ArrowLeft') ? -1 : 1) + dockedToolTabs.length) % dockedToolTabs.length;
+            const id = dockedToolTabs[next][0];
+            setToolTab(id);
+            event.currentTarget.querySelector<HTMLButtonElement>('#tool-tab-' + id)?.focus();
+          }}>{dockedToolTabs.map(([id, label]) => <button key={id} type="button" role="tab" id={'tool-tab-' + id}
+            aria-controls={'tool-panel-' + id} aria-selected={dockedTool === id} tabIndex={dockedTool === id ? 0 : -1}
+            className={dockedTool === id ? 'active' : ''} onClick={() => setToolTab(id)}
+            draggable={deskActive} title={deskActive ? t('session.workspace.detachTool') : undefined}
+            aria-keyshortcuts={deskActive ? 'Alt+Enter' : undefined}
+            onKeyDown={event => {
+              if (deskActive && event.altKey && event.key === 'Enter') { event.preventDefault(); detachTool(id); }
+            }}
+            onDragStart={event => beginToolDrag(event, id)}
+            onDragEnd={endToolDrag}>{label}</button>)}</div>}
+          {deskActive && <div className="floating-desk-actions">
+            <WorkspaceDefaultButton className="floating-desk-default" selected={defaultView} onSelect={saveDefaultWorkspaceMode} size={18} />
+          </div>}
+        </div>
+        {!floating && <div className="console-width-handle" role="separator" aria-orientation="vertical" aria-label={t('ui.aad9553c58e7')} aria-valuemin={minConsoleWidth()} aria-valuemax={maxConsoleWidth()} aria-valuenow={visibleConsoleSize.width || Math.min(consoleWidth, maxConsoleWidth())} tabIndex={0} onPointerDown={startWidthResize} onPointerMove={moveWidthResize} onPointerUp={endWidthResize} onPointerCancel={endWidthResize} onLostPointerCapture={endWidthResize} title={t('ui.84def31d6544')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'width')}><span /></div>}
+      </section>}
+      </div>
+      {!shared && <>
+        {renderTool('console', <div className="tool-content terminal-tool" id="tool-panel-console" role="tabpanel" aria-labelledby="tool-tab-console" data-catalog-open={catalogOpen || undefined} style={toolActive('console') ? undefined : { display: 'none' }}>
           <div className="terminal-topline"><div className="tool-header"><h2>{t('ui.415b2ea14558')}</h2><p>{t('ui.5a8b4be5b13d')}</p></div><div className="terminal-header-actions"><button type="button" className="console-size-reset icon-button" title={t('ui.acb4297e7d57')} aria-label={t('ui.acb4297e7d57')} onClick={resetConsoleSize} disabled={!consoleResized && !consoleHeightResized}><Icon name="refresh" size={16} /></button><button type="button" className="console-catalog-toggle" aria-expanded={catalogOpen} aria-controls="console-catalog-panel" onClick={() => { setSuggestionsOpen(false); setCatalogOpen(open => !open); }}><TranslatedText message="copy.SessionView.debcf21d" values={{ p0: getConsoleCommands().length }} /></button><button type="button" className="terminal-clear" onClick={() => setShellHistory([])} disabled={!shellHistory.length} title={t('ui.20dd55101aa2')}>{t('ui.8965271d3c97')}</button></div></div>
           <div className="terminal-output" ref={terminalOutputRef} style={{ height: consoleHeight }} aria-live="polite">{shellHistory.length ? shellHistory.map((line, index) => <div className="terminal-entry" key={index}><div className="terminal-command"><span aria-hidden="true">{t('ui.77d57e39b407')}</span> {line.command}</div>{line.result?.stdout && <pre>{line.result.stdout}</pre>}{line.result?.stderr && <pre className="terminal-stderr">{line.result.stderr}</pre>}{line.error && <pre className="terminal-stderr">{line.error}</pre>}{line.result && <small><TranslatedText message="copy.SessionView.0f771496" values={{ p0: line.result.exitCode }} /></small>}</div>) : <div className="terminal-empty"><strong>{t('ui.fadad01443a1')}</strong><p>{t('ui.087d5eca2dbf')}</p></div>}{shellBusy && <div className="terminal-running"><span className="mini-spinner" />{t('ui.176e44dd22ac')}</div>}</div>
-          {!docked && !floating && <div className="console-height-handle" role="separator" aria-orientation="horizontal" aria-label={t('ui.61c0f7efe428')} aria-valuemin={180} aria-valuemax={maxConsoleHeight()} aria-valuenow={visibleConsoleSize.height || Math.min(consoleHeight, maxConsoleHeight())} tabIndex={0} onPointerDown={startHeightResize} onPointerMove={moveHeightResize} onPointerUp={endHeightResize} onPointerCancel={endHeightResize} title={t('ui.828ce3497805')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'height')}><span /></div>}
+          {!floating && <div className="console-height-handle" role="separator" aria-orientation="horizontal" aria-label={t('ui.61c0f7efe428')} aria-valuemin={180} aria-valuemax={maxConsoleHeight()} aria-valuenow={visibleConsoleSize.height || Math.min(consoleHeight, maxConsoleHeight())} tabIndex={0} onPointerDown={startHeightResize} onPointerMove={moveHeightResize} onPointerUp={endHeightResize} onPointerCancel={endHeightResize} onLostPointerCapture={endHeightResize} title={t('ui.828ce3497805')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'height')}><span /></div>}
           <div className="terminal-input-wrap">
             {catalogOpen && <div className="console-catalog" id="console-catalog-panel" aria-label={t('ui.0bf2af623b6f')} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); setCatalogOpen(false); commandInputRef.current?.focus(); } }}>
               <div className="console-catalog-search"><input value={catalogQuery} onChange={event => setCatalogQuery(event.target.value)} placeholder={t('ui.d65f680ec9dc')} aria-label={t('ui.a8ea2fb17773')} /><span><TranslatedText message="copy.SessionView.8ce621ed" values={{ p0: catalogResults.length }} /></span></div>
@@ -640,9 +826,9 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
                   {hint.access === 'console' && <button type="button" className="console-catalog-insert" onClick={() => insertConsoleHint(hint)} disabled={!isRunning || shellBusy}>{t('ui.e75dccf67c8c')}</button>}
                   {hint.access === 'upload' && can(user, 'sessions.files') && <div className="console-catalog-actions">
                     <button type="button" className="console-catalog-insert" onClick={() => chooseDeviceFiles(hint.action === 'upload-apk')} disabled={!isRunning || uploading.length > 0}><Icon name="upload" size={15} />{hint.action === 'upload-apk' ? t('ui.52875137fc3f') : t('ui.e3663341c82c')}</button>
-                    {hint.action === 'upload-apk' && <button type="button" className="console-catalog-insert" onClick={() => { setCatalogOpen(false); setToolTab('apps'); changeWorkspaceMode('tools'); }}>{t('ui.ce084d29dc24')}</button>}
+                    {hint.action === 'upload-apk' && <button type="button" className="console-catalog-insert" onClick={() => { setCatalogOpen(false); setToolTab('apps'); if (!deskActive) changeWorkspaceMode('tools'); else if (toolPlacement('apps')) jumpFloating('widget:apps'); }}>{t('ui.ce084d29dc24')}</button>}
                   </div>}
-                  {hint.access === 'external' && can(user, 'sessions.adb') && <button type="button" className="console-catalog-insert" onClick={() => { setAdbMenuOpen(true); adbMenuRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' }); }}>{t('ui.31803f334db2')}</button>}
+                  {hint.access === 'external' && can(user, 'sessions.adb') && <button type="button" className="console-catalog-insert" onClick={() => { if (deskActive) leaveDesk(); setAdbMenuOpen(true); adbMenuRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' }); }}>{t('ui.31803f334db2')}</button>}
                 </div>) : <div className="console-catalog-empty">{t('ui.532865cd567e')}</div>}
               </div>
             </div>}
@@ -652,18 +838,17 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
             </div>}
             <form className="terminal-input" onSubmit={runCommand}><span aria-hidden="true">{t('ui.77d57e39b407')}</span><input ref={commandInputRef} value={command} onChange={event => { setCommand(event.target.value); setCatalogOpen(false); setConsoleNotice(''); setHistoryIndex(null); setSuggestionIndex(-1); setSuggestionsOpen(Boolean(event.target.value.trim())); }} onFocus={() => { setCatalogOpen(false); if (command.trim()) setSuggestionsOpen(true); }} onBlur={() => setSuggestionsOpen(false)} onKeyDown={handleCommandKeyDown} placeholder={t('ui.c4f762e79442')} aria-label={t('ui.2c167f49ad58')} aria-autocomplete="list" aria-controls="console-command-hints" aria-expanded={suggestionsOpen && suggestions.length > 0} aria-activedescendant={suggestionsOpen && suggestionIndex >= 0 ? 'console-hint-' + suggestionIndex : undefined} disabled={!isRunning || shellBusy} spellCheck={false} autoComplete="off" /><button type="submit" disabled={!command.trim() || !isRunning || shellBusy} aria-label={t('ui.74f37caa1f86')}><Icon name="arrowRight" size={18} /></button></form>{consoleNotice && <div className="console-notice" role="alert">{consoleNotice}</div>}
           </div>
-        </div>
-        <LogcatPanel panelId="tool-panel-logs" sessionId={sessionId} active={toolAllowed('logs') && toolTab === 'logs'} running={isRunning} />
-        <DeviceInfoPanel panelId="tool-panel-info" sessionId={sessionId} active={toolTab === 'info'} running={isRunning} />
-        <EnvPanel panelId="tool-panel-env" sessionId={sessionId} active={toolTab === 'env'} running={canReadEnvironment} readForViewer={!shared && can(user, 'sessions.env') && hasCapability(session, 'env')} onShowTouchesChange={touchIndicator.setEnabled} nativeTouches={stream.nativeTouches} />
-        <NetworkPanel sessionId={sessionId} active={toolAllowed('traffic') && toolTab === 'traffic'} running={isRunning} canExport={can(user, 'sessions.files')} onExpand={activeWorkspaceMode !== 'tools' ? () => changeWorkspaceMode('tools') : undefined} />
-        <WebViewsPanel sessionId={sessionId} active={toolAllowed('webviews') && toolTab === 'webviews'} running={isRunning} />
-        {toolAllowed('performance') && <PerformancePanel key={sessionId} sessionId={sessionId}
-          active={toolTab === 'performance' && activeWorkspaceMode !== 'screen'} running={isRunning}
-          ended={session?.status === 'stopped' || session?.status === 'error'} />}
-        <AppsPanel panelId="tool-panel-apps" sessionId={sessionId} active={toolAllowed('apps') && toolTab === 'apps'} running={isRunning} />
-      </section>}
-      </div>
+        </div>)}
+        {renderTool('logs', <LogcatPanel panelId="tool-panel-logs" sessionId={sessionId} active={toolActive('logs')} running={isRunning} />)}
+        {renderTool('info', <DeviceInfoPanel panelId="tool-panel-info" sessionId={sessionId} active={toolActive('info')} running={isRunning} />)}
+        {renderTool('env', <EnvPanel panelId="tool-panel-env" sessionId={sessionId} active={toolActive('env')} running={canReadEnvironment} readForViewer={canReadEnvironment} onShowTouchesChange={touchIndicator.setEnabled} nativeTouches={stream.nativeTouches} />)}
+        {renderTool('traffic', <NetworkPanel sessionId={sessionId} active={toolActive('traffic')} running={isRunning} canExport={can(user, 'sessions.files')} onExpand={!deskActive && activeWorkspaceMode !== 'tools' ? () => changeWorkspaceMode('tools') : undefined} />)}
+        {renderTool('webviews', <WebViewsPanel sessionId={sessionId} active={toolActive('webviews')} running={isRunning} />)}
+        {toolAllowed('performance') && renderTool('performance', <PerformancePanel key={sessionId} sessionId={sessionId}
+          active={toolActive('performance')} running={isRunning}
+          ended={session?.status === 'stopped' || session?.status === 'error'} />)}
+        {renderTool('apps', <AppsPanel panelId="tool-panel-apps" sessionId={sessionId} active={toolActive('apps')} running={isRunning} />)}
+      </>}
     </div>
     </>}
   </div>;

@@ -221,47 +221,78 @@ export function LogcatPanel({ sessionId, active, running, panelId }: { sessionId
   return <div className="log-panel" id={panelId} role={panelId ? 'tabpanel' : undefined} aria-labelledby={panelId ? 'tool-tab-logs' : undefined} hidden={!active} style={{ '--log-font-size': fontSize + 'px' } as CSSProperties}>
     <div className="log-head">
       <h2 className="log-sr-only">{t('ui.8e309dfb82e0')}</h2>
-      <button type="button" className={'log-control log-live' + (live ? ' on' : '')} onClick={toggleLive} disabled={!running}
-        title={live ? t('ui.9770c63bcf89') : t('ui.bc49b4d1e835')} aria-pressed={!live}>
-        <Icon name={live ? 'pause' : 'play'} size={15} />{live ? t('ui.65530fd463ea') : t('ui.a42aee58d60a')}
-      </button>
-      <div className="log-font-controls" role="group" aria-label={t('ui.780e6aee2cbc')}>
-        <button type="button" className="log-control" onClick={() => setFontSize(value => Math.max(MIN_FONT_SIZE, value - 1))} disabled={fontSize === MIN_FONT_SIZE} aria-label={t('ui.583001c59536')} title={t('ui.2ce211762cc4')}><Icon name="minus" size={15}/></button>
-        <output aria-label={t('ui.9f9d637d4607')}><TranslatedText message="copy.LogcatPanel.f2021904" values={{ p0: fontSize }} /></output>
-        <button type="button" className="log-control" onClick={() => setFontSize(value => Math.min(MAX_FONT_SIZE, value + 1))} disabled={fontSize === MAX_FONT_SIZE} aria-label={t('ui.587fd05a12fc')} title={t('ui.d58d963c745d')}><Icon name="plus" size={15}/></button>
-      </div>
-      <details className="log-menu" ref={menuRef} onKeyDown={event => { if (event.key === 'Escape' && menuRef.current) { menuRef.current.open = false; menuRef.current.querySelector('summary')?.focus(); } }}>
-        <summary className="log-control" aria-label={t('ui.092101b7ebad')} title={t('ui.092101b7ebad')}><Icon name="more" size={17}/></summary>
-        <div className="log-menu-actions">
-          <button type="button" className="log-menu-error" onClick={() => menuAction(() => jumpToError(-1))} disabled={!errorRows.length}><Icon name="arrowUp" size={15}/>{t('ui.fd595a810f23')}</button>
-          <button type="button" className="log-menu-error" onClick={() => menuAction(() => jumpToError(1))} disabled={!errorRows.length}><Icon name="arrowDown" size={15}/>{t('ui.82dd8e4ac792')}</button>
-          <button type="button" onClick={() => menuAction(() => { followLatest(); void fetchPage(true); })} disabled={loading || !running}><Icon name="refresh" size={15}/>{t('ui.9449575c0465')}</button>
-          <button type="button" onClick={() => void copy()} disabled={!visible.length}><Icon name={copied ? 'check' : 'copy'} size={15}/>{copied ? t('ui.d2d08c715ee6') : t('ui.296257e3983b')}</button>
-          <button type="button" onClick={() => menuAction(() => download('logcat-' + sessionId.slice(0, 8) + '.log', visible.map(formatLogLine).join('\n') + '\n'))} disabled={!visible.length}><Icon name="download" size={15}/>{t('ui.c4e961bed0c1')}</button>
-          <button type="button" className="log-menu-clear" onClick={() => menuAction(() => { void clear(); })} disabled={!running}><Icon name="trash" size={15}/>{t('ui.fafd0c22168c')}</button>
+      <div className="log-stream-controls">
+        <button type="button" className={'log-control log-live' + (!live ? ' on' : '')} onClick={toggleLive} disabled={!running}
+          title={live ? t('ui.9770c63bcf89') : t('ui.bc49b4d1e835')} aria-label={live ? t('ui.65530fd463ea') : t('ui.a42aee58d60a')} aria-pressed={!live}>
+          <Icon name={live ? 'pause' : 'play'} size={15} /><span>{live ? t('ui.65530fd463ea') : t('ui.a42aee58d60a')}</span>
+        </button>
+        <div className="log-error-controls" role="group" aria-label={t('ui.bb095483d8f2')}>
+          <span className="log-error-label" aria-hidden="true">{t('ui.bb095483d8f2')}</span>
+          <button type="button" className="log-control" onClick={() => jumpToError(-1)} disabled={!errorRows.length} aria-label={t('ui.fd595a810f23')} title={t('ui.fd595a810f23')}><Icon name="arrowUp" size={14}/></button>
+          <button type="button" className="log-control" onClick={() => jumpToError(1)} disabled={!errorRows.length} aria-label={t('ui.82dd8e4ac792')} title={t('ui.82dd8e4ac792')}><Icon name="arrowDown" size={14}/></button>
         </div>
-      </details>
+      </div>
+      <div className="log-display-controls" role="group" aria-label={t('ui.694b865d27a5')}>
+        <button type="button" className={'log-control log-wrap' + (wrap ? ' on' : '')} onClick={() => setWrap(value => !value)} aria-pressed={wrap}
+          aria-label={t('ui.04120307c467')} title={t('ui.d775dff1fb8f')}><Icon name="wrap" size={16}/><span>{t('ui.04120307c467')}</span></button>
+        <div className="log-font-controls" role="group" aria-label={t('ui.780e6aee2cbc')}>
+          <button type="button" className="log-control" onClick={() => setFontSize(value => Math.max(MIN_FONT_SIZE, value - 1))} disabled={fontSize === MIN_FONT_SIZE} aria-label={t('ui.583001c59536')} title={t('ui.2ce211762cc4')}><Icon name="minus" size={15}/></button>
+          <output aria-label={t('ui.9f9d637d4607')}><TranslatedText message="copy.LogcatPanel.f2021904" values={{ p0: fontSize }} /></output>
+          <button type="button" className="log-control" onClick={() => setFontSize(value => Math.min(MAX_FONT_SIZE, value + 1))} disabled={fontSize === MAX_FONT_SIZE} aria-label={t('ui.587fd05a12fc')} title={t('ui.d58d963c745d')}><Icon name="plus" size={15}/></button>
+        </div>
+        <details className="log-menu" ref={menuRef} onKeyDown={event => {
+          const menu = event.currentTarget;
+          if (event.key !== 'Escape' || !menu.open) return;
+          event.preventDefault();
+          menu.open = false;
+          menu.querySelector('summary')?.focus();
+        }}>
+          <summary className="log-control" aria-label={t('ui.092101b7ebad')} title={t('ui.092101b7ebad')}><Icon name="more" size={17}/></summary>
+          <div className="log-menu-actions">
+            <button type="button" className="log-menu-error" onClick={() => menuAction(() => jumpToError(-1))} disabled={!errorRows.length}><Icon name="arrowUp" size={15}/>{t('ui.fd595a810f23')}</button>
+            <button type="button" className="log-menu-error" onClick={() => menuAction(() => jumpToError(1))} disabled={!errorRows.length}><Icon name="arrowDown" size={15}/>{t('ui.82dd8e4ac792')}</button>
+            <button type="button" onClick={() => menuAction(() => { followLatest(); void fetchPage(true); })} disabled={loading || !running}><Icon name="refresh" size={15}/>{t('ui.9449575c0465')}</button>
+            <button type="button" onClick={() => void copy()} disabled={!visible.length}><Icon name={copied ? 'check' : 'copy'} size={15}/>{copied ? t('ui.d2d08c715ee6') : t('ui.296257e3983b')}</button>
+            <button type="button" onClick={() => menuAction(() => download('logcat-' + sessionId.slice(0, 8) + '.log', visible.map(formatLogLine).join('\n') + '\n'))} disabled={!visible.length}><Icon name="download" size={15}/>{t('ui.c4e961bed0c1')}</button>
+            <button type="button" className="log-menu-clear" onClick={() => menuAction(() => { void clear(); })} disabled={!running}><Icon name="trash" size={15}/>{t('ui.fafd0c22168c')}</button>
+          </div>
+        </details>
+      </div>
     </div>
 
-    <div className="log-filters">
-      <div className="log-filter-field">
-        <label htmlFor={'log-app-' + sessionId}>{t('ui.26b855cc1660')}</label>
-        <div className="log-app-select-row">
-          <select id={'log-app-' + sessionId} value={packageName} onChange={event => selectApp(event.target.value)} disabled={!running || appsLoading}>
-            <option value="">{t('ui.e350d91f01f5')}</option>
-            {packageName && !apps.some(app => app.packageName === packageName) && <option value={packageName}>{packageName}</option>}
-            {apps.map(app => <option key={app.packageName} value={app.packageName}>{app.packageName}</option>)}
+    <div className="log-query-tools">
+      <div className="log-filters">
+        <div className="log-filter-field">
+          <label htmlFor={'log-app-' + sessionId}>{t('ui.26b855cc1660')}</label>
+          <div className="log-app-select-row">
+            <select id={'log-app-' + sessionId} value={packageName} onChange={event => selectApp(event.target.value)} disabled={!running || appsLoading}>
+              <option value="">{t('ui.e350d91f01f5')}</option>
+              {packageName && !apps.some(app => app.packageName === packageName) && <option value={packageName}>{packageName}</option>}
+              {apps.map(app => <option key={app.packageName} value={app.packageName}>{app.packageName}</option>)}
+            </select>
+            <button type="button" className="log-control" onClick={() => void loadApps()} disabled={!running || appsLoading} aria-label={t('ui.f0d9ec6e63a3')} title={t('ui.f0d9ec6e63a3')}>{appsLoading ? <ActivityIndicator/> : <Icon name="refresh" size={15}/>}</button>
+          </div>
+        </div>
+        <div className="log-filter-field">
+          <label htmlFor={'log-level-' + sessionId}>{t('ui.7f67af3d6cd9')}</label>
+          <select id={'log-level-' + sessionId} value={filter.minLevel} onChange={event => update({ minLevel: event.target.value as LogLevel })}>
+            {LEVELS.map(level => <option key={level.id} value={level.id} title={level.title}>{level.label}</option>)}
           </select>
-          <button type="button" className="log-control" onClick={() => void loadApps()} disabled={!running || appsLoading} aria-label={t('ui.f0d9ec6e63a3')} title={t('ui.f0d9ec6e63a3')}>{appsLoading ? <ActivityIndicator/> : <Icon name="refresh" size={15}/>}</button>
         </div>
       </div>
-      <div className="log-filter-field">
-        <label htmlFor={'log-level-' + sessionId}>{t('ui.7f67af3d6cd9')}</label>
-        <select id={'log-level-' + sessionId} value={filter.minLevel} onChange={event => update({ minLevel: event.target.value as LogLevel })}>
-          {LEVELS.map(level => <option key={level.id} value={level.id} title={level.title}>{level.label}</option>)}
-        </select>
+      <div className="log-search">
+        <div className={'log-search-field' + (matcher.error ? ' invalid' : '')}>
+          <Icon name="search" size={16} />
+          <input value={filter.query} onChange={event => update({ query: event.target.value })} placeholder={filter.regex ? t('ui.d2ad22823bac') : t('ui.9c51b14d60cb')} aria-label={t('ui.1d2cb1eecd90')} aria-invalid={Boolean(matcher.error) || undefined} aria-describedby={matcher.error ? 'log-regex-error-' + sessionId : undefined} spellCheck={false} />
+          {filter.query && <button type="button" className="log-clear-input" onClick={() => update({ query: '' })} aria-label={t('ui.6e1f7baa472f')}><Icon name="close" size={14} /></button>}
+          <div className="log-match-controls">
+            <button type="button" className={'log-toggle mono' + (filter.matchCase ? ' on' : '')} onClick={() => update({ matchCase: !filter.matchCase })} title={t('ui.e16976aeee37')} aria-label={t('ui.e16976aeee37')} aria-pressed={filter.matchCase}>{t('ui.81acaafba961')}</button>
+            <button type="button" className={'log-toggle mono' + (filter.regex ? ' on' : '')} onClick={() => update({ regex: !filter.regex })} title={t('ui.72ed3ab98243')} aria-label={t('ui.72ed3ab98243')} aria-pressed={filter.regex}>.*</button>
+          </div>
+        </div>
       </div>
     </div>
+    {matcher.error && <div className="log-regex-error" id={'log-regex-error-' + sessionId} role="alert">{matcher.error}</div>}
     {(packageName || appsLoaded && !apps.length) && <div className="log-app-state" role="status">
       {packageName ? appState ? appState.pids === null ? t('ui.babf43590699') : appState.pids.length ? t('copy.LogcatPanel.69bbc195', { p0: appState.pids.join(', ') }) : t('ui.34a80cfcf8a0')
         : loading ? t('ui.0d82c5634e29') : '' : t('ui.1d5198ef06be')}
@@ -269,26 +300,11 @@ export function LogcatPanel({ sessionId, active, running, panelId }: { sessionId
     {appState && appState.sharedPackages.length > 0 && <p className="log-app-warning"><TranslatedText message="copy.LogcatPanel.f6eb239f" values={{ p0: appState.sharedPackages.join(', ') }} /></p>}
     {appsError && <div className="log-error" role="alert">{t('ui.9270a3e71538')}{localizeText(appsError)} <button type="button" onClick={() => void loadApps()}>{t('ui.5189135a6110')}</button></div>}
 
-    <div className="log-search">
-      <div className={'log-search-field' + (matcher.error ? ' invalid' : '')}>
-        <Icon name="search" size={16} />
-        <input value={filter.query} onChange={event => update({ query: event.target.value })} placeholder={filter.regex ? t('ui.d2ad22823bac') : t('ui.9c51b14d60cb')} aria-label={t('ui.1d2cb1eecd90')} spellCheck={false} />
-        {filter.query && <button type="button" className="log-clear-input" onClick={() => update({ query: '' })} aria-label={t('ui.6e1f7baa472f')}><Icon name="close" size={14} /></button>}
-        <button type="button" className={'log-toggle mono' + (filter.matchCase ? ' on' : '')} onClick={() => update({ matchCase: !filter.matchCase })} title={t('ui.e16976aeee37')} aria-label={t('ui.e16976aeee37')} aria-pressed={filter.matchCase}>{t('ui.81acaafba961')}</button>
-        <button type="button" className={'log-toggle mono' + (filter.regex ? ' on' : '')} onClick={() => update({ regex: !filter.regex })} title={t('ui.72ed3ab98243')} aria-label={t('ui.72ed3ab98243')} aria-pressed={filter.regex}>.*</button>
-      </div>
-      {matcher.error && <div className="log-regex-error" role="alert">{matcher.error}</div>}
-      <div className="log-read-controls" role="group" aria-label={t('ui.694b865d27a5')}>
-        <button type="button" className="log-control" onClick={() => jumpToError(-1)} disabled={!errorRows.length} aria-label={t('ui.fd595a810f23')} title={t('ui.fd595a810f23')}><Icon name="arrowUp" size={14}/></button>
-        <button type="button" className="log-control" onClick={() => jumpToError(1)} disabled={!errorRows.length} aria-label={t('ui.82dd8e4ac792')} title={t('ui.82dd8e4ac792')}><Icon name="arrowDown" size={14}/></button>
-        <button type="button" className={'log-control' + (wrap ? ' on' : '')} onClick={() => setWrap(value => !value)} aria-pressed={wrap} title={t('ui.d775dff1fb8f')}>{t('ui.04120307c467')}</button>
-      </div>
-      {hasFilter && <div className="log-chips">
-        {filter.tag !== null && <button type="button" className="log-chip" onClick={() => update({ tag: null })}>{t('ui.8f3be0181bfd')}{filter.tag}<Icon name="close" size={13} /></button>}
-        {filter.pid !== null && <button type="button" className="log-chip" onClick={() => update({ pid: null })}>{t('ui.606f2113571d')}{filter.pid}<Icon name="close" size={13} /></button>}
-        <button type="button" className="log-chip" onClick={() => { selectApp(''); update({ query: '', minLevel: 'V', tag: null, pid: null }); }}>{t('ui.cd45ec7836b5')}</button>
-      </div>}
-    </div>
+    {hasFilter && <div className="log-chips">
+      {filter.tag !== null && <button type="button" className="log-chip" onClick={() => update({ tag: null })}>{t('ui.8f3be0181bfd')}{filter.tag}<Icon name="close" size={13} /></button>}
+      {filter.pid !== null && <button type="button" className="log-chip" onClick={() => update({ pid: null })}>{t('ui.606f2113571d')}{filter.pid}<Icon name="close" size={13} /></button>}
+      <button type="button" className="log-chip" onClick={() => { selectApp(''); update({ query: '', minLevel: 'V', tag: null, pid: null }); }}>{t('ui.cd45ec7836b5')}</button>
+    </div>}
 
     <div className={'log-viewport' + (wrap ? ' wrap' : '')} ref={viewportRef} onScroll={onScroll} onWheel={event => { if (event.deltaY < 0) readHistory(); }}
       onPointerDown={event => { if (event.button === 0 && (event.target as Element).closest('.log-message,.log-time')) readHistory(); }}
