@@ -1,11 +1,15 @@
-import { useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { snapFloatingWindow, type AlignmentGuide } from './floatingWindowSnap';
+import type { DeskLayoutTemplate } from './deskLayoutTemplate';
 
 export type FloatingWindowName = 'device' | 'tools';
 type WidgetName = `widget:${string}`;
 export type WorkspaceWindowName = FloatingWindowName | WidgetName;
 
 const MAX_WINDOW_SIZE = 16_000;
+// Stay below browser layout overflow limits, even at maximum zoom.
+const MAX_SCENE_COORDINATE = 1_000_000;
+const SCENE_LIMITS = { min: -MAX_SCENE_COORDINATE, max: MAX_SCENE_COORDINATE };
 const floatingWindowLimits = {
   device: { minWidth: 240, minHeight: 260, maxWidth: MAX_WINDOW_SIZE, maxHeight: MAX_WINDOW_SIZE },
   tools: { minWidth: 400, minHeight: 360, maxWidth: MAX_WINDOW_SIZE, maxHeight: MAX_WINDOW_SIZE },
@@ -13,6 +17,7 @@ const floatingWindowLimits = {
 
 type Size = { width: number; height: number };
 type Position = { left: number; top: number };
+type DeskCamera = Position & { zoom: number };
 type Bounds = Size & Position;
 export type WidgetBounds = Bounds;
 type WidgetOptions = {
@@ -34,21 +39,29 @@ type Gesture = {
   startScroll: Position;
   scale: Size;
   moved: boolean;
-} & ({ kind: 'pan' } | (Handle & { startBounds: Bounds }));
+} & ({ kind: 'pan'; nativeScroll: Position } | (Handle & { startBounds: Bounds }));
+type PanGesture = Extract<Gesture, { kind: 'pan' }>;
+type WindowGesture = Exclude<Gesture, { kind: 'pan' }>;
 
 type WorkspaceOptions = {
   active: boolean;
   userId: string;
+  sessionId: string;
   layoutId?: string;
+  layoutTemplate?: DeskLayoutTemplate | null;
   legacyDeviceId?: string;
   aspect?: number;
   viewportRef: RefObject<HTMLDivElement | null>;
   canvasRef: RefObject<HTMLDivElement | null>;
+  deskGridRef: RefObject<HTMLDivElement | null>;
   deviceRef: RefObject<HTMLElement | null>;
   toolsRef: RefObject<HTMLElement | null>;
 };
 
 const DEFAULT_ASPECT = 9 / 19.5;
+export const DESK_MIN_ZOOM = .5;
+export const DESK_MAX_ZOOM = 2;
+const DESK_GRID_CELL = 32;
 const MARGIN = 12;
 const WIDGET_DRAG_THRESHOLD = 4;
 const WINDOW_SNAP_DISTANCE = 16;
@@ -80,8 +93,8 @@ function clamp(value: number, min: number, max: number) {
 function constrain(name: WorkspaceWindowName, bounds: Bounds): Bounds {
   const limits = floatingWindowLimits[windowName(name) ? name : 'tools'];
   return {
-    left: clamp(Number.isFinite(bounds.left) ? bounds.left : MARGIN, MARGIN, MAX_WINDOW_SIZE),
-    top: clamp(Number.isFinite(bounds.top) ? bounds.top : MARGIN, MARGIN, MAX_WINDOW_SIZE),
+    left: clamp(Number.isFinite(bounds.left) ? bounds.left : MARGIN, SCENE_LIMITS.min, SCENE_LIMITS.max),
+    top: clamp(Number.isFinite(bounds.top) ? bounds.top : MARGIN, SCENE_LIMITS.min, SCENE_LIMITS.max),
     width: clamp(Number.isFinite(bounds.width) ? bounds.width : limits.minWidth, limits.minWidth, limits.maxWidth),
     height: clamp(Number.isFinite(bounds.height) ? bounds.height : limits.minHeight, limits.minHeight, limits.maxHeight),
   };
@@ -109,8 +122,8 @@ function adjust(handle: Handle, bounds: Bounds, { left: dx, top: dy }: Position)
   const north = handle.direction.startsWith('n');
   const right = bounds.left + bounds.width;
   const bottom = bounds.top + bounds.height;
-  const left = west ? clamp(bounds.left + dx, Math.max(MARGIN, right - limits.maxWidth), Math.min(MAX_WINDOW_SIZE, right - limits.minWidth)) : bounds.left;
-  const top = north ? clamp(bounds.top + dy, Math.max(MARGIN, bottom - limits.maxHeight), Math.min(MAX_WINDOW_SIZE, bottom - limits.minHeight)) : bounds.top;
+  const left = west ? clamp(bounds.left + dx, Math.max(SCENE_LIMITS.min, right - limits.maxWidth), Math.min(SCENE_LIMITS.max, right - limits.minWidth)) : bounds.left;
+  const top = north ? clamp(bounds.top + dy, Math.max(SCENE_LIMITS.min, bottom - limits.maxHeight), Math.min(SCENE_LIMITS.max, bottom - limits.minHeight)) : bounds.top;
   return constrain(handle.name, {
     left, top,
     width: west ? right - left : bounds.width + dx,
@@ -121,9 +134,13 @@ function adjust(handle: Handle, bounds: Bounds, { left: dx, top: dy }: Position)
 function initialArrangement(viewport: HTMLElement, device: HTMLElement, aspect: number): Arrangement {
   const width = viewport.clientWidth || 1200;
   const height = viewport.clientHeight || 680;
+  const horizontal = device.dataset.controlsEdge === 'top' || device.dataset.controlsEdge === 'bottom';
   const style = getComputedStyle(device);
-  const chromeWidth = Number.parseFloat(style.getPropertyValue('--free-device-chrome-x')) || 76;
-  const chromeHeight = Number.parseFloat(style.getPropertyValue('--free-device-chrome-y')) || 26;
+  const toolbarWidth = Number.parseFloat(style.getPropertyValue('--device-controls-width')) || 70;
+  const toolbarHeight = Number.parseFloat(style.getPropertyValue('--device-controls-height')) || 66;
+  const frameInsets = 2 + 2 * (Number.parseFloat(style.getPropertyValue('--viewer-stage-padding')) || 12);
+  const chromeWidth = frameInsets + (horizontal ? 0 : toolbarWidth);
+  const chromeHeight = frameInsets + (horizontal ? toolbarHeight : 0);
   const deviceHeight = Math.max(floatingWindowLimits.device.minHeight, height - 2 * MARGIN);
   const deviceWidth = Math.min((deviceHeight - chromeHeight) * aspect + chromeWidth, width - floatingWindowLimits.tools.minWidth - 3 * MARGIN);
   const deviceWindow = constrain('device', { left: MARGIN, top: MARGIN, width: deviceWidth, height: deviceHeight });
@@ -132,9 +149,9 @@ function initialArrangement(viewport: HTMLElement, device: HTMLElement, aspect: 
   return { windows: { device: deviceWindow, tools: toolsWindow }, front: 'tools' };
 }
 
-function readArrangement(key: string): SavedArrangement | null | undefined {
+function readArrangement(key: string, getStorage = () => window.localStorage): SavedArrangement | null | undefined {
   try {
-    const raw = window.localStorage.getItem(key);
+    const raw = getStorage().getItem(key);
     if (raw === null) return undefined;
     if (raw.length > 2048) return null;
     const saved = JSON.parse(raw) as Partial<SavedArrangement> | null;
@@ -150,14 +167,15 @@ function readArrangement(key: string): SavedArrangement | null | undefined {
   } catch { return null; }
 }
 
-function layoutStorage(userId: string, layoutId: string) {
+function layoutStorage(userId: string, layoutId: string, temporary = false) {
   const account = encodeURIComponent(userId);
   const suffix = `${account}:${encodeURIComponent(layoutId)}`;
   const prefix = `rdf-session-floating-v3:${suffix}`;
   const resetKey = `${prefix}:reset`;
+  const getStorage = () => temporary ? window.sessionStorage : window.localStorage;
   const generation = () => {
     try {
-      const stored = window.localStorage.getItem(resetKey);
+      const stored = getStorage().getItem(resetKey);
       return stored && /^\d{1,10}(?:-\d{1,10}){3}$/.test(stored) ? stored : 'initial';
     }
     catch { return 'initial'; }
@@ -165,7 +183,7 @@ function layoutStorage(userId: string, layoutId: string) {
   const recordKey = (version: string, name: FloatingWindowName | 'base') => `${prefix}:${version}:${name}`;
   const write = (version: string, name: FloatingWindowName | 'base', value: Arrangement) => {
     try {
-      const storage = window.localStorage;
+      const storage = getStorage();
       const key = recordKey(version, name);
       // Another tab can reset during a drag, before this tab receives the storage event.
       if (generation() !== version) return;
@@ -176,15 +194,15 @@ function layoutStorage(userId: string, layoutId: string) {
   return {
     resetKey, generation, write,
     read(version: string): Arrangement | null | undefined {
-      const device = readArrangement(recordKey(version, 'device'));
-      const tools = readArrangement(recordKey(version, 'tools'));
+      const device = readArrangement(recordKey(version, 'device'), getStorage);
+      const tools = readArrangement(recordKey(version, 'tools'), getStorage);
       // Separate records let two tabs move different windows independently.
       if (device && tools) return {
         windows: { device: device.windows.device, tools: tools.windows.tools },
         front: device.updatedAt > tools.updatedAt ? device.front : tools.front,
       };
-      return device ?? tools ?? readArrangement(recordKey(version, 'base'))
-        ?? (version === 'initial' ? readArrangement(`rdf-session-floating-v2:${suffix}`) : null);
+      return device ?? tools ?? readArrangement(recordKey(version, 'base'), getStorage)
+        ?? (version !== 'initial' ? null : temporary ? undefined : readArrangement(`rdf-session-floating-v2:${suffix}`));
     },
     readLegacy(aspect: number) {
       return readArrangement(`rdf-session-floating-v1:${account}:${aspect.toFixed(4)}`);
@@ -192,7 +210,7 @@ function layoutStorage(userId: string, layoutId: string) {
     reset() {
       const next = crypto.getRandomValues(new Uint32Array(4)).join('-');
       try {
-        const storage = window.localStorage;
+        const storage = getStorage();
         storage.setItem(resetKey, next);
         for (const key of Object.keys(storage)) {
           if (key !== resetKey && key.startsWith(`${prefix}:`) && !key.startsWith(`${prefix}:${generation()}:`)) storage.removeItem(key);
@@ -227,6 +245,7 @@ function findHandle(target: Element): Handle | null {
   }
   const grip = target.closest<HTMLElement>('[data-window-move]');
   if (!grip || !workspaceWindowName(grip.dataset.windowMove)) return null;
+  if (target.getAttribute('role') === 'tablist' && target.scrollWidth > target.clientWidth) return null;
   const control = target.closest('a[href],button,input,select,summary,textarea,[contenteditable]');
   if (control && control !== grip && grip.contains(control)) return null;
   return { element: grip, name: grip.dataset.windowMove, kind: 'move' };
@@ -256,18 +275,24 @@ function containsPoint(rect: DOMRect, { left, top }: Position) {
   return left >= rect.left && left < rect.right && top >= rect.top && top < rect.bottom;
 }
 
-function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panels: Panels, widgets: Map<WidgetName, WidgetRegistration>, initialAspect: number | undefined, userId: string, layoutId: string) {
+function createWorkspace(viewport: HTMLDivElement, plane: HTMLElement, canvas: HTMLDivElement, deskGrid: HTMLDivElement, panels: Panels, widgets: Map<WidgetName, WidgetRegistration>, initialAspect: number | undefined, userId: string, layoutId: string, template: DeskLayoutTemplate | null | undefined, cameraKey: string, onDeskZoom: (value: number) => void) {
   const listeners = new AbortController();
   const { signal } = listeners;
-  const storage = layoutStorage(userId, layoutId);
+  const storage = layoutStorage(userId, layoutId, Boolean(template));
   let generation = storage.generation();
-  const saved = storage.read(generation);
+  const stored = storage.read(generation);
+  const saved = stored === undefined ? fromTemplate() : stored;
   let aspect = initialAspect;
   let arrangement = saved ?? initialArrangement(viewport, panels.device, aspect ?? DEFAULT_ASPECT);
   let customized = Boolean(saved);
-  let canMigrate = saved === undefined;
+  let canMigrate = stored === undefined && !template;
+  let zoom = 1;
+  let origin: Position = { left: 0, top: 0 };
+  let scrollRange = { left: 0, top: 0, right: 0, bottom: 0 };
+  let content = { left: 0, top: 0, right: 0, bottom: 0 };
   let gesture: Gesture | null = null;
   let frame = 0;
+  let pendingMove = false;
   let preventClick = false;
   let dockTarget: HTMLElement | null = null;
   let layerOrder: WorkspaceWindowName[] = [...widgets.keys()];
@@ -275,6 +300,14 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
   let previewedPanels = new Set<HTMLElement>();
   const guideLines = new Map<AlignmentGuide['axis'], HTMLDivElement>();
   resetBaseLayerOrder();
+
+  function fromTemplate(): Arrangement | undefined {
+    if (!template) return;
+    return {
+      windows: { device: constrain('device', template.windows.device), tools: constrain('tools', template.windows.tools) },
+      front: template.front,
+    };
+  }
 
   function getPanel(name: WorkspaceWindowName) {
     return windowName(name) ? panels[name] : widgets.get(name)?.element;
@@ -303,11 +336,11 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     return workspaceWindowName(name) && getPanel(name) === owner ? name : undefined;
   }
 
-  function snapBounds(bounds: Bounds, scale: Size, handle?: Handle) {
+  function snapBounds(bounds: Bounds, scale: Size, handle?: Handle, shown = layerOrder.filter(visible)) {
     if (previewTargets) return { bounds, guides: [] };
     const neighbors: Bounds[] = [];
-    for (const name of layerOrder) {
-      if (name === handle?.name || !visible(name)) continue;
+    for (const name of shown) {
+      if (name === handle?.name) continue;
       const other = getBounds(name);
       if (other) neighbors.push(other);
     }
@@ -317,7 +350,7 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     return snapFloatingWindow(bounds, neighbors, {
       x: WINDOW_SNAP_DISTANCE / scale.width,
       y: WINDOW_SNAP_DISTANCE / scale.height,
-    }, { min: MARGIN, max: MAX_WINDOW_SIZE }, resize);
+    }, SCENE_LIMITS, resize);
   }
 
   function showAlignmentGuides(guides: readonly AlignmentGuide[] = []) {
@@ -375,25 +408,73 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     previewedPanels.clear();
   }
 
+  function sizeCanvas(point = currentScroll()) {
+    const width = viewport.clientWidth;
+    const height = viewport.clientHeight;
+    const paddingX = Math.round(width / 2);
+    const paddingY = Math.round(height / 2);
+    const left = Math.min(0, (content.left - MARGIN) * zoom);
+    const top = Math.min(0, (content.top - MARGIN) * zoom);
+    const right = Math.max(width, (content.right + MARGIN) * zoom);
+    const bottom = Math.max(height, (content.bottom + MARGIN) * zoom);
+    // Native scroll coordinates stay positive. The scene origin moves when the visible area expands.
+    const minX = Math.floor(Math.min(left, point.left) - paddingX);
+    const minY = Math.floor(Math.min(top, point.top) - paddingY);
+    const maxX = Math.ceil(Math.max(right, point.left + width) + paddingX);
+    const maxY = Math.ceil(Math.max(bottom, point.top + height) + paddingY);
+    origin = { left: -minX, top: -minY };
+    scrollRange = { left: minX, top: minY, right: maxX - width, bottom: maxY - height };
+    canvas.style.width = `${right / zoom}px`;
+    canvas.style.height = `${bottom / zoom}px`;
+    plane.style.setProperty('--scene-origin-x', `${origin.left}px`);
+    plane.style.setProperty('--scene-origin-y', `${origin.top}px`);
+    viewport.dataset.deskZoom = String(zoom);
+    plane.style.setProperty('--desk-zoom', String(zoom));
+    deskGrid.style.setProperty('--desk-grid-cell', `${DESK_GRID_CELL * zoom}px`);
+    plane.style.width = `${maxX - minX}px`;
+    plane.style.height = `${maxY - minY}px`;
+    setNativeScroll(point);
+  }
+
+  function clearDeskZoom() {
+    delete viewport.dataset.deskZoom;
+    plane.style.removeProperty('--desk-zoom');
+    deskGrid.style.removeProperty('--desk-grid-cell');
+    deskGrid.style.removeProperty('transform');
+  }
+
+  function measureContent(shown: readonly WorkspaceWindowName[]) {
+    const edges = { left: MARGIN, top: MARGIN, right: 0, bottom: 0 };
+    for (const name of shown) {
+      const bounds = getBounds(name);
+      if (!bounds) continue;
+      edges.left = Math.min(edges.left, bounds.left);
+      edges.top = Math.min(edges.top, bounds.top);
+      edges.right = Math.max(edges.right, bounds.left + bounds.width);
+      edges.bottom = Math.max(edges.bottom, bounds.top + bounds.height);
+    }
+    return edges;
+  }
+
+  function paintWindow(panel: HTMLElement, bounds: Bounds, previous?: Bounds) {
+    for (const edge of ['left', 'top', 'width', 'height'] as const) {
+      if (bounds[edge] !== previous?.[edge]) panel.style[edge] = `${bounds[edge]}px`;
+    }
+  }
+
   function paint() {
-    const shown = new Set(layerOrder.filter(visible));
-    const front = [...shown].at(-1);
-    let horizontal = 0;
-    let vertical = 0;
+    const shown = layerOrder.filter(visible);
+    const front = shown.at(-1);
     for (const [index, name] of layerOrder.entries()) {
       const panel = getPanel(name);
       const bounds = getBounds(name);
       if (!panel || !bounds) continue;
-      const { left, top, width, height } = bounds;
-      Object.assign(panel.style, { left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px`, zIndex: String(index + 1) });
+      paintWindow(panel, bounds);
+      panel.style.zIndex = String(index + 1);
       panel.toggleAttribute('data-front', name === front);
-      if (shown.has(name)) {
-        horizontal = Math.max(horizontal, left + width);
-        vertical = Math.max(vertical, top + height);
-      }
     }
-    canvas.style.width = `${Math.max(viewport.clientWidth, horizontal + MARGIN)}px`;
-    canvas.style.height = `${Math.max(viewport.clientHeight, vertical + MARGIN)}px`;
+    content = measureContent(shown);
+    sizeCanvas();
     paintPreviews();
   }
 
@@ -444,11 +525,101 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
   }
 
   function currentScroll(): Position {
-    return { left: viewport.scrollLeft, top: viewport.scrollTop };
+    return { left: viewport.scrollLeft - origin.left, top: viewport.scrollTop - origin.top };
   }
 
-  function scrollTo(point: Position) {
-    viewport.scrollTo({ ...point, behavior: 'instant' });
+  function setNativeScroll(point: Position) {
+    viewport.scrollTo({ left: point.left + origin.left, top: point.top + origin.top, behavior: 'instant' });
+    if (gesture?.kind !== 'pan') paintDeskGrid(point);
+  }
+
+  function constrainDeskScroll(point: Position): Position {
+    const extent = (MAX_SCENE_COORDINATE + MAX_WINDOW_SIZE) * zoom;
+    return { left: clamp(point.left, -extent, extent), top: clamp(point.top, -extent, extent) };
+  }
+
+  function paintDeskGrid(point: Position) {
+    const cell = DESK_GRID_CELL * zoom;
+    const phase = (offset: number) => ((-offset % cell) + cell) % cell;
+    const transform = `translate3d(${phase(point.left)}px, ${phase(point.top)}px, 0px)`;
+    if (deskGrid.style.transform !== transform) deskGrid.style.transform = transform;
+  }
+
+  function panPoint(active: PanGesture): Position {
+    return constrainDeskScroll({
+      left: active.startScroll.left - (active.client.left - active.startClient.left) / active.scale.width,
+      top: active.startScroll.top - (active.client.top - active.startClient.top) / active.scale.height,
+    });
+  }
+
+  function paintPan(active: PanGesture) {
+    const point = panPoint(active);
+    // Translate in viewport pixels so the canvas' existing zoom does not amplify the gesture.
+    canvas.style.translate = `${active.nativeScroll.left - point.left}px ${active.nativeScroll.top - point.top}px 0px`;
+    paintDeskGrid(point);
+  }
+
+  function scrollTo(point: Position, geometryChanged = false) {
+    const { left, top } = constrainDeskScroll(point);
+    if (geometryChanged || left < scrollRange.left || left > scrollRange.right || top < scrollRange.top || top > scrollRange.bottom) {
+      sizeCanvas({ left, top });
+      return;
+    }
+    setNativeScroll({ left, top });
+  }
+
+  function sceneStart() {
+    return { left: Math.min(0, (content.left - MARGIN) * zoom), top: Math.min(0, (content.top - MARGIN) * zoom) };
+  }
+
+  function readDeskCamera(): DeskCamera | undefined {
+    try {
+      const saved = JSON.parse(window.sessionStorage.getItem(cameraKey) ?? 'null') as DeskCamera | null;
+      if (saved && Number.isFinite(saved.zoom) && saved.zoom >= DESK_MIN_ZOOM && saved.zoom <= DESK_MAX_ZOOM &&
+        Number.isFinite(saved.left) && Number.isFinite(saved.top)) return saved;
+    } catch { /* Storage may be unavailable or contain an invalid value. */ }
+    return undefined;
+  }
+
+  function saveDeskCamera() {
+    try {
+      const point = gesture?.kind === 'pan' ? panPoint(gesture) : currentScroll();
+      window.sessionStorage.setItem(cameraKey, JSON.stringify({ zoom, ...point }));
+    } catch { /* Storage may be unavailable. */ }
+  }
+
+  function cameraAvailable() {
+    return !gesture && !previewTargets && !document.fullscreenElement && !viewport.hasAttribute('data-tab-drag');
+  }
+
+  function zoomAt(requested: number, anchor: Position) {
+    const next = Math.min(DESK_MAX_ZOOM, Math.max(DESK_MIN_ZOOM, requested));
+    if (zoom === next) return;
+    const offset = currentScroll();
+    const factor = next / zoom;
+    zoom = next;
+    scrollTo({
+      left: (offset.left + anchor.left) * factor - anchor.left,
+      top: (offset.top + anchor.top) * factor - anchor.top,
+    }, true);
+    onDeskZoom(zoom);
+    saveDeskCamera();
+  }
+
+  function changeDeskZoom(action: -1 | 0 | 1) {
+    if (!cameraAvailable()) return;
+    if (action === 0) {
+      zoom = 1;
+      scrollTo(sceneStart(), true);
+      onDeskZoom(zoom);
+      saveDeskCamera();
+      return;
+    }
+    zoomAt(Math.round(zoom * 100 + action * 10) / 100, { left: viewport.clientWidth / 2, top: viewport.clientHeight / 2 });
+  }
+
+  function scaleForWindows(scale = scaleFor(viewport, viewport.getBoundingClientRect())): Size {
+    return { width: scale.width * zoom, height: scale.height * zoom };
   }
 
   function revealHandle(element: HTMLElement) {
@@ -459,7 +630,9 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     const startY = outer.top + viewport.clientTop * scale.height;
     const left = inner.left < startX ? inner.left - startX : Math.max(0, inner.right - startX - viewport.clientWidth * scale.width);
     const top = inner.top < startY ? inner.top - startY : Math.max(0, inner.bottom - startY - viewport.clientHeight * scale.height);
-    if (left || top) scrollTo({ left: viewport.scrollLeft + left / scale.width, top: viewport.scrollTop + top / scale.height });
+    if (!left && !top) return;
+    const offset = currentScroll();
+    scrollTo({ left: offset.left + left / scale.width, top: offset.top + top / scale.height });
   }
 
   function showDockTarget(target: HTMLElement | null) {
@@ -478,82 +651,97 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     return hit && target.contains(hit) ? target : null;
   }
 
-  function updateDockTarget(active: Gesture) {
-    if (active.kind !== 'move' || windowName(active.name) || !active.moved) return;
-    showDockTarget(findDockTarget(active.name, active.client));
-  }
-
-  function updateGesture(active: Gesture, scroll = currentScroll()) {
+  function updateWindowGesture(active: WindowGesture, scroll = currentScroll()) {
     const left = (active.client.left - active.startClient.left) / active.scale.width;
     const top = (active.client.top - active.startClient.top) / active.scale.height;
-    if (active.kind === 'pan') {
-      scrollTo({ left: active.startScroll.left - left, top: active.startScroll.top - top });
-      return false;
-    }
-    const delta = constrainedDelta(active, { left: left + scroll.left - active.startScroll.left, top: top + scroll.top - active.startScroll.top });
+    const delta = constrainedDelta(active, {
+      left: (left + scroll.left - active.startScroll.left) / zoom,
+      top: (top + scroll.top - active.startScroll.top) / zoom,
+    });
     active.moved ||= active.kind === 'move' && !windowName(active.name)
       ? Math.hypot(left, top) >= WIDGET_DRAG_THRESHOLD
       : Math.abs(delta.left) + Math.abs(delta.top) >= 1;
+    const panel = getPanel(active.name);
     const previous = getBounds(active.name);
-    if (!previous) return false;
+    if (!panel || !previous) return false;
     const proposed = adjust(active, active.startBounds, delta);
-    const returningToTabs = active.kind === 'move' && !windowName(active.name) && active.moved && findDockTarget(active.name, active.client);
-    const { bounds: next, guides } = active.moved && !returningToTabs ? snapBounds(proposed, active.scale, active) : { bounds: proposed, guides: [] };
+    const target = active.kind === 'move' && !windowName(active.name) && active.moved ? findDockTarget(active.name, active.client) : null;
+    const shown = layerOrder.filter(visible);
+    const { bounds: next, guides } = active.moved && !target ? snapBounds(proposed, scaleForWindows(active.scale), active, shown) : { bounds: proposed, guides: [] };
+    showDockTarget(target);
     showAlignmentGuides(guides);
     if (previous.left === next.left && previous.top === next.top && previous.width === next.width && previous.height === next.height) return false;
     setBounds(active.name, next);
-    paint();
+    paintWindow(panel, next, previous);
+    content = measureContent(shown);
     return true;
   }
 
-  function autoScroll() {
-    frame = 0;
-    const active = gesture;
-    if (!active || active.kind === 'pan') return;
+  function edgeScrollPoint(active: WindowGesture, current: Position): Position {
     const rect = viewport.getBoundingClientRect();
     const offset = {
       left: (active.client.left - rect.left) / active.scale.width - viewport.clientLeft,
       top: (active.client.top - rect.top) / active.scale.height - viewport.clientTop,
     };
+    const towardEdge = (speed: number, fromStart: number) => speed * fromStart > 0 ? speed : 0;
     const delta = constrainedDelta(active, {
-      left: edgeSpeed(offset.left, viewport.clientWidth),
-      top: edgeSpeed(offset.top, viewport.clientHeight),
+      left: towardEdge(edgeSpeed(offset.left, viewport.clientWidth), active.client.left - active.startClient.left),
+      top: towardEdge(edgeSpeed(offset.top, viewport.clientHeight), active.client.top - active.startClient.top),
     });
-    if (!delta.left && !delta.top) return;
-    const current = currentScroll();
-    const point = {
-      left: delta.left ? clamp(current.left + delta.left, 0, 2 * MAX_WINDOW_SIZE) : current.left,
-      top: delta.top ? clamp(current.top + delta.top, 0, 2 * MAX_WINDOW_SIZE) : current.top,
+    return {
+      left: current.left + delta.left,
+      top: current.top + delta.top,
     };
-    if (point.left === current.left && point.top === current.top) return;
-    // Extend the canvas only as far as the window edge can move, then let native scrolling clamp.
-    let changed = updateGesture(active, point);
-    scrollTo(point);
-    const actual = currentScroll();
-    if (actual.left !== point.left || actual.top !== point.top) changed = updateGesture(active, actual) || changed;
+  }
+
+  function gestureFrame() {
+    frame = 0;
+    pendingMove = false;
+    const active = gesture;
+    if (!active) return;
+    if (active.kind === 'pan') { paintPan(active); return; }
+
+    const current = currentScroll();
+    const wasMoved = active.moved;
+    const point = wasMoved ? edgeScrollPoint(active, current) : current;
+    let changed = updateWindowGesture(active, point);
+    let scrolling = false;
+    if (point.left !== current.left || point.top !== current.top) {
+      scrollTo(point);
+      const actual = currentScroll();
+      if (actual.left !== point.left || actual.top !== point.top) changed = updateWindowGesture(active, actual) || changed;
+      scrolling = actual.left !== current.left || actual.top !== current.top;
+    }
     if (changed) saveWindow(active.name);
-    updateDockTarget(active);
-    if (actual.left !== current.left || actual.top !== current.top) frame = requestAnimationFrame(autoScroll);
+    if (scrolling || (!wasMoved && active.moved)) frame = requestAnimationFrame(gestureFrame);
   }
 
   function finishGesture(event?: PointerEvent) {
     const active = gesture;
     if (!active || (event && event.pointerId !== active.id)) return;
-    if (event?.type === 'pointerup' && active.kind !== 'pan') {
-      active.client = { left: event.clientX, top: event.clientY };
-      if (updateGesture(active)) saveWindow(active.name);
+    if (event?.type === 'pointerup') active.client = { left: event.clientX, top: event.clientY };
+    if (active.kind !== 'pan' && event && (event.type === 'pointerup' || pendingMove)) {
+      if (updateWindowGesture(active)) saveWindow(active.name);
     }
+    const docking = event?.type === 'pointerup' && dockTarget !== null;
     gesture = null;
     cancelAnimationFrame(frame);
     frame = 0;
+    pendingMove = false;
+    if (active.kind === 'pan') {
+      canvas.style.removeProperty('translate');
+      if (viewport.hasAttribute('data-desk')) {
+        scrollTo(panPoint(active));
+        saveDeskCamera();
+      }
+    } else if (active.moved && viewport.hasAttribute('data-desk')) sizeCanvas();
     viewport.removeAttribute('data-panning');
     viewport.removeAttribute('data-window-drag');
     showDockTarget(null);
     showAlignmentGuides();
     if (viewport.hasPointerCapture(active.id)) viewport.releasePointerCapture(active.id);
-    if (event && !customized) restartSizing();
-    if (event?.type === 'pointerup' && active.kind === 'move' && active.moved && !windowName(active.name)
-      && findDockTarget(active.name, active.client)) widgets.get(active.name)?.onDock?.();
+    if (event && active.kind !== 'pan' && !customized) restartSizing();
+    if (docking && active.kind === 'move' && !windowName(active.name)) widgets.get(active.name)?.onDock?.();
   }
 
   function applyReset(saved?: Arrangement | null) {
@@ -563,25 +751,24 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     canMigrate = false;
     arrangement = saved ?? initialArrangement(viewport, panels.device, aspect ?? DEFAULT_ASPECT);
     resetBaseLayerOrder();
-    scrollTo({ left: 0, top: 0 });
     paint();
+    scrollTo(sceneStart());
+    saveDeskCamera();
   }
 
   function pointerDown(event: PointerEvent) {
     if (!(event.target instanceof Element) || event.target.closest(OVERLAY)) return;
-    if (gesture || event.button !== 0 || !event.isPrimary || event.defaultPrevented) return;
-    const grabDesk = viewport.hasAttribute('data-desk') && event.target === canvas;
-    if (grabDesk) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
+    if (gesture || !event.isPrimary || event.defaultPrevented) return;
+    const grabDesk = event.button === 2 && cameraAvailable();
+    if (event.button !== 0 && !grabDesk) return;
     preventClick = false;
-    const owner = ownerOf(event.target);
+    const owner = grabDesk ? undefined : ownerOf(event.target);
     if (owner) raise(owner);
     const handle = owner ? findHandle(event.target) : null;
     const bounds = handle?.name === owner && owner ? getBounds(owner) : undefined;
     if (!(handle && bounds) && !grabDesk) return;
     event.preventDefault();
+    if (grabDesk) event.stopPropagation();
     if (handle) {
       // Programmatic focus during a pointer gesture can inherit keyboard focus visibility.
       if (handle.kind === 'resize') handle.element.setAttribute('data-pointer-resize-focus', '');
@@ -589,26 +776,41 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     }
     const client = { left: event.clientX, top: event.clientY };
     const base = { id: event.pointerId, startClient: client, client, startScroll: currentScroll(), scale: scaleFor(viewport, viewport.getBoundingClientRect()), moved: false };
-    gesture = handle && bounds ? { ...base, ...handle, startBounds: bounds } : { ...base, kind: 'pan' };
+    gesture = handle && bounds ? { ...base, ...handle, startBounds: bounds } : { ...base, kind: 'pan', nativeScroll: base.startScroll };
     viewport.setPointerCapture(event.pointerId);
     if (handle) viewport.setAttribute('data-window-drag', handle.kind);
     else viewport.setAttribute('data-panning', '');
-    preventClick = true;
+    preventClick = Boolean(handle);
   }
 
   viewport.addEventListener('pointerdown', pointerDown, { capture: true, signal });
   viewport.addEventListener('pointermove', event => {
     const active = gesture;
     if (!active || active.id !== event.pointerId) return;
+    if (active.kind === 'pan' && !(event.buttons & 2)) { finishGesture(event); return; }
     active.client = { left: event.clientX, top: event.clientY };
-    const changed = updateGesture(active);
-    if (active.kind !== 'pan') {
-      if (changed) saveWindow(active.name);
-      updateDockTarget(active);
-      if (!frame && active.moved) frame = requestAnimationFrame(autoScroll);
-    }
+    pendingMove = true;
+    if (!frame) frame = requestAnimationFrame(gestureFrame);
   }, { signal });
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) viewport.addEventListener(event, finishGesture, { signal });
+  viewport.addEventListener('contextmenu', event => {
+    if (event.button === 2 && !document.fullscreenElement && event.target instanceof Element && !event.target.closest(OVERLAY)) event.preventDefault();
+  }, { signal });
+  const wheelArea = viewport.closest<HTMLElement>('.session-layout') ?? viewport;
+  wheelArea.addEventListener('wheel', event => {
+    if (!event.ctrlKey || !Number.isFinite(event.deltaY) || !event.deltaY ||
+      document.fullscreenElement || !(event.target instanceof Element) || event.target.closest(OVERLAY)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!cameraAvailable()) return;
+    const rect = viewport.getBoundingClientRect();
+    const scale = scaleFor(viewport, rect);
+    const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientHeight : 1);
+    zoomAt(zoom * 2 ** (-delta / 500), {
+      left: (event.clientX - rect.left) / scale.width - viewport.clientLeft,
+      top: (event.clientY - rect.top) / scale.height - viewport.clientTop,
+    });
+  }, { passive: false, signal });
   viewport.addEventListener('click', event => {
     if (event.target instanceof Element && event.target.closest(OVERLAY)) return;
     if (event.detail === 0 || !preventClick) return;
@@ -624,7 +826,15 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
   viewport.addEventListener('focusout', event => {
     if (event.target instanceof HTMLElement) event.target.removeAttribute('data-pointer-resize-focus');
   }, { signal });
-  viewport.addEventListener('scroll', paintPreviews, { passive: true, signal });
+  viewport.addEventListener('scroll', () => {
+    const point = currentScroll();
+    if (gesture?.kind !== 'pan') paintDeskGrid(point);
+    else if (point.left !== gesture.nativeScroll.left || point.top !== gesture.nativeScroll.top) {
+      gesture.nativeScroll = point;
+      paintPan(gesture);
+    }
+    paintPreviews();
+  }, { passive: true, signal });
   viewport.addEventListener('keydown', event => {
     const offset = ARROWS[event.key];
     if (!offset || event.defaultPrevented || gesture || !(event.target instanceof Element)) return;
@@ -646,16 +856,21 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     revealHandle(handle.element);
   }, { signal });
   window.addEventListener('storage', event => {
-    if (event.key !== storage.resetKey || event.storageArea !== window.localStorage) return;
+    if (template || event.key !== storage.resetKey || event.storageArea !== window.localStorage) return;
     const next = storage.generation();
     if (next === generation) return;
     generation = next;
     applyReset(storage.read(generation));
   }, { signal });
+  window.addEventListener('pagehide', saveDeskCamera, { signal });
 
   const observer = new ResizeObserver(restartSizing);
   observer.observe(viewport);
+  const savedCamera = readDeskCamera();
+  zoom = savedCamera?.zoom ?? 1;
+  onDeskZoom(zoom);
   restartSizing();
+  scrollTo(savedCamera ?? sceneStart());
 
   return {
     jump(name: WorkspaceWindowName) {
@@ -663,9 +878,9 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
       const bounds = getBounds(name);
       if (!panel || !bounds || !visible(name)) return;
       raise(name);
-      const revealRight = getComputedStyle(panel).direction === 'rtl' && bounds.width > viewport.clientWidth;
-      const left = revealRight ? bounds.left + bounds.width - viewport.clientWidth + MARGIN : bounds.left - MARGIN;
-      const point = { left: Math.max(0, left), top: Math.max(0, bounds.top - MARGIN) };
+      const revealRight = getComputedStyle(panel).direction === 'rtl' && bounds.width * zoom > viewport.clientWidth;
+      const left = revealRight ? (bounds.left + bounds.width + MARGIN) * zoom - viewport.clientWidth : (bounds.left - MARGIN) * zoom;
+      const point = { left, top: (bounds.top - MARGIN) * zoom };
       scrollTo(point);
     },
     previewWindows(targets: ReadonlyMap<WorkspaceWindowName, DOMRectReadOnly>) {
@@ -676,12 +891,21 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
     },
     clearWindowPreviews,
     snapWidgetPlacement(bounds: Bounds, showGuides: boolean) {
-      const scale = scaleFor(viewport, viewport.getBoundingClientRect());
-      const snapped = snapBounds(bounds, scale);
+      const snapped = snapBounds(bounds, scaleForWindows());
       if (showGuides) showAlignmentGuides(snapped.guides);
       return snapped.bounds;
     },
     clearAlignmentGuides: showAlignmentGuides,
+    snapshotLayout(): DeskLayoutTemplate {
+      const { windows, front } = arrangement;
+      return {
+        windows: { device: { ...windows.device }, tools: { ...windows.tools } },
+        front,
+        widgets: Object.fromEntries(Array.from(widgets, ([name, widget]) => [name.slice('widget:'.length), { ...widget.bounds }])),
+      };
+    },
+    saveCamera: saveDeskCamera,
+    changeDeskZoom,
     reset() {
       generation = storage.reset();
       applyReset();
@@ -705,11 +929,14 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
       listeners.abort();
       observer.disconnect();
       finishGesture();
+      if (viewport.isConnected && viewport.hasAttribute('data-desk')) saveDeskCamera();
       showAlignmentGuides();
       clearWindowPreviews();
       viewport.querySelector('[data-pointer-resize-focus]')?.removeAttribute('data-pointer-resize-focus');
       for (const panel of Object.values(panels)) clearWindowStyles(panel);
       for (const widget of widgets.values()) clearWindowStyles(widget.element);
+      clearDeskZoom();
+      for (const property of ['--scene-origin-x', '--scene-origin-y', 'width', 'height']) plane.style.removeProperty(property);
       canvas.style.removeProperty('width');
       canvas.style.removeProperty('height');
     },
@@ -717,9 +944,11 @@ function createWorkspace(viewport: HTMLDivElement, canvas: HTMLDivElement, panel
 }
 
 /** Owns free window geometry and active gestures without remounting the session media. */
-export function useFloatingSessionWorkspace({ active, userId, layoutId, legacyDeviceId, aspect, viewportRef, canvasRef, deviceRef, toolsRef }: WorkspaceOptions) {
+export function useFloatingSessionWorkspace({ active, userId, sessionId, layoutId, layoutTemplate, legacyDeviceId, aspect, viewportRef, canvasRef, deskGridRef, deviceRef, toolsRef }: WorkspaceOptions) {
   const workspace = useRef<ReturnType<typeof createWorkspace> | null>(null);
   const widgets = useRef(new Map<WidgetName, WidgetRegistration>());
+  const [deskZoom, setDeskZoom] = useState(1);
+  const cameraKey = `rdf-session-desk-camera:${encodeURIComponent(userId)}:${encodeURIComponent(sessionId)}`;
   const ratio = aspect !== undefined && Number.isFinite(aspect) && aspect > 0 ? Math.max(.0001, Math.round(aspect * 10_000) / 10_000) : undefined;
   const currentRatio = useRef(ratio);
   useLayoutEffect(() => {
@@ -734,23 +963,28 @@ export function useFloatingSessionWorkspace({ active, userId, layoutId, legacyDe
     if (!active || !layoutId) return;
     const viewport = viewportRef.current;
     const canvas = canvasRef.current;
+    const plane = canvas?.parentElement;
+    const deskGrid = deskGridRef.current;
     const device = deviceRef.current;
     const tools = toolsRef.current;
-    if (!viewport || !canvas || !device || !tools) return;
-    const controller = createWorkspace(viewport, canvas, { device, tools }, widgets.current, currentRatio.current, userId, layoutId);
+    if (!viewport || !plane || !canvas || !deskGrid || !device || !tools) return;
+    const controller = createWorkspace(viewport, plane, canvas, deskGrid, { device, tools }, widgets.current, currentRatio.current, userId, layoutId, layoutTemplate, cameraKey, setDeskZoom);
     workspace.current = controller;
     return () => {
       controller.dispose();
       workspace.current = null;
     };
-  }, [active, userId, layoutId, viewportRef, canvasRef, deviceRef, toolsRef]);
+  }, [active, userId, layoutId, layoutTemplate, cameraKey, viewportRef, canvasRef, deskGridRef, deviceRef, toolsRef]);
 
-  return useMemo(() => ({
+  const actions = useMemo(() => ({
     jump: (name: WorkspaceWindowName) => workspace.current?.jump(name),
     previewWindows: (targets: ReadonlyMap<WorkspaceWindowName, DOMRectReadOnly>) => workspace.current?.previewWindows(targets),
     clearWindowPreviews: () => workspace.current?.clearWindowPreviews(),
     snapWidgetPlacement: (bounds: Bounds, showGuides = false) => workspace.current?.snapWidgetPlacement(bounds, showGuides) ?? bounds,
     clearAlignmentGuides: () => workspace.current?.clearAlignmentGuides(),
+    snapshotLayout: () => workspace.current?.snapshotLayout(),
+    changeDeskZoom: (action: -1 | 0 | 1) => workspace.current?.changeDeskZoom(action),
+    saveCamera: () => workspace.current?.saveCamera(),
     registerWidget(name: WidgetName, element: HTMLElement, bounds: WidgetBounds, options?: WidgetOptions) {
       const previous = widgets.current.get(name);
       if (previous) workspace.current?.removeWidget(name, previous.element);
@@ -765,4 +999,5 @@ export function useFloatingSessionWorkspace({ active, userId, layoutId, legacyDe
     },
     reset: () => workspace.current?.reset(),
   }), []);
+  return { ...actions, deskZoom };
 }

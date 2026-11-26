@@ -1,7 +1,7 @@
-import { useId, useLayoutEffect, useRef } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from './icons';
-import { t } from './i18n';
-import type { useFloatingSessionWorkspace, WorkspaceWindowName } from './useFloatingSessionWorkspace';
+import { getLocale, t } from './i18n';
+import { DESK_MAX_ZOOM, DESK_MIN_ZOOM, type useFloatingSessionWorkspace, type WorkspaceWindowName } from './useFloatingSessionWorkspace';
 import './DeskWindowOverview.css';
 
 export type DeskOverviewWindow = {
@@ -13,13 +13,17 @@ export type DeskOverviewWindow = {
 const SHORTCUT = 'Alt+Shift+W';
 const EXIT_KEYCAP = 'Esc';
 
-export function DeskWindowOverview({ open, windows, onOpenChange, onSelect, onExitDesk, workspace }: {
+export function DeskWindowOverview({ open, windows, onOpenChange, onSelect, onExitDesk, onSaveLayout, onResetLayout, workspace, zoom, onZoom }: {
   open: boolean;
   windows: readonly DeskOverviewWindow[];
   onOpenChange: (open: boolean) => void;
   onSelect: (name: WorkspaceWindowName) => void;
   onExitDesk: () => void;
+  onSaveLayout?: () => boolean;
+  onResetLayout: () => void;
   workspace: Pick<ReturnType<typeof useFloatingSessionWorkspace>, 'previewWindows' | 'clearWindowPreviews'>;
+  zoom: number;
+  onZoom: (action: -1 | 0 | 1) => void;
 }) {
   const id = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -28,6 +32,19 @@ export function DeskWindowOverview({ open, windows, onOpenChange, onSelect, onEx
   const { previewWindows, clearWindowPreviews } = workspace;
   const title = t('session.workspace.overview');
   const exitLabel = t('session.workspace.leaveDesk');
+  const zoomLabel = new Intl.NumberFormat(getLocale(), { style: 'percent' }).format(zoom);
+  const zoomOutLabel = t('session.workspace.zoomOut');
+  const zoomInLabel = t('session.workspace.zoomIn');
+  const resetViewLabel = t('session.workspace.resetDeskView', { scale: zoomLabel });
+  const resetLayoutLabel = t('session.workspace.resetFloating');
+  const saveLayoutLabel = t('session.workspace.saveLayoutForEmulators');
+  const [saveResult, setSaveResult] = useState<{ saved: boolean }>();
+
+  useEffect(() => {
+    if (!saveResult) return;
+    const timer = window.setTimeout(() => setSaveResult(undefined), 4500);
+    return () => window.clearTimeout(timer);
+  }, [saveResult]);
 
   function fitPreviews(grid: HTMLOListElement) {
     // Project the existing windows into the dialog slots without remounting their content.
@@ -84,6 +101,25 @@ export function DeskWindowOverview({ open, windows, onOpenChange, onSelect, onEx
         aria-controls={id} aria-keyshortcuts={SHORTCUT} title={`${title} (${SHORTCUT})`} onClick={() => onOpenChange(true)}>
         <Icon name="grid" size={16} /><span className="desk-overview-trigger-label">{title}</span>
       </button>
+      <div className="desk-zoom">
+        <button type="button" className="desk-zoom-out" aria-label={zoomOutLabel} title={zoomOutLabel}
+          disabled={zoom <= DESK_MIN_ZOOM} onClick={() => onZoom(-1)}><Icon name="minus" size={16} /></button>
+        <button type="button" className="desk-zoom-reset" aria-label={resetViewLabel} title={resetViewLabel}
+          onClick={() => onZoom(0)}><bdi>{zoomLabel}</bdi></button>
+        <button type="button" className="desk-zoom-in" aria-label={zoomInLabel} title={zoomInLabel}
+          disabled={zoom >= DESK_MAX_ZOOM} onClick={() => onZoom(1)}><Icon name="plus" size={16} /></button>
+      </div>
+      <button type="button" className="desk-command-reset-layout" aria-label={resetLayoutLabel} title={resetLayoutLabel}
+        onClick={onResetLayout}><Icon name="rotate" size={16} /></button>
+      {onSaveLayout && <>
+        <button type="button" className="desk-command-save" aria-label={saveLayoutLabel} title={saveLayoutLabel}
+          onClick={() => setSaveResult({ saved: onSaveLayout() })}>
+          <Icon name="save" size={16} /><span className="desk-command-save-label">{t('session.workspace.saveLayout')}</span>
+        </button>
+        <span className="desk-save-status" role="status" data-error={saveResult?.saved === false || undefined}>
+          {saveResult && t(saveResult.saved ? 'session.workspace.layoutSaved' : 'session.workspace.layoutSaveFailed')}
+        </span>
+      </>}
       <button type="button" className="desk-command-exit" aria-label={exitLabel} aria-keyshortcuts="Escape" title={exitLabel} onClick={onExitDesk}>
         <Icon name="collapse" size={16} /><span className="desk-command-exit-label">{t('session.workspace.exitDeskShort')}</span>
         <kbd dir="ltr" aria-hidden="true">{EXIT_KEYCAP}</kbd>

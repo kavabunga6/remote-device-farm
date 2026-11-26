@@ -5,7 +5,7 @@ export type IconName =
   | 'chevronDown' | 'power' | 'rotate' | 'volume' | 'volumeOff' | 'headphones' | 'headphonesOff' | 'upload' | 'terminal' | 'more'
   | 'sidebarCollapse' | 'sidebarExpand' | 'grip'
   | 'sliders' | 'expand' | 'collapse' | 'back' | 'home' | 'recent' | 'play' | 'refresh' | 'close' | 'check' | 'alert' | 'link' | 'monitor' | 'mapPin'
-  | 'user' | 'logout' | 'keyboard' | 'copy' | 'download' | 'bolt' | 'search' | 'menu' | 'info' | 'wifi' | 'wifiOff' | 'key' | 'camera' | 'record' | 'recordScreen' | 'stop' | 'trash' | 'arrowDown' | 'arrowUp' | 'pause' | 'wrap' | 'list' | 'star' | 'slots' | 'layers';
+  | 'user' | 'logout' | 'keyboard' | 'copy' | 'save' | 'download' | 'bolt' | 'search' | 'menu' | 'info' | 'wifi' | 'wifiOff' | 'key' | 'camera' | 'record' | 'recordScreen' | 'stop' | 'trash' | 'arrowDown' | 'arrowUp' | 'pause' | 'wrap' | 'list' | 'star' | 'slots' | 'layers';
 
 const paths: Record<IconName, React.ReactNode> = {
   globe: <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z"/></>,
@@ -53,6 +53,7 @@ const paths: Record<IconName, React.ReactNode> = {
   logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5m5 5H9"/></>,
   keyboard: <><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M10 13h.01M14 13h.01M18 13h.01M8 16h8"/></>,
   copy: <><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>,
+  save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z"/><path d="M7 3v5h9V3M7 21v-7h10v7"/></>,
   download: <><path d="M12 3v13m-5-5 5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></>,
   slots: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" strokeDasharray="2.5 2.5"/><path d="M17.5 16.5v2M16.5 17.5h2"/></>,
   bolt: <path d="m13 2-9 12h7l-1 8 10-12h-7l0-8Z"/>,

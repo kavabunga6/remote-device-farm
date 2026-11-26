@@ -1,56 +1,70 @@
-.session-floating-canvas,.session-tool-tabs-strip,.desk-tool-host{display:contents}
+.session-floating-plane,.session-floating-canvas,.session-tool-tabs-strip,.desk-tool-host{display:contents}
 .desk-tool-host[hidden]{display:none}
 
-.session-layout[data-workspace-mode=float] .workspace-grid{
-  display:block;box-sizing:border-box;min-width:0;
-  height:var(--session-fit-height,600px);min-height:300px;
-  overflow:auto;overflow-anchor:none;overscroll-behavior:contain;
-  border:1px solid var(--ui-border);border-radius:1rem;background:var(--ui-inset);
-  --free-device-chrome-x:92px;--free-device-chrome-y:26px;
-}
 body:has(.session-layout[data-desk]){overflow:hidden}
 .app-shell:has(.session-layout[data-desk])>:is(.sidebar,.nav-scrim),
 .app-main:has(.session-layout[data-desk])>:is(.topbar,#form-save-dock),
-.session-layout[data-desk]>:not(.workspace-grid,.desk-command-bar,.desk-window-overview),
+.session-layout[data-desk]>:not(.workspace-grid,.desk-grid,.desk-command-bar,.desk-window-overview),
 body:has(.session-layout[data-desk])>.notification-stack:not(.notification-stack-in-modal){display:none}
 .session-layout[data-desk]{position:fixed;inset:0;z-index:30}
-.session-layout[data-workspace-mode=float][data-desk] .workspace-grid{
-  width:100%;height:100%;min-height:0;border:0;border-radius:0;isolation:isolate;
+.session-layout[data-desk] .workspace-grid{
+  display:block;box-sizing:border-box;width:100%;height:100%;min-width:0;min-height:0;
+  isolation:isolate;overflow:hidden;overflow-anchor:none;overscroll-behavior:contain;
+}
+.desk-grid{
+  position:absolute;inset:0;overflow:clip;pointer-events:none;background:var(--ui-inset);
+}
+.session-layout[data-overview]>.desk-grid{visibility:hidden}
+.desk-grid-pattern{
+  --desk-grid-cell:32px;
+  --desk-grid-line:color-mix(in srgb,var(--ui-muted) 17%,transparent);
+  position:absolute;inset:calc(-1 * var(--desk-grid-cell));
+  background-image:
+    linear-gradient(to right,var(--desk-grid-line) 1px,transparent 1px),
+    linear-gradient(to bottom,var(--desk-grid-line) 1px,transparent 1px);
+  background-size:var(--desk-grid-cell) var(--desk-grid-cell);
 }
 .session-layout[data-desk] .session-floating-canvas{cursor:grab}
 .session-layout[data-desk] .session-floating-canvas>[data-window]{cursor:auto}
-.session-layout[data-workspace-mode=float] .session-floating-canvas{
-  position:relative;display:block;min-width:100%;min-height:100%;overflow:hidden;
+.session-layout[data-desk] .session-floating-plane{
+  position:relative;display:block;overflow:clip;
 }
-.session-layout[data-workspace-mode=float] .session-floating-canvas>[data-window]{
+.session-layout[data-desk] .session-floating-canvas{
+  position:absolute;display:block;left:var(--scene-origin-x,0px);top:var(--scene-origin-y,0px);overflow:visible;
+}
+.workspace-grid[data-desk-zoom] .session-floating-plane{cursor:grab}
+.session-layout[data-desk] .workspace-grid[data-desk-zoom] .session-floating-canvas{
+  transform:scale(var(--desk-zoom));transform-origin:0 0;
+}
+.session-layout[data-desk] .session-floating-canvas>[data-window]{
   position:absolute;box-sizing:border-box;margin:0;min-width:0;min-height:0;overflow:hidden;
   box-shadow:0 5px 17px rgb(0 0 0 / .12);
 }
-.session-layout[data-workspace-mode=float] .session-floating-canvas>[data-front]{
+.session-layout[data-desk] .session-floating-canvas>[data-front]{
   border-color:color-mix(in srgb,var(--accent) 42%,var(--ui-border));box-shadow:0 8px 22px rgb(0 0 0 / .18);
 }
-.session-layout[data-workspace-mode=float] .workspace-grid[data-window-drag=resize] .session-floating-canvas>[data-front]{
+.session-layout[data-desk] .workspace-grid[data-window-drag=resize] .session-floating-canvas>[data-front]{
   border-color:color-mix(in srgb,var(--accent) 68%,var(--ui-border));
 }
-.session-layout[data-workspace-mode=float] .session-floating-canvas>.viewer-panel{
-  grid-template-rows:minmax(0,1fr);align-items:stretch;
+.session-layout[data-desk] .session-floating-canvas>.viewer-panel{
+  --viewer-stage-track:minmax(0,1fr);align-items:stretch;
 }
-.session-layout[data-workspace-mode=float] .workspace-grid .session-floating-canvas .viewer-panel>.viewer-stage:not(:fullscreen){
-  align-self:stretch;height:100%;min-height:0;max-height:none;aspect-ratio:auto;box-sizing:border-box;padding:12px;
+.session-layout[data-desk] .workspace-grid .session-floating-canvas .viewer-panel>.viewer-stage:not(:fullscreen){
+  align-self:stretch;width:100%;height:100%;min-height:0;max-height:none;aspect-ratio:auto;box-sizing:border-box;
 }
-.session-layout[data-workspace-mode=float] .session-floating-canvas>.terminal-panel{display:flex;flex-direction:column}
-.session-layout[data-workspace-mode=float] :is(.terminal-panel,.desk-tool-host)>:is(.tool-content,.info-panel,.env-panel,.apps-panel){
+.session-layout[data-desk] .session-floating-canvas>.terminal-panel{display:flex;flex-direction:column}
+.session-layout[data-desk] :is(.terminal-panel,.desk-tool-host)>:is(.tool-content,.info-panel,.env-panel,.apps-panel){
   flex:1 1 0;min-height:0;overflow:auto;overscroll-behavior:contain;
 }
-.session-layout[data-workspace-mode=float] :is(.terminal-panel,.desk-tool-host)>.terminal-tool{overflow:hidden}
-.session-layout[data-workspace-mode=float] .workspace-grid .terminal-panel .terminal-output{
+.session-layout[data-desk] :is(.terminal-panel,.desk-tool-host)>.terminal-tool{overflow:hidden}
+.session-layout[data-desk] .workspace-grid .terminal-panel .terminal-output{
   flex:1 1 0;min-height:0;max-height:none;overscroll-behavior:contain;
 }
-.session-layout[data-workspace-mode=float] .terminal-tool>:not(.terminal-output){flex:none}
-.session-layout[data-workspace-mode=float] :is(.session-tool-tabs-strip,.desk-widget-header){
+.session-layout[data-desk] .terminal-tool>:not(.terminal-output){flex:none}
+.session-layout[data-desk] :is(.session-tool-tabs-strip,.desk-widget-header){
   display:flex;align-items:stretch;min-width:0;flex:none;cursor:grab;border-block-end:1px solid var(--ui-border);
 }
-.session-layout[data-workspace-mode=float] .desk-widget-header{
+.session-layout[data-desk] .desk-widget-header{
   min-block-size:max(25px,1.625rem);touch-action:none;user-select:none;
 }
 .desk-widget-title,.desk-empty-tabs{
@@ -61,10 +75,10 @@ body:has(.session-layout[data-desk])>.notification-stack:not(.notification-stack
 }
 .desk-empty-tabs{color:var(--ui-subtle);line-height:1.4;padding-block:.5rem;overflow-wrap:anywhere}
 .session-tool-tabs-strip:has(>.desk-empty-tabs){min-block-size:3rem}
-.session-layout[data-workspace-mode=float] .session-tool-tabs-strip>.tool-tabs{
+.session-layout[data-desk] .session-tool-tabs-strip>.tool-tabs{
   flex:1 1 0;min-width:0;border-width:0;border-radius:0;flex-wrap:nowrap;overflow:auto hidden;overscroll-behavior-inline:contain;
 }
-.session-layout[data-workspace-mode=float] .terminal-panel .tool-tabs [role=tab]{flex:none;white-space:nowrap}
+.session-layout[data-desk] .terminal-panel .tool-tabs [role=tab]{flex:none;white-space:nowrap}
 .tool-tabs [role=tab][draggable=true]{cursor:grab}
 .workspace-grid[data-tab-drag] .tool-tabs [role=tab][draggable=true]{cursor:grabbing}
 .desk-drag-surface{position:absolute;top:0;left:0;z-index:20;pointer-events:none}
@@ -80,21 +94,23 @@ body:has(.session-layout[data-desk])>.notification-stack:not(.notification-stack
 }
 [data-widget-dock][data-dock-target]{outline:2px solid var(--accent);outline-offset:-2px;background:var(--accent-soft)}
 [data-widget-dock][data-dock-target]>.tool-tabs{background:var(--accent-soft)}
-.session-layout[data-workspace-mode=float] .workspace-grid[data-panning],
-.session-layout[data-workspace-mode=float] .workspace-grid[data-panning] .session-floating-canvas *{cursor:grabbing;user-select:none}
-.session-layout[data-workspace-mode=float] .workspace-grid[data-window-drag] .session-floating-canvas{user-select:none}
-.session-layout[data-workspace-mode=float] .workspace-grid[data-window-drag=move] .session-floating-canvas{cursor:grabbing}
+.session-layout[data-desk] .workspace-grid[data-panning],
+.session-layout[data-desk] .workspace-grid[data-panning] .session-floating-plane{cursor:grabbing;user-select:none}
+.workspace-grid[data-panning] .session-floating-canvas{will-change:translate;pointer-events:none}
+.session-layout[data-desk] .workspace-grid[data-window-drag] .session-floating-canvas{user-select:none}
+.session-layout[data-desk] .workspace-grid[data-window-drag=move] .session-floating-canvas{cursor:grabbing}
 
 .session-layout .floating-window-move{cursor:grab;touch-action:none;user-select:none}
 .session-layout .floating-window-move:active{cursor:grabbing}
-.device-controls>.device-control.floating-window-move{
-  position:sticky;top:0;z-index:1;flex:none;margin-block-end:2px;--control-fill:var(--stage);
-}
 .session-tool-tabs-strip>.floating-desk-actions{display:flex;flex:none;align-items:stretch}
 :is(.session-tool-tabs-strip,.desk-widget-header)>.floating-window-move,
 .floating-desk-actions>button,.desk-widget-header>.desk-widget-dock{
   flex:none;inline-size:2.75rem;display:grid;place-items:center;padding:0;border:0;
   background:var(--ui-surface);color:var(--ui-subtle);
+}
+.session-tool-tabs-strip:has(>.tool-tabs)>.floating-window-move,
+.session-tool-tabs-strip:has(>.tool-tabs)>.floating-desk-actions>button{
+  grid-template-rows:var(--session-tool-tab-height);
 }
 .desk-widget-header>:is(.floating-window-move,.desk-widget-dock){inline-size:max(36px,2rem)}
 .desk-widget-header>button>svg{inline-size:16px;block-size:16px}
@@ -109,6 +125,9 @@ body:has(.session-layout[data-desk])>.notification-stack:not(.notification-stack
 .floating-window-resize-handle{
   --edge-hit:8px;--corner-hit:16px;
   position:absolute;z-index:5;touch-action:none;background:transparent;border:0;padding:0;
+}
+.workspace-grid[data-desk-zoom] .floating-window-resize-handle{
+  --edge-hit:min(11px,calc(8px / var(--desk-zoom)));--corner-hit:min(16px,calc(16px / var(--desk-zoom)));
 }
 .floating-window-resize-handle:focus{outline:none}
 .floating-window-resize-handle:is([data-direction=n],[data-direction=s]){
@@ -128,7 +147,7 @@ body:has(.session-layout[data-desk])>.notification-stack:not(.notification-stack
 .floating-window-resize-handle[data-direction=ne]{right:0;top:0;cursor:nesw-resize}
 .floating-window-resize-handle[data-direction=sw]{left:0;bottom:0;cursor:nesw-resize}
 .floating-window-resize-handle[data-direction=se]{right:0;bottom:0;cursor:nwse-resize}
-.session-layout[data-workspace-mode=float] .workspace-grid:not([data-window-drag=resize]) .session-floating-canvas>[data-window]:has(>.floating-window-resize-handle:focus-visible:not([data-pointer-resize-focus])),
+.session-layout[data-desk] .workspace-grid:not([data-window-drag=resize]) .session-floating-canvas>[data-window]:has(>.floating-window-resize-handle:focus-visible:not([data-pointer-resize-focus])),
 .floating-window-move:focus-visible,.floating-desk-actions>button:focus-visible,.desk-widget-dock:focus-visible{
   outline:2px solid var(--accent);outline-offset:-2px;
 }

@@ -19,28 +19,48 @@
       "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
       "theme": "dark",
       "horizontalOverflow": 0,
-      "browserErrors": []
+      "browserErrors": [],
+      "capturedAt": "2026-11-25T23:58:59.059Z"
     },
     {
       "file": "logcat-light.png",
       "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
       "theme": "light",
       "horizontalOverflow": 0,
-      "browserErrors": []
+      "browserErrors": [],
+      "capturedAt": "2026-11-25T23:58:59.059Z"
+    },
+    {
+      "file": "desk-logcat-dark.png",
+      "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
+      "theme": "dark",
+      "horizontalOverflow": 0,
+      "browserErrors": [],
+      "capturedAt": "2026-11-25T23:58:59.059Z"
+    },
+    {
+      "file": "desk-environment-light.png",
+      "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
+      "theme": "light",
+      "horizontalOverflow": 0,
+      "browserErrors": [],
+      "capturedAt": "2026-11-25T23:58:59.059Z"
     },
     {
       "file": "desk-alignment-dark.png",
       "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
       "theme": "dark",
       "horizontalOverflow": 0,
-      "browserErrors": []
+      "browserErrors": [],
+      "capturedAt": "2026-11-25T23:58:59.059Z"
     },
     {
       "file": "desk-overview-light.png",
       "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
       "theme": "light",
       "horizontalOverflow": 0,
-      "browserErrors": []
+      "browserErrors": [],
+      "capturedAt": "2026-11-25T23:58:59.059Z"
     },
     {
       "file": "nodes-light.png",

@@ -107,9 +107,10 @@ test('Logcat aligns compact tools with the output and wraps search as the floati
     } }));
   });
   await fixture(page, 1920, 1080);
-  await page.locator('[data-workspace-choice=float]').click();
+  await page.locator('.workspace-enter-desk').click();
   const tools = page.locator('[data-window=tools]');
   const panel = tools.locator('.log-panel');
+  await expect(panel).toBeVisible();
   const width = () => tools.evaluate(element => element.getBoundingClientRect().width);
   const handle = tools.locator('[data-window-resize=tools][data-direction=se]');
 
@@ -156,7 +157,6 @@ test('Logcat aligns compact tools with the output and wraps search as the floati
     }
   }
 
-  await page.getByRole('button', { name: 'Стол', exact: true }).click();
   const menu = panel.locator('.log-menu > summary');
   await menu.click();
   await menu.press('Escape');
@@ -190,7 +190,6 @@ test('Large Arabic Logcat controls fit the workspace and keep the minimum widget
   expect(layout.documentOverflow).toBeLessThanOrEqual(1);
 
   await page.setViewportSize({ width: 1536, height: 900 });
-  await page.locator('[data-workspace-choice=float]').click();
   await page.getByRole('button', { name: 'سطح المكتب', exact: true }).click();
   const widget = page.locator('[data-window="widget:logs"]');
   await expect(widget).toBeVisible();

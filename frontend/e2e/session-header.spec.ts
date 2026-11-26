@@ -33,9 +33,9 @@ for (const [width, height, theme, scale] of [[1366, 768, 'light', 1], [1920, 108
     writeFileSync(`../.tmp-ui/media-status/${width}-${theme}-${scale}-geometry.json`, JSON.stringify(geometry,null,2));
     const header = page.locator('.session-heading');
     const modes = page.getByRole('group', { name: 'Компоновка сессии' });
-    const layouts = modes.locator('.workspace-positioned-view');
-    await expect(layouts).toHaveCount(width > 1200 ? 2 : 1);
-    await expect(modes.getByRole('button', { name: 'Поверх кадра', exact: true })).toBeVisible();
+    await expect(modes.getByRole('button', { name: 'Рядом', exact: true })).toBeVisible();
+    await expect(modes.getByRole('button', { name: 'Стол', exact: true })).toBeVisible();
+    await expect(modes.getByRole('button', { name: 'Поверх кадра', exact: true })).toHaveCount(0);
     await expect(modes.getByRole('button', { name: 'Док снизу', exact: true })).toHaveCount(0);
     await expect.poll(() => modes.getByRole('button').evaluateAll(buttons => {
       const heights = buttons.map(button => button.getBoundingClientRect().height);
@@ -51,7 +51,7 @@ for (const [width, height, theme, scale] of [[1366, 768, 'light', 1], [1920, 108
       return Math.max(Math.max(...centers) - Math.min(...centers), Math.max(...badges.map(rect => rect.height)) - Math.min(...badges.map(rect => rect.height)), Math.abs(status.top + status.height / 2 - modes.top - modes.height / 2), Math.abs(header.right - modes.right));
     })).toBeLessThanOrEqual(1);
 
-    for (const name of (width > 650 ? ['Экран', 'Инструменты', 'Рядом'] : ['Экран', 'Инструменты', 'Экран'])) {
+    for (const name of ['Экран', 'Инструменты', 'Рядом']) {
       await modes.getByRole('button', { name, exact: true }).click();
       await expect(page.getByRole('heading', { level: 1 })).toBeInViewport();
       if (width > 650) await expect.poll(() => page.evaluate(() => {
@@ -89,7 +89,7 @@ for (const [width, height, theme, scale] of [[1366, 768, 'light', 1], [1920, 108
   });
 }
 
-test('a saved bottom dock opens side by side and only layouts can become default', async ({ page }) => {
+test('a saved bottom dock opens Side by Side and Desk can become default', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   const storageKey = 'rdf-session-default-view:u1';
   await page.addInitScript(key => {
@@ -105,12 +105,16 @@ test('a saved bottom dock opens side by side and only layouts can become default
   await expect(layout).toHaveAttribute('data-workspace-mode', 'tools');
   await expect(defaultButton).toBeDisabled();
 
-  await layout.getByRole('button', { name: 'Поверх кадра', exact: true }).click();
-  await expect(defaultButton).toBeEnabled();
-  await defaultButton.click();
-  expect(await page.evaluate(key => localStorage.getItem(key), storageKey)).toBe('float');
+  await layout.getByRole('button', { name: 'Стол', exact: true }).click();
+  await expect(layout).toHaveAttribute('data-workspace-mode', 'desk');
+  const deskDefault = layout.locator('.floating-desk-default');
+  await expect(deskDefault).toBeEnabled();
+  await deskDefault.click();
+  expect(await page.evaluate(key => localStorage.getItem(key), storageKey)).toBe('desk');
+  await page.evaluate(id => sessionStorage.removeItem(`rdf-session-view:u1:${id}`), sessionId);
   await page.reload();
-  await expect(layout).toHaveAttribute('data-workspace-mode', 'float');
+  await expect(layout).toHaveAttribute('data-workspace-mode', 'desk');
+  await expect(deskDefault).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('ADB settings keep connection commands accessible from the compact header', async ({ page, context }) => {

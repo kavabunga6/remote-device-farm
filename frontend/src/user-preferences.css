@@ -72,7 +72,6 @@
 :root[data-effective-theme="dark"] :is(.inline-warning,.account-confirm,.console-notice){background:#3b3428;border-color:#65543d;color:#e7c993}
 :root[data-effective-theme="dark"] :is(.inline-error,.banner-error){background:#462a2b;border-color:#704143;color:#f2b3ad}
 :root[data-effective-theme="dark"] .account-notice{background:#264536;color:#afe5bd}
-:root[data-effective-theme="dark"] .viewer-stage{background:radial-gradient(ellipse at 48% 42%,#263739 0%,#142023 70%,#10191c 100%)}
 :root[data-effective-theme="dark"] .admin-journal-filters{background:var(--ui-surface);border-color:var(--ui-border)}
 :root[data-effective-theme="dark"] .admin-journal-filters :is(input,select){background:var(--ui-inset);border-color:var(--ui-border);color:var(--ui-text)}
 :root[data-effective-theme="dark"] :is(.agent-list,.agent-create,.token-secret){

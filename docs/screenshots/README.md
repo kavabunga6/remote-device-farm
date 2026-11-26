@@ -4,13 +4,21 @@ Desktop interface, 1600 × 1000 viewport, English. The mock API supplies demo pr
 
 ## Device session
 
-The **Over the device** layout with movable emulator and console windows, device controls and ADB access.
+The emulator screen, device controls, ADB access and device console.
 
 ![Device session, dark theme](device-dark.png)
 
 ## Desk
 
-The full-page workspace with a detached Logcat tab. A dashed guide shows the shared center line while the widget is being moved.
+The emulator, console and detached Logcat share the workspace during a debugging session.
+
+![Desk with the emulator, console and Logcat, dark theme](desk-logcat-dark.png)
+
+Keep device information visible while adjusting Android display settings in a separate Environment widget.
+
+![Desk with device information and Environment, light theme](desk-environment-light.png)
+
+A dashed guide shows the shared center line while a widget is being moved.
 
 ![Desk with a vertical alignment guide, dark theme](desk-alignment-dark.png)
 
@@ -82,4 +90,6 @@ MOCK_PORT=5198 node scripts/capture-screenshots.mjs
 
 For Edge, set `PLAYWRIGHT_CHANNEL=msedge` when running the capture script.
 
-The script accepts only a loopback mock server, disables write requests, checks browser errors and horizontal overflow, and writes [capture metadata](manifest.json). Profile, node and role pages use full-page captures.
+Use `--desk-only` to refresh just the Desk captures or `--session-only` to include the other device session views.
+
+The script accepts only a loopback mock server, blocks write requests from reaching it and supplies fixture responses for the two console commands in the Desk capture. It checks browser errors and horizontal overflow and writes [capture metadata](manifest.json). Profile, node and role pages use full-page captures.

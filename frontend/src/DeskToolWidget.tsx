@@ -3,13 +3,14 @@ import { createPortal } from 'react-dom';
 import { FloatingWindowMove, FloatingWindowResizeHandles } from './FloatingWorkspaceControls';
 import { getDirection, t } from './i18n';
 import { Icon } from './icons';
+import type { DeskLayoutTemplate } from './deskLayoutTemplate';
 import { constrainWidgetBounds, type useFloatingSessionWorkspace, type WidgetBounds } from './useFloatingSessionWorkspace';
 
 type Placements<T extends string> = Partial<Record<T, WidgetBounds>>;
 
 export const DESK_TOOL_DRAG_TYPE = 'application/x-rdf-desk-tool';
 
-export function useDeskWidgetLayout<T extends string>(userId: string, layoutId: string | undefined, toolIds: readonly T[]) {
+export function useDeskWidgetLayout<T extends string>(userId: string, layoutId: string | undefined, toolIds: readonly T[], template?: DeskLayoutTemplate | null) {
   const scope = layoutId && `rdf-session-desk-widget-v1:${encodeURIComponent(userId)}:${encodeURIComponent(layoutId)}`;
   const [layout, setLayout] = useState<{ scope?: string; placements: Placements<T> }>({ placements: {} });
 
@@ -17,22 +18,26 @@ export function useDeskWidgetLayout<T extends string>(userId: string, layoutId: 
     const placements: Placements<T> = {};
     if (scope) {
       for (const id of toolIds) {
+        if (template?.widgets[id]) placements[id] = constrainWidgetBounds(template.widgets[id]);
         try {
-          const stored = window.localStorage.getItem(`${scope}:${id}`);
+          const storage = template ? window.sessionStorage : window.localStorage;
+          const stored = storage.getItem(`${scope}:${id}`);
           if (!stored) continue;
           const bounds = JSON.parse(stored) as WidgetBounds | null;
           if (bounds && [bounds.left, bounds.top, bounds.width, bounds.height].every(Number.isFinite)) placements[id] = bounds;
+          else if (bounds === null) delete placements[id];
         } catch { /* A corrupt or unavailable entry does not prevent opening the tools. */ }
       }
     }
     setLayout({ scope, placements });
-  }, [scope, toolIds]);
+  }, [scope, toolIds, template]);
 
   const saveBounds = (id: T, bounds?: WidgetBounds) => {
     if (!scope) return;
     try {
-      if (bounds) window.localStorage.setItem(`${scope}:${id}`, JSON.stringify(bounds));
-      else window.localStorage.removeItem(`${scope}:${id}`);
+      const storage = template ? window.sessionStorage : window.localStorage;
+      if (bounds || template) storage.setItem(`${scope}:${id}`, JSON.stringify(bounds ?? null));
+      else storage.removeItem(`${scope}:${id}`);
     } catch { /* Keep the current layout usable when storage is unavailable. */ }
   };
 
@@ -45,17 +50,23 @@ export function useDeskWidgetLayout<T extends string>(userId: string, layoutId: 
   return { placements, setPlacement, saveBounds };
 }
 
-export function deskWidgetPlacement(viewport: HTMLElement, clientX?: number, clientY?: number): WidgetBounds {
-  const rect = viewport.getBoundingClientRect();
-  const scale = rect.width / Math.max(1, viewport.offsetWidth) || 1;
+export function deskWidgetPlacement(viewport: HTMLElement, canvas: HTMLElement, clientX?: number, clientY?: number): WidgetBounds {
+  const outer = viewport.getBoundingClientRect();
+  const scene = canvas.getBoundingClientRect();
+  const scaleX = scene.width / canvas.offsetWidth || 1;
+  const scaleY = scene.height / canvas.offsetHeight || 1;
+  const left = (outer.left - scene.left) / scaleX;
+  const top = (outer.top - scene.top) / scaleY;
+  const visibleWidth = outer.width / scaleX;
+  const visibleHeight = outer.height / scaleY;
   const margin = 12;
-  const width = Math.max(400, Math.min(680, viewport.clientWidth - 2 * margin));
-  const height = Math.max(360, Math.min(480, viewport.clientHeight - 2 * margin));
-  const x = clientX === undefined ? (viewport.clientWidth - width) / 2 : (clientX - rect.left) / scale - viewport.clientLeft - 32;
-  const y = clientY === undefined ? (viewport.clientHeight - height) / 2 : (clientY - rect.top) / scale - viewport.clientTop - 20;
+  const width = Math.max(400, Math.min(680, visibleWidth - 2 * margin));
+  const height = Math.max(360, Math.min(480, visibleHeight - 2 * margin));
+  const x = clientX === undefined ? left + (visibleWidth - width) / 2 : (clientX - scene.left) / scaleX - 32;
+  const y = clientY === undefined ? top + (visibleHeight - height) / 2 : (clientY - scene.top) / scaleY - 20;
   return constrainWidgetBounds({
-    left: viewport.scrollLeft + Math.max(margin, Math.min(x, viewport.clientWidth - width - margin)),
-    top: viewport.scrollTop + Math.max(margin, Math.min(y, viewport.clientHeight - height - margin)),
+    left: x,
+    top: y,
     width, height,
   });
 }
