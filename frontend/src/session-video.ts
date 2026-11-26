@@ -4,7 +4,7 @@ type VideoOwner = {
   closed(): boolean;
   canvas(): HTMLCanvasElement | null;
   image(): HTMLImageElement | null;
-  pendingImage: { current: string | null };
+  latestImage: { current: string | null };
   frame(format: 'image' | 'video', width?: number, height?: number, transport?: 'mjpeg' | 'images' | 'scrcpy' | 'native'): void;
   connecting(transport?: 'scrcpy' | 'native'): void;
   fail(message: string, unsupported?: boolean): void;
@@ -26,6 +26,7 @@ export class SessionVideo {
   private lastKeyframeRequestAt = -Infinity;
   constructor(private readonly owner: VideoOwner) {}
   reset(): void {
+    this.owner.latestImage.current = null;
     if (this.decoder && this.decoder.state !== 'closed') this.decoder.close();
     this.decoder = null; this.configBytes = null; this.configKey = null; this.config = null;
     this.waitingForKeyframe = true; this.dropping = false;
@@ -42,8 +43,9 @@ export class SessionVideo {
     this.reset();
     const mime = message.mime === 'image/jpeg' || message.mime === 'image/webp' ? message.mime : 'image/png';
     const source = `data:${mime};base64,${message.data}`;
+    this.owner.latestImage.current = source;
     const image = this.owner.image();
-    if (image) image.src = source; else this.owner.pendingImage.current = source;
+    if (image) image.src = source;
     this.owner.frame('image', message.width, message.height, mime === 'image/jpeg' ? 'mjpeg' : 'images');
   }
   private configure(message: StreamMessage): void {
