@@ -93,11 +93,6 @@
 .admin-workspace .section-heading > div > h2:not(.heading-with-count){display:none}
 .admin-workspace .section-heading > :last-child:not(:first-child){margin-inline-start:auto}
 
-/* List rows: a soft tint instead of a hard outline; the keyboard focus ring stays. */
-.admin-workspace .agent-row.interactive-card .card-primary-action::after{inset:4px -.625rem;border-radius:.5rem;transition:background-color .15s}
-.admin-workspace .agent-row.interactive-card .card-primary-action:not(:disabled):hover::after{box-shadow:none;background:color-mix(in srgb,var(--accent) 8%,transparent)}
-.admin-workspace .agent-row.interactive-card .card-primary-action:focus-visible::after{outline-offset:-2px}
-
 /* Counters say what they count. */
 
 .count-badge{display:inline-flex;align-items:stretch;overflow:hidden;border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:999px;background:var(--ui-surface);font-size:.8125rem;line-height:1;white-space:nowrap}

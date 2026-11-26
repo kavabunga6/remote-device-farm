@@ -14,13 +14,9 @@ The emulator, console and detached Logcat share the workspace during a debugging
 
 ![Desk with the emulator, console and Logcat, dark theme](desk-logcat-dark.png)
 
-Keep device information visible while adjusting Android display settings in a separate Environment widget.
+Keep device information visible beside the settings in a separate Environment widget.
 
 ![Desk with device information and Environment, light theme](desk-environment-light.png)
-
-A dashed guide shows the shared center line while a widget is being moved.
-
-![Desk with a vertical alignment guide, dark theme](desk-alignment-dark.png)
 
 **Window overview** brings any window to the front and lets detached tools return to the tab bar.
 
