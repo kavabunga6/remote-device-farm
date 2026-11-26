@@ -68,17 +68,13 @@ const images = versions.flatMap(({ api }, index) => [0, 1].map(older => ({
 const permissionCatalog = JSON.parse(readFileSync(resolve(root, 'shared/permissions.json'), 'utf8'));
 const qaPermissions = [...new Set([...permissionCatalog.user, 'profiles.view', 'images.view', 'logs.view'])];
 const deskWindows = {
-  device: { left: 76, top: 84, width: 392, height: 832 },
-  tools: { left: 520, top: 64, width: 996, height: 392 },
+  device: { left: 40, top: 72, width: 520, height: 856 },
+  tools: { left: 592, top: 72, width: 968, height: 382 },
 };
-const deskLogcat = { left: 623, top: 515, width: 850, height: 417 };
-const diagnosticsWindows = {
-  ...deskWindows,
-  tools: { ...deskWindows.tools, height: 398 },
-};
+const deskLogcat = { left: 592, top: 478, width: 968, height: 450 };
 const environmentWindows = {
   ...deskWindows,
-  tools: { ...deskWindows.tools, height: 360 },
+  tools: { left: 592, top: 72, width: 464, height: 856 },
 };
 const demoCommands = new Map([
   ['getprop ro.product.model', profiles[0].deviceModel],
@@ -96,13 +92,12 @@ const screens = [
   { id: 'logcat-light', route: 'session/' + sid, theme: 'light', selector: '[role=tablist]', tab: 'Logcat', layout: 'split' },
   {
     id: 'desk-logcat-dark', route: 'session/' + sid, theme: 'dark', selector: '.device-screen', layout: 'desk', desk: 'diagnostics',
-    windows: diagnosticsWindows, widgets: { logs: { left: 520, top: 482, width: 996, height: 444 } },
+    windows: deskWindows, widgets: { logs: deskLogcat },
   },
   {
     id: 'desk-environment-light', route: 'session/' + sid, theme: 'light', selector: '.device-screen', layout: 'desk', desk: 'environment',
-    windows: environmentWindows, widgets: { env: { left: 520, top: 444, width: 996, height: 482 } },
+    windows: environmentWindows, widgets: { env: { left: 1080, top: 72, width: 480, height: 856 } },
   },
-  { id: 'desk-alignment-dark', route: 'session/' + sid, theme: 'dark', selector: '.device-screen', layout: 'desk', desk: 'alignment' },
   { id: 'desk-overview-light', route: 'session/' + sid, theme: 'light', selector: '.device-screen', layout: 'desk', desk: 'overview' },
   { id: 'nodes-light', route: 'admin/nodes', theme: 'light', selector: '.host-card', fullPage: true },
   { id: 'agent-onboarding-dark', route: 'admin/nodes', theme: 'dark', selector: '.host-card', publicOrigin: true },
@@ -222,25 +217,12 @@ try {
       await page.locator('#tool-tab-info').click();
       await page.locator('.info-panel').getByText('Google ' + profiles[0].deviceModel, { exact: true }).waitFor();
       await page.locator('.env-app[open] summary').click();
-      await page.locator('.env-appearance summary').click();
-      await page.locator('.env-appearance input[value="420"]').waitFor();
+      await page.locator('.env-card:last-child summary').waitFor();
       await page.mouse.move(36, 960);
     }
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(600);
-    if (screen.desk === 'alignment') {
-      const tools = await page.locator('[data-window="tools"]').boundingBox();
-      const widget = await page.locator('[data-window="widget:logs"]').boundingBox();
-      const grip = await page.locator('button[data-window-move="widget:logs"]').boundingBox();
-      if (!tools || !widget || !grip) throw new Error('Desk windows must be visible for the alignment capture');
-      const x = grip.x + grip.width / 2;
-      const y = grip.y + grip.height / 2;
-      const centerOffset = tools.x + tools.width / 2 - (widget.x + widget.width / 2);
-      await page.mouse.move(x, y);
-      await page.mouse.down();
-      await page.mouse.move(x + centerOffset + 4, y, { steps: 8 });
-      await page.locator('[data-window-alignment-guide=x]').waitFor();
-    }
+    if (screen.desk) await page.mouse.move(12, 960);
     if (screen.desk === 'overview') {
       await page.getByRole('button', { name: 'Window overview', exact: true }).click();
       await page.getByRole('dialog', { name: 'Window overview', exact: true }).waitFor();
@@ -250,7 +232,6 @@ try {
     if (errors.length || geometry.overflow > 1 || geometry.theme !== screen.theme) throw new Error(JSON.stringify({ screen: screen.id, errors, ...geometry }));
     const file = screen.id + '.png';
     saveCapture(file, await page.screenshot({ animations: 'disabled', fullPage: screen.fullPage === true }));
-    if (screen.desk === 'alignment') await page.mouse.up();
     captures.set(file, {
       file, route: screen.route, theme: screen.theme, horizontalOverflow: geometry.overflow, browserErrors: errors,
       ...(partialCapture ? { capturedAt: stamp.toISOString() } : {}),

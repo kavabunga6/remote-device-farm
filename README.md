@@ -31,7 +31,7 @@ Use a shared device pool for Android tests across projects. Native reusable inte
 
 The [Bash CLI](docs/api/README.md#готовый-помощник-для-ci) queues device requests, connects ADB, renews the lease during tests and releases the device after completion or cancellation. The examples include artifact collection. The packages share the CLI lifecycle and are available from source; live CI and Android plugin validation is still incomplete. [Setup and verification status](docs/ci/README.md).
 
-![Android session in the English interface](docs/screenshots/device-dark.png)
+![Desk with a large emulator, console and detached Logcat](docs/screenshots/desk-logcat-dark.png)
 
 [Desk examples](docs/screenshots/README.md#desk) · [Screenshot gallery](docs/screenshots/README.md)
 

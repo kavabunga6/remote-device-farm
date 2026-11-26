@@ -63,6 +63,7 @@ body:has(.session-layout[data-desk])>.notification-stack:not(.notification-stack
 .session-layout[data-desk] .terminal-tool>:not(.terminal-output){flex:none}
 .session-layout[data-desk] :is(.session-tool-tabs-strip,.desk-widget-header){
   display:flex;align-items:stretch;min-width:0;flex:none;cursor:grab;border-block-end:1px solid var(--ui-border);
+  border-start-start-radius:inherit;border-start-end-radius:inherit;
 }
 .session-layout[data-desk] .desk-widget-header{
   min-block-size:max(25px,1.625rem);touch-action:none;user-select:none;
@@ -102,7 +103,7 @@ body:has(.session-layout[data-desk])>.notification-stack:not(.notification-stack
 
 .session-layout .floating-window-move{cursor:grab;touch-action:none;user-select:none}
 .session-layout .floating-window-move:active{cursor:grabbing}
-.session-tool-tabs-strip>.floating-desk-actions{display:flex;flex:none;align-items:stretch}
+.session-tool-tabs-strip>.floating-desk-actions{display:flex;flex:none;align-items:stretch;border-start-end-radius:inherit}
 :is(.session-tool-tabs-strip,.desk-widget-header)>.floating-window-move,
 .floating-desk-actions>button,.desk-widget-header>.desk-widget-dock{
   flex:none;inline-size:2.75rem;display:grid;place-items:center;padding:0;border:0;
@@ -115,6 +116,8 @@ body:has(.session-layout[data-desk])>.notification-stack:not(.notification-stack
 .desk-widget-header>:is(.floating-window-move,.desk-widget-dock){inline-size:max(36px,2rem)}
 .desk-widget-header>button>svg{inline-size:16px;block-size:16px}
 :is(.session-tool-tabs-strip,.desk-widget-header)>.floating-window-move{border-inline-end:1px solid var(--ui-border)}
+.session-tool-tabs-strip>.floating-window-move,.desk-widget-header>.floating-window-move{border-start-start-radius:inherit}
+.floating-desk-actions>button:last-child,.desk-widget-header>.desk-widget-dock{border-start-end-radius:inherit}
 .floating-desk-actions>button,.desk-widget-header>.desk-widget-dock{border-inline-start:1px solid var(--ui-border);cursor:pointer}
 :is(.session-tool-tabs-strip,.desk-widget-header)>.floating-window-move:hover,
 .floating-desk-actions>button:hover,.desk-widget-header>.desk-widget-dock:hover{
