@@ -17,11 +17,10 @@ RUN test -x /android/sdk/launch-emulator.sh \
 
 # Stretch predates GLVND. Keep its Mesa packages intact and provide the
 # vendor-neutral client loader only to this GPU image.
-COPY install-stretch-glvnd.sh /usr/local/bin/rdf-install-stretch-glvnd
-RUN if grep -Eq '^VERSION_ID="?9"?$' /etc/os-release; then \
-      /bin/sh /usr/local/bin/rdf-install-stretch-glvnd; \
-    fi \
-    && rm /usr/local/bin/rdf-install-stretch-glvnd
+RUN --mount=type=bind,source=install-stretch-glvnd.sh,target=/tmp/install-stretch-glvnd.sh \
+    if grep -Eq '^VERSION_ID="?9"?$' /etc/os-release; then \
+      /bin/sh /tmp/install-stretch-glvnd.sh; \
+    fi
 
 # NVIDIA's matching Xorg driver and OpenGL libraries are injected by the
 # container toolkit at runtime. Installing a distribution NVIDIA driver here

@@ -1,19 +1,21 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { writeContainerFiles } from './container-files.mjs';
+import { sessionNetworks } from './docker.mjs';
 import { CONSOLE_SCRIPT, execInContainer, runEmuConsole } from './emu-console.mjs';
 import { agentMessage } from './messages.mjs';
 const SCRIPT = readFileSync(new URL('./network-proxy.py', import.meta.url));
 const CAPTURE = readFileSync(new URL('./network_capture.py', import.meta.url));
 const RUNTIME_VERSION = createHash('sha256').update(Buffer.concat([SCRIPT, CAPTURE, Buffer.from(CONSOLE_SCRIPT)])).digest('hex');
+const HELPER_VERSION = createHash('sha256').update(SCRIPT).update(CAPTURE).digest('hex');
 const DIR = '/rdf-network';
 const LEGACY_PCAP_PATH = '/android-home/avd/rdf.avd/console_out/rdf-capture.pcap';
 const fail = () => { throw new Error(agentMessage('networkInspector.failed')); };
 
 /** Owns the container capture runtime for a single bounded control request. */
 export class NetworkCaptureRuntime {
-  constructor(docker, containerId, sessionId, agentId, packets) {
-    Object.assign(this, { docker, containerId, sessionId, agentId, packets });
+  constructor(docker, containerId, sessionId, agentId, packets, proxy) {
+    Object.assign(this, { docker, containerId, sessionId, agentId, packets, proxy });
     this.deadline = Date.now() + 45000;
     this.state = null;
   }
@@ -23,30 +25,46 @@ export class NetworkCaptureRuntime {
     return Math.min(max, left);
   }
   async run(args, max = 8 * 1024 * 1024, timeout = 10000) {
-    const result = await execInContainer(this.docker, this.containerId, args, [], this.budget(timeout), max);
+    const result = await execInContainer(this.docker, this.helper?.Id ?? this.containerId, args, [], this.budget(timeout), max);
     if (result.exitCode || result.truncated) fail();
     return result.stdout;
   }
   call(op, ...args) {
-    return this.run(['python3', DIR + '/proxy.py', op, ...args], 8 * 1024 * 1024, ['start', 'stop'].includes(op) ? 30000 : 10000);
+    const command = this.useHelper ? ['/usr/bin/python3', '-I', '-B', '/app/src/network-proxy.py'] : ['python3', DIR + '/proxy.py'];
+    return this.run([...command, op, ...args], 8 * 1024 * 1024, ['start', 'stop'].includes(op) ? 30000 : 10000);
   }
   async prepare() {
-    this.detail = await this.docker.inspect(this.containerId);
+    this.detail = await this.docker.inspect(this.containerId, { timeoutMs: this.budget(5000) });
     const labels = this.detail.Config?.Labels || {};
     if (labels['remote-device-farm.managed'] !== 'true' || labels['remote-device-farm.agent'] !== this.agentId ||
         labels['remote-device-farm.session'] !== this.sessionId || this.detail.State?.Running !== true) fail();
+    const { management, egress } = sessionNetworks(this.sessionId);
+    const networks = this.detail.NetworkSettings?.Networks ?? {};
+    const isolated = this.detail.HostConfig?.NetworkMode === management && Object.hasOwn(networks, management) &&
+      Object.keys(networks).every(name => name === management || name === egress);
+    const helper = this.proxy && isolated ? await this.proxy.container(this.detail.Id, this.sessionId, this.deadline) : null;
+    if (helper?.State?.Running) {
+      this.useHelper = true;
+      this.helper = helper;
+      return true;
+    }
     const checked = await execInContainer(this.docker, this.containerId,
       ['sh', '-c', 'test -w /rdf-network && test -x /rdf-network && command -v python3 >/dev/null'], [], this.budget(5000));
-    return !checked.exitCode;
+    if (checked.exitCode === 0) return true;
+    this.useHelper = Boolean(isolated && await this.proxy?.available(this.deadline));
+    return this.useHelper;
   }
   empty() { return { available: true, protocolVersion: 3, runtimeCompatible: true, recording: false, proxyActive: false, entries: [], pcapBytes: 0, pcapState: 'none' }; }
-  current() { return this.state ? { ...this.state, runtimeCompatible: this.state.protocolVersion === 3 && this.state.runtimeVersion === RUNTIME_VERSION } : this.empty(); }
+  compatible() { return this.state?.protocolVersion === 3 && this.state.runtimeVersion === (this.useHelper ? HELPER_VERSION : RUNTIME_VERSION); }
+  current() { return this.state ? { ...this.state, runtimeCompatible: this.compatible() } : this.empty(); }
   async execute(params) {
     if (!await this.prepare()) {
       if (params.op === 'status') return { available: false, recording: false, entries: [] };
       throw new Error(agentMessage('networkInspector.unavailable'));
     }
-    try { this.state = JSON.parse(await this.call(params.summary ? 'summary' : 'status')); } catch { this.state = null; }
+    if (!this.useHelper || this.helper) {
+      try { this.state = JSON.parse(await this.call(params.summary ? 'summary' : 'status')); } catch { this.state = null; }
+    }
     switch (params.op) {
       case 'status': return this.status();
       case 'start': return this.start(params);
@@ -90,17 +108,22 @@ export class NetworkCaptureRuntime {
     if (this.state.pcapState !== 'stopped') throw new Error(agentMessage('debug.busy'));
   }
   async replaceRuntime() {
-    if (!this.state || (this.state.protocolVersion === 3 && this.state.runtimeVersion === RUNTIME_VERSION)) return;
+    if (!this.state || this.compatible()) return;
     if (this.state.protocolVersion !== 3) throw new Error(agentMessage('networkInspector.restartRequired'));
     if (this.state.activeConnections) throw new Error(agentMessage('networkInspector.connectionsOpen'));
     await this.call('shutdown');
     await this.waitForShutdown();
     this.state = null;
+    this.helper = null;
   }
   async waitForShutdown() {
     for (let attempt = 0; attempt < 10; attempt++) {
       await new Promise(resolve => setTimeout(resolve, 100));
-      try { await this.call('summary'); } catch { return; }
+      if (this.useHelper) {
+        if (!(await this.proxy.container(this.detail.Id, this.sessionId, this.deadline))?.State?.Running) return;
+      } else {
+        try { await this.call('summary'); } catch { return; }
+      }
     }
     throw new Error(agentMessage('debug.busy'));
   }
@@ -113,9 +136,10 @@ export class NetworkCaptureRuntime {
   }
   async ensureProxy() {
     if (!this.state?.proxyActive) {
-      await this.run(['sh', '-c', 'umask 077; python3 /rdf-network/proxy.py serve </dev/null >/dev/null 2>&1 &']);
+      if (this.useHelper) this.helper = await this.proxy.start(this.detail.Id, this.sessionId, this.deadline);
+      else await this.run(['sh', '-c', 'umask 077; python3 /rdf-network/proxy.py serve </dev/null >/dev/null 2>&1 &']);
       for (let attempt = 0; attempt < 3; attempt++) {
-        try { this.state = JSON.parse(await this.call('status')); break; } catch { await new Promise(resolve => setTimeout(resolve, 100)); }
+        try { this.state = JSON.parse(await this.call('summary')); break; } catch { await new Promise(resolve => setTimeout(resolve, 100)); }
       }
     }
     if (!this.state?.proxyActive) fail();
@@ -123,7 +147,7 @@ export class NetworkCaptureRuntime {
   async start(params) {
     await this.finishPreviousCapture();
     await this.replaceRuntime();
-    await this.installScripts();
+    if (!this.useHelper) await this.installScripts();
     await this.ensureProxy();
     this.state = JSON.parse(await this.call('start', params.pcap ? '1' : '0', params.captureBodies ? '1' : '0'));
     if (params.pcap) {
@@ -145,6 +169,7 @@ export class NetworkCaptureRuntime {
   async exportPcap(params) {
     if (this.state?.recording || this.state?.finalizing) throw new Error(agentMessage('networkInspector.stopBeforeExport'));
     if (params.captureId && params.captureId !== this.state?.captureId) throw new Error(agentMessage('networkInspector.captureChanged'));
+    if (this.useHelper && !this.state) fail();
     await this.stopPcap();
     if (this.state?.pcapState === 'error') fail();
     const result = this.state?.protocolVersion === 3 ? await this.packets.read(this.sessionId, this.state.captureId, params.offset)

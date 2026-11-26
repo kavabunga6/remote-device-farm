@@ -11,7 +11,7 @@ import { bindHorizontalWheel } from './horizontal-wheel';
 import { can } from './permissions';
 import { localizeText, getDirection, getLocale, t } from './i18n';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent, type ReactNode } from 'react';
-import { api, ApiError, KNOWN_ERRORS, type DeviceSession, type Profile, type User } from './api';
+import { api, ApiError, KNOWN_ERRORS, type DeviceSession, type Profile, type SessionEndReason, type User } from './api';
 import { Icon } from './icons';
 import { useNotifications } from './notifications';
 import { lastLaunch } from './CreateSessionModal';
@@ -78,7 +78,7 @@ function hasVisibleOverlay() {
 }
 
 export function SessionView({ sessionId, user, profiles, onBack, onNotFound, onRelease, onKill, onObserved, onUpdated }: {
-  sessionId: string; user: User; profiles: Profile[]; onBack: () => void; onNotFound: (id: string) => void; onRelease: (session: DeviceSession) => void; onKill?: (session: DeviceSession) => void; onObserved: (session: DeviceSession) => void; onUpdated: () => void;
+  sessionId: string; user: User; profiles: Profile[]; onBack: () => void; onNotFound: (id: string, reason?: SessionEndReason) => void; onRelease: (session: DeviceSession) => void; onKill?: (session: DeviceSession) => void; onObserved: (session: DeviceSession) => void; onUpdated: () => void;
 }) {
   const [session, setSession] = useState<DeviceSession | null>(null);
   const isPreparing = !session || session.status === 'starting';
@@ -285,7 +285,7 @@ export function SessionView({ sessionId, user, profiles, onBack, onNotFound, onR
       if (!request.active) return;
       if (error instanceof ApiError && error.status === 404) {
         request.missing = true;
-        onNotFound(sessionId);
+        onNotFound(sessionId, error.sessionEndReason);
       } else setSessionError(errorText(error));
     } finally { request.pending = false; }
   }, [sessionId, onNotFound, onObserved]);

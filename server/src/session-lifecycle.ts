@@ -75,13 +75,23 @@ export async function findExpiredSessions(
   return expired;
 }
 
-export async function releaseExpired(pool: Pool, hub: AgentHub, expired: ExpiredSession): Promise<boolean> {
-  // Recheck the deadline under the UPDATE lock: a heartbeat may have renewed it after the scan.
-  const marked = expired.reason === 'lease_expired'
-    ? await pool.query(`UPDATE sessions SET state='stopping' WHERE id=$1 AND state IN ('starting','running')
-        AND lease_expires_at <= now() RETURNING id`, [expired.id])
-    : await pool.query(`UPDATE sessions SET state='stopping' WHERE id=$1 AND state='running' RETURNING id`, [expired.id]);
-  if (!marked.rowCount) return false;
+export async function releaseExpired(pool: Pool, hub: AgentHub, expired: ExpiredSession, policy: LifecyclePolicy): Promise<boolean> {
+  // Record the cause with the stop claim so reconciliation can finish the teardown later.
+  const marked = await pool.query(
+    `WITH stopping AS (
+       UPDATE sessions SET state='stopping' WHERE id=$1 AND CASE $2::text
+         WHEN 'lease_expired' THEN state IN ('starting','running') AND lease_expires_at <= now()
+         WHEN 'idle' THEN state='running' AND $3::integer > 0
+           AND last_activity_at < now() - make_interval(mins => $3::integer)
+         WHEN 'max_lifetime' THEN state='running' AND $4::integer > 0
+           AND created_at < now() - make_interval(hours => $4::integer)
+       END RETURNING id
+     ), outcome AS (
+       UPDATE rental_history h SET timeout_reason=$2::text FROM stopping s WHERE h.session_id=s.id
+     ) SELECT id FROM stopping`,
+    [expired.id, expired.reason, policy.idleMinutes, policy.maxHours],
+  );
+  if (!marked.rows.length) return false;
   try {
     if (expired.reason === 'lease_expired') await hub.command(expired.hostId, expired.id, 'kill', {}, 30_000);
     else {
@@ -118,7 +128,7 @@ export function startSessionReaper(
     running = (async () => {
       for (const expired of await findExpiredSessions(pool, policy, isBusy)) {
         if (stopped) break;
-        await releaseExpired(pool, hub, expired);
+        await releaseExpired(pool, hub, expired, policy);
       }
     })().catch(() => console.error(diagnostic('session-lifecycle.0308002137'))).finally(() => { running = null; });
   }, everyMs);

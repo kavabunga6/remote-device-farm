@@ -10,7 +10,7 @@ export const adminSections: ReadonlyArray<{ id: AdminSection; label: string; ico
   { id: 'images', get label() { return t('images.title'); }, icon: 'layers' },
   { id: 'users', get label() { return t('ui.845595d6e899'); }, icon: 'user' },
   { id: 'roles', get label() { return t('roles.title'); }, icon: 'shield' },
-  { id: 'ops', get label() { return t('ui.37663aa93839'); }, icon: 'bolt' },
+  { id: 'ops', get label() { return t('ui.37663aa93839'); }, icon: 'chart' },
   { id: 'settings', get label() { return t('server.title'); }, icon: 'sliders' },
   { id: 'journal', get label() { return t('ui.97c459a6bb7c'); }, icon: 'terminal' },
 ];

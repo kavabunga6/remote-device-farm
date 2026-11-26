@@ -37,6 +37,9 @@ export function Login({ config, onLogin }: { config: AppConfig; onLogin: (user: 
     return () => window.removeEventListener('hashchange', changed);
   }, [canRegister]);
   const registration = registering && canRegister;
+  const title = t(registration ? 'auth.createTitle' : 'auth.signIn');
+  const tabTitle = `${title} · ${t('app.title')}`;
+  useEffect(() => { document.title = tabTitle; }, [tabTitle]);
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (busy) return;
@@ -54,7 +57,7 @@ export function Login({ config, onLogin }: { config: AppConfig; onLogin: (user: 
   return <main className="login-page">
     <section className="login-card" aria-labelledby="login-title">
       <div className="login-brand-row"><Brand tagline={false} /><LanguageControl /></div>
-      <div className="login-heading"><h1 id="login-title">{registration ? t('auth.createTitle') : t('auth.signIn')}</h1></div>
+      <div className="login-heading"><h1 id="login-title">{title}</h1></div>
       {(passwordAuth || registration) && <form onSubmit={event => void submit(event)} className="login-form" aria-busy={busy}>
         {!registration && config.authMethods.includes('local') && config.authMethods.includes('ldap') && <div className="segmented" role="group" aria-label={t('ui.14dc6236fa02')}><button type="button" className={provider === 'local' ? 'selected' : ''} aria-pressed={provider === 'local'} onClick={() => setProvider('local')}>{t('ui.6b722b8bfca8')}</button><button type="button" className={provider === 'ldap' ? 'selected' : ''} aria-pressed={provider === 'ldap'} onClick={() => setProvider('ldap')}>{t('ui.9018a328b298')}</button></div>}
         <label><span id="auth-username-label">{t('ui.5be12bfe49ea')}</span><input aria-labelledby="auth-username-label" autoComplete="username" autoCapitalize="none" spellCheck={false} disabled={busy} value={username} onChange={event => setUsername(event.target.value)} placeholder={t('auth.loginPlaceholder')} minLength={registration ? 3 : undefined} maxLength={150} pattern={registration ? '[A-Za-z0-9._@\\-]{3,150}' : undefined} aria-describedby={registration ? 'registration-login-hint' : undefined} required />{registration && <small id="registration-login-hint">{t('auth.loginHint')}</small>}</label>

@@ -28,6 +28,8 @@ docker buildx build --load \
 
 Build prepares an AVD from the base image's `PACKAGE_PATH`, `ABI`, and `DEVICE_ID` and a ramdisk with mandatory ADB authentication; it does not fetch SDK packages. Gzip and legacy/framed LZ4 newc ramdisks are supported. Concatenated generic/vendor archives retain their entries and archive boundaries. Unknown or truncated ramdisk archive formats stop the build. Each new session container starts with fresh AVD data. The adapter uses the same container after an agent reconnect, preserving session data. Do not mount shared writable AVD data between sessions.
 
+The preparation stage contains the LZ4 utility, ramdisk parser and original policy inputs. The final stage copies the prepared AVD and ramdisk, the AVD configuration template and the generated policy provenance when applicable. Python remains in the final image to run the session launcher.
+
 ## Additional catalogue
 
 `images.json` pins the upstream bases and the adapter tags expected by

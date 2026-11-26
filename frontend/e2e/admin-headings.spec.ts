@@ -5,7 +5,7 @@ const sections = [
   ['nodes', 'Узлы', 'Машины, на которых запускаются'],
   ['profiles', 'Профили устройств', 'Docker-образы эмуляторов'],
   ['users', 'Пользователи', 'Учётные записи, роли'],
-  ['ops', 'Нагрузка', 'Занятость слотов'],
+  ['ops', 'История использования', 'Занятость слотов по узлам'],
   ['journal', 'Журнал', 'Аренды, действия'],
 ] as const;
 
@@ -14,10 +14,24 @@ for (const [id, title, description] of sections) {
     await page.goto('/#/admin/' + id);
     const heading = page.locator('.page-heading');
     await expect(heading.getByRole('heading', { level: 1 })).toHaveText(title);
+    await expect(page).toHaveTitle(`${title} · Device Farm`);
     await expect(heading).toContainText(description);
     await expect(heading.getByRole('heading', { level: 1 })).not.toHaveText('Администрирование');
   });
 }
+
+test('a browser tab can load the Device Farm icon', async ({ page }) => {
+  await page.goto('/#/admin/ops');
+  const icon = page.locator('link[rel="icon"]');
+  await expect(icon).toHaveAttribute('type', 'image/svg+xml');
+  const size = await icon.evaluate(async (element: HTMLLinkElement) => {
+    const image = new Image();
+    image.src = element.href;
+    await image.decode();
+    return [image.naturalWidth, image.naturalHeight];
+  });
+  expect(size).toEqual([32, 32]);
+});
 
 test('the retired agents page opens nodes, where nodes can be connected', async ({ page }) => {
   await page.goto('/#/admin/agents');

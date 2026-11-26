@@ -1,6 +1,7 @@
 import { diagnostic } from './diagnostics.mjs';
 import { agentMessage } from './messages.mjs';
 import { removePacketCaptures } from './packet-capture.mjs';
+import { removeNetworkProxies } from './network-proxy-container.mjs';
 import { diagnosticReporter, diagnosticSecrets, diagnosticSeverity, dockerLogLines } from './session-diagnostics.mjs';
 import { ContainerPerformance } from './container-performance.mjs';
 import { DEFAULT_NVIDIA_CAPABILITIES, FARM_FLAGS, gpuKind } from './docker-options.mjs';
@@ -428,8 +429,8 @@ export class DockerClient {
     body.Cmd = [];
   }
 
-  async inspect(containerId) {
-    return this.request('GET', `/containers/${encodeURIComponent(containerId)}/json`);
+  async inspect(containerId, options) {
+    return this.request('GET', `/containers/${encodeURIComponent(containerId)}/json`, undefined, options);
   }
 
   async setEgress(containerId, sessionId, agentId, enabled) {
@@ -483,6 +484,7 @@ export class DockerClient {
 
   async removeSessionNetworks(sessionId, agentId, selfContainerId) {
     await removePacketCaptures(this,sessionId,agentId);
+    await removeNetworkProxies(this, sessionId, agentId);
     const names = sessionNetworks(sessionId);
     for (const [purpose, name] of [['egress', names.egress], ['management', names.management]]) {
       let network;
@@ -558,6 +560,7 @@ export class DockerClient {
       throw new Error(diagnostic('docker.72a60ce6d9'));
     }
     await removePacketCaptures(this,sessionId,agentId);
+    await removeNetworkProxies(this, sessionId, agentId);
     // Removal of a large writable layer can outlive the ordinary API timeout.
     // Pin retries to the inspected ID so reusing a name cannot remove another container.
     const id = encodeURIComponent(current.Id || containerId);

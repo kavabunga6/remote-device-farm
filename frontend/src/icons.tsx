@@ -5,7 +5,7 @@ export type IconName =
   | 'chevronDown' | 'power' | 'rotate' | 'volume' | 'volumeOff' | 'headphones' | 'headphonesOff' | 'upload' | 'terminal' | 'more'
   | 'sidebarCollapse' | 'sidebarExpand' | 'grip'
   | 'sliders' | 'expand' | 'collapse' | 'back' | 'home' | 'recent' | 'play' | 'refresh' | 'close' | 'check' | 'alert' | 'link' | 'monitor' | 'mapPin'
-  | 'user' | 'logout' | 'keyboard' | 'copy' | 'save' | 'download' | 'bolt' | 'search' | 'menu' | 'info' | 'wifi' | 'wifiOff' | 'key' | 'camera' | 'record' | 'recordScreen' | 'stop' | 'trash' | 'arrowDown' | 'arrowUp' | 'pause' | 'wrap' | 'list' | 'star' | 'slots' | 'layers';
+  | 'user' | 'logout' | 'keyboard' | 'copy' | 'save' | 'download' | 'chart' | 'search' | 'menu' | 'info' | 'wifi' | 'wifiOff' | 'key' | 'camera' | 'record' | 'recordScreen' | 'stop' | 'trash' | 'arrowDown' | 'arrowUp' | 'pause' | 'wrap' | 'list' | 'star' | 'slots' | 'layers';
 
 const paths: Record<IconName, React.ReactNode> = {
   globe: <><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z"/></>,
@@ -56,7 +56,7 @@ const paths: Record<IconName, React.ReactNode> = {
   save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z"/><path d="M7 3v5h9V3M7 21v-7h10v7"/></>,
   download: <><path d="M12 3v13m-5-5 5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></>,
   slots: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" strokeDasharray="2.5 2.5"/><path d="M17.5 16.5v2M16.5 17.5h2"/></>,
-  bolt: <path d="m13 2-9 12h7l-1 8 10-12h-7l0-8Z"/>,
+  chart: <path d="M3 3v18h18M8 16v-4m5 4V7m5 9v-6"/>,
   search: <><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></>,
   menu: <path d="M4 7h16M4 12h16M4 17h16"/>,
   info: <><circle cx="12" cy="12" r="10"/><path d="M12 11v6m0-10h.01"/></>,

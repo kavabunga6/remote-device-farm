@@ -392,8 +392,8 @@
     "en": "Users"
   },
   "ui.37663aa93839": {
-    "ru": "Нагрузка",
-    "en": "Capacity"
+    "ru": "История использования",
+    "en": "Usage history"
   },
   "ui.97c459a6bb7c": {
     "ru": "Журнал",
@@ -416,8 +416,8 @@
     "en": "Accounts, roles and session limits."
   },
   "ui.fabbaaa3283b": {
-    "ru": "Занятость слотов, сессии за 14 дней и самые активные пользователи.",
-    "en": "Slot usage, sessions over 14 days and the most active users."
+    "ru": "Занятость слотов по узлам, количество и длительность сессий, сбои запуска и активность пользователей.",
+    "en": "Slot usage by node, session counts and duration, startup failures, and user activity."
   },
   "ui.ace7b869cf5a": {
     "ru": "Аренды, действия пользователей, события сервиса и поток логов приложения.",
@@ -982,10 +982,6 @@
   "ui.255d42a275f5": {
     "ru": "Не удалось загрузить статистику. Повторите попытку.",
     "en": "Could not load statistics. Try again."
-  },
-  "ui.9641cd43bf2d": {
-    "ru": "Нагрузка и статистика",
-    "en": "Capacity and statistics"
   },
   "ui.162340de56f8": {
     "ru": "Загружаем статистику…",
@@ -11140,12 +11136,12 @@
     "en": "Manage teams, members and limits"
   },
   "permissions.group.ops": {
-    "ru": "Нагрузка",
-    "en": "Capacity"
+    "ru": "История использования",
+    "en": "Usage history"
   },
   "permissions.ops.view": {
-    "ru": "Просмотр нагрузки и метрик",
-    "en": "View capacity and metrics"
+    "ru": "Просмотр занятости слотов и статистики сессий",
+    "en": "View slot usage and session statistics"
   },
   "permissions.group.logs": {
     "ru": "Журнал",
@@ -12984,8 +12980,8 @@
     "ru": "Не удалось изменить запись трафика. Обновите состояние и повторите попытку."
   },
   "networkInspector.unavailable": {
-    "en": "Traffic inspection requires a compatible emulator image with Python 3. Rebuild the image and start a new session.",
-    "ru": "Для инспектора нужен совместимый образ эмулятора с Python 3. Пересоберите образ и запустите новую сессию."
+    "en": "Traffic capture is unavailable for this session.",
+    "ru": "Запись трафика недоступна для этой сессии."
   },
   "networkInspector.alreadyStarted": {
     "en": "Traffic capture is already running.",

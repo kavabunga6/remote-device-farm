@@ -34,6 +34,7 @@ for (const language of languages) for (const theme of ['light', 'dark'] as const
     await expect(page.locator('html')).toHaveAttribute('dir', language.direction);
     await page.evaluate(() => { document.documentElement.style.fontSize = '20px'; });
     await expect(page.getByRole('heading', { name: messages['auth.signIn'], exact: true })).toBeVisible();
+    await expect(page).toHaveTitle(`${messages['auth.signIn']} · ${messages['app.title']}`);
     await expect(page.getByRole('link', { name: messages['auth.register'], exact: true })).toBeVisible();
     const inputs = page.locator('.login-form input');
     const first = await inputs.nth(0).boundingBox(), second = await inputs.nth(1).boundingBox();
@@ -139,6 +140,7 @@ test('cross-tab language changes preserve the running device and physical screen
   for (const id of ['ar', 'en']) {
     await choose(settings, id);
     await expect(page.locator('html')).toHaveAttribute('lang', id);
+    await expect(page).toHaveTitle(`${copy(id)['ui.f7aa03484689']} · ${copy(id)['app.title']}`);
     await expect(page.getByRole('tab', { name: copy(id)[englishKey('Environment')], exact: true })).toBeVisible();
     expect(await page.locator('.touch-layer').evaluate(element => getComputedStyle(element).direction)).toBe('ltr');
     expect(await page.locator('.tool-panel').evaluate(element => getComputedStyle(element).direction)).toBe(id === 'ar' ? 'rtl' : 'ltr');

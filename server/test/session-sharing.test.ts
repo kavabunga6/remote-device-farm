@@ -21,7 +21,7 @@ import { classifyStreamMessage, resetSharedAccessAudit } from '../src/session-ac
 
 const MIGRATIONS = ['001_init', '002_gpu_mode', '003_default_profile_resources', '004_guest_resources', '005_host_settings',
   '006_adb_port_access', '008_user_adb_keys', '009_uploaded_adb_public_keys', '010_user_settings_audit', '011_node_management',
-  '012_session_lifecycle', '014_session_sharing', '025_physical_devices', '048_user_removal', '049_access_roles'];
+  '012_session_lifecycle', '014_session_sharing', '025_physical_devices', '048_user_removal', '049_access_roles', '057_rental_timeout_reason'];
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const FRIEND = '22222222-2222-4222-8222-222222222222';

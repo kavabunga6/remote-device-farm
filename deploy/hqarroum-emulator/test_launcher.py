@@ -1,19 +1,19 @@
 import base64
-import importlib.util
 import gzip
 import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import struct
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 import subprocess
 
-spec = importlib.util.spec_from_file_location('adapter', Path(__file__).with_name('launcher.py'))
-adapter = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(adapter)
+import launcher as adapter
+import prepare_image as preparation
 
 
 def public_key():
@@ -105,6 +105,57 @@ class LauncherTest(unittest.TestCase):
                     adapter.install_public_key(value, Path(temp) / '.android')
             self.assertFalse((Path(temp) / '.android/adbkey.pub').exists())
 
+    def test_runtime_launcher_loads_without_builder_files(self):
+        with tempfile.TemporaryDirectory() as temp:
+            launcher = Path(temp) / 'launcher.py'
+            shutil.copyfile(Path(adapter.__file__), launcher)
+            environment = dict(os.environ, ADBKEY_PUB='', EMULATOR_PARAMS='', AVD_CONFIG='')
+            result = subprocess.run([sys.executable, '-I', '-B', str(launcher)], env=environment,
+                                    capture_output=True, text=True, check=False, timeout=10)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn('A farm ADB public key is required', result.stderr)
+
+    def test_preparation_exports_only_runtime_outputs(self):
+        for api in (31, 33):
+            with self.subTest(api=api), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                sdk = root / 'sdk'
+                package = f'system-images;android-{api};google_apis;x86_64'
+                image = sdk.joinpath(*package.split(';'))
+                image.mkdir(parents=True)
+                (image / 'ramdisk.img').write_bytes(b'original ramdisk')
+                avd = root / 'avd'
+                config = avd / 'rdf.avd/config.ini'
+                output = root / 'prepared'
+
+                def create_avd(*_args, **_kwargs):
+                    config.parent.mkdir()
+                    config.write_text('hw.ramSize=1024\nhw.keyboard=no\n')
+                    (avd / 'rdf.ini').write_text('path=/android-home/avd/rdf.avd\n')
+
+                proof = {'policy': {'sha256': 'a' * 64}}
+                with patch.multiple(preparation, SDK=sdk, HOME=root / 'home',
+                                    AVD_HOME=avd, CONFIG=config, PREPARED=output), \
+                     patch.dict(os.environ, PACKAGE_PATH=package, ABI='google_apis/x86_64'), \
+                     patch.object(preparation.subprocess, 'run', side_effect=create_avd), \
+                     patch.object(preparation, 'secure_ramdisk', return_value=b'prepared ramdisk') as ramdisk, \
+                     patch.object(preparation, 'read_platform_policy', return_value=(b'original policy', proof)) as policy, \
+                     patch('builtins.print'):
+                    preparation.prepare_image()
+
+                expected = {'config.ini', 'secure-ramdisk.img'}
+                if api == 31:
+                    expected.add('platform-policy.json')
+                    self.assertEqual(json.loads((output / 'platform-policy.json').read_text()), proof)
+                    policy.assert_called_once()
+                else:
+                    policy.assert_not_called()
+                self.assertEqual({path.name for path in output.iterdir()}, expected)
+                self.assertEqual((output / 'config.ini').read_text(), config.read_text())
+                self.assertIn('hw.ramSize=2048', config.read_text())
+                self.assertEqual((output / 'secure-ramdisk.img').read_bytes(), b'prepared ramdisk')
+                ramdisk.assert_called_once_with(b'original ramdisk', b'original policy' if api == 31 else None)
+
     def test_secure_ramdisk_preserves_original_files_and_replaces_only_auth_override(self):
         init_record = cpio_entry('init', b'../system/bin/init', mode=0o120777, inode=10)
         fstab_record = cpio_entry('first_stage_ramdisk/fstab.ranchu', b'unchanged verified mounts\n', inode=11)
@@ -113,7 +164,7 @@ class LauncherTest(unittest.TestCase):
         for compressed in (False, True):
             with self.subTest(compressed=compressed):
                 image = gzip.compress(original) if compressed else original
-                result = adapter.secure_ramdisk(image)
+                result = preparation.secure_ramdisk(image)
                 decoded = gzip.decompress(result) if compressed else result
                 self.assertTrue(decoded.startswith(init_record + fstab_record))
                 entries = read_cpio(decoded)
@@ -122,7 +173,7 @@ class LauncherTest(unittest.TestCase):
                                  [('adb_debug.prop', b'ro.adb.secure=1\n', 0o100644)])
                 self.assertNotIn(b'ro.debuggable=', decoded)
                 self.assertNotIn(b'ro.adb.secure=0', decoded)
-                self.assertEqual(adapter.secure_ramdisk(result), result)
+                self.assertEqual(preparation.secure_ramdisk(result), result)
 
     def test_concatenated_generic_and_vendor_archives_keep_boundaries_and_all_records(self):
         generic_record = cpio_entry('init', b'generic-init', mode=0o100750, inode=7)
@@ -131,7 +182,7 @@ class LauncherTest(unittest.TestCase):
         generic += b'\0' * (-len(generic) % 512)
         vendor = vendor_record + cpio_entry('force_debuggable') + cpio_entry('TRAILER!!!')
         image = gzip.compress(generic + vendor)
-        decoded = gzip.decompress(adapter.secure_ramdisk(image))
+        decoded = gzip.decompress(preparation.secure_ramdisk(image))
         # The first archive still ends at its own trailer; inode 7 in the
         # second archive must not be interpreted as a link to generic init.
         first = read_cpio(decoded)
@@ -144,20 +195,20 @@ class LauncherTest(unittest.TestCase):
                                       ('adb_debug.prop', b'ro.adb.secure=1\n', 0o100644)])
         self.assertEqual(decoded.count(b'TRAILER!!!'), 2)
         self.assertNotIn(b'ro.adb.secure=0', decoded)
-        self.assertEqual(gzip.decompress(adapter.secure_ramdisk(gzip.compress(decoded))), decoded)
+        self.assertEqual(gzip.decompress(preparation.secure_ramdisk(gzip.compress(decoded))), decoded)
 
     def test_android12_ramdisk_copies_original_policy_bytes_without_changes(self):
         original = cpio_entry('init', b'generic-init') + cpio_entry('TRAILER!!!')
         policy = b'; Original image platform policy\n(type init)\n(type system_server)\n'
-        rows = read_cpio(adapter.secure_ramdisk(original, policy))
+        rows = read_cpio(preparation.secure_ramdisk(original, policy))
         self.assertEqual([row for row in rows if row[0] == 'userdebug_plat_sepolicy.cil'],
                          [('userdebug_plat_sepolicy.cil', policy, 0o100644)])
         self.assertEqual([row for row in rows if row[0] == 'adb_debug.prop'],
                          [('adb_debug.prop', b'ro.adb.secure=1\n', 0o100644)])
-        self.assertNotIn('userdebug_plat_sepolicy.cil', [row[0] for row in read_cpio(adapter.secure_ramdisk(original))])
+        self.assertNotIn('userdebug_plat_sepolicy.cil', [row[0] for row in read_cpio(preparation.secure_ramdisk(original))])
         for invalid in (b'', b'; empty policy', 'not bytes'):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
-                adapter.secure_ramdisk(original, invalid)
+                preparation.secure_ramdisk(original, invalid)
 
     def test_android12_policy_accepts_only_matching_pinned_base_and_original_bytes(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -176,23 +227,23 @@ class LauncherTest(unittest.TestCase):
                                    'sha256': hashlib.sha256(policy).hexdigest()}}
             (directory / 'policy-api31.json').write_text(json.dumps(manifest))
             (directory / 'policy-api31.cil.gz').write_bytes(gzip.compress(policy, mtime=0))
-            with patch.object(adapter.subprocess, 'run') as run:
-                result, report = adapter.read_platform_policy(directory, package, base, directory)
+            with patch.object(preparation.subprocess, 'run') as run:
+                result, report = preparation.read_platform_policy(directory, package, base, directory)
             run.assert_not_called()
             self.assertEqual(result, policy)
             self.assertEqual(report, {**manifest, 'copiedWithoutChanges': True})
             for wrong_base in ('', 'halimqarroum/docker-android:api-31', base[:-1] + 'b'):
                 with self.subTest(base=wrong_base), self.assertRaises(ValueError):
-                    adapter.read_platform_policy(directory, package, wrong_base, directory)
+                    preparation.read_platform_policy(directory, package, wrong_base, directory)
             with self.assertRaises(ValueError):
-                adapter.read_platform_policy(directory, package.replace('31', '32'), base, directory)
+                preparation.read_platform_policy(directory, package.replace('31', '32'), base, directory)
             (directory / 'ramdisk.img').write_bytes(b'different Android build')
             with self.assertRaisesRegex(ValueError, 'source identity'):
-                adapter.read_platform_policy(directory, package, base, directory)
+                preparation.read_platform_policy(directory, package, base, directory)
             (directory / 'ramdisk.img').write_bytes(b'exact original ramdisk')
             (directory / 'policy-api31.cil.gz').write_bytes(gzip.compress(policy.replace(b'init', b'evil')))
             with self.assertRaisesRegex(ValueError, 'checksum or length'):
-                adapter.read_platform_policy(directory, package, base, directory)
+                preparation.read_platform_policy(directory, package, base, directory)
 
     def test_android12_manifest_cannot_select_an_unrelated_policy_file(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -208,27 +259,27 @@ class LauncherTest(unittest.TestCase):
                                                           'bytes': 1, 'sha256': 'a' * 64}}
             (directory / 'policy-api31.json').write_text(json.dumps(manifest))
             with self.assertRaisesRegex(ValueError, 'manifest is invalid'):
-                adapter.read_platform_policy(directory, package, base, directory)
+                preparation.read_platform_policy(directory, package, base, directory)
             manifest['sourceFiles'] = {}
             (directory / 'policy-api31.json').write_text(json.dumps(manifest))
             with self.assertRaisesRegex(ValueError, 'source identities'):
-                adapter.read_platform_policy(directory, package, base, directory)
+                preparation.read_platform_policy(directory, package, base, directory)
 
     def test_lz4_ramdisk_is_decoded_then_repacked_with_secure_properties(self):
         archive = cpio_entry('init', b'init-binary') + cpio_entry('TRAILER!!!')
         for magic in (b'\x02\x21\x4c\x18', b'\x04\x22\x4d\x18'):
             image = magic + b'compressed test fixture'
-            with self.subTest(magic=magic), patch.object(adapter.subprocess, 'run') as run:
+            with self.subTest(magic=magic), patch.object(preparation.subprocess, 'run') as run:
                 run.return_value = subprocess.CompletedProcess([], 0, archive, b'')
-                result = adapter.secure_ramdisk(image)
+                result = preparation.secure_ramdisk(image)
                 self.assertEqual(run.call_args.args, (['lz4', '-d', '-c'],))
                 self.assertEqual(run.call_args.kwargs['input'], image)
                 self.assertTrue(run.call_args.kwargs['check'])
                 self.assertEqual(run.call_args.kwargs['timeout'], 60)
                 self.assertIn(('adb_debug.prop', b'ro.adb.secure=1\n', 0o100644), read_cpio(gzip.decompress(result)))
-        with patch.object(adapter.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, ['lz4'])):
+        with patch.object(preparation.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, ['lz4'])):
             with self.assertRaises(subprocess.CalledProcessError):
-                adapter.secure_ramdisk(b'\x02\x21\x4c\x18broken')
+                preparation.secure_ramdisk(b'\x02\x21\x4c\x18broken')
 
     def test_ramdisk_unknown_truncated_or_trailing_garbage_formats_fail_closed(self):
         valid = cpio_entry('init', b'init-binary') + cpio_entry('TRAILER!!!')
@@ -238,7 +289,7 @@ class LauncherTest(unittest.TestCase):
                       valid + cpio_entry('another'), gzip.compress(valid + b'garbage'),
                       b'070701' + b'x' * 104]:
             with self.subTest(image=image[:16]), self.assertRaises(ValueError):
-                adapter.secure_ramdisk(image)
+                preparation.secure_ramdisk(image)
 
     def test_upstream_auth_and_resource_environment_cannot_override_the_farm(self):
         env = adapter.clean_env({'PATH': '/usr/bin', 'HOME': '/root', 'SKIP_AUTH': 'true', 'EXTRA_FLAGS': '-skip-adb-auth',

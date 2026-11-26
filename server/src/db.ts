@@ -66,6 +66,7 @@ export async function migrate(pool: Pool): Promise<void> {
     { version: 54, file: '054_registration_settings.sql' },
     { version: 55, file: '055_outbound_proxy.sql' },
     { version: 56, file: '056_outbound_no_proxy.sql' },
+    { version: 57, file: '057_rental_timeout_reason.sql' },
   ] as const;
   const client = await pool.connect();
   try {

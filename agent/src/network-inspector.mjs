@@ -16,9 +16,9 @@ export function validateNetworkInspectorParams(params) {
   return params;
 }
 
-export async function inspectNetwork(docker, containerId, sessionId, agentId, params, packets) {
+export async function inspectNetwork(docker, containerId, sessionId, agentId, params, packets, proxy) {
   validateNetworkInspectorParams(params);
-  return new NetworkCaptureRuntime(docker, containerId, sessionId, agentId, packets).execute(params);
+  return new NetworkCaptureRuntime(docker, containerId, sessionId, agentId, packets, proxy).execute(params);
 }
 
 // Proxy traffic stays in the emulator's own network namespace and existing egress policy.
