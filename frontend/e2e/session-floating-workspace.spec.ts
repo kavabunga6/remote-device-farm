@@ -45,6 +45,22 @@ function scrollOffset(viewport: Locator) {
   return viewport.evaluate(element => ({ x: element.scrollLeft, y: element.scrollTop }));
 }
 
+function deskBounds(window: Locator) {
+  return window.evaluate((element: HTMLElement) => ({
+    x: Number.parseFloat(element.style.left),
+    y: Number.parseFloat(element.style.top),
+    width: Number.parseFloat(element.style.width),
+    height: Number.parseFloat(element.style.height),
+  }));
+}
+
+function deskPoint(canvas: Locator, point: { x: number; y: number }) {
+  return canvas.evaluate((element: HTMLElement, { x, y }) => {
+    const rect = element.getBoundingClientRect();
+    return { x: (x - rect.left) * element.offsetWidth / rect.width, y: (y - rect.top) * element.offsetHeight / rect.height };
+  }, point);
+}
+
 function stackPosition(window: Locator) {
   return window.evaluate(element => Number.parseInt(getComputedStyle(element).zIndex, 10) || 0);
 }
@@ -93,15 +109,17 @@ async function drag(page: Page, handle: Locator, dx: number, dy: number) {
   await page.mouse.up();
 }
 
-test('floating device and tools move and resize independently with persistent geometry', async ({ page }) => {
+test('Desk device and tools move and resize independently with persistent geometry', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 940 });
   const view = await openSession(page);
   await view.media.evaluate(element => { element.setAttribute('data-test-retained-canvas', 'true'); });
-  await view.button('Поверх кадра').click();
-  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'float');
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'split');
   const modes = view.layout.getByRole('group', { name: 'Компоновка сессии' });
   await expect(modes.getByRole('button', { name: 'Стол', exact: true })).toBeVisible();
-  await expect(modes.getByRole('button', { name: 'Сбросить раскладку', exact: true })).toBeVisible();
+  await expect(view.button('Поверх кадра')).toHaveCount(0);
+  await view.button('Стол').click();
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'desk');
+  await expect(view.button('Сбросить раскладку')).toBeVisible();
   for (const name of ['К эмулятору', 'К инструментам', 'К команде', 'Панорама']) {
     await expect(view.button(name)).toHaveCount(0);
   }
@@ -171,17 +189,19 @@ test('floating device and tools move and resize independently with persistent ge
   expect(sizedTools.width).toBe(initialTools.width);
   expect(await bounds(device)).toEqual(resizedDevice);
 
+  await page.keyboard.press('Escape');
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'split');
   await view.button('Экран').click();
   await expect(view.layout).toHaveAttribute('data-workspace-mode', 'screen');
   await expect(view.media).toHaveAttribute('data-test-retained-canvas', 'true');
-  await view.button('Поверх кадра').click();
+  await view.button('Стол').click();
   await expect.poll(() => bounds(device)).toEqual(resizedDevice);
   await expect.poll(() => bounds(tools)).toEqual(sizedTools);
-  const defaultView = view.layout.locator('.workspace-default-view');
+  const defaultView = view.layout.locator('.floating-desk-default');
   await defaultView.click();
   await expect(defaultView).toHaveAttribute('aria-pressed', 'true');
   await page.reload();
-  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'float');
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'desk');
   await expect.poll(() => bounds(device)).toEqual(resizedDevice);
   await expect.poll(() => bounds(tools)).toEqual(sizedTools);
   await view.button('Сбросить раскладку').click();
@@ -189,7 +209,7 @@ test('floating device and tools move and resize independently with persistent ge
   await expect.poll(() => bounds(tools)).toEqual(initialTools);
 });
 
-test('floating device and tools snap together outside Desk and restore their positions', async ({ page }) => {
+test('Desk device and tools snap together and restore their positions', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 940 });
   await page.addInitScript(() => {
     localStorage.setItem('rdf-session-floating-v3:u1:profile%3Aa11-gpu:initial:base', JSON.stringify({ front: 'tools', windows: {
@@ -198,9 +218,8 @@ test('floating device and tools snap together outside Desk and restore their pos
     } }));
   });
   const view = await openSession(page);
-  await view.button('Поверх кадра').click();
-  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'float');
-  await expect(view.viewport).not.toHaveAttribute('data-desk');
+  await view.button('Стол').click();
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'desk');
   const device = view.window('device');
   const tools = view.window('tools');
   const initialDevice = await bounds(device);
@@ -230,13 +249,12 @@ test('floating device and tools snap together outside Desk and restore their pos
   expect(await bounds(tools)).toEqual(snappedTools);
 
   await page.reload();
-  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'float');
-  await expect(view.viewport).not.toHaveAttribute('data-desk');
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'desk');
   await expect.poll(() => bounds(device)).toEqual(snappedDevice);
   await expect.poll(() => bounds(tools)).toEqual(snappedTools);
 });
 
-test('floating stacked windows align at the left, center, and right with a temporary guide', async ({ page }, testInfo) => {
+test('Desk stacked windows align at the left, center, and right with a temporary guide', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.emulateMedia({ colorScheme: 'light' });
   await page.addInitScript(() => {
@@ -246,8 +264,8 @@ test('floating stacked windows align at the left, center, and right with a tempo
     } }));
   });
   const view = await openSession(page);
-  await view.button('Поверх кадра').click();
-  await expect(view.viewport).not.toHaveAttribute('data-desk');
+  await view.button('Стол').click();
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'desk');
   const device = view.window('device');
   const tools = view.window('tools');
   const guides = view.canvas.locator('[data-window-alignment-guide]');
@@ -343,7 +361,7 @@ test('Desk draws keyboard resize focus on the rounded window and keeps pointer r
   await expect(device).toHaveCSS('outline-width', '2px');
 });
 
-test('floating geometry is saved before pointerup and survives frame size changes', async ({ page }) => {
+test('Desk geometry is saved before pointerup and survives frame size changes', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 940 });
   await page.clock.install();
   await page.addInitScript(() => {
@@ -369,8 +387,7 @@ test('floating geometry is saved before pointerup and survives frame size change
     } });
   });
   const view = await openSession(page);
-  await view.button('Поверх кадра').click();
-  await view.layout.locator('.workspace-default-view').click();
+  await view.button('Стол').click();
   const device = view.window('device');
   const tools = view.window('tools');
   const before = await bounds(device);
@@ -382,6 +399,8 @@ test('floating geometry is saved before pointerup and survives frame size change
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x + 68, y + 45, { steps: 8 });
+  // Wait for the last queued drag frame while the pointer is still down.
+  await page.clock.runFor(32);
   const moved = await bounds(device);
   expect(moved.x - before.x).toBeGreaterThan(40);
   expect(moved.y - before.y).toBeGreaterThan(25);
@@ -405,31 +424,35 @@ test('floating geometry is saved before pointerup and survives frame size change
   expect.soft(await bounds(device)).toEqual(moved);
   expect.soft(await bounds(tools)).toEqual(toolBounds);
   await page.reload();
-  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'float');
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'desk');
   await expect(view.layout.locator('.session-media-badge[data-media=video]')).toHaveAttribute('data-state', 'live');
   await expect.poll(() => bounds(device)).toEqual(moved);
   await expect.poll(() => bounds(tools)).toEqual(toolBounds);
 });
 
-test('previously saved floating windows are restored and stay reset after reopening', async ({ page }) => {
+test('a retired floating preference starts Side by Side and its geometry is restored in Desk', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 940 });
   const legacy = {
     device: { left: 75, top: 65, width: 365, height: 525 },
     tools: { left: 505, top: 25, width: 820, height: 700 },
   };
-  await page.addInitScript(windows => {
+  await page.addInitScript(({ windows, sessionId }) => {
+    localStorage.setItem('rdf-session-default-view:u1', 'float');
+    sessionStorage.setItem(`rdf-session-view:u1:${sessionId}`, 'float');
     localStorage.setItem('rdf-session-floating-v1:u1:0.5625', JSON.stringify({ windows, front: 'device' }));
-  }, legacy);
+  }, { windows: legacy, sessionId });
   const view = await openSession(page);
   const device = view.window('device');
   const tools = view.window('tools');
-  await view.button('Поверх кадра').click();
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'split');
+  await view.button('Стол').click();
   await expect.poll(() => bounds(device)).toEqual({ x: 75, y: 65, width: 365, height: 525 });
   await expect.poll(() => bounds(tools)).toEqual({ x: 505, y: 25, width: 820, height: 700 });
   await view.button('Сбросить раскладку').click();
   await expect.poll(async () => (await bounds(device)).x).toBe(12);
-  await view.button('Экран').click();
-  await view.button('Поверх кадра').click();
+  await page.keyboard.press('Escape');
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'split');
+  await view.button('Стол').click();
   await expect.poll(async () => (await bounds(device)).x).toBe(12);
   await expect.poll(async () => (await bounds(tools)).y).toBe(12);
 });
@@ -437,8 +460,8 @@ test('previously saved floating windows are restored and stay reset after reopen
 test('separate tabs keep both window edits and respect a reset in another tab', async ({ page, context }) => {
   await page.setViewportSize({ width: 1920, height: 940 });
   const first = await openSession(page);
-  await first.button('Поверх кадра').click();
-  await first.layout.locator('.workspace-default-view').click();
+  await first.button('Стол').click();
+  await first.layout.locator('.floating-desk-default').click();
 
   const prefix = 'rdf-session-floating-v3:u1:profile%3Aa11-gpu:';
   const resetKey = prefix + 'reset';
@@ -451,7 +474,7 @@ test('separate tabs keep both window edits and respect a reset in another tab', 
     }, { capture: true });
   }, resetKey);
   const second = await openSession(otherPage);
-  await expect(second.layout).toHaveAttribute('data-workspace-mode', 'float');
+  await expect(second.layout).toHaveAttribute('data-workspace-mode', 'desk');
   await drag(page, first.move('device'), 60, 55);
   const device = await bounds(first.window('device'));
   expect(device.x).toBeGreaterThan(50);
@@ -498,7 +521,7 @@ test('a physical device remembers geometry without retaining its serial in stora
     await route.fulfill({ response, json: body });
   });
   const view = await openSession(page);
-  await view.button('Поверх кадра').click();
+  await view.button('Стол').click();
   await expect.poll(async () => (await bounds(view.window('device'))).x).toBe(82);
   await drag(page, view.move('device'), 40, 30);
   const stored = await page.evaluate(() => Object.entries(localStorage).filter(([key]) => key.startsWith('rdf-session-floating-')));
@@ -506,10 +529,10 @@ test('a physical device remembers geometry without retaining its serial in stora
   expect(JSON.stringify(stored)).not.toContain(serial);
 });
 
-test('the device text popover stays interactive in the floating workspace', async ({ page }) => {
+test('the device text popover stays interactive in Desk', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 940 });
   const view = await openSession(page);
-  await view.button('Поверх кадра').click();
+  await view.button('Стол').click();
   await view.button('Отправить текст на устройство').click();
   const dialog = view.layout.getByRole('dialog', { name: 'Отправить текст на устройство' });
   await dialog.getByRole('textbox').fill('test input');
@@ -517,26 +540,15 @@ test('the device text popover stays interactive in the floating workspace', asyn
   await expect(dialog).toBeHidden();
 });
 
-test('Desk fills the viewport and keeps the live canvas and floating layout', async ({ page }) => {
+test('Desk fills the viewport and keeps the live canvas and layout after returning to Side by Side', async ({ page }) => {
   const viewportSize = { width: 1920, height: 940 };
   await page.setViewportSize(viewportSize);
   const view = await openSession(page);
   const enterDesk = view.button('Стол');
-  await view.button('Рядом').click();
-  await expect(enterDesk).toHaveCount(0);
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'split');
   await expect(view.button('Сбросить раскладку')).toHaveCount(0);
-  await view.button('Поверх кадра').click();
   await expect(enterDesk).toBeVisible();
-
   await view.media.evaluate(element => { element.setAttribute('data-test-retained-canvas', 'true'); });
-  await drag(page, view.move('device'), 54, 38);
-  await drag(page, view.resize('tools', 's'), 0, -90);
-  const deviceBounds = await bounds(view.window('device'));
-  const toolBounds = await bounds(view.window('tools'));
-  const logs = view.layout.getByRole('tab', { name: 'Логкат', exact: true });
-  await logs.click();
-  await expect(logs).toHaveAttribute('aria-selected', 'true');
-
   await enterDesk.click();
   await expect(view.layout.locator('.workspace-grid[data-desk]')).toBeVisible();
   const area = (await view.viewport.boundingBox())!;
@@ -547,9 +559,13 @@ test('Desk fills the viewport and keeps the live canvas and floating layout', as
   await expect(page.locator('.sidebar')).toBeHidden();
   await expect(page.locator('.topbar')).toBeHidden();
   await expect(view.layout.locator('.session-heading')).toBeHidden();
-  await expect.poll(() => bounds(view.window('device'))).toEqual(deviceBounds);
-  await expect.poll(() => bounds(view.window('tools'))).toEqual(toolBounds);
   await expect(view.media).toHaveAttribute('data-test-retained-canvas', 'true');
+  await drag(page, view.move('device'), 54, 38);
+  await drag(page, view.resize('tools', 's'), 0, -90);
+  const deviceBounds = await bounds(view.window('device'));
+  const toolBounds = await bounds(view.window('tools'));
+  const logs = view.layout.getByRole('tab', { name: 'Логкат', exact: true });
+  await logs.click();
   await expect(logs).toHaveAttribute('aria-selected', 'true');
 
   await view.button('Отправить текст на устройство').press('Enter');
@@ -564,19 +580,21 @@ test('Desk fills the viewport and keeps the live canvas and floating layout', as
   await expect(exitDesk.locator('kbd')).toHaveText('Esc');
   await exitDesk.click();
   await expect(enterDesk).toBeFocused();
-  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'float');
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'split');
   await expect(page.locator('.sidebar')).toBeVisible();
   await expect(view.layout.locator('.session-heading')).toBeVisible();
 
   await enterDesk.press('Enter');
   await expect(exitDesk).toBeVisible();
-  await view.window('device').locator('.touch-layer').press('Escape');
-  await expect(enterDesk).toBeFocused();
-  await expect(exitDesk).toBeHidden();
   await expect.poll(() => bounds(view.window('device'))).toEqual(deviceBounds);
   await expect.poll(() => bounds(view.window('tools'))).toEqual(toolBounds);
   await expect(view.media).toHaveAttribute('data-test-retained-canvas', 'true');
   await expect(logs).toHaveAttribute('aria-selected', 'true');
+  await view.window('device').locator('.touch-layer').press('Escape');
+  await expect(enterDesk).toBeFocused();
+  await expect(exitDesk).toBeHidden();
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'split');
+  await expect(view.media).toHaveAttribute('data-test-retained-canvas', 'true');
 });
 
 test('Desk can be closed from its command bar without any tool tabs', async ({ page }) => {
@@ -601,13 +619,13 @@ test('Desk can be saved as the startup view, left temporarily, and cleared', asy
   await page.setViewportSize({ width: 1920, height: 940 });
   const view = await openSession(page);
   const enterDesk = view.button('Стол');
-  const floatingDefault = view.layout.locator('.workspace-default-view');
+  const sideBySideDefault = view.layout.locator('.workspace-default-view');
   const deskDefault = view.layout.locator('.floating-desk-default');
   const desk = view.layout.locator('.workspace-grid[data-desk]');
   const savedView = () => page.evaluate(() => localStorage.getItem('rdf-session-default-view:u1'));
 
-  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'float');
-  await expect(floatingDefault).toHaveAttribute('aria-pressed', 'false');
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'split');
+  await expect(sideBySideDefault).toHaveAttribute('aria-pressed', 'false');
   expect(await savedView()).toBeNull();
   await enterDesk.click();
   await expect(deskDefault).toHaveAttribute('aria-pressed', 'false');
@@ -620,8 +638,8 @@ test('Desk can be saved as the startup view, left temporarily, and cleared', asy
   await expect(deskDefault).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');
   await expect(desk).toBeHidden();
-  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'float');
-  await expect(floatingDefault).toHaveAttribute('aria-pressed', 'false');
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'split');
+  await expect(sideBySideDefault).toHaveAttribute('aria-pressed', 'false');
   expect(await savedView()).toBe('desk');
 
   const nextSessionId = 'cbd55091-aaaa-bbbb-cccc-000000000002';
@@ -644,24 +662,24 @@ test('Desk can be saved as the startup view, left temporarily, and cleared', asy
   await page.reload();
   await expect(enterDesk).toBeVisible();
   await expect(desk).toBeHidden();
-  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'float');
-  await expect(floatingDefault).toHaveAttribute('aria-pressed', 'false');
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'split');
+  await expect(sideBySideDefault).toHaveAttribute('aria-pressed', 'false');
 
   await view.button('Рядом').click();
-  await floatingDefault.click();
+  await sideBySideDefault.click();
   await expect.poll(savedView).toBe('split');
-  await expect(floatingDefault).toHaveAttribute('aria-pressed', 'true');
-  await expect(floatingDefault).toHaveAttribute('title', 'Сбросить вид по умолчанию');
-  await floatingDefault.click();
-  await expect(floatingDefault).toHaveAttribute('aria-pressed', 'false');
+  await expect(sideBySideDefault).toHaveAttribute('aria-pressed', 'true');
+  await expect(sideBySideDefault).toHaveAttribute('title', 'Сбросить вид по умолчанию');
+  await sideBySideDefault.click();
+  await expect(sideBySideDefault).toHaveAttribute('aria-pressed', 'false');
   await expect(view.layout).toHaveAttribute('data-workspace-mode', 'split');
   await expect.poll(savedView).toBeNull();
 
   await page.reload();
-  await expect(enterDesk).toBeVisible();
   await expect(desk).toBeHidden();
-  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'float');
-  await expect(floatingDefault).toHaveAttribute('aria-pressed', 'false');
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'split');
+  await expect(enterDesk).toBeVisible();
+  await expect(sideBySideDefault).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('Desk tabs detach by drag, retain tool state and return when dropped on the tab strip', async ({ page }) => {
@@ -1113,7 +1131,7 @@ test('Desk overview reveals covered and offscreen windows without changing the l
   await expect(tools.getByRole('textbox', { name: 'Поиск по журналу' })).toHaveValue('ActivityManager');
 });
 
-test('Desk pans oversized layouts by dragging empty canvas', async ({ page }) => {
+test('Desk pans oversized layouts with the right mouse button and keeps its controls fixed', async ({ page }) => {
   await page.setViewportSize({ width: 1536, height: 800 });
   await page.addInitScript(() => {
     localStorage.setItem('rdf-session-floating-v1:u1:0.5625', JSON.stringify({ front: 'tools', windows: {
@@ -1122,13 +1140,13 @@ test('Desk pans oversized layouts by dragging empty canvas', async ({ page }) =>
     } }));
   });
   const view = await openSession(page);
-  await view.button('Поверх кадра').click();
   await view.button('Стол').click();
   await expect(view.layout.locator('.workspace-grid[data-desk]')).toBeVisible();
   const commandBar = view.layout.locator('.desk-command-bar');
   await expect(commandBar).toBeInViewport({ ratio: 1 });
-  await expect(commandBar.getByRole('button')).toHaveCount(2);
+  await expect(commandBar.getByRole('button')).toHaveCount(7);
   await expect(commandBar.getByRole('button', { name: 'Обзор окон', exact: true })).toBeVisible();
+  await expect(commandBar.getByRole('button', { name: 'Сбросить раскладку', exact: true })).toBeVisible();
   const exit = commandBar.getByRole('button', { name: 'Выйти из режима «Стол»', exact: true });
   await expect(exit.locator('.desk-command-exit-label')).toHaveText('Выйти');
   await expect(exit.locator('kbd')).toHaveText('Esc');
@@ -1144,11 +1162,12 @@ test('Desk pans oversized layouts by dragging empty canvas', async ({ page }) =>
   const empty = { x: 250, y: 650 };
   expect(await view.canvas.evaluate((element, point) => document.elementFromPoint(point.x, point.y) === element, empty)).toBe(true);
   const tools = await bounds(view.window('tools'));
+  const start = await scrollOffset(view.viewport);
   await page.mouse.move(empty.x, empty.y);
-  await page.mouse.down();
+  await page.mouse.down({ button: 'right' });
   await page.mouse.move(empty.x - 120, empty.y - 90, { steps: 6 });
-  await page.mouse.up();
-  await expect.poll(() => scrollOffset(view.viewport)).toEqual({ x: 120, y: 90 });
+  await page.mouse.up({ button: 'right' });
+  await expect.poll(() => scrollOffset(view.viewport)).toEqual({ x: start.x + 120, y: start.y + 90 });
   expect(await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }))).toEqual({ x: 0, y: 0 });
   expect(await bounds(view.window('tools'))).toEqual(tools);
   await expect(commandBar).toBeInViewport({ ratio: 1 });
@@ -1158,7 +1177,133 @@ test('Desk pans oversized layouts by dragging empty canvas', async ({ page }) =>
   await expect(view.button('Стол')).toBeFocused();
 });
 
-test('oversized floating tools keep page overflow, Logcat scrolling and command focus separate in RTL', async ({ page }) => {
+test('Desk zoom anchors the cursor and keeps widget movement and scrolling independent', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.addInitScript(() => {
+    const profile = encodeURIComponent('profile:a11-gpu');
+    localStorage.setItem(`rdf-session-floating-v3:u1:${profile}:initial:base`, JSON.stringify({ front: 'tools', windows: {
+      device: { left: 60, top: 80, width: 320, height: 510 },
+      tools: { left: 500, top: 140, width: 530, height: 370 },
+    } }));
+    localStorage.setItem(`rdf-session-desk-widget-v1:u1:${profile}:logs`, JSON.stringify({
+      left: 1000, top: 530, width: 480, height: 390,
+    }));
+  });
+  const entries = Array.from({ length: 150 }, (_, index) => ({
+    ts: '10-08 02:12:00.' + String(index).padStart(6, '0'), pid: 301, tid: 302,
+    level: 'I', tag: 'WorkspaceTest', message: `Android log entry ${index}`,
+  }));
+  await page.route('**/api/sessions/*/logcat?*', route => route.fulfill({ json: {
+    entries: new URL(route.request().url()).searchParams.has('since') ? [] : entries,
+    cursor: { since: entries.at(-1)!.ts, skip: entries.length },
+  } }));
+  const view = await openSession(page);
+  await view.button('Стол').click();
+  const commandBar = view.layout.locator('.desk-command-bar');
+  const zoomIn = commandBar.locator('.desk-zoom-in');
+  const zoomOut = commandBar.locator('.desk-zoom-out');
+  const reset = commandBar.locator('.desk-zoom-reset');
+  const zoom = async () => Number(await view.viewport.getAttribute('data-desk-zoom'));
+  const tools = view.window('tools');
+  const widget = view.canvas.locator('[data-window="widget:logs"]');
+  const log = widget.locator('.log-viewport');
+  await expect(log.locator('.log-row')).toHaveCount(entries.length);
+  await expect.poll(zoom).toBe(1);
+
+  await view.move('tools').focus();
+  await expect(tools).toHaveAttribute('data-front', '');
+  const logicalTools = await deskBounds(tools);
+  const logicalWidget = await deskBounds(widget);
+  const start = await scrollOffset(view.viewport);
+  const widgetBox = (await widget.boundingBox())!;
+  await page.mouse.move(widgetBox.x + widgetBox.width / 2, widgetBox.y + widgetBox.height / 2);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(widgetBox.x + widgetBox.width / 2 - 70, widgetBox.y + widgetBox.height / 2 - 54, { steps: 6 });
+  await page.mouse.up({ button: 'right' });
+  await expect.poll(() => scrollOffset(view.viewport)).toEqual({ x: start.x + 70, y: start.y + 54 });
+  await expect(tools).toHaveAttribute('data-front', '');
+  expect(await deskBounds(tools)).toEqual(logicalTools);
+  expect(await deskBounds(widget)).toEqual(logicalWidget);
+  await reset.click();
+  await expect.poll(() => scrollOffset(view.viewport)).toEqual(start);
+
+  const expectUnchangedDeskAfterWheel = async (deltaY: number) => {
+    const originalZoom = await zoom();
+    const originalOffset = await scrollOffset(view.viewport);
+    await page.mouse.wheel(0, deltaY);
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    expect(await zoom()).toBe(originalZoom);
+    expect(await scrollOffset(view.viewport)).toEqual(originalOffset);
+  };
+  const empty = { x: 415, y: 590 };
+  expect(await view.canvas.evaluate((element, point) => document.elementFromPoint(point.x, point.y) === element, empty)).toBe(true);
+  await page.mouse.move(empty.x, empty.y);
+  await expectUnchangedDeskAfterWheel(-130);
+  await widget.locator('.desk-widget-header').hover();
+  await expectUnchangedDeskAfterWheel(-180);
+
+  const beforeZoom = await deskPoint(view.canvas, empty);
+  await page.mouse.move(empty.x, empty.y);
+  await page.keyboard.down('Control');
+  await page.mouse.wheel(0, -130);
+  await page.keyboard.up('Control');
+  await expect.poll(zoom).toBeGreaterThan(1);
+  const afterZoom = await deskPoint(view.canvas, empty);
+  expect(Math.abs(afterZoom.x - beforeZoom.x)).toBeLessThan(2);
+  expect(Math.abs(afterZoom.y - beforeZoom.y)).toBeLessThan(2);
+
+  const logBox = (await log.boundingBox())!;
+  const insideLog = { x: logBox.x + 48, y: logBox.y + 50 };
+  await page.mouse.move(insideLog.x, insideLog.y);
+  const scrolled = await scrollOffset(view.viewport);
+  const logOffset = () => log.evaluate(element => element.scrollTop);
+  const previousLogOffset = await logOffset();
+  const previousZoom = await zoom();
+  await page.mouse.wheel(0, -95);
+  await expect.poll(logOffset).toBeLessThan(previousLogOffset);
+  expect(await scrollOffset(view.viewport)).toEqual(scrolled);
+  expect(await zoom()).toBe(previousZoom);
+  const beforeModifiedZoom = await deskPoint(view.canvas, insideLog);
+  const beforeModifiedLogOffset = await logOffset();
+  await page.keyboard.down('Control');
+  await page.mouse.wheel(0, -70);
+  await page.keyboard.up('Control');
+  await expect.poll(zoom).toBeGreaterThan(previousZoom);
+  const afterModifiedZoom = await deskPoint(view.canvas, insideLog);
+  expect(Math.abs(afterModifiedZoom.x - beforeModifiedZoom.x)).toBeLessThan(2);
+  expect(Math.abs(afterModifiedZoom.y - beforeModifiedZoom.y)).toBeLessThan(2);
+  expect(await logOffset()).toBe(beforeModifiedLogOffset);
+
+  await log.evaluate(element => { element.scrollTop = 0; });
+  await expect.poll(logOffset).toBe(0);
+  await expectUnchangedDeskAfterWheel(-180);
+  expect(await logOffset()).toBe(0);
+  expect(await deskBounds(tools)).toEqual(logicalTools);
+  expect(await deskBounds(widget)).toEqual(logicalWidget);
+  await page.screenshot({ path: testInfo.outputPath('desk-zoom-in.png') });
+
+  const scale = await zoom();
+  await drag(page, view.move('tools'), 100, 50);
+  const moved = await deskBounds(tools);
+  expect(Math.abs(moved.x - logicalTools.x - 100 / scale)).toBeLessThanOrEqual(1);
+  expect(Math.abs(moved.y - logicalTools.y - 50 / scale)).toBeLessThanOrEqual(1);
+  await drag(page, view.resize('tools', 'e'), 65, 0);
+  const resized = await deskBounds(tools);
+  expect(Math.abs(resized.width - moved.width - 65 / scale)).toBeLessThanOrEqual(1);
+  expect(resized.x).toBe(moved.x);
+
+  for (const [button, limit] of [[zoomOut, 0.5], [zoomIn, 2]] as const) {
+    for (let step = 0; step < 24 && await button.isEnabled(); step++) await button.click();
+    await expect.poll(zoom).toBe(limit);
+    await expect(button).toBeDisabled();
+  }
+  await reset.click();
+  await expect.poll(zoom).toBe(1);
+  expect(await deskBounds(tools)).toEqual(resized);
+  expect(await deskBounds(widget)).toEqual(logicalWidget);
+});
+
+test('oversized Desk tools keep camera movement, Logcat scrolling and command focus separate in RTL', async ({ page }, testInfo) => {
   const localize = (path: string) => JSON.parse(readFileSync(new URL('../../shared/' + path, import.meta.url), 'utf8'));
   const messages = localize('messages.json') as Record<string, { ru: string; en: string }>;
   const arabic = localize('locales/ar.json') as Record<string, string>;
@@ -1184,8 +1329,8 @@ test('oversized floating tools keep page overflow, Logcat scrolling and command 
   });
   const view = await openSession(page, label);
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-  await view.button('Поверх кадра').click();
-  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'float');
+  await view.button('Стол').click();
+  await expect(view.layout).toHaveAttribute('data-workspace-mode', 'desk');
   const before = await bounds(view.window('tools'));
   const grip = view.resize('tools', 'se');
   await grip.focus();
@@ -1205,12 +1350,14 @@ test('oversized floating tools keep page overflow, Logcat scrolling and command 
   expect(overflow.x).toBeGreaterThan(100);
   expect(overflow.y).toBeGreaterThan(100);
   expect(overflow.doc).toBeLessThanOrEqual(1);
-  await view.viewport.evaluate(element => { element.scrollLeft = 0; element.scrollTop = 0; });
   const area = (await view.viewport.boundingBox())!;
-  await page.mouse.move(area.x + area.width / 2, area.y + 4);
-  await page.mouse.wheel(125, 100);
-  await expect.poll(async () => (await scrollOffset(view.viewport)).x).toBeGreaterThan(0);
-  await expect.poll(async () => (await scrollOffset(view.viewport)).y).toBeGreaterThan(0);
+  const center = { x: area.x + area.width / 2, y: area.y + area.height / 2 };
+  const cameraStart = await scrollOffset(view.viewport);
+  await page.mouse.move(center.x, center.y);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(center.x - 125, center.y - 100, { steps: 6 });
+  await page.mouse.up({ button: 'right' });
+  await expect.poll(() => scrollOffset(view.viewport)).toEqual({ x: cameraStart.x + 125, y: cameraStart.y + 100 });
 
   await view.viewport.evaluate(element => {
     element.scrollLeft = -element.scrollWidth;
@@ -1247,7 +1394,6 @@ test('oversized floating tools keep page overflow, Logcat scrolling and command 
   await view.move('device').focus();
   await expect(view.move('device')).toBeInViewport();
   await expect.poll(async () => (await stackPosition(view.window('device'))) - (await stackPosition(view.window('tools')))).toBeGreaterThan(0);
-  await view.button('Стол').click();
   const commandBar = view.layout.locator('.desk-command-bar');
   await expect(commandBar).toBeInViewport({ ratio: 1 });
   await expect(commandBar.getByRole('button', { name: label('Обзор окон'), exact: true })).toBeVisible();
@@ -1261,4 +1407,18 @@ test('oversized floating tools keep page overflow, Logcat scrolling and command 
     return Math.abs(x + width / 2 - innerWidth / 2);
   });
   expect(centerOffset).toBeLessThanOrEqual(1);
+
+  const zoomOut = commandBar.getByRole('button', { name: label('Уменьшить масштаб'), exact: true });
+  await zoomOut.click();
+  await expect.poll(async () => Number(await view.viewport.getAttribute('data-desk-zoom'))).toBeLessThan(1);
+  await page.screenshot({ path: testInfo.outputPath('desk-zoom-out-rtl.png') });
+
+  await page.setViewportSize({ width: 390, height: 740 });
+  await expect(commandBar).toBeInViewport({ ratio: 1 });
+  const commandButtons = await commandBar.getByRole('button').evaluateAll(buttons => buttons.map(button => {
+    const { top, bottom } = button.getBoundingClientRect();
+    return { top, bottom };
+  }));
+  expect(Math.max(...commandButtons.map(button => button.top)) - Math.min(...commandButtons.map(button => button.top))).toBeLessThanOrEqual(1);
+  expect(Math.max(...commandButtons.map(button => button.bottom)) - Math.min(...commandButtons.map(button => button.bottom))).toBeLessThanOrEqual(1);
 });

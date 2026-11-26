@@ -19,28 +19,40 @@
       "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
       "theme": "dark",
       "horizontalOverflow": 0,
-      "browserErrors": []
+      "browserErrors": [],
+      "capturedAt": "2026-11-26T14:23:49.757Z"
     },
     {
       "file": "logcat-light.png",
       "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
       "theme": "light",
       "horizontalOverflow": 0,
-      "browserErrors": []
+      "browserErrors": [],
+      "capturedAt": "2026-11-26T14:23:49.757Z"
     },
     {
-      "file": "desk-alignment-dark.png",
+      "file": "desk-logcat-dark.png",
       "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
       "theme": "dark",
       "horizontalOverflow": 0,
-      "browserErrors": []
+      "browserErrors": [],
+      "capturedAt": "2026-11-26T14:32:08.044Z"
+    },
+    {
+      "file": "desk-environment-light.png",
+      "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
+      "theme": "light",
+      "horizontalOverflow": 0,
+      "browserErrors": [],
+      "capturedAt": "2026-11-26T14:32:08.044Z"
     },
     {
       "file": "desk-overview-light.png",
       "route": "session/cbd55091-aaaa-bbbb-cccc-000000000001",
       "theme": "light",
       "horizontalOverflow": 0,
-      "browserErrors": []
+      "browserErrors": [],
+      "capturedAt": "2026-11-26T14:32:08.044Z"
     },
     {
       "file": "nodes-light.png",

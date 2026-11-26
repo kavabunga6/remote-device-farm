@@ -1,17 +1,28 @@
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
 
 const CONSOLE_WIDTH_KEY = 'rdf-console-width';
 const LANDSCAPE_CONSOLE_WIDTH_KEY = 'rdf-console-width-landscape';
 const CONSOLE_HEIGHT_KEY = 'rdf-console-height';
 
-type LayoutMode = 'split' | 'float' | 'desk';
+type LayoutMode = 'split' | 'desk';
 type WorkspaceMode = LayoutMode | 'screen' | 'tools';
+
+function layoutMode(saved: string | null): LayoutMode | undefined {
+  if (saved === 'split' || saved === 'float' || saved === 'dock') return 'split';
+  if (saved === 'desk') return 'desk';
+}
 
 function readDefaultMode(key: string): LayoutMode | undefined {
   try {
-    const saved = window.localStorage.getItem(key);
-    if (saved === 'dock') return 'split';
-    if (saved === 'split' || saved === 'float' || saved === 'desk') return saved;
+    return layoutMode(window.localStorage.getItem(key));
+  } catch { /* Storage may be unavailable. */ }
+  return undefined;
+}
+
+function readSessionMode(key: string): WorkspaceMode | undefined {
+  try {
+    const saved = window.sessionStorage.getItem(key);
+    return saved === 'screen' || saved === 'tools' ? saved : layoutMode(saved);
   } catch { /* Storage may be unavailable. */ }
   return undefined;
 }
@@ -91,39 +102,38 @@ export function useWorkspaceDimension(key: string, fallback: number, min: number
 }
 
 /** Measures the session workspace and owns its persisted resize controls. */
-export function useSessionWorkspace({ size, toolTab, isPreparing, shared, userId, terminalOutputRef }: {
+export function useSessionWorkspace({ size, horizontalControls, toolTab, isPreparing, shared, userId, sessionId, terminalOutputRef }: {
   size: { width: number; height: number };
+  horizontalControls: boolean;
   toolTab: string;
   isPreparing: boolean;
   shared: boolean;
   userId: string;
+  sessionId: string;
   terminalOutputRef: RefObject<HTMLDivElement | null>;
 }) {
   const defaultModeKey = 'rdf-session-default-view:' + userId;
+  const sessionModeKey = `rdf-session-view:${encodeURIComponent(userId)}:${encodeURIComponent(sessionId)}`;
   const [defaultWorkspaceMode, setDefaultWorkspaceMode] = useState(() => readDefaultMode(defaultModeKey));
-  const [workspaceMode, changeWorkspaceMode] = useState<WorkspaceMode>(defaultWorkspaceMode ?? 'float');
-  const [compactWorkspace, setCompactWorkspace] = useState(() => window.matchMedia('(max-width: 1200px)').matches);
-  const requestedMode = shared ? 'split' : workspaceMode;
-  const deskActive = requestedMode === 'desk' && !isPreparing;
-  const activeWorkspaceMode = requestedMode === 'desk' ? 'float' : compactWorkspace && requestedMode === 'split' ? 'screen' : requestedMode;
-  const visibleLayout = deskActive ? 'desk' : activeWorkspaceMode;
-  const defaultView = visibleLayout === defaultWorkspaceMode;
-  const canSaveDefaultLayout = !shared && visibleLayout !== 'screen' && visibleLayout !== 'tools';
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(() => readSessionMode(sessionModeKey) ?? defaultWorkspaceMode ?? 'split');
+  const changeWorkspaceMode = useCallback((mode: WorkspaceMode) => {
+    if (shared) return;
+    setWorkspaceMode(mode);
+    try { window.sessionStorage.setItem(sessionModeKey, mode); } catch { /* Storage may be unavailable. */ }
+  }, [sessionModeKey, shared]);
+  const activeWorkspaceMode = shared ? 'split' : workspaceMode;
+  const deskActive = activeWorkspaceMode === 'desk' && !isPreparing;
+  const defaultView = activeWorkspaceMode === defaultWorkspaceMode;
+  const canSaveDefaultLayout = !shared && (activeWorkspaceMode === 'split' || activeWorkspaceMode === 'desk');
   const saveDefaultWorkspaceMode = () => {
     if (!canSaveDefaultLayout) return;
-    const next = defaultView ? undefined : visibleLayout;
+    const next = defaultView ? undefined : activeWorkspaceMode;
     setDefaultWorkspaceMode(next);
     try {
       if (next) window.localStorage.setItem(defaultModeKey, next);
       else window.localStorage.removeItem(defaultModeKey);
     } catch { /* Storage may be unavailable. */ }
   };
-  useEffect(() => {
-    const media = window.matchMedia('(max-width: 1200px)');
-    const update = () => setCompactWorkspace(media.matches);
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
   const landscape = size.width > size.height;
   const widthKey = landscape ? LANDSCAPE_CONSOLE_WIDTH_KEY : CONSOLE_WIDTH_KEY;
   const [consoleWidths, setConsoleWidths] = useState<Record<string, number | null>>(() => ({
@@ -261,9 +271,9 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, shared, userId
         // console's height, which would otherwise be counted as chrome and shrink the device.
         let chrome = 2;
         for (const child of Array.from(viewer.children)) {
-          if (child === stage || child.classList.contains('device-controls') || child.classList.contains('floating-window-resize-handle')) continue;
-          const box = child.getBoundingClientRect();
-          chrome += box.height / scale;
+          if (child === stage || child.classList.contains('floating-window-resize-handle') ||
+            (!horizontalControls && child.classList.contains('device-controls'))) continue;
+          if (child instanceof HTMLElement) chrome += child.offsetHeight;
         }
         setPx('--session-viewer-chrome', chrome);
         const style = getComputedStyle(stage);
@@ -306,13 +316,13 @@ export function useSessionWorkspace({ size, toolTab, isPreparing, shared, userId
       window.removeEventListener('resize', schedule);
       window.visualViewport?.removeEventListener('resize', schedule);
     };
-  }, [toolTab, activeWorkspaceMode, isPreparing, shared]);
+  }, [toolTab, activeWorkspaceMode, isPreparing, shared, horizontalControls]);
   const frameWidth = Math.max(1, size.width);
   const frameHeight = Math.max(1, size.height);
   const viewerWidth = Math.max(320, Math.ceil((landscape ? availableStageHeight : stageSize.height) * frameWidth / frameHeight + viewerInsets + 2));
   const displayScale = Math.min(Math.max(0, stageSize.width) / frameWidth, Math.max(0, stageSize.height) / frameHeight);
 
-  return { activeWorkspaceMode, deskActive, compactWorkspace, changeWorkspaceMode, defaultView, canSaveDefaultLayout, saveDefaultWorkspaceMode,
+  return { activeWorkspaceMode, deskActive, changeWorkspaceMode, defaultView, canSaveDefaultLayout, saveDefaultWorkspaceMode,
     consoleWidth, consoleResized, consoleHeight, consoleHeightResized, visibleConsoleSize, workspaceRef, screenRef, viewerWidth, displayScale,
     minConsoleWidth, maxConsoleWidth, maxConsoleHeight, resetConsoleSize, resizeConsoleWithKeyboard,
     startWidthResize: (event: ResizePointer) => startConsoleResize(event, 'width'), moveWidthResize: moveConsoleResize, endWidthResize: endConsoleResize,

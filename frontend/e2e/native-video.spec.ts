@@ -18,7 +18,7 @@ test('the browser decodes native VP8 access units after a PNG placeholder withou
     let rendered: () => void;
     const ready = new Promise<void>(resolve => { rendered = resolve; });
     const decoder = new SessionVideo({ closed: () => false, canvas: () => canvas, image: () => image,
-      pendingImage: { current: null }, connecting: () => {}, fail: message => errors.push(message), requestKeyframe: () => {},
+      latestImage: { current: null }, connecting: () => {}, fail: message => errors.push(message), requestKeyframe: () => {},
       frame: (format, _width, _height, transport) => { if (transport) transports.push(transport); if (format === 'video') rendered(); } });
     decoder.handle({ type: 'frame', mime: 'image/png', data: source.toDataURL('image/png').split(',')[1], width: 96, height: 160 });
     decoder.handle({ type: 'video-config', codec: 'vp8', data: undefined, width: 96, height: 160 });

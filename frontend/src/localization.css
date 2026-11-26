@@ -15,7 +15,7 @@ input[autocomplete="current-password"] {
   unicode-bidi: isolate;
 }
 [dir="rtl"] .workspace-grid > .tool-panel,
-[dir="rtl"] .workspace-grid > .session-floating-canvas > .tool-panel,
+[dir="rtl"] .workspace-grid > .session-floating-plane > .session-floating-canvas > .tool-panel,
 [dir="rtl"] .workspace-grid > .tools-panel {
   direction: rtl;
 }

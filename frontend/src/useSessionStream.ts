@@ -19,12 +19,11 @@ function errorText(error: unknown): string {
 
 export function useSessionStream(id: string, audioEnabled: boolean, mode: ConnectionMode = 'websocket') {
   const imageRef = useRef<HTMLImageElement>(null);
-  const pendingImage = useRef<string | null>(null);
-  // The first frame may arrive while the session details still render a loading state.
+  const latestImage = useRef<string | null>(null);
+  // Retain one frame while session metadata temporarily unmounts the screen.
   useLayoutEffect(() => {
-    if (pendingImage.current && imageRef.current) {
-      imageRef.current.src = pendingImage.current;
-      pendingImage.current = null;
+    if (latestImage.current && imageRef.current && imageRef.current.src !== latestImage.current) {
+      imageRef.current.src = latestImage.current;
     }
   });
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -219,7 +218,7 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
     };
 
     const video = new SessionVideo({
-      closed: () => closed, canvas: () => canvasRef.current, image: () => imageRef.current, pendingImage,
+      closed: () => closed, canvas: () => canvasRef.current, image: () => imageRef.current, latestImage,
       frame: (format, width, height, transport) => {
         markFrame();
         if (width && height) setSize(previous => previous.width === width && previous.height === height ? previous : { width, height });
@@ -317,7 +316,7 @@ export function useSessionStream(id: string, audioEnabled: boolean, mode: Connec
 
     return () => {
       closed = true;
-      pendingImage.current = null;
+      latestImage.current = null;
       sendInputRef.current = () => false;
       rtc?.close(); rtcRef.current = null;
       window.clearInterval(heartbeatTimer); window.clearInterval(metricsTimer);

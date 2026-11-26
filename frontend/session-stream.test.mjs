@@ -203,6 +203,50 @@ test('the newest early image frame renders once when the screen mounts', () => {
   stream.unmount();
 });
 
+test('the latest image survives a screen remount without another packet or redundant image loads', () => {
+  for (const early of [false, true]) {
+    const stream = mountStream();
+    let source;
+    let assignments = 0;
+    const first = {
+      get src() { return source; },
+      set src(value) { source = value; assignments += 1; },
+    };
+    if (!early) stream.hook.imageRef.current = first;
+    stream.socket.message({ type: 'frame', data: 'LATEST', mime: 'image/png' });
+    if (early) stream.hook.imageRef.current = first;
+    stream.flushLayout();
+    stream.flushLayout();
+    assert.equal(first.src, 'data:image/png;base64,LATEST');
+    assert.equal(assignments, 1, 'Unrelated layout updates must not reload the same image');
+    const replacement = {};
+    stream.hook.imageRef.current = replacement;
+    stream.flushLayout();
+    assert.equal(replacement.src, first.src, `The ${early ? 'early' : 'mounted'} frame remains available after remount`);
+    stream.unmount();
+  }
+});
+
+test('video reconfiguration discards the retained image before another screen mounts', () => {
+  const stream = mountStream();
+  stream.socket.message({ type: 'frame', data: 'OLD', mime: 'image/png' });
+  stream.socket.message(videoConfig);
+  stream.hook.imageRef.current = {};
+  stream.flushLayout();
+  assert.equal(stream.hook.imageRef.current.src, undefined);
+  stream.unmount();
+});
+
+test('a closed connection discards the retained image before another screen mounts', () => {
+  const stream = mountStream();
+  stream.socket.message({ type: 'frame', data: 'OLD', mime: 'image/png' });
+  stream.socket.finishClose();
+  stream.hook.imageRef.current = {};
+  stream.flushLayout();
+  assert.equal(stream.hook.imageRef.current.src, undefined);
+  stream.unmount();
+});
+
 test('an early image frame is discarded when its session unmounts', () => {
   const stream = mountStream();
   stream.socket.message({ type: 'frame', data: 'OLD', mime: 'image/png' });

@@ -14919,6 +14919,30 @@
     "ru": "Управление устройством",
     "en": "Device controls"
   },
+  "device.controls.position": {
+    "ru": "Положение панели",
+    "en": "Toolbar position"
+  },
+  "device.controls.position.auto": {
+    "ru": "Автоматически",
+    "en": "Automatic"
+  },
+  "device.controls.position.top": {
+    "ru": "Сверху",
+    "en": "Top"
+  },
+  "device.controls.position.right": {
+    "ru": "Справа",
+    "en": "Right"
+  },
+  "device.controls.position.bottom": {
+    "ru": "Снизу",
+    "en": "Bottom"
+  },
+  "device.controls.position.left": {
+    "ru": "Слева",
+    "en": "Left"
+  },
   "environment.androidPermission": {
     "ru": "Разрешение Android",
     "en": "Android permission"
@@ -15155,17 +15179,9 @@
     "ru": "Размер эмулятора",
     "en": "Emulator size"
   },
-  "session.workspace.floating": {
-    "ru": "Поверх кадра",
-    "en": "Over the device"
-  },
   "session.workspace.resetFloating": {
     "ru": "Сбросить раскладку",
     "en": "Reset layout"
-  },
-  "session.workspace.canvas": {
-    "ru": "Прокручиваемая рабочая область",
-    "en": "Scrollable workspace"
   },
   "session.workspace.moveWindow": {
     "ru": "Переместить окно",
@@ -15214,5 +15230,33 @@
   "session.workspace.exitDeskShort": {
     "ru": "Выйти",
     "en": "Exit"
+  },
+  "session.workspace.zoomOut": {
+    "ru": "Уменьшить масштаб",
+    "en": "Zoom out"
+  },
+  "session.workspace.zoomIn": {
+    "ru": "Увеличить масштаб",
+    "en": "Zoom in"
+  },
+  "session.workspace.resetDeskView": {
+    "ru": "{scale} · Сбросить вид стола",
+    "en": "{scale} · Reset desk view"
+  },
+  "session.workspace.saveLayout": {
+    "ru": "Сохранить раскладку",
+    "en": "Save layout"
+  },
+  "session.workspace.saveLayoutForEmulators": {
+    "ru": "Сохранить раскладку для новых эмуляторов",
+    "en": "Save layout for new emulators"
+  },
+  "session.workspace.layoutSaved": {
+    "ru": "Раскладка сохранена для новых эмуляторов.",
+    "en": "Layout saved for new emulators."
+  },
+  "session.workspace.layoutSaveFailed": {
+    "ru": "Не удалось сохранить раскладку.",
+    "en": "Could not save the layout."
   }
 }

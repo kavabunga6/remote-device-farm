@@ -14,7 +14,7 @@ async function nextPaint(page: Page) {
   }));
 }
 
-type FixtureOptions = { landscape?: boolean; native?: boolean; failReads?: number };
+type FixtureOptions = { landscape?: boolean; native?: boolean; failReads?: number; theme?: 'light' | 'dark' };
 async function fixture(page: Page, options: FixtureOptions = {}) {
   const cpuRate = Number(process.env.CAPTURE_CPU_THROTTLE || 1);
   if (!Number.isFinite(cpuRate) || cpuRate < 1 || cpuRate > 8) throw new Error('Invalid capture CPU rate');
@@ -75,6 +75,11 @@ async function fixture(page: Page, options: FixtureOptions = {}) {
     };
   }, { landscape: options.landscape ?? false, native: options.native ?? false });
   await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: [] } }));
+  await page.route('**/api/me/preferences', async route => {
+    const response = await route.fetch();
+    const data = await response.json();
+    await route.fulfill({ response, json: { ...data, preferences: { ...data.preferences, theme: options.theme ?? 'light' } } });
+  });
   await page.route('**/api/sessions/' + sessionId + '/env', route => {
     if (++reads <= (options.failReads ?? 0)) return route.fulfill({ status: 503, json: { error: 'temporarily_unavailable' } });
     return route.fulfill({ json: { env: {
@@ -95,10 +100,11 @@ async function startRecording(page: Page) {
 }
 async function send(page: Page, message: object) { await page.evaluate(value => (window as any).__sendTouchMessage(value), message); }
 
-for (const landscape of [false, true]) {
-  test(`fallback tap and drag are encoded in real PNG and WebM with ${landscape ? 'landscape' : 'portrait'} letterboxing`, async ({ page }, testInfo) => {
+for (const theme of ['light', 'dark'] as const) for (const landscape of [false, true]) {
+  test(`fallback tap and drag are encoded in real PNG and WebM with ${landscape ? 'landscape' : 'portrait'} letterboxing in ${theme} theme`, async ({ page }, testInfo) => {
     test.setTimeout(60_000); // Decode the complete short recording at full resolution.
-    await fixture(page, { landscape });
+    await fixture(page, { landscape, theme });
+    await expect(page.locator('html')).toHaveAttribute('data-effective-theme', theme);
     const touch = page.getByRole('application', { name: 'Сенсорный экран устройства' });
     const marker = touch.locator('.session-touch-marker');
     await page.evaluate(() => document.fonts.ready);
@@ -109,7 +115,7 @@ for (const landscape of [false, true]) {
     await startRecording(page);
     const recording = page.getByRole('button', { name: 'Остановить запись экрана', exact: true });
     await expect(recording).toHaveAttribute('aria-pressed', 'true');
-    await expect(recording).toHaveCSS('color', 'rgb(255, 172, 167)');
+    await expect(recording).toHaveCSS('color', theme === 'dark' ? 'rgb(255, 172, 167)' : 'rgb(159, 32, 28)');
     await expect(recording.locator('.device-recording-time')).toHaveText(/\d\d:\d\d/);
     await page.waitForTimeout(200);
     await nextPaint(page);

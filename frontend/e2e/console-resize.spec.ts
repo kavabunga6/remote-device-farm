@@ -118,10 +118,10 @@ test('a frame resize is committed and released when its handle is removed', asyn
   await expect(frameHandle).toHaveAttribute('aria-valuenow', String(adjusted));
 
   // A layout change can remove the handle while the pointer remains down.
-  await page.locator('[data-workspace-choice=float]').evaluate(button => (button as HTMLButtonElement).click());
+  await page.locator('.workspace-enter-desk').evaluate(button => (button as HTMLButtonElement).click());
   await expect(frameHandle).toHaveCount(0);
   await page.mouse.up();
-  await page.locator('[data-workspace-choice=split]').click();
+  await page.locator('.desk-command-exit').click();
   await expect(frameHandle).toHaveAttribute('aria-valuenow', String(adjusted));
   await drag(page, frameHandle, 45, 70);
   const resizedAgain = Number(await frameHandle.getAttribute('aria-valuenow'));
