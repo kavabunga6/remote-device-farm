@@ -1868,7 +1868,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/getSessionsByidResponse"
         "404":
-          $ref: "#/components/responses/NotFound"
+          description: Session unavailable. The owner may receive the reason for a completed automatic release.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Error"
+                  - type: object
+                    properties:
+                      sessionEndReason:
+                        type: string
+                        enum: [idle, max_lifetime, lease_expired]
         default:
           description: Request rejected. The error code is stable; the message is intended for display.
           content:

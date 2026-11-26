@@ -9,7 +9,7 @@ import type { SessionLaunchOptions } from './api';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessProvider, useAccess, can, roleLabel } from './permissions';
 import { sectionPermission } from './admin-navigation';
-import { api, ApiError, type AppConfig, type DeviceSession, type Host, type Profile, type User, type NavigationCounts } from './api';
+import { api, ApiError, type AppConfig, type DeviceSession, type Host, type Profile, type SessionEndReason, type User, type NavigationCounts } from './api';
 import { Icon } from './icons';
 import { SessionStartupProgress } from './SessionStartupProgress';
 import { SessionStatusBadge } from './SessionStatusBadge';
@@ -38,6 +38,17 @@ import { useAdminDialog } from './useAdminDialog';
 
 type Page = 'overview' | 'hosts' | 'admin' | 'tokens' | 'account';
 type Route = { page: Exclude<Page, 'admin'> } | { page: 'admin'; section: AdminSection } | { page: 'session'; id: string } | { page: 'shared'; token: string };
+type SessionOutcome = Pick<BackgroundNotification, 'title' | 'body'> & { kind: 'session.failed' | 'session.released' };
+
+const timeoutMessage = {
+  idle: 'ui.6ea83344f1f4',
+  max_lifetime: 'ui.e3a9a5793787',
+  lease_expired: 'ui.971c9f65dca8',
+} as const satisfies Record<SessionEndReason, Parameters<typeof t>[0]>;
+
+function isSessionOutcome(item: BackgroundNotification): item is BackgroundNotification & SessionOutcome {
+  return item.kind === 'session.failed' || item.kind === 'session.released';
+}
 
 function routeFromHash(): Route {
   const hash = window.location.hash.replace(/^#\/?/, '');
@@ -59,6 +70,18 @@ function routeFromHash(): Route {
 
 function navigate(route: Route) {
   window.location.hash = route.page === 'shared' ? '/overview' : route.page === 'session' ? `/session/${encodeURIComponent(route.id)}` : route.page === 'admin' ? `/admin/${route.section}` : `/${route.page}`;
+}
+
+function routeTitle(route: Route): string {
+  switch (route.page) {
+    case 'admin': return adminSectionInfo[route.section].title;
+    case 'overview': return t('ui.6b8377e0a6fa');
+    case 'hosts': return t('ui.8e4cb48e8703');
+    case 'tokens': return t('ui.daaf8ccbab69');
+    case 'account': return t('ui.32fe3de56050');
+    case 'session': return t('ui.f7aa03484689');
+    case 'shared': return t('ui.c61ec5a31b0d');
+  }
 }
 
 function displayError(error: unknown): string {
@@ -202,7 +225,7 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [bootError, setBootError] = useState('');
   const [route, setRoute] = useState<Route>(routeFromHash);
-  const [missingSession, setMissingSession] = useState<string | null>(null);
+  const [missingSession, setMissingSession] = useState<{ id: string; reason?: SessionEndReason } | null>(null);
   const [hosts, setHosts] = useState<Host[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [adminProfiles, setAdminProfiles] = useState<Profile[]>([]);
@@ -233,7 +256,7 @@ export default function App() {
   const inventoryRequest = useRef(0);
   const activeAccount = useRef<string | null>(null);
   const releaseAllPending = useRef(false);
-  const failedStarts = useRef(new Map<string, BackgroundNotification>());
+  const sessionOutcomes = useRef(new Map<string, SessionOutcome>());
   const selectAccount = useCallback((next: User | null) => {
     activeAccount.current = next?.id ?? null;
     setUser(next);
@@ -270,7 +293,7 @@ export default function App() {
   useEffect(() => {
     const expireSession = () => {
       inventoryRequest.current += 1;
-      clearNotifications(); failedStarts.current.clear(); setMissingSession(null);
+      clearNotifications(); sessionOutcomes.current.clear(); setMissingSession(null);
       selectAccount(null); setHosts([]); setProfiles([]); setAdminProfiles([]); setSessions([]); setNavigationCounts(null);
       setInventoryLoading(true); setInventoryError('');
       setModal(null); setConfirm(null); setLogoutOpen(false); navigate({ page: 'overview' });
@@ -289,7 +312,7 @@ export default function App() {
     readyNotified.current.add(session.id);
     notify({ kind: 'success', title: t('ui.ad0b444760b8'), message: t('ui.1f5dac083811', { p0: session.id.slice(0, 8), p1: session.label || session.profileName || t('ui.dba20ab53801') }), key: `session-ready:${session.id}` });
   }, [notify, user?.id]);
-  useEffect(() => { observedSessions.current.clear(); readyNotified.current.clear(); }, [user?.id]);
+  useEffect(() => { observedSessions.current.clear(); readyNotified.current.clear(); sessionOutcomes.current.clear(); }, [user?.id]);
 
   const anonymousAuth = config?.authMethods.includes('none') ?? false;
   const loadInventory = useCallback(async () => {
@@ -326,26 +349,39 @@ export default function App() {
     finally { if (requestId === inventoryRequest.current) setInventoryLoading(false); }
   }, [user, observeSession, anonymousAuth, boot]);
   const canOpenSessionLog = can(user, 'logs.view');
+  const notifySessionOutcome = useCallback((id: string, outcome: SessionOutcome) => {
+    const failed = outcome.kind === 'session.failed';
+    const published = notify({
+      kind: failed ? 'error' : 'info', title: outcome.title, message: outcome.body,
+      messagePrefix: t('ui.71565c75af24', { p0: id.slice(0, 8) }), key: `session-outcome:${id}`,
+      ...(failed && canOpenSessionLog ? { action: { href: '#/admin/journal?tab=logs&session=' + encodeURIComponent(id), label: t('ui.7c3975084b6a') } } : {}),
+    });
+    if (!published) return;
+    sessionOutcomes.current.delete(id);
+    sessionOutcomes.current.set(id, outcome);
+    if (sessionOutcomes.current.size > 100) sessionOutcomes.current.delete(sessionOutcomes.current.keys().next().value!);
+  }, [notify, canOpenSessionLog]);
   const notifyBackground = useCallback((item: BackgroundNotification) => {
     if (item.kind === 'session.ready' && item.sessionId && readyNotified.current.has(item.sessionId)) return;
+    if (item.sessionId && isSessionOutcome(item)) {
+      if (item.kind !== 'session.released' || sessionOutcomes.current.get(item.sessionId)?.kind !== 'session.released') {
+        notifySessionOutcome(item.sessionId, item);
+      }
+      return;
+    }
     const published = notify({
       kind: item.kind === 'session.failed' || item.kind === 'device.quarantined' ? 'error'
         : item.kind === 'session.ready' || item.kind === 'queue.assigned' ? 'success' : 'info',
       title: item.title,
-      ...(item.kind === 'session.failed' && item.sessionId && canOpenSessionLog ? { action: { href: '#/admin/journal?tab=logs&session=' + encodeURIComponent(item.sessionId), label: t('ui.7c3975084b6a') } } : {}),
       messagePrefix: item.sessionId ? t('ui.71565c75af24', { p0: item.sessionId.slice(0, 8) }) : undefined,
       message: item.body,
-      key: item.kind === 'session.failed' && item.sessionId ? `session-outcome:${item.sessionId}` : item.kind === 'session.ready' && item.sessionId ? `session-ready:${item.sessionId}` : `background:${item.id}`,
+      key: item.kind === 'session.ready' && item.sessionId ? `session-ready:${item.sessionId}` : `background:${item.id}`,
     });
     if (!published || !item.sessionId) return;
     if (item.kind === 'session.ready') readyNotified.current.add(item.sessionId);
-    if (item.kind === 'session.failed') {
-      failedStarts.current.set(item.sessionId, item);
-      if (failedStarts.current.size > 100) failedStarts.current.delete(failedStarts.current.keys().next().value!);
-    }
-  }, [notify, canOpenSessionLog]);
+  }, [notify, notifySessionOutcome]);
   useNotificationPoller(user?.id, notifyBackground);
-  const sessionNotFound = useCallback((id: string) => {
+  const sessionNotFound = useCallback((id: string, reason?: SessionEndReason) => {
     const current = routeFromHash();
     if (current.page !== 'session' || current.id !== id) return;
     // Replace the broken URL so browser Back does not reopen the missing session.
@@ -354,29 +390,33 @@ export default function App() {
     window.scrollTo(0, 0);
     setConfirm(null);
     setSessions(items => items.filter(session => session.id !== id));
-    setMissingSession(id);
+    setMissingSession({ id, reason });
     void loadInventory();
   }, [loadInventory]);
   useEffect(() => {
     if (route.page !== 'overview' || !missingSession) return;
     // Effects run after the Home page has committed; the toast survives SessionView unmounting.
-    let active = true;
-    const id = missingSession;
-    // Cleanup can delete a failed start before the next session poll. Prefer
-    // its actual failure and reuse the same key as the background notification.
-    void queueApi.notifications(AbortSignal.timeout(5000)).then(({ notifications }) => {
-      const failure = failedStarts.current.get(id) ?? notifications.find(item => item.sessionId === id && item.kind === 'session.failed');
-      if (!active) return;
-      if (failure) notifyBackground(failure);
+    const { id, reason } = missingSession;
+    const finish = (outcome?: SessionOutcome) => {
+      if (outcome) notifySessionOutcome(id, outcome);
       else notify({ kind: 'error', title: t('ui.275e64a58684'), message: t('ui.71565c75af24', { p0: id.slice(0, 8) }), key: `session-outcome:${id}` });
       setMissingSession(null);
+    };
+    if (reason) {
+      finish({ kind: 'session.released', title: t('ui.9e0fc6a80c8f'), body: t(timeoutMessage[reason]) });
+      return;
+    }
+    const cached = sessionOutcomes.current.get(id);
+    if (cached) { finish(cached); return; }
+    const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(5000)]);
+    void queueApi.notifications(signal).then(({ notifications }) => {
+      if (!controller.signal.aborted) finish(sessionOutcomes.current.get(id) ?? notifications.filter(isSessionOutcome).find(item => item.sessionId === id));
     }).catch(() => {
-      if (!active) return;
-      notify({ kind: 'error', title: t('ui.275e64a58684'), message: t('ui.71565c75af24', { p0: id.slice(0, 8) }), key: `session-outcome:${id}` });
-      setMissingSession(null);
+      if (!controller.signal.aborted) finish(sessionOutcomes.current.get(id));
     });
-    return () => { active = false; };
-  }, [route.page, missingSession, notify, notifyBackground]);
+    return () => controller.abort();
+  }, [route.page, missingSession, notify, notifySessionOutcome]);
 
   // Every click on a sidebar entry reloads the data and remounts the page, even when it is already open.
   const [refreshKey, setRefreshKey] = useState(0);
@@ -478,11 +518,26 @@ export default function App() {
     window.dispatchEvent(new Event('rdf:unauthorized'));
   };
 
+  const routeDenied = user && (
+    (route.page === 'admin' && !can(user, sectionPermission[route.section])) ||
+    (route.page === 'hosts' && !can(user, 'nodes.view')) ||
+    (route.page === 'tokens' && !can(user, 'tokens.personal')) ||
+    ((route.page === 'session' || route.page === 'overview') && !can(user, 'sessions.view'))
+  );
+  const allowedRoute: Route = routeDenied ? { page: can(user, 'sessions.view') ? 'overview' : 'account' } : route;
+  const appTitle = t('app.title');
+  const ready = !booting && !bootError && Boolean(config);
+  const showingLogin = ready && !user;
+  const pageTitle = ready && user ? routeTitle(allowedRoute) : undefined;
+  const tabTitle = pageTitle ? `${pageTitle} · ${appTitle}` : appTitle;
+  useEffect(() => {
+    if (!showingLogin) document.title = tabTitle;
+  }, [showingLogin, tabTitle]);
+
   if (booting) return <div className="boot-screen"><Brand /><div className="loading-ring" /><span>{t('ui.808f3aae25c0')}</span></div>;
   if (bootError || !config) return <div className="boot-screen"><Brand /><div className="boot-error"><Icon name="alert" size={25} /><h1>{t('ui.b323a1b637de')}</h1><p>{bootError || t('ui.7f8942516a7e')}</p><button className="button primary" onClick={() => void boot()}>{t('ui.5189135a6110')}</button></div></div>;
   if (!user) return <Login config={config} onLogin={next => { inventoryRequest.current += 1; setInventoryLoading(true); selectAccount(next); }} />;
 
-  const allowedRoute: Route = (route.page === 'admin' && !can(user, sectionPermission[route.section])) || (route.page === 'hosts' && !can(user, 'nodes.view')) || (route.page === 'tokens' && !can(user, 'tokens.personal')) || (route.page === 'session' && !can(user, 'sessions.view')) ? (can(user, 'sessions.view') ? { page: 'overview' } : { page: 'account' }) : (route.page === 'overview' && !can(user, 'sessions.view') ? { page: 'account' } : route);
   const confirmedSession = confirm ? confirm.session ?? sessions.find(session => session.id === confirm.id) : undefined;
   const confirmContext = confirm ? { id: confirm.id, profile: confirmedSession?.profileName || profiles.find(profile => profile.id === confirmedSession?.profileId)?.name || t('ui.85e2179937ff'), owner: confirmedSession?.ownerName || confirmedSession?.ownerId, host: confirmedSession?.hostName || hosts.find(host => host.id === confirmedSession?.hostId)?.name || confirmedSession?.hostId } : null;
   const currentPage: Page = allowedRoute.page === 'session' || allowedRoute.page === 'shared' ? 'overview' : allowedRoute.page;
@@ -506,7 +561,7 @@ export default function App() {
       </div>
     </aside>
     {mobileNav && <div className="nav-scrim" onClick={() => setMobileNav(false)} />}
-    <div className="app-main"><FormSaveDock/><header className="topbar"><button className="icon-button mobile-menu" onClick={() => setMobileNav(true)} aria-label={t('ui.b2bbe9885780')}><Icon name="menu" size={21} /></button><div className="topbar-context"><span className="connection-dot" />{t('ui.297c7852691a')}</div><div className="topbar-user"><span className="avatar">{(user.displayName || user.username).slice(0, 1).toUpperCase()}</span><span>{user.displayName || user.username}<small>{roleLabel(user)}</small></span></div></header><main key={refreshKey} className={allowedRoute.page === 'session' ? 'main-content session-main' : `main-content page-${allowedRoute.page}`}>{allowedRoute.page === 'shared' ? <SharedRedeemPage token={allowedRoute.token} onOpen={id => navigate({ page: 'session', id })} onCancel={() => setRoute({ page: 'overview' })} /> : allowedRoute.page === 'session' ? <SessionView key={allowedRoute.id} sessionId={allowedRoute.id} user={user} onBack={() => navigate({ page: 'overview' })} onNotFound={sessionNotFound} onRelease={session => setConfirm({ id: session.id, kind: 'release', session })} onKill={can(user, 'sessions.manageAll') ? session => setConfirm({ id: session.id, kind: 'kill', session }) : undefined} onObserved={observeSession} onUpdated={() => void loadInventory()} /> : allowedRoute.page === 'tokens' ? <TokenManager user={user} onChanged={() => void loadInventory()} /> : allowedRoute.page === 'account' ? <UserSettingsPage user={user} /> : <Dashboard user={user} sessionLimitValue={myLimits?.maxSessions ?? config.limits?.maxSessionsPerUser ?? 0} hosts={hosts} profiles={profiles} adminProfiles={adminProfiles} sessions={sessions} page={allowedRoute.page} adminSection={allowedRoute.page === 'admin' ? allowedRoute.section : undefined} loading={inventoryLoading} error={localizeText(inventoryError)} allowLocalUsers={config.authMethods.includes('local')} onRefresh={() => void loadInventory()} onCreate={() => setModal('create')} onRent={() => setModal('rent')} onOpen={id => navigate({ page: 'session', id })} onRelease={id => setConfirm({ id, kind: 'release' })} onKill={id => setConfirm({ id, kind: 'kill' })} onReleaseAll={releaseAllSessions} />}</main></div>
+    <div className="app-main"><FormSaveDock/><header className="topbar"><button className="icon-button mobile-menu" onClick={() => setMobileNav(true)} aria-label={t('ui.b2bbe9885780')}><Icon name="menu" size={21} /></button><div className="topbar-context"><span className="connection-dot" />{t('ui.297c7852691a')}</div><div className="topbar-user"><span className="avatar">{(user.displayName || user.username).slice(0, 1).toUpperCase()}</span><span>{user.displayName || user.username}<small>{roleLabel(user)}</small></span></div></header><main key={refreshKey} className={allowedRoute.page === 'session' ? 'main-content session-main' : `main-content page-${allowedRoute.page}`}>{allowedRoute.page === 'shared' ? <SharedRedeemPage token={allowedRoute.token} onOpen={id => navigate({ page: 'session', id })} onCancel={() => setRoute({ page: 'overview' })} /> : allowedRoute.page === 'session' ? <SessionView key={allowedRoute.id} sessionId={allowedRoute.id} user={user} profiles={profiles} onBack={() => navigate({ page: 'overview' })} onNotFound={sessionNotFound} onRelease={session => setConfirm({ id: session.id, kind: 'release', session })} onKill={can(user, 'sessions.manageAll') ? session => setConfirm({ id: session.id, kind: 'kill', session }) : undefined} onObserved={observeSession} onUpdated={() => void loadInventory()} /> : allowedRoute.page === 'tokens' ? <TokenManager user={user} onChanged={() => void loadInventory()} /> : allowedRoute.page === 'account' ? <UserSettingsPage user={user} /> : <Dashboard user={user} sessionLimitValue={myLimits?.maxSessions ?? config.limits?.maxSessionsPerUser ?? 0} hosts={hosts} profiles={profiles} adminProfiles={adminProfiles} sessions={sessions} page={allowedRoute.page} adminSection={allowedRoute.page === 'admin' ? allowedRoute.section : undefined} loading={inventoryLoading} error={localizeText(inventoryError)} allowLocalUsers={config.authMethods.includes('local')} onRefresh={() => void loadInventory()} onCreate={() => setModal('create')} onRent={() => setModal('rent')} onOpen={id => navigate({ page: 'session', id })} onRelease={id => setConfirm({ id, kind: 'release' })} onKill={id => setConfirm({ id, kind: 'kill' })} onReleaseAll={releaseAllSessions} />}</main></div>
     {logoutOpen && <LogoutDialog onClose={() => setLogoutOpen(false)} onConfirm={logout} />}
     {modal === 'rent' && <RentDeviceModal devices={rentableDevices(hosts)} onClose={() => setModal(null)} onRented={session => { setModal(null); setToast(t('ui.b4976e1c20a1')); void loadInventory(); navigate({ page: 'session', id: session.id }); }} />}
     {modal === 'create' && <CreateSessionModal canConfigureContainer={can(user, 'sessions.configure')} hosts={hosts} profiles={profiles} allowedProfileIds={user.role === 'admin' ? null : myLimits?.allowedProfileIds ?? null} onClose={() => setModal(null)} onCreate={createSession} onQueued={() => { setModal(null); setToast(t('ui.a17fda82f223')); }} />}

@@ -19,7 +19,7 @@ import { allowedProfileIds, combineAllowlists, combineLimits, teamLimitFor } fro
 
 const MIGRATIONS = ['001_init', '002_gpu_mode', '003_default_profile_resources', '004_guest_resources', '005_host_settings',
   '006_adb_port_access', '008_user_adb_keys', '009_uploaded_adb_public_keys', '010_user_settings_audit', '011_node_management',
-  '012_session_lifecycle', '013_queue_notifications', '014_session_sharing', '018_teams', '021_profile_gpu_variants', '022_profile_gpu_memory', '026_session_startup_progress', '029_storage_limits', '038_profile_secrets_docker_options', '025_physical_devices', '023_user_profile_presets', '030_preset_storage', '033_launch_options', '040_emulator_image_registry', '036_profile_removal', '045_launch_permissions', '046_session_diagnostics', '048_user_removal', '049_access_roles'];
+  '012_session_lifecycle', '013_queue_notifications', '014_session_sharing', '018_teams', '021_profile_gpu_variants', '022_profile_gpu_memory', '026_session_startup_progress', '029_storage_limits', '038_profile_secrets_docker_options', '025_physical_devices', '023_user_profile_presets', '030_preset_storage', '033_launch_options', '040_emulator_image_registry', '036_profile_removal', '045_launch_permissions', '046_session_diagnostics', '048_user_removal', '049_access_roles', '057_rental_timeout_reason'];
 
 const ANNA = '11111111-1111-4111-8111-111111111111';
 const BORIS = '22222222-2222-4222-8222-222222222222';

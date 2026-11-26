@@ -9,7 +9,7 @@ import { newToken, tokenHash } from '../auth.js';
 import { parseSessionAdbKeyId } from '../user-adb-keys.js';
 import type { ServerContext } from '../server-context.js';
 import { revalidateRequestAuth } from '../server-context.js';
-import { ApiError, boundedString, inputParams, route, safeUploadName, sessionJson,
+import { ApiError, boundedString, inputParams, isUuid, route, safeUploadName, sessionJson,
          type Session } from '../http-common.js';
 import { withDeadlines } from '../session-lifecycle.js';
 import { parseRequestedGpuMode } from '../profile-launch.js';
@@ -30,7 +30,20 @@ export function registerSessionRoutes(app: Express, context: ServerContext): voi
     res.json({ sessions: rows.map(row => withDeadlines(sessionJson(row), policy)) });
   }));
   app.get('/api/sessions/:id', requireAuth, route(async (req, res) => {
-    const { session, access } = await accessibleSession(context, req.params.id!, current(res), 'view');
+    const id = req.params.id!;
+    const auth = current(res);
+    const result = await accessibleSession(context, id, auth, 'view').catch(async error => {
+      if (!(error instanceof ApiError) || error.status !== 404 || !isUuid(id)) throw error;
+      const { rows } = await pool.query(
+        `SELECT timeout_reason FROM rental_history WHERE session_id=$1 AND owner_user_id=$2
+         AND ended_at IS NOT NULL AND timeout_reason IS NOT NULL`, [id, auth.user.id],
+      );
+      if (!rows[0]) throw error;
+      res.status(404).json({ error: { code: error.code, message: error.message }, sessionEndReason: rows[0].timeout_reason });
+      return null;
+    });
+    if (!result) return;
+    const { session, access } = result;
     if (access === 'view' || access === 'control') { res.json({ session: { ...session, adminAccess: null, access } }); return; }
     // The owner is told when an administrator has looked at the session.
     let adminAccess: { username: string; at: string } | null = null;

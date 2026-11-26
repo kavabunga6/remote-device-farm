@@ -409,8 +409,10 @@ export interface DeviceInfo {
   profile: { id: string; name: string; image: string; androidVersion: string; cpu: number; memoryMb: number; guestMemoryMb: number | null; guestCores: number | null; diskGb: number; sdCardMb?: number | null; gpuMode: string; emulatorParams: string } | null;
 }
 
+export type SessionEndReason = 'idle' | 'max_lifetime' | 'lease_expired';
+
 export class ApiError extends Error {
-  constructor(message: string, public status: number, public rawMessage?: string) {
+  constructor(message: string, public status: number, public rawMessage?: string, public sessionEndReason?: SessionEndReason) {
     super(message);
     this.name = 'ApiError';
   }
@@ -455,7 +457,10 @@ async function request<T>(path: string, input: RequestOptions = {}): Promise<T> 
             : typeof body === 'string' && body.trim() && !body.trim().startsWith('<')
               ? body.trim()
               : t('ui.d68415ca6873', { p0: response.status }));
-        throw new ApiError(KNOWN_ERRORS[code] || errorMessage(response.status, message), response.status, message);
+        const reason = response.status === 404 && typeof body === 'object' && body !== null && 'sessionEndReason' in body
+          ? body.sessionEndReason : undefined;
+        const sessionEndReason = reason === 'idle' || reason === 'max_lifetime' || reason === 'lease_expired' ? reason : undefined;
+        throw new ApiError(KNOWN_ERRORS[code] || errorMessage(response.status, message), response.status, message, sessionEndReason);
       }
 
       return body as T;

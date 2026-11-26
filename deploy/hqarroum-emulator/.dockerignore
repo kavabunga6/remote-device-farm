@@ -1,6 +1,8 @@
 *
 !Dockerfile
 !launcher.py
+!prepare_image.py
+!ramdisk.py
 !policy-api31.json
 !policy-api31.cil.gz
 !adb-guard.sh

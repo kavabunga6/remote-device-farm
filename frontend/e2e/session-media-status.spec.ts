@@ -10,7 +10,13 @@ test.afterEach(async ({ page }) => {
   await page.unrouteAll({ behavior: 'wait' });
 });
 
-async function mediaFixture(page: Page, options: { audioEnabled?: boolean; suspended?: boolean; access?: 'view' | 'control' } = {}) {
+async function mediaFixture(page: Page, options: {
+  audioEnabled?: boolean;
+  suspended?: boolean;
+  access?: 'view' | 'control';
+  deviceType?: 'tv';
+  profileResolution?: string;
+} = {}) {
   let audioEnabled = options.audioEnabled ?? true;
   let session: Record<string, unknown> | undefined;
   const toggles: boolean[] = [];
@@ -77,11 +83,20 @@ async function mediaFixture(page: Page, options: { audioEnabled?: boolean; suspe
       }
     };
   }, { suspended: options.suspended ?? false });
+  if (options.profileResolution) {
+    await page.route('**/api/profiles', async route => {
+      const response = await route.fetch();
+      const data = await response.json();
+      await route.fulfill({ response, json: { profiles: data.profiles.map((profile: { id: string }) =>
+        profile.id === 'a11-gpu' ? { ...profile, resolution: options.profileResolution } : profile) } });
+    });
+  }
   await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: [] } }));
   await page.route('**/api/sessions/' + sessionId, async route => {
     const response = await route.fetch();
     const data = await response.json();
-    session = { ...data.session, ...(options.access ? { access: options.access } : {}), audioEnabled, idleExpiresAt: new Date(Date.now() + 3600000).toISOString() };
+    session = { ...data.session, ...(options.access ? { access: options.access } : {}), ...(options.deviceType ? { deviceType: options.deviceType } : {}),
+      audioEnabled, idleExpiresAt: new Date(Date.now() + 3600000).toISOString() };
     await route.fulfill({ response, json: { session } });
   });
   await page.route('**/api/sessions/' + sessionId + '/audio', async route => {
@@ -124,7 +139,7 @@ async function sendImage(page: Page, mime: 'image/jpeg' | 'image/png', width = 7
   }, { type: mime, width, height, preview });
 }
 
-test('device controls stay in one left column as phone, tablet, and TV frames change', async ({ page }, info) => {
+test('a portrait phone profile keeps one left column while the frame rotates', async ({ page }, info) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   const { rotations } = await mediaFixture(page, { audioEnabled: false });
   await openMedia(page);
@@ -142,7 +157,7 @@ test('device controls stay in one left column as phone, tablet, and TV frames ch
   await checkFrame(720, 1280);
   await rotate.click();
   await expect.poll(() => rotations).toEqual(['landscape']);
-  await checkFrame(2560, 1600);
+  await checkFrame(1280, 720);
   await page.getByRole('button', { name: 'Свернуть боковое меню' }).click();
   await page.getByRole('group', { name: 'Компоновка сессии' }).getByRole('button', { name: 'Экран', exact: true }).click();
   await checkFrame(1920, 1080);
@@ -153,9 +168,9 @@ test('device controls stay in one left column as phone, tablet, and TV frames ch
   for (const [index, [x, y, width, height, iconWidth, iconHeight]] of buttons.entries()) {
     expect(x).toBe(buttons[0]![0]);
     if (index) expect(y).toBeGreaterThan(buttons[index - 1]![1]);
-    expect([width, height, iconWidth, iconHeight]).toEqual([40, 40, 20, 20]);
+    expect([width, height, iconWidth, iconHeight]).toEqual([46, 46, 23, 23]);
   }
-  await page.screenshot({ path: info.outputPath('landscape-tv.png') });
+  await page.screenshot({ path: info.outputPath('landscape-phone.png') });
   await page.setViewportSize({ width: 780, height: 420 });
   await checkFrame(1920, 1080);
   const last = controls.getByRole('button').last();
@@ -226,7 +241,15 @@ test('audio distinguishes silence from a signal and the transmission toggle is i
   await sendMedia(page, pcmFrame);
   await expect(audio).toHaveText('Звук: приём');
   await expect(headphones).toHaveAttribute('data-state', 'receiving');
-  await expect(headphones).toHaveCSS('color', 'rgb(138, 241, 200)');
+  const accentColor = await page.evaluate(() => {
+    const sample = document.createElement('span');
+    sample.style.color = 'var(--accent-strong)';
+    document.body.append(sample);
+    const color = getComputedStyle(sample).color;
+    sample.remove();
+    return color;
+  });
+  await expect(headphones).toHaveCSS('color', accentColor);
   await expect(audio).toHaveAttribute('title', /Поток может содержать тишину/);
   expect(await page.evaluate(() => (window as any).__audioPlayed)).toBe(2);
   await page.clock.runFor(800);
@@ -372,13 +395,15 @@ test('TV frames ignore a portrait console width and fit the card to the wide scr
     localStorage.setItem('rdf-session-default-view:u1', 'split');
     localStorage.setItem('rdf-console-width', '1500');
   });
-  await mediaFixture(page, { audioEnabled: false }); await openMedia(page);
+  await mediaFixture(page, { audioEnabled: false, deviceType: 'tv', profileResolution: '1920x1080' }); await openMedia(page);
   await page.getByRole('button', { name: 'Свернуть боковое меню' }).click();
   await sendImage(page, 'image/png', 1920, 1080);
   await expect(page.locator('.workspace-grid')).toHaveAttribute('data-landscape', 'true');
+  await expect(page.locator('.viewer-panel')).toHaveAttribute('data-controls-edge', 'top');
   const measure = () => page.locator('.workspace-grid').evaluate(element => {
     const rect = element.getBoundingClientRect(), viewer = element.querySelector('.viewer-panel')!.getBoundingClientRect(), frame = element.querySelector('.device-screen')!.getBoundingClientRect(), tools = element.querySelector('.terminal-panel')!.getBoundingClientRect();
-    return { viewerShare: viewer.width / rect.width, padding: viewer.height - frame.height, ratio: frame.width / frame.height, tools: tools.width, frameWidth: frame.width };
+    const toolbar = element.querySelector('.device-controls')!.getBoundingClientRect();
+    return { viewerShare: viewer.width / rect.width, padding: viewer.height - toolbar.height - frame.height, ratio: frame.width / frame.height, tools: tools.width, frameWidth: frame.width };
   });
   await expect.poll(async () => (await measure()).viewerShare).toBeGreaterThan(.6);
   await expect.poll(async () => (await measure()).padding).toBeLessThanOrEqual(28);
@@ -433,15 +458,15 @@ for (const theme of ['light', 'dark'] as const) {
     await page.route('**/api/me/preferences', route => route.fulfill({ json: { preferences: {
       theme, fontFamily: 'system', fontScale: 1.25, defaultAdbKeyId: null,
     } } }));
-    await mediaFixture(page, { audioEnabled: false }); await openMedia(page);
+    await mediaFixture(page, { audioEnabled: false, deviceType: 'tv', profileResolution: '1920x1080' }); await openMedia(page);
     await sendImage(page, 'image/png', 1920, 1080, true);
     const geometry = () => page.locator('.workspace-grid').evaluate(element => {
       const viewer = element.querySelector('.viewer-panel')!.getBoundingClientRect();
       const frame = element.querySelector('.device-screen')!.getBoundingClientRect();
       const stage = element.querySelector('.viewer-stage')!.getBoundingClientRect();
       const rail = element.querySelector('.device-controls')!.getBoundingClientRect();
-      return { width: frame.width, ratio: frame.width / frame.height, padding: viewer.height - frame.height,
-        left: Math.abs(rail.right - stage.left), top: Math.abs(rail.top - stage.top),
+      return { width: frame.width, ratio: frame.width / frame.height, padding: viewer.height - rail.height - frame.height,
+        left: Math.abs(rail.left - stage.left), top: Math.abs(rail.bottom - stage.top),
         bottom: viewer.bottom, overflow: document.documentElement.scrollWidth - innerWidth };
     });
     for (const viewport of [{ width: 2188, height: 1300 }, { width: 1366, height: 768 }, { width: 780, height: 600 }, { width: 2188, height: 1300 }]) {

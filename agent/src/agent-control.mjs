@@ -1,6 +1,7 @@
 import { agentIdentity, agentBrokerUrl } from './connection-config.mjs';
 import { diagnostic } from './diagnostics.mjs';
 import { PacketCapture } from './packet-capture.mjs';
+import { NetworkProxyContainer } from './network-proxy-container.mjs';
 import { inspectNetwork } from './network-inspector.mjs';
 import { ImageCache } from './image-cache.mjs';
 import { agentMessage } from './messages.mjs';
@@ -37,6 +38,7 @@ export function loadControlConfig(env = process.env) {
     agentId, slots, ioContainerOverride,
     selfContainerId: os.hostname(),
     packetCaptureImage: env.RDF_PACKET_CAPTURE_IMAGE || undefined,
+    networkProxyImage: env.RDF_NETWORK_PROXY_IMAGE || undefined,
     dockerSocket: env.DOCKER_SOCKET || '/var/run/docker.sock',
     imageBuildStateDir: env.AGENT_IMAGE_BUILD_STATE_DIR || '/var/lib/rdf-image-builds',
     imageBuildDiskPath: env.AGENT_IMAGE_BUILD_DISK_PATH || '/',
@@ -52,6 +54,9 @@ export class AgentControl {
     this.config = config;
     this.docker = docker;
     this.packets = new PacketCapture(docker, {agentId:config.agentId,selfContainerId:config.selfContainerId,image:config.packetCaptureImage});
+    this.networkProxy = new NetworkProxyContainer(docker, {
+      agentId: config.agentId, selfContainerId: config.selfContainerId, image: config.networkProxyImage,
+    });
     this.reservations = new SlotReservations();
     this.cache = new ImageCache(docker, config.imageBuildStateDir);
     this.cacheCleanup = false;
@@ -446,7 +451,7 @@ export class AgentControl {
   async networkInspector(sessionId, params) {
     const containers = await this.sessionContainers(sessionId);
     if (containers.length !== 1 || containers[0].State !== 'running') throw new Error(agentMessage('agent.a14b4d584e08'));
-    return inspectNetwork(this.docker, containers[0].Id, sessionId, this.config.agentId, params, this.packets);
+    return inspectNetwork(this.docker, containers[0].Id, sessionId, this.config.agentId, params, this.packets, this.networkProxy);
   }
 
   async cameraImage(sessionId, params) {

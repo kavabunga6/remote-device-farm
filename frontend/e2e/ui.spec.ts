@@ -115,7 +115,7 @@ test('dark theme keeps text readable', async ({ page }) => {
   }
 });
 
-test('the admin load chart is readable in dark theme', async ({ page }) => {
+test('the usage history chart is readable in dark theme', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/#/admin/ops');
   const section = page.locator('#adm-ops');
@@ -131,7 +131,7 @@ test('admin sidebar links retain native keyboard navigation and addressable rout
   const nav = page.getByRole('navigation', { name: 'Администрирование', exact: true });
   const sections = [
     ['sessions', 'Все сессии'], ['nodes', 'Узлы'], ['profiles', 'Профили устройств'],
-    ['images', 'Образы'], ['roles', 'Роли и права'], ['users', 'Пользователи'], ['ops', 'Нагрузка'],
+    ['images', 'Образы'], ['roles', 'Роли и права'], ['users', 'Пользователи'], ['ops', 'История использования'],
     ['settings', 'Настройки сервера'], ['journal', 'Журнал'],
   ] as const;
   await expect(nav.getByRole('link')).toHaveCount(sections.length);
@@ -144,11 +144,13 @@ test('admin sidebar links retain native keyboard navigation and addressable rout
   await journal.press('Enter');
   await expect(page).toHaveURL(/#\/admin\/journal$/);
   await expect(journal).toHaveAttribute('aria-current', 'page');
+  await expect(page).toHaveTitle('Журнал · Device Farm');
   await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
   await expect(page.getByRole('heading', { name: 'Журнал', level: 1, exact: true })).toBeVisible();
   await expect(page.getByRole('tablist', { name: 'Разделы администрирования' })).toHaveCount(0);
   await page.goBack();
   await expect(nav.getByRole('link', { name: /^Все сессии(?:\s|$)/ })).toHaveAttribute('aria-current', 'page');
+  await expect(page).toHaveTitle('Все сессии · Device Farm');
   await page.goForward();
   await expect(journal).toHaveAttribute('aria-current', 'page');
   await page.goto('/#/admin/nodes?host=h1');
@@ -162,6 +164,7 @@ test('regular users cannot see admin navigation or open admin sections through a
   await page.route('**/api/me', route => route.fulfill({ json: { user: { id: 'u1', username: 'qa', displayName: 'QA', role: 'user' } } }));
   await page.goto('/#/admin/profiles');
   await expect(page.getByRole('heading', { name: 'Сессии', level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle('Сессии · Device Farm');
   await expect(page.getByRole('navigation', { name: 'Администрирование', exact: true })).toHaveCount(0);
   await expect(page.locator('.sidebar a[href^="#/admin/"]')).toHaveCount(0);
   await expect(page.locator('.admin-workspace')).toHaveCount(0);

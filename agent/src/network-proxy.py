@@ -20,7 +20,20 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from network_capture import BodyPreview, Capture, MAX_CONNECTIONS
 
 ROOT = "/rdf-network"
-RUNTIME_VERSION = hashlib.sha256(b"".join(open(os.path.join(ROOT, name), "rb").read() for name in ("proxy.py", "network_capture.py", "console.sh"))).hexdigest() if __name__ == "__main__" else "test"
+RUNTIME_VERSION = "test"
+
+
+def runtime_version():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    filenames = [__file__, os.path.join(script_dir, "network_capture.py")]
+    if script_dir == ROOT:
+        filenames.append(os.path.join(ROOT, "console.sh"))
+    digest = hashlib.sha256()
+    for filename in filenames:
+        with open(filename, "rb") as file:
+            digest.update(file.read())
+    return digest.hexdigest()
+
 PROXY_PORT = 18888
 CONTROL_PORT = 18889
 TOKEN_FILE = ROOT + "/control.token"
@@ -327,6 +340,7 @@ class Control(http.server.BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "serve":
+        RUNTIME_VERSION = runtime_version()
         proxy = Threaded(("127.0.0.1", PROXY_PORT), Handler)
         admin = http.server.HTTPServer(("127.0.0.1", CONTROL_PORT), Control)
         with tempfile.NamedTemporaryFile(mode="w", prefix=".control-", dir=ROOT, delete=False) as file:

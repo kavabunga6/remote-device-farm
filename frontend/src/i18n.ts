@@ -44,7 +44,6 @@ function applyDocumentLanguage() {
   if (typeof document === 'undefined') return;
   document.documentElement.lang = language;
   document.documentElement.dir = getDirection();
-  document.title = t('app.title');
 }
 async function loadLanguage(value: Language): Promise<Messages> {
   const cached = messages.get(value);

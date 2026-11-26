@@ -6,11 +6,10 @@ import { once } from 'node:events';
 import test from 'node:test';
 import express from 'express';
 import { PGlite } from '@electric-sql/pglite';
-import type { Pool } from 'pg';
 import type { Config } from '../src/config.js';
 import { loadConfig } from '../src/config.js';
 import type { AuthService } from '../src/auth.js';
-import type { AgentHub } from '../src/agent.js';
+import { AgentHub } from '../src/agent.js';
 import { ApiError } from '../src/http-common.js';
 import { initializeSessionLease, parseLeaseTtlSeconds, renewSessionLease } from '../src/session-lease.js';
 import { createServerContext } from '../src/server-context.js';
@@ -19,15 +18,21 @@ import { ActivityTracker, findExpiredSessions, releaseExpired, sessionDeadlines 
 
 const MIGRATIONS = ['001_init', '002_gpu_mode', '003_default_profile_resources', '004_guest_resources', '005_host_settings',
   '006_adb_port_access', '008_user_adb_keys', '009_uploaded_adb_public_keys', '010_user_settings_audit', '011_node_management',
-  '012_session_lifecycle', '013_queue_notifications', '018_teams', '021_profile_gpu_variants', '022_profile_gpu_memory', '026_session_startup_progress', '029_storage_limits', '038_profile_secrets_docker_options', '025_physical_devices', '031_client_leases', '023_user_profile_presets', '030_preset_storage', '033_launch_options', '040_emulator_image_registry', '046_session_diagnostics', '048_user_removal', '049_access_roles', '052_session_device_metadata', '053_device_provider_status'];
+  '012_session_lifecycle', '013_queue_notifications', '014_session_sharing', '018_teams', '021_profile_gpu_variants', '022_profile_gpu_memory', '026_session_startup_progress', '029_storage_limits', '038_profile_secrets_docker_options', '025_physical_devices', '031_client_leases', '023_user_profile_presets', '030_preset_storage', '033_launch_options', '040_emulator_image_registry', '046_session_diagnostics', '048_user_removal', '049_access_roles', '052_session_device_metadata', '053_device_provider_status'];
+const TIMEOUT_REASON_MIGRATION = '057_rental_timeout_reason';
 
-async function database(): Promise<PGlite> {
+async function migrate(db: PGlite, file: string): Promise<void> {
+  await db.exec(await readFile(new URL(`../migrations/${file}.sql`, import.meta.url), 'utf8'));
+}
+
+async function database(migrations = [...MIGRATIONS, TIMEOUT_REASON_MIGRATION]): Promise<PGlite> {
   const db = new PGlite();
-  for (const file of MIGRATIONS) await db.exec(await readFile(new URL(`../migrations/${file}.sql`, import.meta.url), 'utf8'));
+  for (const file of migrations) await migrate(db, file);
   return db;
 }
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
+const MEMBER = '22222222-2222-4222-8222-222222222222';
 const ADMIN = '44444444-4444-4444-8444-444444444444';
 
 test('deadlines follow the policy and disappear when it is off', () => {
@@ -50,7 +55,7 @@ test('activity writes are throttled but a keep-alive always lands', async () => 
   assert.deepEqual(writes, ['a', 'b', 'a', 'a']);
 });
 
-test('the reaper picks idle and over-age sessions and spares those with an open ADB connection', async () => {
+test('the reaper respects ADB activity and rechecks idle and lifetime deadlines before stopping', async () => {
   const db = await database();
   try {
     await db.query("INSERT INTO users(id,provider,subject,username,display_name) VALUES($1,'local','owner','owner','Owner')", [OWNER]);
@@ -61,10 +66,19 @@ test('the reaper picks idle and over-age sessions and spares those with an open 
       "($3,$5,'host-1','android-30','running',now() - interval '90 minutes')," +
       "($4,$5,'host-1','android-30','stopping',now() - interval '90 minutes')", [...ids, OWNER]);
     await db.query("UPDATE sessions SET created_at=now() - interval '30 hours' WHERE id=$1", [ids[1]]);
-    const pool = { query: db.query.bind(db) } as unknown as Pool;
-    const found = await findExpiredSessions(pool, { idleMinutes: 60, maxHours: 24 }, id => id === ids[2]);
+    const pool = testPool(db);
+    const policy = { idleMinutes: 60, maxHours: 24 };
+    const found = await findExpiredSessions(pool, policy, id => id === ids[2]);
     assert.deepEqual(found.map(item => [item.id, item.reason]).sort(), [[ids[0], 'idle'], [ids[1], 'max_lifetime']].sort());
     assert.deepEqual(await findExpiredSessions(pool, { idleMinutes: 0, maxHours: 0 }, () => false), []);
+
+    await new ActivityTracker(pool).force(ids[0]);
+    const shouldStayRunning = { command: async () => { assert.fail('no stop is due'); } } as unknown as AgentHub;
+    assert.equal(await releaseExpired(pool, shouldStayRunning, found.find(item => item.id === ids[0])!, policy), false);
+    assert.equal(await releaseExpired(pool, shouldStayRunning, found.find(item => item.id === ids[1])!, { ...policy, maxHours: 48 }), false);
+    const { rows } = await db.query(`SELECT s.state,r.timeout_reason FROM sessions s JOIN rental_history r ON r.session_id=s.id
+      WHERE s.id IN ($1,$2) ORDER BY s.id`, ids.slice(0, 2));
+    assert.deepEqual(rows, [{ state: 'running', timeout_reason: null }, { state: 'running', timeout_reason: null }]);
   } finally { await db.close(); }
 });
 
@@ -177,11 +191,8 @@ test('leases reclaim abandoned startup and running sessions, survive renewal rac
       await db.query("INSERT INTO sessions(id,owner_user_id,host_id,profile_id,state) VALUES($1,$2,'host-1','android-30',$3)", [id, OWNER, index === 0 ? 'starting' : 'running']);
       await db.query("INSERT INTO host_slots(host_id,slot_index,session_id) VALUES('host-1',$1,$2)", [index, id]);
     }
-    const query = async (sql: string, values?: unknown[]) => {
-      const result = await db.query(sql, values);
-      return { ...result, rowCount: result.affectedRows ?? result.rows.length };
-    };
-    const pool = { query } as unknown as Pool;
+    const pool = testPool(db);
+    const policy = { idleMinutes: 0, maxHours: 0 };
     await initializeSessionLease(pool, starting, 120);
     await initializeSessionLease(pool, running, 120);
     await initializeSessionLease(pool, ordinary, undefined);
@@ -190,7 +201,7 @@ test('leases reclaim abandoned startup and running sessions, survive renewal rac
     const renewed = await db.query<{ remaining: number }>("SELECT extract(epoch FROM lease_expires_at-now()) AS remaining FROM sessions WHERE id=$1", [running]);
     assert.ok(Number(renewed.rows[0]?.remaining) > 100);
     await db.query("UPDATE sessions SET lease_expires_at=now()-interval '1 second' WHERE lease_ttl_seconds IS NOT NULL");
-    const found = await findExpiredSessions(pool, { idleMinutes: 0, maxHours: 0 }, () => true);
+    const found = await findExpiredSessions(pool, policy, () => true);
     assert.deepEqual(found.map(item => [item.id, item.reason]).sort(), [[starting, 'lease_expired'], [running, 'lease_expired']]);
     await assert.rejects(() => renewSessionLease(pool, starting), (e: unknown) => e instanceof ApiError && e.code === 'session_lease_expired');
 
@@ -203,19 +214,134 @@ test('leases reclaim abandoned startup and running sessions, survive renewal rac
       },
     } as unknown as AgentHub;
     await db.query("UPDATE sessions SET lease_expires_at=now()+interval '120 seconds' WHERE id=$1", [running]);
-    assert.equal(await releaseExpired(pool, hub, found.find(item => item.id === running)!), false);
+    assert.equal(await releaseExpired(pool, hub, found.find(item => item.id === running)!, policy), false);
     assert.deepEqual(commands, []);
-    assert.equal(await releaseExpired(pool, hub, found.find(item => item.id === starting)!), true);
+    assert.equal(await releaseExpired(pool, hub, found.find(item => item.id === starting)!, policy), true);
     assert.deepEqual(commands, ['kill']);
     assert.equal((await db.query('SELECT id FROM sessions WHERE id=$1', [starting])).rows.length, 0);
     assert.equal((await db.query('SELECT session_id FROM host_slots WHERE slot_index=0')).rows[0]?.session_id, null);
 
     await db.query("UPDATE sessions SET lease_expires_at=now()-interval '1 second' WHERE id=$1", [running]);
     const offlineHub = { command: async () => { throw new Error('agent offline'); }, releaseSession: async () => { assert.fail('unconfirmed device must remain reserved'); } } as unknown as AgentHub;
-    assert.equal(await releaseExpired(pool, offlineHub, found.find(item => item.id === running)!), false);
+    assert.equal(await releaseExpired(pool, offlineHub, found.find(item => item.id === running)!, policy), false);
     assert.equal((await db.query('SELECT state FROM sessions WHERE id=$1', [running])).rows[0]?.state, 'stopping');
     assert.equal((await db.query('SELECT session_id FROM host_slots WHERE slot_index=1')).rows[0]?.session_id, running);
     await assert.rejects(() => renewSessionLease(pool, running));
-    assert.deepEqual(await findExpiredSessions(pool, { idleMinutes: 0, maxHours: 0 }, () => false), []);
+    assert.deepEqual(await findExpiredSessions(pool, policy, () => false), []);
   } finally { await db.close(); }
+});
+
+test('migration 057 backfills only ended rentals with a recognized session timeout audit', async () => {
+  const db = await database(MIGRATIONS);
+  try {
+    await db.query("INSERT INTO users(id,provider,subject,username,display_name) VALUES($1,'local','owner','owner','Owner')", [OWNER]);
+    await db.query("INSERT INTO hosts(id,name,slots) VALUES('host-1','Host',1)");
+    const cases = [
+      { action: 'session.released_idle', reason: 'idle' },
+      { action: 'session.released_expired', reason: 'max_lifetime' },
+      { action: 'session.released_lease', reason: 'lease_expired' },
+      { reason: null },
+      { action: 'session.released_unknown', reason: null },
+      { action: 'session.released_idle', targetType: 'host', reason: null },
+      { action: 'session.released_idle', active: true, reason: null },
+    ];
+    const expected = [];
+    for (const [index, { action, targetType, active, reason }] of cases.entries()) {
+      const id = `d0000000-0000-4000-8000-00000000000${index + 1}`;
+      await db.query("INSERT INTO sessions(id,owner_user_id,host_id,profile_id,state) VALUES($1,$2,'host-1','android-30','running')", [id, OWNER]);
+      if (!active) await db.query('DELETE FROM sessions WHERE id=$1', [id]);
+      if (action) await db.query('INSERT INTO audit_events(action,target_type,target_id) VALUES($1,$2,$3)', [action, targetType ?? 'session', id]);
+      expected.push({ session_id: id, timeout_reason: reason });
+    }
+
+    await migrate(db, TIMEOUT_REASON_MIGRATION);
+    const { rows } = await db.query('SELECT session_id,timeout_reason FROM rental_history WHERE owner_user_id=$1 ORDER BY session_id', [OWNER]);
+    assert.deepEqual(rows, expected);
+  } finally { await db.close(); }
+});
+
+test('only the owner receives a timeout reason after the stopped session is removed', async () => {
+  const db = await database();
+  const pool = testPool(db);
+  const hub = new AgentHub(pool);
+  let online = true;
+  hub.command = async () => {
+    if (!online) throw new Error('agent offline');
+    return {};
+  };
+  let actor = OWNER;
+  let server: ReturnType<typeof createServer> | null = null;
+  try {
+    await db.query(`INSERT INTO users(id,provider,subject,username,display_name,role) VALUES
+      ($1,'local','owner','owner','Owner','user'),($2,'local','member','member','Member','user'),
+      ($3,'local','admin','admin','Admin','admin')`, [OWNER, MEMBER, ADMIN]);
+    await db.query("INSERT INTO hosts(id,name,slots) VALUES('host-1','Host',4)");
+    const [idle, lifetime, lease, manual] = [1, 2, 3, 4].map(n => `c0000000-0000-4000-8000-00000000000${n}`);
+    for (const [slot, id] of [idle, lifetime, lease, manual].entries()) {
+      await db.query("INSERT INTO sessions(id,owner_user_id,host_id,profile_id,state) VALUES($1,$2,'host-1','android-30','running')", [id, OWNER]);
+      await db.query("INSERT INTO host_slots(host_id,slot_index,session_id) VALUES('host-1',$1,$2)", [slot, id]);
+    }
+    await db.query("UPDATE sessions SET last_activity_at=now()-interval '90 minutes' WHERE id=$1", [idle]);
+    await db.query("UPDATE sessions SET created_at=now()-interval '30 hours' WHERE id=$1", [lifetime]);
+    await initializeSessionLease(pool, lease, 120);
+    await db.query("UPDATE sessions SET lease_expires_at=now()-interval '1 second' WHERE id=$1", [lease]);
+
+    const auth = { authenticate: async () => ({ user: {
+      id: actor, role: actor === ADMIN ? 'admin' : 'user', username: 'reader', displayName: 'Reader', provider: 'local',
+    }, via: 'cookie' }) } as unknown as AuthService;
+    const policy = { idleMinutes: 60, maxHours: 24 };
+    const config = { idleTimeoutMinutes: policy.idleMinutes, maxSessionHours: policy.maxHours } as Config;
+    const app = express();
+    registerSessionRoutes(app, createServerContext(pool, config, auth, undefined, hub));
+    app.use((error: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+      if (error instanceof ApiError) res.status(error.status).json({ error: { code: error.code, message: error.message } });
+      else next(error);
+    });
+    server = createServer(app);
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const read = async (id: string) => {
+      const result = await fetch(`http://127.0.0.1:${address.port}/api/sessions/${id}`);
+      return { status: result.status, body: await result.json() };
+    };
+    const missing = await read('c0000000-0000-4000-8000-000000000009');
+    assert.equal(missing.status, 404);
+    assert.equal(missing.body.error.code, 'not_found');
+    assert.ok(!('sessionEndReason' in missing.body));
+    const expired = await findExpiredSessions(pool, policy, () => false);
+    assert.equal(expired.length, 3);
+    const timeoutCases = [[idle, 'idle'], [lifetime, 'max_lifetime'], [lease, 'lease_expired']] as const;
+    for (const [id, reason] of timeoutCases) {
+      const candidate = expired.find(item => item.id === id);
+      assert.equal(candidate?.reason, reason);
+      assert.ok(candidate);
+      online = id !== lease;
+      assert.equal(await releaseExpired(pool, hub, candidate, policy), online);
+      if (!online) {
+        const pending = await read(id);
+        assert.equal(pending.status, 200);
+        assert.equal(pending.body.session.state, 'stopping');
+        assert.ok(!('sessionEndReason' in pending.body) && !('sessionEndReason' in pending.body.session));
+        assert.equal((await db.query("SELECT session_id FROM host_slots WHERE host_id='host-1' AND slot_index=2")).rows[0]?.session_id, id);
+        // Reconciliation confirms removal later, independently of the reaper request.
+        await hub.releaseSession(id);
+      }
+    }
+    await hub.releaseSession(manual);
+    await db.query('UPDATE notifications SET read_at=now() WHERE user_id=$1', [OWNER]);
+    for (const [id, reason] of timeoutCases) {
+      assert.deepEqual(await read(id), { ...missing, body: { ...missing.body, sessionEndReason: reason } });
+    }
+    assert.deepEqual(await read(manual), missing);
+    for (const reader of [MEMBER, ADMIN]) {
+      actor = reader;
+      for (const [id] of timeoutCases) assert.deepEqual(await read(id), missing);
+    }
+  } finally {
+    if (server) await new Promise<void>(resolve => server!.close(() => resolve()));
+    await hub.dispose();
+    await pool.end();
+  }
 });

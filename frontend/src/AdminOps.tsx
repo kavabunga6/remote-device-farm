@@ -205,10 +205,7 @@ export function AdminOps() {
   const hasSamples = active?.series.some(item => item.points.length);
   const total = data?.sessionsPerDay.reduce((sum, day) => sum + day.count, 0) ?? 0;
 
-  return <section id="adm-ops" className="admin-ops" aria-labelledby="admin-ops-heading">
-    <div className="section-heading">
-      <div><h2 id="admin-ops-heading">{t('ui.9641cd43bf2d')}</h2><p>{t('ui.fabbaaa3283b')}</p></div>
-    </div>
+  return <div id="adm-ops" className="admin-ops">
     {error && <div className="banner-error" role="alert"><Icon name="alert" size={18} /><span>{localizeText(error)}</span><button type="button" onClick={() => void load()}>{t('ui.5189135a6110')}</button></div>}
     {!data && !error && <div className="loading-box">{t('ui.162340de56f8')}</div>}
     {data && <>
@@ -221,7 +218,7 @@ export function AdminOps() {
       <div className="ops-panels">
         <section className="ops-panel" aria-labelledby="ops-slot-heading">
           <div className="ops-panel-head">
-            <h3 id="ops-slot-heading">{t('ui.80384178a7df')}</h3>
+            <h2 id="ops-slot-heading">{t('ui.80384178a7df')}</h2>
             <div className="ops-switch" role="group" aria-label={t('ui.e97ca72e2ca5')}>
               <button type="button" className={range === '24h' ? 'selected' : ''} aria-pressed={range === '24h'} onClick={() => setRange('24h')}>{t('ui.7941488fa3af')}</button>
               <button type="button" className={range === '14d' ? 'selected' : ''} aria-pressed={range === '14d'} onClick={() => setRange('14d')}>{t('ui.7e08a2ca839e')}</button>
@@ -234,14 +231,14 @@ export function AdminOps() {
         </section>
 
         <section className="ops-panel" aria-labelledby="ops-daily-heading">
-          <div className="ops-panel-head"><h3 id="ops-daily-heading">{t('ui.03073cee43b5')}</h3></div>
+          <div className="ops-panel-head"><h2 id="ops-daily-heading">{t('ui.03073cee43b5')}</h2></div>
           <p className="ops-chart-note">{t('ops.dailyNote')}</p>
           {total > 0 ? <DayBars key={data.generatedAt} days={data.sessionsPerDay} /> : <div className="ops-empty">{t('ui.df1559e1dabe')}</div>}
         </section>
       </div>
 
       {data.topUsers.length > 0 && <section className="ops-panel ops-activity" aria-labelledby="ops-activity-heading">
-        <div className="ops-panel-head"><h3 id="ops-activity-heading">{t('ui.8ee0e0006443')}</h3><span className="ops-note">{t('ops.activityNote')}</span></div>
+        <div className="ops-panel-head"><h2 id="ops-activity-heading">{t('ui.8ee0e0006443')}</h2><span className="ops-note">{t('ops.activityNote')}</span></div>
         <ol className="ops-users">
           {data.topUsers.map((user, index) => <li key={index}>
             <bdi>{user.username}</bdi>
@@ -251,5 +248,5 @@ export function AdminOps() {
         </ol>
       </section>}
     </>}
-  </section>;
+  </div>;
 }

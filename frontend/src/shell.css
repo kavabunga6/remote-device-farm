@@ -38,7 +38,7 @@
 
 /* ---------- Type ---------- */
 :root{--font-ui:'Onest Variable','Onest',Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;--font-mono:'JetBrains Mono Variable','JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
-  --accent:#0f6b58;--accent-strong:#0b5546;--accent-soft:#e3f3ec;--stage:#101816;--stage-line:#25322e;--stage-ink:#d7e3de}
+  --accent:#0f6b58;--accent-strong:#0b5546;--accent-soft:#e3f3ec}
 :root[data-effective-theme="dark"]{--accent:#34d399;--accent-strong:#5fdab2;--accent-soft:#0f2f27}
 :root,:root body{font-family:var(--font-ui)}
 button,input,select,textarea{font-family:inherit}
@@ -87,8 +87,8 @@ body{font-size:0.9062rem;line-height:1.5;letter-spacing:-.003em}
 .session-title-row p{font-size:0.8438rem;margin-top:6px}
 .adb-title-badge{font-size:0.8125rem}
 
-.viewer-panel{display:grid;grid-template-columns:64px minmax(0,1fr);position:relative;border-radius:16px}
-.viewer-stage{grid-column:2;grid-row:1;min-width:0}
+.viewer-panel{display:grid;position:relative;border-radius:16px}
+.viewer-stage{min-width:0}
 .upload-feedback,.capture-feedback,.audio-notice{grid-column:1/-1}
 
 /* Console */
@@ -223,8 +223,7 @@ html{font-size:clamp(16px, calc(16px + (100vw - 1440px) * 0.0058), 26px)}
 @media(max-width:650px){.session-top-actions{width:100%}.session-top-actions>*{flex:1 1 auto}}
 
 /* Five tool tabs scroll sideways inside their own row when the column is narrow. */
-.tool-tabs{overflow-x:auto;scrollbar-width:none;max-width:100%}
-.tool-tabs::-webkit-scrollbar{display:none}
+.tool-tabs{overflow-x:auto;max-width:100%}
 .tool-tabs button{flex:none;white-space:nowrap}
 
 /* On desktop, fit the device and console to the viewport space left below the actual session heading. */

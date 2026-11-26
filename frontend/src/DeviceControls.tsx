@@ -1,7 +1,8 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useId, useMemo, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { ActivityIndicator } from './ActivityIndicator';
 import { Icon, type IconName } from './icons';
-import { t } from './i18n';
+import { getDirection, t } from './i18n';
+import { bindHorizontalWheel } from './horizontal-wheel';
 import type { useSessionCapture } from './useSessionCapture';
 
 type ControlProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -9,6 +10,56 @@ type ControlProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string;
   pending?: boolean;
 };
+
+const positions = ['auto', 'top', 'right', 'bottom', 'left'] as const;
+type ControlsPosition = typeof positions[number];
+type ControlsEdge = Exclude<ControlsPosition, 'auto'>;
+
+function readPosition(key: string): ControlsPosition {
+  try {
+    const value = localStorage.getItem(key);
+    return positions.find(position => position === value) ?? 'auto';
+  } catch { return 'auto'; }
+}
+
+export function useDeviceControlsPosition(userId: string, scope: string, automatic: ControlsEdge) {
+  const key = `rdf-device-controls:${encodeURIComponent(userId)}:${encodeURIComponent(scope)}`;
+  const saved = useMemo(() => readPosition(key), [key]);
+  const [selection, setSelection] = useState<{ key: string; position: ControlsPosition }>();
+  const position = selection?.key === key ? selection.position : saved;
+
+  const select = (next: ControlsPosition) => {
+    setSelection({ key, position: next });
+    try {
+      if (next === 'auto') localStorage.removeItem(key);
+      else localStorage.setItem(key, next);
+    } catch { /* The current session can still use the selection. */ }
+  };
+
+  return { edge: position === 'auto' ? automatic : position, position, select };
+}
+
+function ControlsPositionMenu({ position, select }: Pick<ReturnType<typeof useDeviceControlsPosition>, 'position' | 'select'>) {
+  const id = useId();
+  const panel = useRef<HTMLDivElement>(null);
+  const label = t('device.controls.position');
+  return <>
+    <Control icon="sliders" label={label} aria-haspopup="dialog" popoverTarget={id} />
+    <div ref={panel} id={id} className="device-controls-position" popover="auto" role="dialog" dir={getDirection()}
+      aria-labelledby={id + '-title'} onToggle={event => {
+        if (event.newState === 'open') event.currentTarget.querySelector<HTMLElement>('[aria-pressed=true]')?.focus({ preventScroll: true });
+      }}>
+      <h2 id={id + '-title'}>{label}</h2>
+      {positions.map(option => <button key={option} type="button" aria-pressed={position === option} onClick={() => {
+        panel.current?.hidePopover();
+        select(option);
+      }}>
+        <span>{t(`device.controls.position.${option}`)}</span>
+        {position === option && <Icon name="check" size={16} />}
+      </button>)}
+    </div>
+  </>;
+}
 
 function Control({ icon, label, pending, children, title = label, ...props }: ControlProps) {
   return <button type="button" className="device-control" aria-label={label} title={title} {...props}>
@@ -34,6 +85,7 @@ type Props = {
   canControl: boolean;
   textInput: ReactNode;
   audio: ReactNode;
+  placement: ReturnType<typeof useDeviceControlsPosition>;
   workspaceMove?: ReactNode;
   rotate?: { landscape: boolean; busy: boolean; onClick: () => void };
   network?: { enabled: boolean; busy: boolean; onClick: () => void };
@@ -42,14 +94,19 @@ type Props = {
   captureReady: boolean;
 };
 
-export function DeviceControls({ onKey, canControl, textInput, audio, workspaceMove, rotate, network, upload, capture, captureReady }: Props) {
+export function DeviceControls({ onKey, canControl, textInput, audio, placement, workspaceMove, rotate, network, upload, capture, captureReady }: Props) {
   const seconds = capture.elapsedSeconds;
   const recordingTime = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
   const androidButton = ([icon, message, code]: (typeof androidNavigation | typeof androidHardware)[number]) =>
     <Control key={code} icon={icon} label={t(message)} onClick={() => onKey(code)} disabled={!canControl} />;
 
-  return <div className="device-controls" role="group" aria-label={t('device.controls')}>
-    {workspaceMove}
+  const horizontal = placement.edge === 'top' || placement.edge === 'bottom';
+  return <div className="device-controls" dir={getDirection()} role="group" aria-label={t('device.controls')}
+    ref={horizontal ? bindHorizontalWheel : undefined}>
+    <div className="control-group control-group-layout">
+      {workspaceMove}
+      <ControlsPositionMenu {...placement} />
+    </div>
     <div className="control-group">
       {androidNavigation.map(androidButton)}
       {rotate && <Control icon="rotate" label={t('ui.4bfe24c8f020')} aria-pressed={rotate.landscape} data-state={rotate.landscape ? 'enabled' : undefined}

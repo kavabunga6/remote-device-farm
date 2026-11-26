@@ -8,6 +8,11 @@
 
 ARG BASE_IMAGE=ubuntu:22.04
 
+# APT proxy configuration is shared by package-install steps and is not shipped.
+FROM scratch AS apt-proxy-files
+COPY proxy-env.sh /usr/local/lib/rdf-sdk/proxy-env.sh
+COPY --chmod=0755 apt-proxy.sh /usr/local/lib/rdf-sdk/apt-proxy.sh
+
 # ---- Stage 1: Google's command-line tools (Java stays in the build stages). build.sh runs `sdkmanager --list` here ----
 FROM ${BASE_IMAGE} AS tools
 ARG CMDLINE_TOOLS_URL=https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
@@ -45,26 +50,27 @@ RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=04
 # Google userdebug system images may disable ADB authentication. Enable it
 # in init's early ramdisk property override, before adbd starts. Keep tools
 # and patching after SDK downloads so this change reuses their cached layers.
-RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=0444 --mount=type=secret,id=rdf_no_proxy . /usr/local/lib/rdf-sdk/proxy-env.sh && rdf_apt_get update && rdf_apt_get install -y --no-install-recommends python3 lz4 \
+RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=0444 --mount=type=secret,id=rdf_no_proxy . /usr/local/lib/rdf-sdk/proxy-env.sh && rdf_apt_get update && rdf_apt_get install -y --no-install-recommends lz4 \
     && rm -rf /var/lib/apt/lists/*
 COPY secure-ramdisk.py ramdisk.py rdf-emulator.sh /tmp/
 RUN python3 /tmp/secure-ramdisk.py "$(find /opt/android/system-images -name ramdisk.img -print -quit)" \
     && bash /tmp/rdf-emulator.sh --check-image \
     && rm /tmp/secure-ramdisk.py /tmp/ramdisk.py /tmp/rdf-emulator.sh
 
-# ---- Stage 3: runtime. No Java or SDK manager; official emulator/platform-tools, system image and launcher ----
+# ---- Stage 3: runtime. Official emulator/platform-tools, system image and launcher ----
 FROM ${BASE_IMAGE}
 ARG SYSTEM_IMAGE
-COPY proxy-env.sh /usr/local/lib/rdf-sdk/proxy-env.sh
-COPY --chmod=0755 apt-proxy.sh /usr/local/lib/rdf-sdk/apt-proxy.sh
-ENV DEBIAN_FRONTEND=noninteractive
 # Libraries the headless emulator links against, socat for the two forwarded ports, Xorg for optional NVIDIA rendering.
-RUN --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=0444 --mount=type=secret,id=rdf_no_proxy . /usr/local/lib/rdf-sdk/proxy-env.sh && rdf_apt_get update \
+RUN --mount=type=bind,from=apt-proxy-files,source=/usr/local/lib/rdf-sdk,target=/usr/local/lib/rdf-sdk \
+    --mount=type=secret,id=rdf_proxy --mount=type=secret,id=rdf_proxy_ca,mode=0444 --mount=type=secret,id=rdf_no_proxy \
+    export DEBIAN_FRONTEND=noninteractive \
+    && . /usr/local/lib/rdf-sdk/proxy-env.sh && rdf_apt_get update \
     && rdf_apt_get install -y --no-install-recommends \
-       bash coreutils iproute2 socat tini ca-certificates python3 \
+       bash coreutils iproute2 socat tini ca-certificates \
        libpulse0 libnss3 libxcomposite1 libxcursor1 libxi6 libxtst6 libxdamage1 libxrandr2 libxkbfile1 libxkbcommon0 \
        libasound2 libbsd0 libdrm2 libgbm1 libgl1 libegl1 libgles2 libglx0 libvulkan1 libx11-xcb1 libxcb1 \
        xserver-xorg-core xauth mesa-utils \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 COPY rdf-emulator.sh /usr/local/bin/rdf-emulator
 COPY adb-auth-gate.sh /usr/local/bin/rdf-adb-auth-gate

@@ -9,6 +9,20 @@ const session = {
   createdAt: '2026-01-01T00:00:00Z', startupProgress: { stage: 'booting' },
 };
 const missingResponse = { status: 404, json: { error: { code: 'not_found', message: 'Session not found' } } };
+const releaseTitle = 'Сессия освобождена';
+const releaseReasons = {
+  idle: 'Устройство простаивало слишком долго.',
+  max_lifetime: 'Достигнут максимальный срок сессии.',
+  lease_expired: 'Клиент перестал продлевать аренду устройства.',
+} as const;
+
+function expiredResponse(sessionEndReason: keyof typeof releaseReasons) {
+  return { ...missingResponse, json: { ...missingResponse.json, sessionEndReason } };
+}
+
+function releaseNotice(id: string, reason: keyof typeof releaseReasons) {
+  return { id, sessionId, kind: 'session.released', title: releaseTitle, body: releaseReasons[reason], createdAt: new Date().toISOString() };
+}
 
 function deferred() {
   let resolve!: () => void;
@@ -42,6 +56,17 @@ async function observeTransitions(page: Page) {
   });
   await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: [] } }));
   await page.route('**/api/sessions', route => route.fulfill({ json: { sessions: [] } }));
+}
+
+async function expectReleasedSession(page: Page, reason: keyof typeof releaseReasons) {
+  await expect(page).toHaveURL(/#\/overview$/);
+  await expect(page.getByRole('heading', { name: 'Сессии', level: 1 })).toBeVisible();
+  const toast = page.locator('.notification-toast');
+  await expect(toast).toHaveCount(1);
+  await expect(toast).toHaveClass(/notification-info/);
+  await expect(toast.locator('.notification-title')).toHaveText(releaseTitle);
+  await expect(toast.locator('.notification-message')).toHaveText(`Сессия #${sessionId.slice(0, 8)}. ${releaseReasons[reason]}`);
+  expect(await page.evaluate(() => (window as TracedWindow).sessionTransitionTrace.missingToasts)).toEqual([]);
 }
 
 test('a delayed session response shows startup immediately without mounting an empty emulator', async ({ page }) => {
@@ -94,6 +119,53 @@ test('a missing session redirects to Sessions before displaying one toast', asyn
       { hash: '#/overview', homeVisible: true, sessionVisible: false },
     ]);
   } finally { reply.resolve(); }
+});
+
+for (const reason of Object.keys(releaseReasons) as Array<keyof typeof releaseReasons>) {
+  test(`an expired session link shows the ${reason} reason with no unread notices`, async ({ page }) => {
+    await observeTransitions(page);
+    await page.route('**/api/sessions/' + sessionId, route => route.fulfill(expiredResponse(reason)));
+    await page.goto('/#/session/' + sessionId);
+    await expectReleasedSession(page, reason);
+    await expect(page.locator('.session-layout')).toHaveCount(0);
+  });
+}
+
+test('a later release notification does not duplicate the timeout shown on redirect', async ({ page }) => {
+  await page.clock.install();
+  await observeTransitions(page);
+  const notice = releaseNotice('late-release', 'idle');
+  let unread = false;
+  await page.route('**/api/me/notifications', route => route.fulfill({ json: { notifications: unread ? [notice] : [] } }));
+  await page.route('**/api/me/notifications/read', route => route.fulfill({ json: { marked: 1 } }));
+  await page.route('**/api/sessions/' + sessionId, route => route.fulfill(expiredResponse('idle')));
+  await page.goto('/#/session/' + sessionId);
+  await expectReleasedSession(page, 'idle');
+  await page.locator('.notification-close').focus();
+  unread = true;
+  const markedRead = page.waitForResponse('**/api/me/notifications/read');
+  await page.clock.fastForward(10_000);
+  await markedRead;
+  await expectReleasedSession(page, 'idle');
+});
+
+test('a legacy missing response uses the matching release notification', async ({ page }) => {
+  await observeTransitions(page);
+  const notice = releaseNotice('release-before-cleanup', 'max_lifetime');
+  const firstPoll = deferred();
+  let unread = false;
+  await page.route('**/api/me/notifications', async route => {
+    await route.fulfill({ json: { notifications: unread ? [notice] : [] } });
+    firstPoll.resolve();
+  });
+  await page.route('**/api/me/notifications/read', route => route.fulfill({ json: { marked: 1 } }));
+  await page.route('**/api/sessions/' + sessionId, async route => {
+    await firstPoll.promise;
+    unread = true;
+    await route.fulfill(missingResponse);
+  });
+  await page.goto('/#/session/' + sessionId);
+  await expectReleasedSession(page, 'max_lifetime');
 });
 
 test('a delayed missing response cannot redirect or notify after leaving the session', async ({ page }) => {

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NetworkInspector, validateNetworkInspectorParams } from './network-inspector.mjs';
+import { sessionNetworks } from './docker.mjs';
+import { inspectNetwork, NetworkInspector, validateNetworkInspectorParams } from './network-inspector.mjs';
 test('capture refuses a custom proxy and restores only its own proxy', async () => {
   let setting = 'custom.test:8080', captures = 0;
   const calls = [];
@@ -92,10 +93,15 @@ test('an unsuccessful stop still releases only the inspector proxy', async () =>
   assert.equal(inspector.timers.size, 0);
 });
 
-// Exercise the actual container control boundary: stale in-memory code must not
-// cause a source upload or lose the previous capture.
+function dockerStdout(value) {
+  const data = Buffer.from(value);
+  const header = Buffer.alloc(8);
+  header[0] = 1;
+  header.writeUInt32BE(data.length, 4);
+  return Buffer.concat([header, data]);
+}
+
 test('active and legacy proxy revisions are preserved across controller upgrades', async () => {
-  const {inspectNetwork} = await import('./network-inspector.mjs');
   for (const state of [
     {protocolVersion:3,runtimeVersion:'old',recording:true,proxyActive:true},
     {protocolVersion:2,recording:false,proxyActive:true,pcapBytes:100},
@@ -110,8 +116,7 @@ test('active and legacy proxy revisions are preserved across controller upgrades
       },
       requestRaw: async (_method, resource) => {
         const command = commands.get(resource.split('/')[2]);
-        const data = Buffer.from(command[0] === 'python3' ? JSON.stringify(state) : '');
-        const header=Buffer.alloc(8);header[0]=1;header.writeUInt32BE(data.length,4);return Buffer.concat([header,data]);
+        return dockerStdout(command[0] === 'python3' ? JSON.stringify(state) : '');
       },
     };
     const status = await inspectNetwork(docker,'container','session','agent',{op:'status'});
@@ -119,6 +124,123 @@ test('active and legacy proxy revisions are preserved across controller upgrades
     await assert.rejects(inspectNetwork(docker,'container','session','agent',{op:'start',pcap:false}));
     assert.equal(writes,0);
     assert.ok(![...commands.values()].some(cmd=>cmd.includes('shutdown')));
+  }
+});
+
+const networks = sessionNetworks('session');
+const helperId = 'f'.repeat(64);
+
+function mockCaptureWithoutPython({ helperAvailable = true, sessionLabel = 'session', networkMode = networks.management } = {}) {
+  const emulator = {
+    Id: 'e'.repeat(64),
+    Config: { Labels: {
+      'remote-device-farm.managed': 'true',
+      'remote-device-farm.agent': 'agent',
+      'remote-device-farm.session': sessionLabel,
+    } },
+    State: { Running: true },
+    HostConfig: { NetworkMode: networkMode },
+    NetworkSettings: { Networks: { [networks.management]: {}, [networks.egress]: {} } },
+  };
+  const captureId = 'a'.repeat(32);
+  const commands = new Map(), helpers = [], packetStarts = [];
+  let helper = null, recording = false, pcapRequested = false;
+  const proxy = {
+    async container(parentId, session) {
+      assert.equal(parentId, emulator.Id);
+      assert.equal(session, 'session');
+      helpers.push('lookup');
+      return helper;
+    },
+    async available() { helpers.push('available'); return helperAvailable; },
+    async start(parentId, session) {
+      assert.equal(parentId, emulator.Id);
+      assert.equal(session, 'session');
+      helpers.push('start');
+      helper = { Id: helperId, State: { Running: true } };
+      return helper;
+    },
+  };
+  const packets = {
+    async available() { return true; },
+    async start(...args) {
+      packetStarts.push(args);
+      return { pcapState: 'recording', pcapBytes: 24 };
+    },
+    async status() { return { pcapState: 'recording', pcapBytes: 24, packetCount: 0 }; },
+  };
+  const docker = {
+    async inspect(id) { assert.equal(id, emulator.Id); return emulator; },
+    async request(method, resource, body) {
+      if (method === 'POST') {
+        const id = (commands.size + 1).toString(16).padStart(8, '0');
+        commands.set(id, { container: resource.split('/')[2], command: body.Cmd });
+        return { Id: id };
+      }
+      const { container } = commands.get(resource.split('/')[2]);
+      return { Running: false, ExitCode: container === emulator.Id ? 1 : 0 };
+    },
+    async requestRaw(_method, resource) {
+      const { container, command } = commands.get(resource.split('/')[2]);
+      if (container === emulator.Id) return Buffer.alloc(0);
+      assert.equal(container, helper.Id);
+      const [, , , script, operation] = command;
+      if (script !== '/app/src/network-proxy.py') return Buffer.alloc(0);
+      if (operation === 'start') {
+        recording = true;
+        pcapRequested = command[5] === '1';
+      }
+      return dockerStdout(JSON.stringify({
+        available: true, protocolVersion: 3, recording, proxyActive: true, captureId, pcapRequested, entries: [],
+      }));
+    },
+  };
+  return { helpers, commands, packetStarts, captureId, emulatorId: emulator.Id,
+    inspect: params => inspectNetwork(docker, emulator.Id, 'session', 'agent', params, packets, proxy) };
+}
+
+test('status reports fallback availability without starting the proxy helper', async () => {
+  for (const helperAvailable of [true, false]) {
+    const { inspect, helpers, commands, emulatorId } = mockCaptureWithoutPython({ helperAvailable });
+    const status = await inspect({ op: 'status', summary: true });
+    assert.equal(status.available, helperAvailable);
+    assert.equal(status.recording, false);
+    assert.deepEqual(helpers, ['lookup', 'available']);
+    assert.deepEqual([...commands.values()].map(({ container, command }) => [container, command[0]]), [[emulatorId, 'sh']]);
+  }
+});
+
+test('capture runs the proxy in the helper and records packets in the emulator', async () => {
+  const { inspect, helpers, commands, emulatorId, captureId, packetStarts } = mockCaptureWithoutPython();
+  const result = await inspect({ op: 'start', pcap: true, captureBodies: true });
+  assert.equal(result.recording, true);
+  assert.equal(result.pcapState, 'recording');
+  assert.deepEqual(helpers, ['lookup', 'available', 'start']);
+  assert.deepEqual(packetStarts, [[emulatorId, 'session', captureId]]);
+  assert.ok([...commands.values()].some(({ container, command }) =>
+    container === helperId && command.join(' ') === '/usr/bin/python3 -I -B /app/src/network-proxy.py start 1 1'));
+
+  commands.clear();
+  helpers.length = 0;
+  const status = await inspect({ op: 'status', summary: true });
+  assert.equal(status.recording, true);
+  assert.deepEqual(helpers, ['lookup']);
+  assert.deepEqual([...commands.values()].map(({ container, command }) => [container, command[4]]), [[helperId, 'summary']]);
+});
+
+test('the helper is never accessed for an emulator owned by another session', async () => {
+  const { inspect, helpers, commands } = mockCaptureWithoutPython({ sessionLabel: 'other-session' });
+  await assert.rejects(inspect({ op: 'start', pcap: false }));
+  assert.deepEqual(helpers, []);
+  assert.equal(commands.size, 0);
+});
+
+test('the helper is unavailable when the emulator shares a foreign network namespace', async () => {
+  for (const networkMode of ['host', 'container:foreign-id']) {
+    const { inspect, helpers } = mockCaptureWithoutPython({ networkMode });
+    assert.equal((await inspect({ op: 'status' })).available, false);
+    await assert.rejects(inspect({ op: 'start', pcap: false }));
+    assert.ok(!helpers.includes('start'));
   }
 });
 

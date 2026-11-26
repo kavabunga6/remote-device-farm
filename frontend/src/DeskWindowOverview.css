@@ -19,7 +19,7 @@
   line-height: 1.25;
 }
 
-.desk-command-bar > button {
+:is(.desk-command-bar, .desk-zoom) > button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -35,8 +35,9 @@
   white-space: nowrap;
 }
 
-.desk-command-bar > button > svg { flex: none; inline-size: 16px; block-size: 16px; }
-.desk-command-bar > button:hover { background: var(--accent-soft); color: var(--accent-strong); }
+:is(.desk-command-bar, .desk-zoom) > button > svg { flex: none; inline-size: 16px; block-size: 16px; }
+:is(.desk-command-bar, .desk-zoom) > button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent-strong); }
+.desk-zoom > button:disabled { color: var(--ui-muted); opacity: .55; }
 
 .desk-overview-trigger-label {
   min-inline-size: 0;
@@ -44,9 +45,15 @@
   text-overflow: ellipsis;
 }
 
-.desk-command-bar > .desk-command-exit { position: relative; flex: none; }
+.desk-command-bar > :is(.desk-zoom, .desk-command-reset-layout, .desk-command-save, .desk-command-exit) { position: relative; flex: none; }
 
-.desk-command-exit::before {
+.desk-command-bar > .desk-command-reset-layout { padding-inline: .25rem; }
+
+.desk-zoom { display: flex; align-items: stretch; }
+.desk-zoom > :is(.desk-zoom-out, .desk-zoom-in) { padding-inline: .25rem; }
+.desk-zoom > .desk-zoom-reset { min-inline-size: 4rem; font-variant-numeric: tabular-nums; }
+
+:is(.desk-zoom, .desk-command-reset-layout, .desk-command-save, .desk-command-exit)::before {
   position: absolute;
   inset-block: .375rem;
   inset-inline-start: -2px;
@@ -64,6 +71,28 @@
   color: var(--ui-subtle);
   font: inherit;
 }
+
+.desk-save-status {
+  position: absolute;
+  inset-block-start: calc(100% + .375rem);
+  left: 50%;
+  transform: translateX(-50%);
+  inline-size: max-content;
+  max-inline-size: min(26rem, calc(100vw - 24px));
+  text-align: center;
+  pointer-events: none;
+}
+
+.desk-save-status:not(:empty) {
+  padding: .375rem .625rem;
+  border: 1px solid var(--ui-border);
+  border-radius: .5rem;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  box-shadow: 0 3px 10px rgb(0 0 0 / .13);
+}
+
+.desk-save-status[data-error]:not(:empty) { color: var(--danger-hover, var(--danger)); }
 
 .desk-exit-hint {
   position: absolute;
@@ -290,20 +319,17 @@
   border-end-start-radius: 0;
 }
 
-.desk-command-bar > button:focus-visible,
+:is(.desk-command-bar, .desk-zoom) > button:focus-visible,
 :is(.desk-overview-close,.desk-overview-window,.desk-overview-dock):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 
 @media (max-width: 35rem) {
-  .desk-command-bar > button { gap: 4px; padding-inline: .25rem; }
-}
-
-@media (max-width: 22rem) {
-  .desk-command-exit-label { display: none; }
+  :is(.desk-command-bar, .desk-zoom) > button { gap: 4px; padding-inline: .25rem; }
+  :is(.desk-command-save-label, .desk-command-bar:has(> .desk-command-save) .desk-overview-trigger-label) { display: none; }
 }
 
 @media (max-width: 25rem) {
-  .desk-overview-shortcut { display: none; }
+  :is(.desk-overview-trigger-label, .desk-command-exit-label, .desk-overview-shortcut) { display: none; }
 }

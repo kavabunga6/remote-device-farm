@@ -436,8 +436,8 @@
     "ru": "Остановите запись перед скачиванием PCAP."
   },
   "networkInspector.unavailable": {
-    "en": "Traffic inspection requires a compatible emulator image with Python 3. Rebuild the image and start a new session.",
-    "ru": "Для инспектора нужен совместимый образ эмулятора с Python 3. Пересоберите образ и запустите новую сессию."
+    "en": "Traffic capture is unavailable for this session.",
+    "ru": "Запись трафика недоступна для этой сессии."
   },
   "performance.busy": {
     "ru": "На узле уже идёт диагностическая запись. Повторите позже.",

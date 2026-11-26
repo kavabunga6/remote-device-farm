@@ -5,11 +5,13 @@ import { useFloatingSessionWorkspace, type WorkspaceWindowName } from './useFloa
 import { FloatingWindowMove, FloatingWindowResizeHandles, WorkspaceDefaultButton } from './FloatingWorkspaceControls';
 import { DESK_TOOL_DRAG_TYPE, DeskToolWidget, deskWidgetPlacement, useDeskWidgetLayout } from './DeskToolWidget';
 import { DeskWindowOverview, type DeskOverviewWindow } from './DeskWindowOverview';
+import { readDeskLayoutTemplateForSession, saveDeskLayoutTemplate } from './deskLayoutTemplate';
 import { downloadFile as downloadKeyFile } from './browser-files';
+import { bindHorizontalWheel } from './horizontal-wheel';
 import { can } from './permissions';
 import { localizeText, getDirection, getLocale, t } from './i18n';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent, type ReactNode } from 'react';
-import { api, ApiError, KNOWN_ERRORS, type DeviceSession, type User } from './api';
+import { api, ApiError, KNOWN_ERRORS, type DeviceSession, type Profile, type SessionEndReason, type User } from './api';
 import { Icon } from './icons';
 import { useNotifications } from './notifications';
 import { lastLaunch } from './CreateSessionModal';
@@ -31,7 +33,7 @@ import { useSessionConsole } from './useSessionConsole';
 import { useSessionCapture } from './useSessionCapture';
 import { useSessionStream, type ConnectionMode } from './useSessionStream';
 import { SessionAudioControl, SessionMediaStatus } from './SessionMediaStatus';
-import { DeviceControls } from './DeviceControls';
+import { DeviceControls, useDeviceControlsPosition } from './DeviceControls';
 import { DeviceTextInput } from './DeviceTextInput';
 import { hasCapability, type Capability } from './devices';
 import './ConsoleResize.css';
@@ -46,6 +48,20 @@ function toolTabs(): ReadonlyArray<readonly [ToolTabId, string, Capability]> { r
   ['console', t('ui.a58f47dbc474'), 'shell'], ['logs', t('ui.1ebab145dea4'), 'logs'], ['info', t('ui.bd38d43cf415'), 'device-info'], ['env', t('ui.d606a9df2b84'), 'env'], ['apps', t('ui.39c4b42c8d11'), 'install'], ['traffic', t('networkInspector.title'), 'network'], ['webviews', t('webviews.title'), 'shell'],
   ['performance', t('performance.title'), 'shell'],
 ]; }
+
+function focusToolTab(tab: HTMLButtonElement) {
+  const tabs = tab.parentElement;
+  tab.focus({ preventScroll: true });
+  if (!tabs || tabs.scrollWidth <= tabs.clientWidth) return;
+  const strip = tabs.getBoundingClientRect();
+  const scale = strip.width / tabs.offsetWidth || 1;
+  const start = strip.left + tabs.clientLeft * scale;
+  const end = start + tabs.clientWidth * scale;
+  const bounds = tab.getBoundingClientRect();
+  const offset = bounds.left < start ? bounds.left - start : Math.max(0, bounds.right - end);
+  if (offset) tabs.scrollBy({ left: offset / scale, behavior: 'instant' });
+}
+
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : t('ui.b9f61453dd3f');
 }
@@ -61,8 +77,8 @@ function hasVisibleOverlay() {
     .some(element => element.getClientRects().length > 0);
 }
 
-export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, onKill, onObserved, onUpdated }: {
-  sessionId: string; user: User; onBack: () => void; onNotFound: (id: string) => void; onRelease: (session: DeviceSession) => void; onKill?: (session: DeviceSession) => void; onObserved: (session: DeviceSession) => void; onUpdated: () => void;
+export function SessionView({ sessionId, user, profiles, onBack, onNotFound, onRelease, onKill, onObserved, onUpdated }: {
+  sessionId: string; user: User; profiles: Profile[]; onBack: () => void; onNotFound: (id: string, reason?: SessionEndReason) => void; onRelease: (session: DeviceSession) => void; onKill?: (session: DeviceSession) => void; onObserved: (session: DeviceSession) => void; onUpdated: () => void;
 }) {
   const [session, setSession] = useState<DeviceSession | null>(null);
   const isPreparing = !session || session.status === 'starting';
@@ -130,18 +146,26 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const isRunning = session?.status === 'running';
   const canControl = isRunning && !readOnly && stream.inputReady;
   const landscape = stream.size.width > stream.size.height;
+  const profile = profiles.find(candidate => candidate.id === session?.profileId);
+  const deviceType = session?.deviceType ?? profile?.deviceType;
+  const resolution = /^(\d+)\s*[xх×]\s*(\d+)$/i.exec(profile?.resolution?.trim() ?? '');
+  const largeDevice = deviceType === 'tv' || deviceType === 'desktop' || deviceType === 'automotive';
+  const wideControls = largeDevice || (resolution ? Number(resolution[1]) > Number(resolution[2]) : landscape);
+  const controlsScope = session?.deviceId == null
+    ? `profile:${session?.profileId ?? ''}` : `physical:${deviceType ?? 'mobile'}`;
+  const controlsPlacement = useDeviceControlsPosition(user.id, controlsScope, wideControls ? 'top' : 'left');
+  const horizontalControls = controlsPlacement.edge === 'top' || controlsPlacement.edge === 'bottom';
   const [toolTab, setToolTab] = useState<ToolTabId>('console');
-  const { activeWorkspaceMode, deskActive, compactWorkspace, changeWorkspaceMode, defaultView, canSaveDefaultLayout, saveDefaultWorkspaceMode,
+  const { activeWorkspaceMode, deskActive, changeWorkspaceMode, defaultView, canSaveDefaultLayout, saveDefaultWorkspaceMode,
     consoleWidth, consoleResized, consoleHeight, consoleHeightResized, visibleConsoleSize, workspaceRef, screenRef,
     viewerWidth, displayScale, minConsoleWidth, maxConsoleWidth, maxConsoleHeight, resetConsoleSize, resizeConsoleWithKeyboard,
     startWidthResize, moveWidthResize, endWidthResize, startHeightResize, moveHeightResize, endHeightResize,
-  } = useSessionWorkspace({ size: stream.size, toolTab, isPreparing, shared, userId: user.id, terminalOutputRef });
-  const floating = activeWorkspaceMode === 'float';
+  } = useSessionWorkspace({ size: stream.size, horizontalControls, toolTab, isPreparing, shared, userId: user.id, sessionId, terminalOutputRef });
   const deskTrigger = useRef<HTMLButtonElement>(null);
   const wasDeskActive = useRef(false);
-  const leaveDesk = useCallback(() => changeWorkspaceMode('float'), [changeWorkspaceMode]);
   const [windowOverviewOpen, setWindowOverviewOpen] = useState(false);
   const floatingCanvasRef = useRef<HTMLDivElement>(null);
+  const deskGridRef = useRef<HTMLDivElement>(null);
   const floatingDeviceRef = useRef<HTMLElement>(null);
   const floatingToolsRef = useRef<HTMLElement>(null);
   const widgetDockRef = useRef<HTMLDivElement>(null);
@@ -154,16 +178,25 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
   const dragSurfaceRef = useRef<HTMLDivElement>(null);
   const [previewTool, setPreviewTool] = useState<ToolTabId | null>(null);
   const focusTool = useRef<ToolTabId | null>(null);
-  const workspaceLayoutId = session ? (session.deviceId == null ? `profile:${session.profileId}` : `physical:${session.deviceType ?? 'mobile'}`) : undefined;
-  const widgetLayout = useDeskWidgetLayout(user.id, workspaceLayoutId, TOOL_TAB_IDS);
+  const [savedDeskLayout] = useState(() => readDeskLayoutTemplateForSession(user.id, sessionId));
+  const emulated = Boolean(session && session.deviceId == null && !shared);
+  const layoutTemplate = emulated ? savedDeskLayout : null;
+  const workspaceLayoutId = session
+    ? (session.deviceId == null ? (layoutTemplate ? `session:${sessionId}` : `profile:${session.profileId}`) : `physical:${session.deviceType ?? 'mobile'}`)
+    : undefined;
+  const widgetLayout = useDeskWidgetLayout(user.id, workspaceLayoutId, TOOL_TAB_IDS, layoutTemplate);
   const floatingWorkspace = useFloatingSessionWorkspace({
-    active: floating && !isPreparing, userId: user.id,
-    layoutId: workspaceLayoutId,
+    active: deskActive, userId: user.id, sessionId,
+    layoutId: workspaceLayoutId, layoutTemplate,
     legacyDeviceId: session?.deviceId ?? undefined,
     aspect: stream.status === 'live' ? stream.size.width / Math.max(1, stream.size.height) : undefined,
-    viewportRef: workspaceRef, canvasRef: floatingCanvasRef, deviceRef: floatingDeviceRef, toolsRef: floatingToolsRef,
+    viewportRef: workspaceRef, canvasRef: floatingCanvasRef, deskGridRef, deviceRef: floatingDeviceRef, toolsRef: floatingToolsRef,
   });
-  const { jump: jumpFloating, snapWidgetPlacement, clearAlignmentGuides } = floatingWorkspace;
+  const { jump: jumpFloating, snapWidgetPlacement, clearAlignmentGuides, saveCamera } = floatingWorkspace;
+  const leaveDesk = useCallback(() => {
+    saveCamera();
+    changeWorkspaceMode('split');
+  }, [changeWorkspaceMode, saveCamera]);
   useEffect(() => {
     if (!deskActive) { setWindowOverviewOpen(false); return; }
     const handleOverviewShortcut = (event: KeyboardEvent) => {
@@ -205,9 +238,9 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     const panel = floatingCanvasRef.current?.querySelector<HTMLElement>(`[data-window="${name}"]`);
     panel?.querySelector<HTMLButtonElement>('button[data-window-move]')?.focus({ preventScroll: true });
   };
-  const canResizeDevice = !shared && !floating && !isPreparing && activeWorkspaceMode !== 'tools';
+  const canResizeDevice = !shared && !deskActive && !isPreparing && activeWorkspaceMode !== 'tools';
   const deviceSize = useWorkspaceDimension(`rdf-device-frame-percent:${encodeURIComponent(user.id)}`, 100, 35, 100, canResizeDevice);
-  const frameScale = displayScale * (shared || floating ? 1 : deviceSize.value / 100);
+  const frameScale = displayScale * (shared || deskActive ? 1 : deviceSize.value / 100);
   const dimensionLabel = new Intl.NumberFormat(getLocale(), { style: 'percent' }).format(deviceSize.value / 100);
   const touchIndicator = useTouchIndicator(sessionId, canReadEnvironment && !stream.nativeTouches);
   useEffect(() => {
@@ -252,7 +285,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
       if (!request.active) return;
       if (error instanceof ApiError && error.status === 404) {
         request.missing = true;
-        onNotFound(sessionId);
+        onNotFound(sessionId, error.sessionEndReason);
       } else setSessionError(errorText(error));
     } finally { request.pending = false; }
   }, [sessionId, onNotFound, onObserved]);
@@ -475,13 +508,16 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     const control = widgetLayout.placements[id]
       ? floatingCanvasRef.current?.querySelector<HTMLButtonElement>(`.desk-widget [data-window-move="widget:${id}"].floating-window-move`)
       : widgetDockRef.current?.querySelector<HTMLButtonElement>(`#tool-tab-${id}`);
-    control?.focus({ preventScroll: true });
+    if (control?.getAttribute('role') === 'tab') focusToolTab(control);
+    else control?.focus({ preventScroll: true });
   }, [widgetLayout.placements]);
 
   function detachTool(id: ToolTabId, x?: number, y?: number) {
     if (!deskActive || !workspaceRef.current || !dockedToolTabs.some(([candidate]) => candidate === id)) return;
     focusTool.current = id;
-    const bounds = deskWidgetPlacement(workspaceRef.current, x, y);
+    const canvas = floatingCanvasRef.current;
+    if (!canvas) return;
+    const bounds = deskWidgetPlacement(workspaceRef.current, canvas, x, y);
     widgetLayout.setPlacement(id, x !== undefined && y !== undefined ? snapWidgetPlacement(bounds) : bounds);
   }
 
@@ -517,8 +553,9 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
 
   function showToolPreview(viewport: HTMLElement, x: number, y: number) {
     const surface = dragSurfaceRef.current;
-    if (!surface) return;
-    const { left, top, width, height } = snapWidgetPlacement(deskWidgetPlacement(viewport, x, y), true);
+    const canvas = floatingCanvasRef.current;
+    if (!surface || !canvas) return;
+    const { left, top, width, height } = snapWidgetPlacement(deskWidgetPlacement(viewport, canvas, x, y), true);
     surface.style.transform = `translate(${left}px, ${top}px)`;
     surface.style.width = `${width}px`;
     surface.style.height = `${height}px`;
@@ -685,10 +722,12 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
         </div>
         {!shared && !isPreparing && <div className="workspace-mode-bar" role="group" aria-label={t('ui.7920d43e70db')}>
           <div className="workspace-mode-buttons">
-            {!compactWorkspace && <button type="button" className="workspace-positioned-view" data-workspace-choice="split" aria-pressed={activeWorkspaceMode === 'split'}
-              aria-label={t('ui.de5c415b1d45')} title={t('ui.de5c415b1d45')} onClick={() => changeWorkspaceMode('split')}><Icon name="grid" size={16} /><span>{t('ui.de5c415b1d45')}</span></button>}
-            <button type="button" className="workspace-positioned-view" data-workspace-choice="float" aria-pressed={floating} aria-label={t('session.workspace.floating')} title={t('session.workspace.floating')}
-              onClick={() => changeWorkspaceMode('float')}><Icon name="layers" size={16} /><span>{t('session.workspace.floating')}</span></button>
+            <button type="button" className="workspace-positioned-view" data-workspace-choice="split" aria-pressed={activeWorkspaceMode === 'split'}
+              aria-label={t('ui.de5c415b1d45')} title={t('ui.de5c415b1d45')} onClick={() => changeWorkspaceMode('split')}><Icon name="grid" size={16} /><span>{t('ui.de5c415b1d45')}</span></button>
+            <button ref={deskTrigger} type="button" className="workspace-positioned-view workspace-enter-desk" data-workspace-choice="desk"
+              aria-pressed={deskActive} aria-label={t('session.workspace.desk')} title={t('session.workspace.desk')} onClick={openDesk}>
+              <Icon name="expand" size={16} /><span>{t('session.workspace.desk')}</span>
+            </button>
             <WorkspaceDefaultButton className="workspace-default-view" selected={defaultView} disabled={!canSaveDefaultLayout} onSelect={saveDefaultWorkspaceMode} />
             <div className="workspace-quick-views">
               <button type="button" className="workspace-standalone-view" data-workspace-choice="screen" aria-pressed={activeWorkspaceMode === 'screen'}
@@ -700,16 +739,6 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
                 <Icon name="terminal" size={16} /><span>{t('ui.4e90074f740b')}</span>
               </button>
             </div>
-            {floating && <div className="workspace-layout-actions">
-              <button type="button" className="workspace-reset-layout" aria-label={t('session.workspace.resetFloating')}
-                title={t('session.workspace.resetFloating')} onClick={floatingWorkspace.reset}>
-                <Icon name="rotate" size={16} /><span>{t('session.workspace.resetFloating')}</span>
-              </button>
-              <button ref={deskTrigger} type="button" className="workspace-enter-desk" aria-label={t('session.workspace.desk')}
-                title={t('session.workspace.desk')} onClick={openDesk}>
-                <Icon name="expand" size={16} /><span>{t('session.workspace.desk')}</span>
-              </button>
-            </div>}
           </div>
         </div>}
       </div>
@@ -723,25 +752,32 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
     {sessionError && <div className="banner-error" role="alert"><Icon name="alert" size={17} />{localizeText(sessionError)}<button onClick={() => void refresh()}>{t('ui.5189135a6110')}</button></div>}
     {isPreparing ? <SessionStartupProgress progress={session?.startupProgress}/> : <>
     {deskActive && <DeskWindowOverview open={windowOverviewOpen} windows={deskOverviewWindows} workspace={floatingWorkspace}
+      zoom={floatingWorkspace.deskZoom} onZoom={floatingWorkspace.changeDeskZoom} onResetLayout={floatingWorkspace.reset}
+      onSaveLayout={emulated ? () => {
+        const snapshot = floatingWorkspace.snapshotLayout();
+        return snapshot ? saveDeskLayoutTemplate(user.id, snapshot) : false;
+      } : undefined}
       onOpenChange={setWindowOverviewOpen} onSelect={showFloatingWindow} onExitDesk={leaveDesk} />}
+    {deskActive && <div className="desk-grid" aria-hidden="true"><div className="desk-grid-pattern" ref={deskGridRef}/></div>}
     <div className="workspace-grid" data-console-resized={consoleResized || undefined} data-landscape={landscape || undefined} data-desk={deskActive || undefined} ref={workspaceRef}
-      dir={floating ? 'ltr' : undefined} role={floating ? 'region' : undefined} tabIndex={floating ? 0 : undefined}
-      aria-label={floating ? t(deskActive ? 'session.workspace.desk' : 'session.workspace.canvas') : undefined}
+      dir={deskActive ? 'ltr' : undefined} role={deskActive ? 'region' : undefined} tabIndex={deskActive ? 0 : undefined}
+      aria-label={deskActive ? t('session.workspace.desk') : undefined}
       aria-describedby={deskActive ? 'desk-exit-hint' : undefined}
       onDragOver={overWorkspace} onDragLeave={leaveWorkspaceDrag} onDrop={dropTool}
       onDoubleClick={event => {
-        if (deskActive && !draggedTool.current && (event.target === floatingCanvasRef.current || event.target === event.currentTarget)) {
+        if (deskActive && !draggedTool.current && (event.target === floatingCanvasRef.current ||
+          event.target === floatingCanvasRef.current?.parentElement || event.target === event.currentTarget)) {
           setWindowOverviewOpen(true);
         }
       }}
       style={{ '--console-width': consoleWidth + 'px', '--viewer-width': viewerWidth + 'px', '--device-aspect': stream.size.width / Math.max(1, stream.size.height) } as CSSProperties}>
-      <div className="session-floating-canvas" ref={floatingCanvasRef}>
+      <div className="session-floating-plane"><div className="session-floating-canvas" ref={floatingCanvasRef}>
       {deskActive && <div className="desk-drag-surface" ref={dragSurfaceRef} hidden inert aria-hidden="true" />}
-      <section className="viewer-panel" aria-label={t('ui.4547b46d3c0c')} ref={floatingDeviceRef}
-        data-window={floating ? 'device' : undefined}>
-        {floating && <FloatingWindowResizeHandles name="device" />}
-        <DeviceControls onKey={navKey} canControl={canControl} capture={capture} captureReady={captureReady}
-          workspaceMove={floating && <FloatingWindowMove name="device" className="device-control" />}
+      <section className="viewer-panel" dir="ltr" aria-label={t('ui.4547b46d3c0c')} ref={floatingDeviceRef}
+        data-window={deskActive ? 'device' : undefined} data-controls-edge={controlsPlacement.edge}>
+        {deskActive && <FloatingWindowResizeHandles name="device" />}
+        <DeviceControls onKey={navKey} canControl={canControl} capture={capture} captureReady={captureReady} placement={controlsPlacement}
+          workspaceMove={deskActive && <FloatingWindowMove name="device" className="device-control" />}
           textInput={!readOnly && <DeviceTextInput key={sessionId} active={shared || activeWorkspaceMode !== 'tools'} canSend={canControl}
             onSend={text => sendInput({ kind: 'text', text })} />}
           audio={(audioEnabled || audioControl.onToggleAudio) && <SessionAudioControl rail {...audioControl} />}
@@ -749,7 +785,7 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
           network={!shared && hasCapability(session, 'network') ? { enabled: networkEnabled, busy: !isRunning || busy === 'network', onClick: () => void toggleNetwork() } : undefined}
           upload={!shared && can(user, 'sessions.files') ? { pending: uploading.length > 0, disabled: !isRunning || uploading.length > 0, onClick: () => chooseDeviceFiles() } : undefined} />
         <input ref={fileInputRef} type="file" multiple hidden onChange={event => { if (event.target.files) void uploadFiles(event.target.files); event.target.value = ''; }} />
-        <div className="viewer-stage" ref={screenRef} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDragEnd={() => { dragDepthRef.current = 0; setDragging(false); }} onDrop={dropFiles}>
+        <div className="viewer-stage" dir={getDirection()} ref={screenRef} onDragEnter={dragEnter} onDragOver={dragOver} onDragLeave={dragLeave} onDragEnd={() => { dragDepthRef.current = 0; setDragging(false); }} onDrop={dropFiles}>
           <div className="session-device-frame" style={{ width: stream.size.width * frameScale, height: stream.size.height * frameScale }}>
           <div className={'device-screen ' + (landscape ? 'landscape' : 'portrait')}>
             <img ref={stream.imageRef} alt={t('ui.b4a6c9bc414c')} className={stream.format === 'image' ? 'active-frame' : ''} draggable={false} onLoad={() => setImageFrameReady(true)} onError={() => setImageFrameReady(false)} />
@@ -775,13 +811,13 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
           </div>
         </div>
       </section>
-      {!shared && <section className="tool-panel terminal-panel" aria-label={t('ui.fecfbc6e1053')} data-active-tool={dockedTool} data-console-height-resized={!floating && consoleHeightResized && dockedTool === 'console' && !catalogOpen || undefined}
-        ref={floatingToolsRef} data-window={floating ? 'tools' : undefined} dir={floating ? getDirection() : undefined}>
-        {floating && <FloatingWindowResizeHandles name="tools" />}
-        <div className="session-tool-tabs-strip" ref={widgetDockRef} data-window-move={floating ? 'tools' : undefined} data-widget-dock={deskActive || undefined}>
-          {floating && <FloatingWindowMove name="tools" />}
+      {!shared && <section className="tool-panel terminal-panel" aria-label={t('ui.fecfbc6e1053')} data-active-tool={dockedTool} data-console-height-resized={!deskActive && consoleHeightResized && dockedTool === 'console' && !catalogOpen || undefined}
+        ref={floatingToolsRef} data-window={deskActive ? 'tools' : undefined} dir={deskActive ? getDirection() : undefined}>
+        {deskActive && <FloatingWindowResizeHandles name="tools" />}
+        <div className="session-tool-tabs-strip" ref={widgetDockRef} data-window-move={deskActive ? 'tools' : undefined} data-widget-dock={deskActive || undefined}>
+          {deskActive && <FloatingWindowMove name="tools" />}
           {deskActive && availableToolTabs.length > 0 && !dockedToolTabs.length ? <span className="desk-empty-tabs">{t('session.workspace.dockHere')}</span>
-          : <div className="tool-tabs" role="tablist" aria-label={t('ui.fecfbc6e1053')} onKeyDown={event => {
+          : <div className="tool-tabs" ref={bindHorizontalWheel} role="tablist" aria-label={t('ui.fecfbc6e1053')} onKeyDown={event => {
             if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !dockedToolTabs.length) return;
             event.preventDefault();
             const current = dockedToolTabs.findIndex(([id]) => id === dockedTool);
@@ -789,7 +825,8 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
               : (current + (event.key === (getDirection() === 'rtl' ? 'ArrowRight' : 'ArrowLeft') ? -1 : 1) + dockedToolTabs.length) % dockedToolTabs.length;
             const id = dockedToolTabs[next][0];
             setToolTab(id);
-            event.currentTarget.querySelector<HTMLButtonElement>('#tool-tab-' + id)?.focus();
+            const tab = event.currentTarget.querySelector<HTMLButtonElement>('#tool-tab-' + id);
+            if (tab) focusToolTab(tab);
           }}>{dockedToolTabs.map(([id, label]) => <button key={id} type="button" role="tab" id={'tool-tab-' + id}
             aria-controls={'tool-panel-' + id} aria-selected={dockedTool === id} tabIndex={dockedTool === id ? 0 : -1}
             className={dockedTool === id ? 'active' : ''} onClick={() => setToolTab(id)}
@@ -804,14 +841,14 @@ export function SessionView({ sessionId, user, onBack, onNotFound, onRelease, on
             <WorkspaceDefaultButton className="floating-desk-default" selected={defaultView} onSelect={saveDefaultWorkspaceMode} size={18} />
           </div>}
         </div>
-        {!floating && <div className="console-width-handle" role="separator" aria-orientation="vertical" aria-label={t('ui.aad9553c58e7')} aria-valuemin={minConsoleWidth()} aria-valuemax={maxConsoleWidth()} aria-valuenow={visibleConsoleSize.width || Math.min(consoleWidth, maxConsoleWidth())} tabIndex={0} onPointerDown={startWidthResize} onPointerMove={moveWidthResize} onPointerUp={endWidthResize} onPointerCancel={endWidthResize} onLostPointerCapture={endWidthResize} title={t('ui.84def31d6544')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'width')}><span /></div>}
+        {!deskActive && <div className="console-width-handle" role="separator" aria-orientation="vertical" aria-label={t('ui.aad9553c58e7')} aria-valuemin={minConsoleWidth()} aria-valuemax={maxConsoleWidth()} aria-valuenow={visibleConsoleSize.width || Math.min(consoleWidth, maxConsoleWidth())} tabIndex={0} onPointerDown={startWidthResize} onPointerMove={moveWidthResize} onPointerUp={endWidthResize} onPointerCancel={endWidthResize} onLostPointerCapture={endWidthResize} title={t('ui.84def31d6544')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'width')}><span /></div>}
       </section>}
-      </div>
+      </div></div>
       {!shared && <>
         {renderTool('console', <div className="tool-content terminal-tool" id="tool-panel-console" role="tabpanel" aria-labelledby="tool-tab-console" data-catalog-open={catalogOpen || undefined} style={toolActive('console') ? undefined : { display: 'none' }}>
           <div className="terminal-topline"><div className="tool-header"><h2>{t('ui.415b2ea14558')}</h2><p>{t('ui.5a8b4be5b13d')}</p></div><div className="terminal-header-actions"><button type="button" className="console-size-reset icon-button" title={t('ui.acb4297e7d57')} aria-label={t('ui.acb4297e7d57')} onClick={resetConsoleSize} disabled={!consoleResized && !consoleHeightResized}><Icon name="refresh" size={16} /></button><button type="button" className="console-catalog-toggle" aria-expanded={catalogOpen} aria-controls="console-catalog-panel" onClick={() => { setSuggestionsOpen(false); setCatalogOpen(open => !open); }}><TranslatedText message="copy.SessionView.debcf21d" values={{ p0: getConsoleCommands().length }} /></button><button type="button" className="terminal-clear" onClick={() => setShellHistory([])} disabled={!shellHistory.length} title={t('ui.20dd55101aa2')}>{t('ui.8965271d3c97')}</button></div></div>
           <div className="terminal-output" ref={terminalOutputRef} style={{ height: consoleHeight }} aria-live="polite">{shellHistory.length ? shellHistory.map((line, index) => <div className="terminal-entry" key={index}><div className="terminal-command"><span aria-hidden="true">{t('ui.77d57e39b407')}</span> {line.command}</div>{line.result?.stdout && <pre>{line.result.stdout}</pre>}{line.result?.stderr && <pre className="terminal-stderr">{line.result.stderr}</pre>}{line.error && <pre className="terminal-stderr">{line.error}</pre>}{line.result && <small><TranslatedText message="copy.SessionView.0f771496" values={{ p0: line.result.exitCode }} /></small>}</div>) : <div className="terminal-empty"><strong>{t('ui.fadad01443a1')}</strong><p>{t('ui.087d5eca2dbf')}</p></div>}{shellBusy && <div className="terminal-running"><span className="mini-spinner" />{t('ui.176e44dd22ac')}</div>}</div>
-          {!floating && <div className="console-height-handle" role="separator" aria-orientation="horizontal" aria-label={t('ui.61c0f7efe428')} aria-valuemin={180} aria-valuemax={maxConsoleHeight()} aria-valuenow={visibleConsoleSize.height || Math.min(consoleHeight, maxConsoleHeight())} tabIndex={0} onPointerDown={startHeightResize} onPointerMove={moveHeightResize} onPointerUp={endHeightResize} onPointerCancel={endHeightResize} onLostPointerCapture={endHeightResize} title={t('ui.828ce3497805')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'height')}><span /></div>}
+          {!deskActive && <div className="console-height-handle" role="separator" aria-orientation="horizontal" aria-label={t('ui.61c0f7efe428')} aria-valuemin={180} aria-valuemax={maxConsoleHeight()} aria-valuenow={visibleConsoleSize.height || Math.min(consoleHeight, maxConsoleHeight())} tabIndex={0} onPointerDown={startHeightResize} onPointerMove={moveHeightResize} onPointerUp={endHeightResize} onPointerCancel={endHeightResize} onLostPointerCapture={endHeightResize} title={t('ui.828ce3497805')} onKeyDown={event => resizeConsoleWithKeyboard(event, 'height')}><span /></div>}
           <div className="terminal-input-wrap">
             {catalogOpen && <div className="console-catalog" id="console-catalog-panel" aria-label={t('ui.0bf2af623b6f')} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); setCatalogOpen(false); commandInputRef.current?.focus(); } }}>
               <div className="console-catalog-search"><input value={catalogQuery} onChange={event => setCatalogQuery(event.target.value)} placeholder={t('ui.d65f680ec9dc')} aria-label={t('ui.a8ea2fb17773')} /><span><TranslatedText message="copy.SessionView.8ce621ed" values={{ p0: catalogResults.length }} /></span></div>
